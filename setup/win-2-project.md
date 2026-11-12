@@ -18,13 +18,15 @@ name can't cheaply.
 
 ## 1. Find the engine and check the toolchain
 
-- Engine folder: read `C:\ProgramData\Epic\UnrealEngineLauncher\LauncherInstalled.dat` (JSON with each install's
-  location), or look under `C:\Program Files\Epic Games\`. Confirm the version in `Engine\Build\Build.version`.
-  Call this folder `UE` below.
+- Engine folder: `C:\Epic Games\UE_5.9` on this PC. In general, the `InstallLocation` of the `UE_5.9` entry in
+  `C:\ProgramData\Epic\EpicGamesLauncher\Data\Manifests\*.item` (this Launcher leaves `LauncherInstalled.dat`
+  empty). Confirm the version in `Engine\Build\Build.version`. Call this folder `UE` below.
 - If no 5.9 install is there, stop and tell Marwan: the engine download has to finish first.
 - Toolchain: `UE\Engine\Config\Windows\Windows_SDK.json` lists the compiler and Windows SDK versions this engine
   accepts. Compare them with what is installed (`vswhere.exe -all -products * -format json`, and the folders under
-  `C:\Program Files (x86)\Windows Kits\10\Include`). Add anything missing with the Visual Studio Installer
+  `C:\Program Files (x86)\Windows Kits\10\Include`). Judge the compiler by the version UnrealBuildTool prints
+  ("Using Visual Studio 14.44.35230 toolchain"), not the toolset folder name (`14.44.35207`), which lags behind
+  and falls inside 5.9's banned range. Add anything missing with the Visual Studio Installer
   (`setup.exe modify --installPath <path> --add <component id> --passive --norestart`), in the background with a log.
 - Web target: list `UE\Engine\Platforms` and note what the browser platform is called in this build (Web, Wasm or
   HTML5) and whether its files are present. Write the name in `docs/MACHINE.md`; stage 3 needs it. If it is absent,
@@ -47,6 +49,15 @@ to do without it first, for **30 minutes at most**:
   `Reel.uproject` with no dialog about missing modules or assets; and the editor log shows the third-person map
   loading with no "Failed to load", missing-class or missing-asset errors. Stage 3 then checks play-in-editor.
 - If the clock runs out or any check fails, don't debug it: delete `Reel\` and use the wizard.
+
+**What the first run did (2026-11-12):** no supported command-line route turned up, so the hand copy was used and
+passed every check above. Beyond `TemplateDefs.ini`'s own steps it needed what the wizard adds on its own: the
+shared packs go to `Content\<MountName>\` (from `TemplateResources\High\<MountName>\Content\`); `DefaultEngine.ini`
+gets `[/Script/Engine.Engine]` `+ActiveGameNameRedirects` for `TP_ThirdPerson` and `/Script/TP_ThirdPerson` to
+`/Script/Reel`, an `+ActiveClassRedirects` line per renamed header (`TP_ThirdPersonCharacter` to `ReelCharacter` and
+so on), and the Desktop/Maximum `HardwareTargetingSettings`; `DefaultGame.ini` gets a fresh `ProjectID`; the
+`.uproject` is the template's with the module renamed and `"EngineAssociation": "5.9"`. The C++ template carries
+the code and content of all its variants (Combat, Platforming, SideScrolling); they stay in.
 
 **The wizard, if it comes to that.** Give Marwan these clicks, to do through Moonlight, and wait for their reply:
 
@@ -71,7 +82,8 @@ them retry.
   Model Context Protocol server plugin. Add each to the `Plugins` list in `Reel.uproject` as
   `{ "Name": "<file name without .uplugin>", "Enabled": true }` unless it is already enabled by default. All
   Toolsets is required: without it the agent connects but has no tools for levels, actors or Blueprints (a known
-  bug in this Preview, UE-412135).
+  bug in this Preview, UE-412135). In 5.9.0 they are `AllToolsets` (off by default, so it is added) and
+  `ModelContextProtocol`, "Unreal MCP" (on by default, so it is not).
 - **The MCP server entry.** `.mcp.json` at the repo root points Claude Code at `http://127.0.0.1:8000/mcp` under the
   name `unreal-mcp`, but a session asks for approval before using a server from a project file, and the next
   session starts unattended. So register the same server for this Windows user as well:

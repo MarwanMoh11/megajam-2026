@@ -71,7 +71,7 @@ in `docs/JAM_PLAN.md`. Setup is `README.md` plus the runbooks in `setup/`.
 
 ## Commands (stage 2 fills in `UE`; stage 3 replaces these with the ones that worked)
 ```
-UE   = the engine folder, from C:\ProgramData\Epic\UnrealEngineLauncher\LauncherInstalled.dat
+UE   = C:\Epic Games\UE_5.9   (5.9.0-60351404; the Launcher no longer lists it in LauncherInstalled.dat)
 PROJ = C:\Jam\megajam\Reel\Reel.uproject
 
 :: build the editor target (editor closed)

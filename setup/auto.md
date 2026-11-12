@@ -56,8 +56,8 @@ Marwan is still at the keyboard for these, so get to them before anything slow.
    **Computer use on this PC:** the Claude desktop window is maximized and always-on-top, and screenshots hide it,
    so clicks can land on Claude while the screenshot shows the app underneath. Make the target window topmost
    (`SetWindowPos` with `HWND_TOPMOST`) and undo it afterwards. A RivaTuner window sits mid-screen and is masked in
-   screenshots; move or resize the target window so dialogs clear it. Don't force-kill the Launcher: on restart its
-   web helper times out and the UI stays dead for minutes.
+   screenshots; move or resize the target window so dialogs clear it. A restarted Launcher resumes its download by
+   itself.
 2. **Sunshine**, which streams this PC's screen to the Mac. `winget install -e --id LizardByte.Sunshine`, then check
    its service is running and port 47990 is listening. Find this PC's address on the home network (the adapter with
    a default gateway) and tell Marwan:
@@ -83,8 +83,10 @@ Carry out `setup/win-1-tools.md`. Visual Studio is the slow part: start it first
 Wait in the background until both are true:
 
 - the Visual Studio installer has exited, and the three workloads are present;
-- `C:\ProgramData\Epic\UnrealEngineLauncher\LauncherInstalled.dat` lists a 5.9 install, its
-  `Engine\Binaries\Win64\UnrealEditor.exe` exists, and the install folder has stopped growing for three minutes.
+- a `C:\ProgramData\Epic\EpicGamesLauncher\Data\Manifests\*.item` file has `"AppName": "UE_5.9"` and
+  `"bIsIncompleteInstall": false`, and its `InstallLocation` holds `Engine\Binaries\Win64\UnrealEditor.exe`. (The
+  first run waited on `LauncherInstalled.dat`, which this Launcher leaves empty, and lost two hours past the
+  finish. The Launcher log line `HandleTaskComplete: AppId [...:UE_5.9] AlertCode=[ok]` marks it too.)
 
 Give the wait a ceiling of six hours. If no engine download has started 20 minutes after you asked, say so once:
 Marwan may have missed the request, and can do it through Moonlight.

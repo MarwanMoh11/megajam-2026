@@ -50,3 +50,24 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   approves, plus Windows bloat. Two snags: computer use is off in the desktop app, so the Launcher clicks wait for
   it; and the auto-mode safety check refused to start the Remote Control "door", so Marwan starts that by hand. The
   PC clock also runs about two hours behind (dual boot with Mint).
+- **About 15:00-16:10. Engine download started, Visual Studio updated.** With the disk cleared to 147 GB, Claude
+  drove the Epic Games Launcher by computer use: Library > + > 5.9.0 Preview (the only 5.9 entry), core, templates
+  and engine source, no symbols or extra platforms, 33 GB. Four things fought back. The Launcher's saved install
+  folder was on a `D:` that doesn't exist on this boot, so Install silently did nothing until its config was
+  edited. The Claude desktop window is always-on-top and invisible to screenshots, so clicks landed on it until the
+  Launcher was made topmost. A RivaTuner overlay hid the dialogs mid-screen. And UAC prompts (the Launcher's folder
+  step, the Visual Studio installer) cancel themselves after two minutes, so both waited until Marwan watched
+  through Moonlight and clicked Yes. Visual Studio went from 17.6 to 17.14.45 with the game workload, one elevated
+  script, 17 minutes.
+- **The line is slow.** About 10 Mbps to the Launcher (Ethernet negotiates at 100 Mbps, the internet gives 10-18):
+  the 13 GB download took about three and a half hours. A Launcher tweak for more parallel chunks made it slower
+  and was reverted. The wait itself watched the wrong file (`LauncherInstalled.dat`, which this Launcher leaves
+  empty) and sat two hours past the finish at about 19:50; the runbooks now check the Launcher's manifest instead.
+- **About 22:00. `Reel` created without the wizard.** Claude copied the Third Person C++ template by hand, following
+  its `TemplateDefs.ini` (renames, the three shared content packs, the redirects the wizard writes), turned on the
+  All Toolsets plugin (the MCP server plugin is on by default), and registered the editor's MCP server for this
+  Windows user. 5.9's compiler list bans MSVC 14.44.0-35210 and the toolset folder says 35207, but the compiler
+  inside is 14.44.35230, so it passes. First command-line build of `ReelEditor`: 4.3 minutes, no warnings.
+- **About 22:10. Editor up.** `UnrealEditor.exe Reel.uproject` opened straight on `Lvl_ThirdPerson` with no dialogs
+  and no load errors; the MCP server answered on port 8000 after 1.2 minutes (server `unreal-mcp`
+  5.9.0-60351404, 106 toolsets listed). Ready for the stage 3 session.

@@ -18,8 +18,9 @@ Recorded 2026-11-12 by the setup session (`setup/auto.md`).
 | Tool | Version | Note |
 |---|---|---|
 | Epic Games Launcher | 1.3.210.0 (winget reinstalled the 20.3.3 MSI) | |
-| Unreal Engine | 5.9.0 Preview (installing) | `C:\Epic Games\UE_5.9`; Core, Templates and Feature Packs, Engine Source; no symbols, no extra platforms; 33 GB |
-| Visual Studio Community 2022 | 17.14.45 | Desktop C++, .NET desktop, **Game development with C++**; MSVC 14.44.35207; Windows SDK 10.0.26100 and 10.0.19041 |
+| Unreal Engine | 5.9.0 Preview (5.9.0-60351404) | `C:\Epic Games\UE_5.9`; Core, Templates and Feature Packs, Engine Source; no symbols, no extra platforms; 33.5 GB. Not listed in `LauncherInstalled.dat` (empty) nor the registry: the Launcher's record is `C:\ProgramData\Epic\EpicGamesLauncher\Data\Manifests\*.item` |
+| Web platform | **Wasm**, present | `Engine\Platforms\Wasm` (alongside Android, IOS, VisionOS, Windows) |
+| Visual Studio Community 2022 | 17.14.45 | Desktop C++, .NET desktop, **Game development with C++**; MSVC toolset folder 14.44.35207, compiler 14.44.35230 (5.9 bans 14.44.0-35210, so this passes); Windows SDK 10.0.26100 and 10.0.19041 |
 | Git / Git LFS | 2.56.0 / 3.3.0 | |
 | 7-Zip | 26.06 | |
 | OBS Studio | 28.1.2 | winget upgrade failed (installer exit 6, files in use); 28.1.2 records fine |
