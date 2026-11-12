@@ -1,5 +1,9 @@
 # Stage 2: the Unreal project
 
+> **Fallback route.** Use this file only if the Mint setup hits the tripwire and the whole jam moves to the Windows
+> boot. In that case clone the repo on Windows with git (`git clone https://github.com/MarwanMoh11/megajam-2026.git
+> C:\Jam\megajam`) instead of syncing from Mint, run `setup/win-1-tools.md` first, and commit from Windows.
+
 Stage 1 is done: the engine is installed through the Launcher and Visual Studio has finished. This stage creates the
 real jam project inside this repo and gets the editor running with the Unreal MCP server (the local server through
 which Claude drives the editor), ready for a new session to connect to.

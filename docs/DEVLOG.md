@@ -24,3 +24,12 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   time back, Claude turned the setup checklist into three runbooks that an agent on the PC carries out (tools,
   project, pipeline), put everything in a private repo to clone there, and dropped the throwaway test project: the
   pipeline test runs on the real project instead. The pick between the two ideas moved to Friday 10:00.
+- **13:00. The PC runs Linux Mint.** It dual-boots, and Mint is the boot Marwan wants to work in. Two facts shaped
+  the plan: the jam accepts Windows builds and not Linux ones, and Unreal can't package a Windows game from Linux.
+  So the game is built on Mint and the Windows boot only packages. Everything is driven from the MacBook: SSH
+  carries the Claude sessions, Sunshine and Moonlight carry the screen. Claude rewrote the runbooks for that route.
+- **13:00. Four Opus sessions on the Mac while the PC is set up:** browser grey boxes of both ideas, so the pick
+  doesn't wait for Unreal; an art direction board; and a survey of the rules, other entrants, prior art and past
+  winners. The survey came back first: both ideas clear the rules, one other entry overlaps The Tight Edit, and
+  the rules require a Windows package.
+

@@ -1,6 +1,6 @@
 # Epic AI MegaJam 2026 entry (theme: Director's Cut)
 
-Unreal Engine 5.9 MegaJam Preview, C++ project, built on Windows. Solo dev (Marwan) with Claude agents. This is
+Unreal Engine 5.9 MegaJam Preview, C++ project, built on Linux Mint and packaged on Windows. Solo dev (Marwan) with Claude agents. This is
 Marwan's first Unreal project: explain Unreal-specific terms in a few words the first time they come up.
 
 **Hard deadline: Mon Nov 16, 03:59 Cairo. Upload target: Sun Nov 15, 22:00.** Late entries are disqualified.
@@ -8,11 +8,19 @@ Marwan's first Unreal project: explain Unreal-specific terms in a few words the 
 Read `docs/STATUS.md` first (what the game is, the kill list, what's open). Rules, schedule and prize targets are
 in `docs/JAM_PLAN.md`. Setup is `README.md` plus the runbooks in `setup/`.
 
-## Layout
-- Repo root (on the PC: `C:\Jam\megajam`): this file, `docs/`, `setup/`, `.mcp.json`. Start every session here.
-- `Reel/`: the Unreal project (`Reel/Reel.uproject`, C++ in `Reel/Source/`). `Reel` is a working name.
-- Packaged builds and their logs go to `C:\Jam\Builds`, outside the repo.
-- The Mac holds a second clone, for reading the docs and posting the dev log. It has no engine: never build there.
+## Machines and layout
+- **PC, Linux Mint boot: the game is built here.** Repo at `~/Jam/megajam`; the Unreal project is `Reel/`
+  (`Reel/Reel.uproject`, C++ in `Reel/Source/`; `Reel` is a working name). Start every session in the repo root.
+  Builds and logs go to `~/Jam/Builds`, outside the repo.
+- **PC, Windows boot: packaging only.** `C:\Jam\megajam` is a mirror written by `tools/sync-to-windows.sh`, not a
+  clone. Never edit or commit there. Its results are in `C:\Jam\Builds\RESULT.md`, readable from Mint through the
+  mount point in `.winroot`. The jam accepts Windows builds and not Linux ones, so this boot makes the entry.
+- **MacBook: where Marwan sits.** Sessions reach the PC over SSH; the screen comes through Sunshine and Moonlight.
+  The Mac's clone holds docs and the browser prototypes. It has no engine: never build Unreal there.
+- **You never type a password.** When a command needs sudo, give Marwan one line to run as
+  `ssh -t jam-mint '<command>'` and carry on when they say it is done.
+- **A program you start over SSH has no screen.** Start the editor or the game on the logged-in desktop with
+  `DISPLAY=:0 XAUTHORITY="$HOME/.Xauthority"`, detached, with a log.
 
 ## Working rules
 - **Check the kill list in docs/STATUS.md before building anything.** If it isn't in the spec, mention it in one line
@@ -46,9 +54,11 @@ in `docs/JAM_PLAN.md`. Setup is `README.md` plus the runbooks in `setup/`.
 - To restart the editor: `ExitEditor` in `EditorToolset.EditorAppToolset`, start it again, reconnect.
 
 ## C++ changes
-- Function bodies: Live Coding (Ctrl+Alt+F11 in the editor, or the Live Coding toolset).
-- New classes, new `UPROPERTY`/`UFUNCTION`, or changed headers: close the editor, build, reopen. Live Coding does
-  not pick these up reliably.
+- Live Coding, the fast reload, is a Windows feature. On Mint the loop is the one Mint stage 3 measured and wrote
+  into `docs/UNREAL_MCP.md`: follow that.
+- New classes, new `UPROPERTY`/`UFUNCTION`, or changed headers: close the editor, build, reopen.
+- Because every compile costs an editor restart, keep tunable values in `UPROPERTY(EditAnywhere)` fields and data,
+  so most iteration needs no compile.
 
 ## Known traps in the 5.9 Preview (from Epic's forum post)
 - Swapping a Blueprint's root component from Python can crash the editor. Give the C++ base class the root instead.
@@ -56,15 +66,21 @@ in `docs/JAM_PLAN.md`. Setup is `README.md` plus the runbooks in `setup/`.
 - Web builds: Shipping only, under 500 MB total and 200 MB per file, under 2 GB of memory, no Bink video, and leave
   the Wasm SIMD and allocator settings at their defaults. Open a Web build with its `Play_*.bat`, never `index.html`.
 
-## Commands (stage 2 fills in `UE`; stage 3 replaces these with the ones that worked)
+## Commands (Mint stage 2 fills in `UE`; stage 3 replaces these with the ones that worked)
 ```
-set "UE=C:\Program Files\Epic Games\UE_5.9"
-set "PROJ=C:\Jam\megajam\Reel\Reel.uproject"
+UE=~/UnrealEngine/UE_5.9
+PROJ=~/Jam/megajam/Reel/Reel.uproject
 
-:: build the editor target (editor closed)
-"%UE%\Engine\Build\BatchFiles\Build.bat" ReelEditor Win64 Development -Project="%PROJ%" -WaitMutex
+# build the editor target (editor closed)
+"$UE/Engine/Build/BatchFiles/Linux/Build.sh" ReelEditor Linux Development -Project="$PROJ" -WaitMutex
 
-:: package Windows, Shipping (run in the background; read the log)
-"%UE%\Engine\Build\BatchFiles\RunUAT.bat" BuildCookRun -project="%PROJ%" -platform=Win64 -clientconfig=Shipping -build -cook -stage -pak -prereqs -archive -archivedirectory="C:\Jam\Builds" -nop4 -utf8output > "C:\Jam\Builds\package.log" 2>&1
+# start the editor on the PC's desktop
+DISPLAY=:0 XAUTHORITY="$HOME/.Xauthority" nohup "$UE/Engine/Binaries/Linux/UnrealEditor" "$PROJ" > ~/Jam/editor.log 2>&1 &
+
+# Linux package: a smoke test only, it can't be submitted (background; read the log)
+"$UE/Engine/Build/BatchFiles/RunUAT.sh" BuildCookRun -project="$PROJ" -platform=Linux -clientconfig=Shipping -build -cook -stage -pak -archive -archivedirectory="$HOME/Jam/Builds" -nop4 -utf8output > ~/Jam/Builds/package-linux.log 2>&1
+
+# hand the project to the Windows boot, which packages the real entry (setup/win-2-package.md)
+tools/sync-to-windows.sh
 ```
-The submission zip is `TeamName_GameName.zip`, under 1 GB.
+The submission zip is `TeamName_GameName.zip`, under 1 GB, and is made on the Windows boot.

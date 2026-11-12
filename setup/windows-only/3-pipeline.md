@@ -1,5 +1,9 @@
 # Stage 3: prove the pipeline, end to end
 
+> **Fallback route.** Use this file only if the Mint setup hits the tripwire and the whole jam moves to the Windows
+> boot. In that case clone the repo on Windows with git (`git clone https://github.com/MarwanMoh11/megajam-2026.git
+> C:\Jam\megajam`) instead of syncing from Mint, run `setup/win-1-tools.md` first, and commit from Windows.
+
 Stage 2 is done: `Reel\` exists, the editor is open, and this is a new session that should have the `unreal-mcp`
 tools. This stage does once, on the untouched template, everything Sunday night depends on: drive the editor, change
 C++, package for Windows, package for the browser, and build the zip. Each failure found now costs minutes; found on

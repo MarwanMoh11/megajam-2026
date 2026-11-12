@@ -4,7 +4,7 @@ Last updated: 2026-11-11, pre-jam. Theme: **Director's Cut**. Nothing is built.
 
 ## Locked for now: two candidates
 
-One of these becomes the game. The pick is made **Fri Nov 13 by 10:00 Cairo**, after you have played both grey boxes.
+One of these becomes the game. The pick is made after you have played both browser grey boxes in `prototypes/`: Thursday evening if they are ready, **Fri Nov 13, 10:00 Cairo** at the latest.
 Reasoning and the full tier list: docs/BRAINSTORM.md, section 7.
 
 ### K. Meanwhile... (cross-cutting action)

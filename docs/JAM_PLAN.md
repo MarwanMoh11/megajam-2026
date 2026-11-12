@@ -27,23 +27,26 @@ Written 2026-11-11, the night before the start. All times below are Cairo (UTC+2
 
 ## Machines and engine
 
-- **Windows PC = the build machine.** The editor, the project, Claude Code and every package live there. Windows is what
-  most judges run, and the Windows Launcher build of 5.9 includes the Web (Wasm) files the Mac build is missing.
-- **Mac = the second screen.** Browser work (itch page, dev log, Tripo/Rodin/PBRgen/fal web apps), and a clean machine
-  for testing the Web build in Chrome and Safari. It doesn't need Unreal, so its full disk is no longer a blocker.
+- **PC, Linux Mint boot = where the game is built.** Editor, project, agents, git. Epic ships a Linux build of the
+  5.9 MegaJam Preview, and Claude sessions run there over SSH from the MacBook.
+- **PC, Windows boot = packaging only.** The Official Rules require a Windows package for Unreal entries (p1), and
+  Unreal can't package Windows from Linux. The project is mirrored onto the Windows partition and packaged there:
+  first run Friday morning at the latest, then every evening, then the final.
+- **MacBook = where Marwan sits.** Claude app, browser work, Moonlight for the PC's screen. No engine on it.
+- **What Mint costs:** no Live Coding (C++ changes need a hot reload or an editor restart), two engine installs, a
+  reboot per Windows package, and a look tuned under Vulkan but judged under DirectX. The tripwire: if the editor or
+  its MCP server won't work on Mint within about an hour, the whole jam moves to the Windows boot.
 - **Unreal Engine, not UEFN.** Claude knows UE C++, Blueprints and Python far better than Verse, a packaged build has no
   Fortnite rules or Fortnite look to fit, and the UE prize pool is the same size. UEFN's only exclusive is Walkie-Talkie.
-- **C++ project** (the Web target needs one). Gameplay core in C++: it's text, so agents can diff, review and edit it
-  without touching binary assets. Live Coding works on Windows (Ctrl+Alt+F11), so C++ iteration stays fast.
-- **Ship Windows first, Web as a bonus.** Build for the desktop renderer and don't bend the game around Web. On Friday,
-  package Web once: if it runs and looks acceptable in Chrome, ship it too (browser-playable entries get more plays).
-  Web uses the mobile renderer (no Lumen or Nanite), has a 2 GB memory ceiling, and itch's 500 MB limit.
+- **C++ project.** Gameplay core in C++: it's text, so agents can diff, review and edit it without touching binary
+  assets. Tunable values live in editable properties and data, so most iteration needs no compile.
+- **Ship Windows first, Web as a bonus.** Epic's forum post says the Web target currently needs a source build of
+  the engine, so it may not be available at all. One 30-minute attempt on the first Windows package, then decide.
 
-## Setup (Thu, on the PC)
+## Setup (Thu, from the MacBook)
 
-Setup is prompt-driven: `README.md` lists what to paste on the PC, and `setup/` holds one runbook per stage (tools,
-project, pipeline). The jam opened before setup started, so the pipeline test runs on the real project, not on a
-throwaway one.
+Setup is prompt-driven: `README.md` lists what to paste, and `setup/` holds one runbook per stage: reaching the PC,
+three Mint stages, two Windows stages. The pipeline test runs on the real project, not on a throwaway one.
 
 ## Lessons carried from Luxel
 
@@ -64,9 +67,10 @@ throwaway one.
 
 | When | Goal | Done when |
 |---|---|---|
-| Thu afternoon | Setup stages 1-3 (README.md) | Claude drives the editor; the packaged template runs from a zip |
-| Thu evening | Grey-box K (Meanwhile...), then L (The Tight Edit) | You have played both |
-| Fri 10:00 | Pick one; write the spec: win condition, rule order, feedback table, final kill list, the look | The pick and the spec are in docs/STATUS.md |
+| Thu afternoon | Mint setup stages 0-3 (README.md); browser grey boxes of K and L on the Mac | Claude drives the editor on Mint; you have played both prototypes |
+| Thu evening | Pick one; write the spec; start the Unreal grey box of the pick | The pick and the spec are in docs/STATUS.md |
+| Thu night | Windows boot: tools and engine download, overnight | The Launcher shows Launch for 5.9 |
+| Fri morning | First Windows package of whatever exists | A Windows zip that runs |
 | Fri | Core loop in grey boxes, one level start to finish | Playable from title to end |
 | **Sat 12:00** | **Fun gate** + packaged builds (Windows, and Web if stage 3 passed) | A cold player wants another go; the Windows zip runs on another PC |
 | Sat 12:00 - Sun 10:00 | Content: look, characters (Tripo), props (Rodin), materials (PBRgen), audio (WeLoveIndies), level progression | Content locked Sun 10:00 |
@@ -74,7 +78,7 @@ throwaway one.
 | **Sun 22:00** | **Upload and submit** | Submission page shows the entry; download it and play it once |
 | Mon 03:59 | Hard deadline | |
 
-If setup runs into the evening, the grey boxes move to Friday morning and the pick to Fri 15:00; the fun gate stays.
+The pick is made from the browser grey boxes, so it doesn't wait for Unreal: Fri 10:00 at the latest; the fun gate stays.
 The schedule lost Thursday morning to setup, so the first cut, if one is needed, is the Web build.
 
 Package every evening from today on, in the background, so Sunday's build is never the first.

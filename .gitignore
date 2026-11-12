@@ -25,3 +25,6 @@ Builds/
 # OS noise
 .DS_Store
 Thumbs.db
+
+# Machine-specific: where the Windows partition is mounted on Mint
+.winroot
