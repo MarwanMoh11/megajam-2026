@@ -1,6 +1,6 @@
 # Epic AI MegaJam 2026 entry (theme: Director's Cut)
 
-Unreal Engine 5.9 MegaJam Preview, C++ project, built on Linux Mint and packaged on Windows. Solo dev (Marwan) with Claude agents. This is
+Unreal Engine 5.9 MegaJam Preview, C++ project, built and packaged on a Windows PC. Solo dev (Marwan) with Claude agents. This is
 Marwan's first Unreal project: explain Unreal-specific terms in a few words the first time they come up.
 
 **Hard deadline: Mon Nov 16, 03:59 Cairo. Upload target: Sun Nov 15, 22:00.** Late entries are disqualified.
@@ -9,18 +9,18 @@ Read `docs/STATUS.md` first (what the game is, the kill list, what's open). Rule
 in `docs/JAM_PLAN.md`. Setup is `README.md` plus the runbooks in `setup/`.
 
 ## Machines and layout
-- **PC, Linux Mint boot: the game is built here.** Repo at `~/Jam/megajam`; the Unreal project is `Reel/`
-  (`Reel/Reel.uproject`, C++ in `Reel/Source/`; `Reel` is a working name). Start every session in the repo root.
-  Builds and logs go to `~/Jam/Builds`, outside the repo.
-- **PC, Windows boot: packaging only.** `C:\Jam\megajam` is a mirror written by `tools/sync-to-windows.sh`, not a
-  clone. Never edit or commit there. Its results are in `C:\Jam\Builds\RESULT.md`, readable from Mint through the
-  mount point in `.winroot`. The jam accepts Windows builds and not Linux ones, so this boot makes the entry.
-- **MacBook: where Marwan sits.** Sessions reach the PC over SSH; the screen comes through Sunshine and Moonlight.
-  The Mac's clone holds docs and the browser prototypes. It has no engine: never build Unreal there.
-- **You never type a password.** When a command needs sudo, give Marwan one line to run as
-  `ssh -t jam-mint '<command>'` and carry on when they say it is done.
-- **A program you start over SSH has no screen.** Start the editor or the game on the logged-in desktop with
-  `DISPLAY=:0 XAUTHORITY="$HOME/.Xauthority"`, detached, with a log.
+- **PC, Windows: everything Unreal happens here.** Repo at `C:\Jam\megajam`; the Unreal project is `Reel\`
+  (`Reel\Reel.uproject`, C++ in `Reel\Source\`; `Reel` is a working name). Start every session in the repo root.
+  Builds and logs go to `C:\Jam\Builds`, outside the repo.
+- **MacBook: where Marwan sits.** Sessions reach the PC over SSH (`jam-pc`); the screen comes through Sunshine and
+  Moonlight. The Mac's clone holds docs and the browser prototypes. It has no engine: never build Unreal there, and
+  never commit binary files from it (it has no Git LFS).
+- **A program you start over SSH has no desktop.** Start the editor, the packaged game, or anything else with a
+  window through `tools\on-desktop.ps1 <exe> "<arguments>"`, which puts it on the desktop Marwan sees.
+- **You never type a password** (Windows, Epic, itch.io, GitHub). Say what Marwan has to do through Moonlight, end
+  your turn, and carry on when they say it is done.
+- **No clipboard between the Mac and the PC.** Don't ask Marwan to paste on the PC: write a script there and give
+  them its short path, or run it yourself.
 
 ## Working rules
 - **Check the kill list in docs/STATUS.md before building anything.** If it isn't in the spec, mention it in one line
@@ -54,11 +54,12 @@ in `docs/JAM_PLAN.md`. Setup is `README.md` plus the runbooks in `setup/`.
 - To restart the editor: `ExitEditor` in `EditorToolset.EditorAppToolset`, start it again, reconnect.
 
 ## C++ changes
-- Live Coding, the fast reload, is a Windows feature. On Mint the loop is the one Mint stage 3 measured and wrote
-  into `docs/UNREAL_MCP.md`: follow that.
-- New classes, new `UPROPERTY`/`UFUNCTION`, or changed headers: close the editor, build, reopen.
-- Because every compile costs an editor restart, keep tunable values in `UPROPERTY(EditAnywhere)` fields and data,
-  so most iteration needs no compile.
+- Function bodies: compile with Live Coding, Unreal's in-editor fast reload (its tool, or Ctrl+Alt+F11 in the
+  editor). The editor stays open.
+- New classes, new `UPROPERTY`/`UFUNCTION`, or changed headers: exit the editor, build, start it again, reconnect.
+  Stage 3 timed both routes and wrote the steps into `docs/UNREAL_MCP.md`.
+- Live Coding does not reliably re-apply changed constructor defaults to Blueprint children that already exist. Put
+  tunable values in `UPROPERTY(EditAnywhere)` fields and change them in the editor instead.
 
 ## Known traps in the 5.9 Preview (from Epic's forum post)
 - Swapping a Blueprint's root component from Python can crash the editor. Give the C++ base class the root instead.
@@ -66,21 +67,18 @@ in `docs/JAM_PLAN.md`. Setup is `README.md` plus the runbooks in `setup/`.
 - Web builds: Shipping only, under 500 MB total and 200 MB per file, under 2 GB of memory, no Bink video, and leave
   the Wasm SIMD and allocator settings at their defaults. Open a Web build with its `Play_*.bat`, never `index.html`.
 
-## Commands (Mint stage 2 fills in `UE`; stage 3 replaces these with the ones that worked)
+## Commands (stage 2 fills in `UE`; stage 3 replaces these with the ones that worked)
 ```
-UE=~/UnrealEngine/UE_5.9
-PROJ=~/Jam/megajam/Reel/Reel.uproject
+UE   = the engine folder, from C:\ProgramData\Epic\UnrealEngineLauncher\LauncherInstalled.dat
+PROJ = C:\Jam\megajam\Reel\Reel.uproject
 
-# build the editor target (editor closed)
-"$UE/Engine/Build/BatchFiles/Linux/Build.sh" ReelEditor Linux Development -Project="$PROJ" -WaitMutex
+:: build the editor target (editor closed)
+"<UE>\Engine\Build\BatchFiles\Build.bat" ReelEditor Win64 Development -Project="<PROJ>" -WaitMutex
 
-# start the editor on the PC's desktop
-DISPLAY=:0 XAUTHORITY="$HOME/.Xauthority" nohup "$UE/Engine/Binaries/Linux/UnrealEditor" "$PROJ" > ~/Jam/editor.log 2>&1 &
+:: start the editor on the PC's desktop
+powershell -ExecutionPolicy Bypass -File tools\on-desktop.ps1 "<UE>\Engine\Binaries\Win64\UnrealEditor.exe" "<PROJ>"
 
-# Linux package: a smoke test only, it can't be submitted (background; read the log)
-"$UE/Engine/Build/BatchFiles/RunUAT.sh" BuildCookRun -project="$PROJ" -platform=Linux -clientconfig=Shipping -build -cook -stage -pak -archive -archivedirectory="$HOME/Jam/Builds" -nop4 -utf8output > ~/Jam/Builds/package-linux.log 2>&1
-
-# hand the project to the Windows boot, which packages the real entry (setup/win-2-package.md)
-tools/sync-to-windows.sh
+:: package the Windows build (background; read C:\Jam\Builds\package-win.log)
+"<UE>\Engine\Build\BatchFiles\RunUAT.bat" BuildCookRun -project="<PROJ>" -platform=Win64 -clientconfig=Shipping -build -cook -stage -pak -prereqs -archive -archivedirectory="C:\Jam\Builds" -nop4 -utf8output
 ```
-The submission zip is `TeamName_GameName.zip`, under 1 GB, and is made on the Windows boot.
+The submission zip is `TeamName_GameName.zip`, under 1 GB, made with 7-Zip from the packaged folder.

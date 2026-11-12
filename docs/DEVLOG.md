@@ -32,4 +32,8 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   doesn't wait for Unreal; an art direction board; and a survey of the rules, other entrants, prior art and past
   winners. The survey came back first: both ideas clear the rules, one other entry overlaps The Tight Edit, and
   the rules require a Windows package.
-
+- **13:25. Back to Windows only.** Marwan weighed what Mint would cost (no Live Coding, a second engine install, a
+  reboot for every Windows package, a look tuned under Vulkan and judged under DirectX) and chose the Windows boot
+  for the whole jam. The MacBook still drives everything: SSH for the Claude sessions, Sunshine and Moonlight for
+  the screen. Claude rewrote the runbooks a second time, so that one paste at the PC's keyboard sets up SSH, the
+  tools and Visual Studio while the engine downloads.

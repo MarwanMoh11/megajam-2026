@@ -1,12 +1,12 @@
 # Stage 2: the Unreal project
 
-> **Fallback route.** Use this file only if the Mint setup hits the tripwire and the whole jam moves to the Windows
-> boot. In that case clone the repo on Windows with git (`git clone https://github.com/MarwanMoh11/megajam-2026.git
-> C:\Jam\megajam`) instead of syncing from Mint, run `setup/win-1-tools.md` first, and commit from Windows.
-
 Stage 1 is done: the engine is installed through the Launcher and Visual Studio has finished. This stage creates the
 real jam project inside this repo and gets the editor running with the Unreal MCP server (the local server through
 which Claude drives the editor), ready for a new session to connect to.
+
+You are in an SSH session on the PC; Marwan watches its screen from a MacBook through Moonlight. Anything with a
+window starts through `tools\on-desktop.ps1`, and there is no clipboard between the Mac and the PC (stage 1 has the
+details).
 
 **Done when:** `Reel\Reel.uproject` exists as a C++ project and builds from the command line; the All Toolsets
 plugin is on; the editor is open and answering on port 8000; the paths under "Commands" in `CLAUDE.md` are real; and
@@ -33,8 +33,8 @@ name can't cheaply.
 
 ## 2. Ask Marwan to create the project (the one step that needs the wizard)
 
-There is no supported command line for creating a project from a template, so give Marwan these clicks and end your
-turn. Carry on when they reply.
+There is no supported command line for creating a project from a template, so give Marwan these clicks, to do
+through Moonlight, and end your turn. Carry on when they reply.
 
 1. Epic Games Launcher > Unreal Engine > Library > **Launch** on 5.9 MegaJam Preview.
 2. In the project browser: **Games** > **Third Person**. If it offers variants, keep the plain one.
@@ -44,8 +44,9 @@ turn. Carry on when they reply.
 5. **Create**. The first compile takes a few minutes, then the editor opens. Visual Studio may open as well; close
    it. Press Play (Alt+P) once to see the character run, then **close the editor** and reply "created".
 
-If the wizard reports missing components or the compile fails, Marwan pastes the message here: fix it (usually a
-Visual Studio component from section 1) and have them retry.
+If the wizard reports missing components or the compile fails, read the newest log under `Reel\Saved\Logs\`
+yourself, or ask Marwan what the dialog says. Fix it (usually a Visual Studio component from section 1) and have
+them retry.
 
 ## 3. Wire the project up (editor closed)
 
@@ -67,11 +68,14 @@ Visual Studio component from section 1) and have them retry.
 
 ## 4. Start the editor and wait for the server
 
-- Start `<UE>\Engine\Binaries\Win64\UnrealEditor.exe` with the `.uproject` path as its argument, detached.
+- Start the editor on the desktop, with the `.uproject` path as its argument:
+  ```
+  powershell -ExecutionPolicy Bypass -File tools\on-desktop.ps1 "<UE>\Engine\Binaries\Win64\UnrealEditor.exe" "C:\Jam\megajam\Reel\Reel.uproject"
+  ```
 - Wait, in one bounded loop of at most five minutes, for port 8000 on 127.0.0.1 to accept a connection
   (`Test-NetConnection`). The first launch compiles shaders, so it is slow.
 - If the port never opens: read the newest log in `Reel\Saved\Logs\` for lines about MCP or Agentic Workflows. Then
-  ask Marwan to open Edit > Editor Preferences > Agentic Workflows > Model Context Protocol, check that Auto Start
+  ask Marwan, through Moonlight, to open Edit > Editor Preferences > Agentic Workflows > Model Context Protocol, check that Auto Start
   Server is on and the port is 8000, choose Client = Claude Code and click **Generate Client Config**. That writes
   `Reel\.mcp.json`; if it differs from the one at the repo root, copy it over the root one.
 
@@ -84,5 +88,5 @@ Visual Studio component from section 1) and have them retry.
 
 ## 6. Hand over
 
-Tell Marwan: leave the editor open, start a **new** Claude session in this repo folder (a session only connects to
+Tell Marwan: leave the editor open, start a **new** session on `jam-pc` in this folder (a session only connects to
 the Unreal server if the editor was running when the session started), and paste the stage 3 prompt from `README.md`.

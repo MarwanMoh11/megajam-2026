@@ -1,13 +1,12 @@
 # Stage 3: prove the pipeline, end to end
 
-> **Fallback route.** Use this file only if the Mint setup hits the tripwire and the whole jam moves to the Windows
-> boot. In that case clone the repo on Windows with git (`git clone https://github.com/MarwanMoh11/megajam-2026.git
-> C:\Jam\megajam`) instead of syncing from Mint, run `setup/win-1-tools.md` first, and commit from Windows.
-
 Stage 2 is done: `Reel\` exists, the editor is open, and this is a new session that should have the `unreal-mcp`
 tools. This stage does once, on the untouched template, everything Sunday night depends on: drive the editor, change
 C++, package for Windows, package for the browser, and build the zip. Each failure found now costs minutes; found on
 Sunday it costs the entry.
+
+You are in an SSH session on the PC; Marwan watches its screen from a MacBook through Moonlight. Anything with a
+window starts through `tools\on-desktop.ps1`, and there is no clipboard between the Mac and the PC.
 
 **Done when:** each test below has passed or has a one-line reason it didn't; `docs/UNREAL_MCP.md` exists; the
 commands in `CLAUDE.md` are the ones that worked on this PC; times and sizes are in `docs/DEVLOG.md`; and the work
@@ -41,13 +40,18 @@ and any trap you hit. Later sessions read this instead of rediscovering it.
 - Start play-in-editor, confirm from the tools or the log that the player character spawned, and stop it.
 - Delete the cubes. Don't save the level with them in it.
 
-## 3. C++ round trip
+## 3. The C++ loop, both ways
 
 Make a small change to a function body in the template's character class whose effect shows in play, for example an
 on-screen debug message each time the character jumps. Avoid changing constructor defaults for this test: Live
 Coding does not reliably re-apply them to Blueprint children that already exist. Compile with Live Coding (its
-toolset if there is one; otherwise ask Marwan to press Ctrl+Alt+F11 in the editor), check the effect in
-play-in-editor, and time it. Then revert the change and compile again.
+toolset if there is one; otherwise ask Marwan to press Ctrl+Alt+F11 in the editor through Moonlight), check the
+effect in play-in-editor, and time it.
+
+Then time the slow route, which every new class and every header change needs: exit the editor through its tool,
+build with `Build.bat`, start the editor again with `tools\on-desktop.ps1`, and get the `unreal-mcp` tools back in
+this session. Write down exactly how the reconnect works. Put both timings in `docs/UNREAL_MCP.md` and in the "C++
+changes" section of `CLAUDE.md`. Then revert the test change and compile again.
 
 ## 4. Package for Windows
 
@@ -59,8 +63,9 @@ afterwards. Run in the background, with the log at `C:\Jam\Builds\package-win.lo
 ```
 
 - `-prereqs` bundles the Visual C++ runtime installer, so the game starts on a judge's PC that lacks it.
-- Start the packaged `.exe` windowed, check the process is still alive after 20 seconds, ask Marwan whether the
-  level showed and the character moved, then close it.
+- Don't add `-NoCleanStage`: in this Preview it can ship stale content.
+- Start the packaged `.exe` on the desktop with `tools\on-desktop.ps1`, check the process is still alive after 20
+  seconds, ask Marwan whether the level showed and the character moved, then close it.
 - Zip the packaged folder with 7-Zip as `C:\Jam\Builds\Test_Reel.zip` and report its size. The jam's limit is 1 GB.
 
 ## 5. Package for the browser (stop after 30 minutes)
@@ -71,8 +76,8 @@ clock at the first command; when it runs out, write down how far it got and stop
 - Use the platform name stage 2 wrote in `docs/MACHINE.md`. Same command as above with that platform, Shipping, its
   own log. If the command line won't take it, ask Marwan to run it from the editor: Platforms > Web (or Wasm) >
   Shipping > Package Project.
-- Start the result with the `Play_*.bat` in the packaged folder (opening `index.html` from disk fails by design)
-  and ask Marwan whether it plays in Chrome.
+- Start the result with the `Play_*.bat` in the packaged folder, on the desktop (opening `index.html` from disk
+  fails by design), and ask Marwan whether it plays in the PC's browser.
 - Check the limits: under 500 MB in total, under 200 MB per file, `index.html` at the top level of the zip.
 - Write the outcome under "Not decided" in `docs/STATUS.md`: Web ships, or Windows only and why.
 
@@ -92,5 +97,6 @@ End by telling Marwan, in a short table, what passed and what didn't, then the t
 
 1. **Rehearse the upload** (10 minutes, in a browser): on itch.io create a new project and leave it as a **Draft**,
    upload `Test_Reel.zip` (and the Web zip marked "playable in the browser", if it worked), open the draft page, then
-   delete the test uploads. Keep the draft: it becomes the real page, and its devlog is the Glass Box entry.
-2. **Start the game:** paste prompt 4 from `README.md`.
+   delete the test uploads. itch.io is signed in on the Mac, so fetch the zip there first:
+   `scp jam-pc:C:/Jam/Builds/Test_Reel.zip ~/Downloads/`. Keep the draft: it becomes the real page, and its devlog is the Glass Box entry.
+2. **Start the game:** the prompt is under "The game" in `README.md`.

@@ -27,15 +27,11 @@ Written 2026-11-11, the night before the start. All times below are Cairo (UTC+2
 
 ## Machines and engine
 
-- **PC, Linux Mint boot = where the game is built.** Editor, project, agents, git. Epic ships a Linux build of the
-  5.9 MegaJam Preview, and Claude sessions run there over SSH from the MacBook.
-- **PC, Windows boot = packaging only.** The Official Rules require a Windows package for Unreal entries (p1), and
-  Unreal can't package Windows from Linux. The project is mirrored onto the Windows partition and packaged there:
-  first run Friday morning at the latest, then every evening, then the final.
+- **PC, Windows = everything Unreal.** Editor, project, agents, git and the Windows package the Official Rules
+  require (p1). Claude sessions run there over SSH from the MacBook.
 - **MacBook = where Marwan sits.** Claude app, browser work, Moonlight for the PC's screen. No engine on it.
-- **What Mint costs:** no Live Coding (C++ changes need a hot reload or an editor restart), two engine installs, a
-  reboot per Windows package, and a look tuned under Vulkan but judged under DirectX. The tripwire: if the editor or
-  its MCP server won't work on Mint within about an hour, the whole jam moves to the Windows boot.
+- **Why not the PC's Linux Mint boot:** the jam doesn't accept Linux builds, Unreal can't package Windows from
+  Linux, and Live Coding only exists on Windows. One boot means one engine install and no reboot per package.
 - **Unreal Engine, not UEFN.** Claude knows UE C++, Blueprints and Python far better than Verse, a packaged build has no
   Fortnite rules or Fortnite look to fit, and the UE prize pool is the same size. UEFN's only exclusive is Walkie-Talkie.
 - **C++ project.** Gameplay core in C++: it's text, so agents can diff, review and edit it without touching binary
@@ -46,7 +42,7 @@ Written 2026-11-11, the night before the start. All times below are Cairo (UTC+2
 ## Setup (Thu, from the MacBook)
 
 Setup is prompt-driven: `README.md` lists what to paste, and `setup/` holds one runbook per stage: reaching the PC,
-three Mint stages, two Windows stages. The pipeline test runs on the real project, not on a throwaway one.
+tools, the project, the pipeline. The pipeline test runs on the real project, not on a throwaway one.
 
 ## Lessons carried from Luxel
 
@@ -67,10 +63,9 @@ three Mint stages, two Windows stages. The pipeline test runs on the real projec
 
 | When | Goal | Done when |
 |---|---|---|
-| Thu afternoon | Mint setup stages 0-3 (README.md); browser grey boxes of K and L on the Mac | Claude drives the editor on Mint; you have played both prototypes |
-| Thu evening | Pick one; write the spec; start the Unreal grey box of the pick | The pick and the spec are in docs/STATUS.md |
-| Thu night | Windows boot: tools and engine download, overnight | The Launcher shows Launch for 5.9 |
-| Fri morning | First Windows package of whatever exists | A Windows zip that runs |
+| Thu afternoon | PC setup stages 0-1 while the engine downloads (README.md); browser grey boxes of K and L on the Mac | Claude sessions run on the PC; you have played both prototypes |
+| Thu evening | Pick one; write the spec; stages 2-3 as soon as the engine is in | The pick and the spec are in docs/STATUS.md; a Windows zip of the template runs |
+| Thu night - Fri morning | Unreal grey box of the pick | It runs in play-in-editor |
 | Fri | Core loop in grey boxes, one level start to finish | Playable from title to end |
 | **Sat 12:00** | **Fun gate** + packaged builds (Windows, and Web if stage 3 passed) | A cold player wants another go; the Windows zip runs on another PC |
 | Sat 12:00 - Sun 10:00 | Content: look, characters (Tripo), props (Rodin), materials (PBRgen), audio (WeLoveIndies), level progression | Content locked Sun 10:00 |
