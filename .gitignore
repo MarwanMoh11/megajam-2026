@@ -1,0 +1,27 @@
+# Unreal Engine: generated folders (never commit)
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+Plugins/*/Binaries/
+Plugins/*/Intermediate/
+
+# Packaged builds and logs
+Builds/
+*.log
+
+# IDE and solution files (regenerated from the .uproject)
+.vs/
+.idea/
+*.sln
+*.suo
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.opendb
+*.xcodeproj
+*.xcworkspace
+
+# OS noise
+.DS_Store
+Thumbs.db
