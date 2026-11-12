@@ -22,6 +22,21 @@ winget install -e --id Microsoft.VisualStudio.2022.Community --accept-source-agr
 
 Stage 2 checks the compiler against the installed engine, so don't spend time now on which version 5.9 wants.
 
+**What the first run found:** Visual Studio Community 2022 was already there at 17.6.2 with Desktop C++ and .NET
+desktop but not the game workload, and far too old for UE 5.9. The installer needs admin rights, and a session
+that isn't elevated gets a UAC prompt per `setup.exe` call, each cancelling itself after about two minutes. So the
+fix is one elevated PowerShell script (one prompt, raised while Marwan watches through Moonlight) that runs both
+steps, logging to `C:\Jam\logs\vs-update.log`:
+
+```powershell
+$s = 'C:\Program Files (x86)\Microsoft Visual Studio\Installer\setup.exe'
+$p = 'C:\Program Files\Microsoft Visual Studio\2022\Community'
+Start-Process $s -Wait -ArgumentList 'update','--installPath',"`"$p`"",'--passive','--norestart'
+Start-Process $s -Wait -ArgumentList 'modify','--installPath',"`"$p`"",'--add','Microsoft.VisualStudio.Workload.NativeGame','--includeRecommended','--passive','--norestart'
+```
+
+Start it with `Start-Process powershell.exe -Verb RunAs -ArgumentList '-File','<script>'`.
+
 ## 2. The small tools
 
 ```powershell

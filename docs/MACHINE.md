@@ -18,8 +18,8 @@ Recorded 2026-11-12 by the setup session (`setup/auto.md`).
 | Tool | Version | Note |
 |---|---|---|
 | Epic Games Launcher | 1.3.210.0 (winget reinstalled the 20.3.3 MSI) | |
-| Unreal Engine | none yet | 5.9 MegaJam Preview to install from the Launcher |
-| Visual Studio Community 2022 | 17.6.2 | Desktop C++ and .NET desktop workloads; **Game development with C++ missing** |
+| Unreal Engine | 5.9.0 Preview (installing) | `C:\Epic Games\UE_5.9`; Core, Templates and Feature Packs, Engine Source; no symbols, no extra platforms; 33 GB |
+| Visual Studio Community 2022 | 17.14.45 | Desktop C++, .NET desktop, **Game development with C++**; MSVC 14.44.35207; Windows SDK 10.0.26100 and 10.0.19041 |
 | Git / Git LFS | 2.56.0 / 3.3.0 | |
 | 7-Zip | 26.06 | |
 | OBS Studio | 28.1.2 | winget upgrade failed (installer exit 6, files in use); 28.1.2 records fine |
@@ -30,7 +30,9 @@ Recorded 2026-11-12 by the setup session (`setup/auto.md`).
 
 | Finding | Decision |
 |---|---|
-| 18 GB free on `C:`, the only Windows drive | **Blocker.** Engine (~60-120 GB) and the VS update can't fit. Marwan decides what to clear; see DEVLOG. |
+| 18 GB free on `C:`, the only Windows drive | Cleared by the `disk-cleanup` session with Marwan: 147 GB free before the engine and VS update. |
+| Internet about 10-18 Mbps down (Ethernet link negotiates at only 100 Mbps) | The 13 GB engine download takes 2-3 hours. Plan big downloads (Fab assets, engine updates) early. |
+| Installers and the Launcher's folder step need UAC; prompts cancel themselves after about 2 minutes | Raise them only while Marwan watches through Moonlight. |
 | GPU driver from 2026-09 | Current enough. |
 | NVIDIA RTX card | RTX award possible (DLSS). |
 | RAM 32 GB | No limit noted; still close the editor while packaging if memory runs short. |

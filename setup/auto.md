@@ -36,12 +36,28 @@ Marwan is still at the keyboard for these, so get to them before anything slow.
 1. **Epic Games Launcher.** `winget install -e --id EpicGames.EpicGamesLauncher`, then start it. Then tell Marwan,
    without ending your turn:
    > In the Launcher: sign in with the Epic account whose email will go on the submission form. Unreal Engine >
-   > Library > the **+** beside "Engine Versions" > the version dropdown > **5.9 MegaJam Preview** > Install. In
-   > Options keep Core Components, Templates and Feature Packs, Engine Source, and **Web** if it is listed (it may be
-   > called Wasm); untick Editor symbols for debugging, Starter Content and every other platform.
+   > Library > the **+** beside "Engine Versions" > the version dropdown > **5.9.0 Preview** (the only 5.9 entry;
+   > there is no separately named "MegaJam" build) > Install. In Options keep Core Components, Templates and
+   > Feature Packs, Engine Source; untick Editor symbols for debugging, MetaHuman and every target platform.
 
-   This download is the longest wait of the setup, so it starts first. Check the target drive has about 120 GB free;
-   if it doesn't, say which drive does.
+   This download is the longest wait of the setup, so it starts first. It needs 33 GB on disk (13 GB download);
+   leave about 30 GB more for Visual Studio and the project.
+
+   What the first run (2026-11-12) met, in order: a licence dialog (Accept, Marwan's call), a "this is a preview"
+   warning (Install), then the folder dialog. The Target Platforms list had no Web or Wasm entry (Android, iOS,
+   Linux, tvOS, Windows ARM64 only). The Launcher's saved default folder was `D:\Epic Games`, which doesn't exist on
+   this boot, so Install silently did nothing (log: `DP-OS-F`); the default lives in
+   `%LOCALAPPDATA%\EpicGamesLauncher\Saved\Config\WindowsEditor\GameUserSettings.ini` (`DefaultAppInstallLocation`),
+   and now points at `C:\Program Files\Epic Games`. The engine went to `C:\Epic Games\UE_5.9`. Whatever the folder,
+   the Launcher's directory-preparation step asks for **UAC** (Windows' admin prompt); unanswered, it cancels itself
+   after about two minutes and the Launcher shows `DP-01`. So raise UAC prompts only when Marwan is watching
+   through Moonlight.
+
+   **Computer use on this PC:** the Claude desktop window is maximized and always-on-top, and screenshots hide it,
+   so clicks can land on Claude while the screenshot shows the app underneath. Make the target window topmost
+   (`SetWindowPos` with `HWND_TOPMOST`) and undo it afterwards. A RivaTuner window sits mid-screen and is masked in
+   screenshots; move or resize the target window so dialogs clear it. Don't force-kill the Launcher: on restart its
+   web helper times out and the UI stays dead for minutes.
 2. **Sunshine**, which streams this PC's screen to the Mac. `winget install -e --id LizardByte.Sunshine`, then check
    its service is running and port 47990 is listening. Find this PC's address on the home network (the adapter with
    a default gateway) and tell Marwan:
