@@ -24,7 +24,7 @@ restart, say), open a terminal on the PC through Moonlight and run:
 
 ```
 cd C:\Jam\megajam
-claude remote-control --name jam-pc --permission-mode bypassPermissions
+claude remote-control --name jam-pc --permission-mode bypassPermissions --spawn=same-dir
 ```
 
 ## B. The screen
