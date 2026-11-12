@@ -12,15 +12,17 @@ in `docs/JAM_PLAN.md`. Setup is `README.md` plus the runbooks in `setup/`.
 - **PC, Windows: everything Unreal happens here.** Repo at `C:\Jam\megajam`; the Unreal project is `Reel\`
   (`Reel\Reel.uproject`, C++ in `Reel\Source\`; `Reel` is a working name). Start every session in the repo root.
   Builds and logs go to `C:\Jam\Builds`, outside the repo.
-- **MacBook: where Marwan sits.** Sessions reach the PC over SSH (`jam-pc`); the screen comes through Sunshine and
-  Moonlight. The Mac's clone holds docs and the browser prototypes. It has no engine: never build Unreal there, and
-  never commit binary files from it (it has no Git LFS).
-- **A program you start over SSH has no desktop.** Start the editor, the packaged game, or anything else with a
-  window through `tools\on-desktop.ps1 <exe> "<arguments>"`, which puts it on the desktop Marwan sees.
-- **You never type a password** (Windows, Epic, itch.io, GitHub). Say what Marwan has to do through Moonlight, end
-  your turn, and carry on when they say it is done.
-- **No clipboard between the Mac and the PC.** Don't ask Marwan to paste on the PC: write a script there and give
-  them its short path, or run it yourself.
+- **MacBook: where Marwan sits.** Sessions run on the PC and Marwan reads and steers them from the Mac through
+  Remote Control (claude.ai/code); the PC's screen comes through Sunshine and Moonlight. The Mac's clone holds docs
+  and the browser prototypes. It has no engine: never build Unreal there, and never commit binary files from it (it
+  has no Git LFS).
+- **Marwan is rarely looking at the PC's screen.** Check your own work with screenshots and logs. When only they
+  can judge something, put it on a short list for them instead of waiting on an answer.
+- **You never type a password** (Windows, Claude, Epic, itch.io, GitHub). Say what Marwan has to do through
+  Moonlight, carry on with whatever doesn't depend on it, and wait only when nothing else is left.
+- **Leave the PC's settings alone.** Setup installs the listed software and turns off sleep. No firewall, account
+  or security changes, and no remote-login services, without asking Marwan.
+- **No clipboard between the Mac and the PC.** Don't ask Marwan to paste on the PC: do it yourself.
 
 ## Working rules
 - **Check the kill list in docs/STATUS.md before building anything.** If it isn't in the spec, mention it in one line
@@ -75,8 +77,8 @@ PROJ = C:\Jam\megajam\Reel\Reel.uproject
 :: build the editor target (editor closed)
 "<UE>\Engine\Build\BatchFiles\Build.bat" ReelEditor Win64 Development -Project="<PROJ>" -WaitMutex
 
-:: start the editor on the PC's desktop
-powershell -ExecutionPolicy Bypass -File tools\on-desktop.ps1 "<UE>\Engine\Binaries\Win64\UnrealEditor.exe" "<PROJ>"
+:: start the editor, detached
+start "" "<UE>\Engine\Binaries\Win64\UnrealEditor.exe" "<PROJ>"
 
 :: package the Windows build (background; read C:\Jam\Builds\package-win.log)
 "<UE>\Engine\Build\BatchFiles\RunUAT.bat" BuildCookRun -project="<PROJ>" -platform=Win64 -clientconfig=Shipping -build -cook -stage -pak -prereqs -archive -archivedirectory="C:\Jam\Builds" -nop4 -utf8output

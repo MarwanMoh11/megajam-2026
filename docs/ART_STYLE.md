@@ -1,7 +1,9 @@
 # Art style: Nitrate
 
-**Status: recommended on Thu Nov 12; becomes locked when Marwan says yes on `prototypes/style/board.html`.**
-Until then, nothing in this file is applied to final assets. The grey-box steps in section 12, step 0, are safe to try earlier.
+**Status: locked by Marwan on Thu Nov 12.** The look is locked; the board's shapes are not. Its stick figures,
+boxes and canned animations were a mock-up of the treatment only. Characters will be full models, rigged and
+animated, with this treatment applied on top. The three.js prototypes use the same look through
+`prototypes/style/nitrate.js` (demo: `prototypes/style/nitrate-three.html`).
 
 Nitrate is a silent film from 1915 to 1927 (nitrate was the film stock of the era). The image is toned black and
 white in a 4:3 gate, and colour appears only where it's stencilled on by hand: red for danger, gold for the hero and the

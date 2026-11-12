@@ -10,10 +10,10 @@ with Claude agents.
 | `CLAUDE.md` | The rules every agent session in this repo follows |
 | `docs/` | Plan and schedule, the two candidate ideas (`STATUS.md`), brainstorm, survey, art style, dev log |
 | `setup/` | One runbook per setup stage, written for an agent to carry out |
-| `tools/` | `on-desktop.ps1`: starts a program on the PC's desktop from an SSH session |
+| `go.cmd` | Starts the automatic setup on the PC |
 | `prototypes/` | Browser grey boxes of the two ideas and the art board, made on the Mac |
 | `claude-global/` | Your global Claude rules and agents, copied to the PC in stage 1 |
-| `Reel/` | The Unreal project, created in stage 2 (`Reel` is a working name) |
+| `Reel/` | The Unreal project, created during setup (`Reel` is a working name) |
 
 ## The machines
 
@@ -26,59 +26,61 @@ Windows, not the PC's Linux Mint boot: the jam accepts Windows builds and not Li
 Windows game from Linux, and Unreal's fast C++ reload (Live Coding) only exists on Windows. One boot means one
 engine install, no reboot per package, and the game is tuned on the renderer the judges will see.
 
-## Setup
+## Setup: four lines at the PC, then it runs itself
 
-After stage 0 everything is done from the MacBook. Each prompt goes into a Claude session started on the PC over
-SSH (`jam-pc`, folder `C:\Jam\megajam`); each stage ends by telling you what to do next. What stays with you:
-sign-ins, the engine install, and the new-project wizard.
+**At the PC, in Windows.** Right-click Start > **Terminal (Admin)** and run:
 
-### 0. Reach the PC (one trip upstairs, about 15 minutes)
-
-Follow `setup/0-remote.md`. In short: at the PC, paste two blocks into an administrator PowerShell (SSH, the tools,
-Visual Studio) and start the engine install in the Epic Games Launcher. On the Mac: send Claude the PC's address
-and username, sign the PC in to GitHub, clone this repo onto it, install Moonlight, and add the PC as an SSH
-connection in the Claude app.
-
-### 1. Tools
-
-```text
-Read setup/win-1-tools.md and carry it out.
+```powershell
+winget install -e --id Git.Git --accept-source-agreements --accept-package-agreements
+irm https://claude.ai/install.ps1 | iex
 ```
 
-It checks the PC and writes `docs/MACHINE.md`, finishes any install stage 0 left, proves it can open a window on
-the PC's desktop, and copies your global Claude rules.
-**Yours:** pair Moonlight (`setup/0-remote.md`, part C), and wait for the engine and Visual Studio to finish.
+Close that window, open **Terminal (Admin)** again so it finds the two new programs, and run:
 
-### 2. The Unreal project
-
-When the Launcher shows **Launch** for 5.9:
-
-```text
-The engine is installed. Read setup/win-2-project.md and carry it out.
+```powershell
+git clone https://github.com/MarwanMoh11/megajam-2026 C:\Jam\megajam
+C:\Jam\megajam\go.cmd
 ```
 
-It checks the compiler against the engine, and after you create the project it turns on the All Toolsets plugin,
-proves the command-line build and starts the editor with the Unreal MCP server.
-**Yours:** the new-project wizard through Moonlight: Games > Third Person > **C++** > no starter content >
-location `C:\Jam\megajam` > name `Reel`.
+The clone opens a browser to sign in to GitHub. `go.cmd` starts Claude Code with all permissions and Remote
+Control on, and hands it `setup/auto.md`. The first start asks you to sign in to Claude and to confirm the
+permission mode. If it then sits at an empty prompt, type `Read setup/auto.md and carry it out.`
 
-### 3. Prove the pipeline
+**Stay about five minutes.** One thing can't be automated: when the Epic Games Launcher opens, sign in and start
+the **5.9 MegaJam Preview** install (the session tells you the clicks). If a second window asks to enable Remote
+Control, press `y`. Then go downstairs; the PC stays on with its monitor connected.
 
-Leave the editor open and start a **new** session on `jam-pc`. A session connects to the editor only if the editor
-was already running when the session started.
+**From the Mac** (`setup/0-remote.md`): the sessions are at https://claude.ai/code, and Moonlight shows the PC's
+screen once you have paired it with the address the session prints.
 
-```text
-Read setup/win-3-pipeline.md and carry it out.
-```
+**What the session does by itself:**
 
-It writes down what the editor tools can do (`docs/UNREAL_MCP.md`), drives the editor, times the C++ loop, packages
-the Windows build and zips it, and tries the browser build for 30 minutes at most.
-**Yours:** rehearse one upload to a Draft itch.io page.
+1. Installs the Epic Games Launcher, Sunshine, Visual Studio with the Unreal workloads, 7-Zip and OBS Studio; turns
+   off sleep; records the machine in `docs/MACHINE.md`; copies your global Claude rules.
+2. Waits for the engine download and Visual Studio to finish.
+3. Creates the `Reel` project from the Third Person C++ template, turns on the All Toolsets plugin, proves the
+   command-line build, and opens the editor with its MCP server.
+4. Starts a second session, `jam-pipeline`, which drives the editor, times the C++ loop, packages the Windows build
+   and zips it, and tries the browser build for 30 minutes at most.
+
+**Know before starting:**
+
+- The session runs as administrator with no permission prompts, so it can install software unattended. The winget
+  flags accept each package's licence terms for you.
+- It changes no firewall, account or security settings, and opens no remote login. Sunshine's installer adds its
+  own firewall rule for the stream.
+- **None of it has been run.** Likely places to need you: creating the project (if the automatic route fails, the
+  session asks for six clicks in the new-project wizard through Moonlight) and Remote Control (if it won't connect,
+  the sessions are still there in their windows on the PC).
+
+The stages are also separate runbooks, if one has to be rerun: `setup/win-1-tools.md`, `setup/win-2-project.md`,
+`setup/win-3-pipeline.md`. Each takes the prompt `Read <file> and carry it out.`
 
 ## The game
 
 The pick between the two ideas is made on the Mac, from the browser grey boxes in `prototypes/`. Once it is made
-and the spec is in `docs/STATUS.md`, in a session on `jam-pc` with the editor open:
+and the spec is in `docs/STATUS.md`, start a new session on the PC with the editor open (at claude.ai/code, on
+the `jam-pc` door) and give it:
 
 ```text
 Read docs/STATUS.md and the NOTES.md of the picked prototype under prototypes/. Build that grey box in Unreal, in its own level, copying the prototype's rules and tuned values: C++ for the logic with the tunable values exposed, basic shapes, no art, audio or menus. Run it in play-in-editor yourself and fix what breaks. Then tell me in two lines how to play it, and what you could not judge. Commit when it runs.
@@ -107,9 +109,9 @@ Do these while the engine downloads. They need your accounts.
 
 ## If something doesn't work
 
-- **Claude sessions over SSH fight back on Windows:** install the Claude desktop app on the PC and use it through
-  Moonlight. The runbooks still hold.
-- **The editor won't start from a session:** `tools\on-desktop.ps1` is the untested part. Start the editor by hand
-  through Moonlight and tell the session to fix the script.
+- **`claude` or `git` isn't recognised in the second terminal:** the window was opened before the installs
+  finished. Close it and open Terminal (Admin) again.
+- **No sessions at claude.ai/code:** see `setup/0-remote.md`. Until it works, use the session windows on the PC
+  through Moonlight.
 - **The browser build fails:** drop it. The Windows package is the entry, and the rules require it anyway.
 - **A push fails on Git LFS quota:** keep committing locally and carry on. The push is only a backup.

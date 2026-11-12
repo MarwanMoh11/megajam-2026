@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nitrate in three.js</title>
+<!-- Reference for the three.js prototypes: nitrate.js on a rigged, animated model. Serve the folder
+     (python3 -m http.server) because ES modules don't load from file://.
+     The robot is a stand-in (RobotExpressive, CC0, from the three.js examples) until our own rigged models exist. -->
+<style>
+  html, body { margin: 0; background: #0D0C0B; color: #F1EADB; font: 600 14px 'Josefin Sans', system-ui, sans-serif; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; padding: 12px 16px; }
+  button { background: transparent; color: #F1EADB; border: 2px solid #F1EADB; border-radius: 3px; padding: 5px 12px;
+           font: inherit; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; }
+  button.on { background: #F1EADB; color: #0D0C0B; }
+  #picture { margin: 0 auto; aspect-ratio: 4 / 3; width: min(calc(100vw - 32px), calc((100vh - 80px) * 4 / 3)); }
+  #picture canvas { display: block; width: 100%; height: 100%; }
+  .card { position: absolute; left: 20%; right: 20%; bottom: 6%; z-index: 20; background: #0D0C0B; color: #F1EADB;
+          font: italic 400 clamp(14px, 2.6vw, 30px) 'IM Fell English', Georgia, serif; text-align: center; padding: 14px 18px;
+          outline: 3px solid #F1EADB; outline-offset: -12px; display: none; }
+  .card.show { display: block; }
+  .title { position: absolute; top: 4%; left: 0; right: 0; z-index: 20; text-align: center; color: #E9B949;
+           font: 400 clamp(20px, 4.4vw, 56px) Limelight, serif; display: none; }
+  .title.show { display: block; }
+  .loading { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center;
+             font: italic 400 22px 'IM Fell English', Georgia, serif; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div class="bar">
+  <button data-tone="night">Night</button><button data-tone="amber">Amber</button>
+  <button data-tone="green">Green</button><button data-tone="silver" class="on">Silver</button>
+  <button id="cut">Cut</button><button id="raw">Grade off</button>
+</div>
+<div id="picture">
+  <div class="loading" id="loading">Loading the reel...</div>
+  <div class="title" id="title">Just in time!</div>
+  <div class="card" id="card">Meanwhile, at the Mill...</div>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import { nitrateComposer, nitrateMaterial, nitrateLights, applyNitrate, stencil, filmOverlay, loadFonts, VALUES } from './nitrate.js';
+
+const MODEL = 'https://threejs.org/examples/models/gltf/RobotExpressive/RobotExpressive.glb'; // stand-in, CC0
+
+loadFonts();
+const picture = document.getElementById('picture');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+picture.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(50, 4 / 3, 0.1, 200); // ~50 deg vertical = the guide's 19-20 mm lens
+const CAM = new THREE.Vector3(0, 4.2, 10.5), LOOK = new THREE.Vector3(0, 1.1, 0);
+camera.position.copy(CAM); camera.lookAt(LOOK);
+const grade = nitrateComposer(renderer, scene, camera, 'silver');
+nitrateLights(scene);
+
+// Set: grey boxes on the value ladder. One carries a loud texture to show AI-asset colour being dropped.
+const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; scene.add(m); return m; };
+add(new THREE.PlaneGeometry(60, 60), nitrateMaterial('floor'), 0, 0, 0).rotation.x = -Math.PI / 2;
+const g = Math.round((VALUES.backdrop[0] + VALUES.backdrop[1]) / 2) / 255;
+add(new THREE.PlaneGeometry(60, 20), new THREE.MeshBasicMaterial({ color: new THREE.Color().setRGB(g, g, g, THREE.SRGBColorSpace) }), 0, 10, -12).castShadow = false;
+const tc = document.createElement('canvas'); tc.width = tc.height = 128; const cx = tc.getContext('2d');
+for (let i = 0; i < 64; i++) { cx.fillStyle = `hsl(${Math.random() * 360},90%,${30 + Math.random() * 50}%)`; cx.fillRect((i % 8) * 16, (i >> 3) * 16, 16, 16); }
+const tex = new THREE.CanvasTexture(tc); tex.colorSpace = THREE.SRGBColorSpace;
+add(new THREE.BoxGeometry(1.6, 1.6, 1.6), nitrateMaterial('set', { map: tex }), -5.2, 0.8, -2.5);
+add(new THREE.BoxGeometry(1.2, 2.8, 1.2), nitrateMaterial('set'), 5.6, 1.4, -3.5);
+const crusher = add(new THREE.BoxGeometry(1.8, 1.0, 1.8), nitrateMaterial('set'), 3.2, 5, -3);
+const crusherFace = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 1.0), stencil('red'));
+crusherFace.position.z = 0.901; crusher.add(crusherFace);
+const disc = add(new THREE.CircleGeometry(1.0, 32), stencil('red'), 3.2, 0.02, -3);
+disc.rotation.x = -Math.PI / 2; disc.receiveShadow = false;
+
+// Characters: any rigged glTF works the same way. Reskin with applyNitrate, play clips with an AnimationMixer.
+function fitHeight(root, h) {
+  root.updateMatrixWorld(true);
+  root.traverse((o) => { if (o.isSkinnedMesh) o.skeleton.update(); });
+  const b = new THREE.Box3().setFromObject(root, true), s = h / (b.max.y - b.min.y);
+  root.scale.multiplyScalar(s); root.position.y = -b.min.y * s;
+}
+function actor(gltf, role, height) {
+  const root = SkeletonUtils.clone(gltf.scene);
+  applyNitrate(root, role);
+  fitHeight(root, height);
+  scene.add(root);
+  const mixer = new THREE.AnimationMixer(root);
+  const clips = Object.fromEntries(gltf.animations.map((c) => [c.name, mixer.clipAction(c)]));
+  let current = null;
+  const play = (name, { fade = 0.15, once = false, speed = 1 } = {}) => {
+    const next = clips[name];
+    if (next === current) return next;
+    next.reset(); next.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
+    next.clampWhenFinished = once; next.timeScale = speed; next.setEffectiveWeight(1); next.play();
+    if (current) next.crossFadeFrom(current, fade, false);
+    current = next; return next;
+  };
+  return { root, mixer, play };
+}
+
+const gltf = await new GLTFLoader().loadAsync(MODEL);
+document.getElementById('loading').remove();
+const hero = actor(gltf, 'hero', 1.8);
+const heavy = actor(gltf, 'heavy', 2.5);  // same mesh, reused: darkest thing on screen, as the guide says
+
+// The hero's gold accent: a scarf on the neck bone, so it follows the animation.
+const neck = hero.root.getObjectByName('Neck');
+if (neck) {
+  hero.root.updateMatrixWorld(true);
+  const ws = neck.getWorldScale(new THREE.Vector3()).x;
+  const scarf = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.06, 8, 24), stencil('gold'));
+  scarf.scale.setScalar(1 / ws); scarf.rotation.x = Math.PI / 2; neck.add(scarf);
+}
+
+const fit = () => { const r = picture.getBoundingClientRect(); grade.setSize(r.width, r.height); };
+addEventListener('resize', fit); fit();
+const film = filmOverlay(picture);
+
+// Controls
+const order = ['night', 'amber', 'green'], names = { night: 'the Rooftop', amber: 'the Mill', green: 'the Railway', silver: 'the Stage' };
+let tone = 'silver', cardTimer = 0;
+const setTone = (t) => { tone = t; grade.setTone(t); document.querySelectorAll('[data-tone]').forEach((b) => b.classList.toggle('on', b.dataset.tone === t)); };
+document.querySelectorAll('[data-tone]').forEach((b) => b.onclick = () => setTone(b.dataset.tone));
+document.getElementById('cut').onclick = () => {
+  setTone(order[(order.indexOf(tone) + 1) % 3]);
+  film.splice();
+  const card = document.getElementById('card'); card.textContent = `Meanwhile, at ${names[tone]}...`; card.classList.add('show');
+  clearTimeout(cardTimer); cardTimer = setTimeout(() => card.classList.remove('show'), 1000);
+};
+const raw = document.getElementById('raw');
+raw.onclick = () => { const on = grade.pass.uniforms.uAmount.value === 1; grade.pass.uniforms.uAmount.value = on ? 0 : 1; raw.classList.toggle('on', on); };
+
+// A 6.5 s scripted beat: run in, punch, the heavy goes down, thumbs up, iris out, reset.
+const LOOP = 6.5, HIT = 2.25;
+let beat = -1, shake = 0, irised = false;
+const title = document.getElementById('title');
+function reset() {
+  hero.root.position.set(-6, hero.root.position.y, 0.6); hero.root.rotation.y = Math.PI / 2; hero.play('Running', { fade: 0 });
+  heavy.root.position.set(0.9, heavy.root.position.y, 0.6); heavy.root.rotation.y = -Math.PI / 2; heavy.play('Idle', { fade: 0 });
+  title.classList.remove('show'); film.clearIris(); irised = false;
+}
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05), T = clock.elapsedTime, t = T % LOOP, n = Math.floor(T / LOOP);
+  if (n !== beat) { beat = n; reset(); }
+  if (t < 1.9) hero.root.position.x = -6 + (t / 1.9) * 5.2;            // run in
+  else if (t < HIT) hero.play('Punch', { once: true, fade: 0.08 });
+  if (t >= HIT && heavy.root.userData.down !== n) {                    // the hit lands on the punch's extension
+    heavy.root.userData.down = n; heavy.play('Death', { once: true, fade: 0.05 }); shake = 0.15; title.classList.add('show');
+  }
+  if (t >= HIT && t < HIT + 0.3) heavy.root.position.x = 0.9 + ((t - HIT) / 0.3) * 0.7; // knockback
+  if (t > 3.0 && t < 3.1) hero.play('ThumbsUp', { once: true, fade: 0.2 });
+  if (t > 4.6 && t < 4.7) { title.classList.remove('show'); hero.play('Idle', { fade: 0.3 }); }
+  if (t > 5.6 && !irised) {                                            // end of take: iris out on the hero
+    irised = true; const p = hero.root.position.clone().setY(1.2).project(camera);
+    film.iris((p.x + 1) / 2, (1 - p.y) / 2, 450);
+  }
+  const cyc = (T % 3) / 3;                                             // crusher: waits, warns 0.6 s ahead, drops
+  crusher.position.y = cyc < 0.8 ? 5 : 5 - (cyc - 0.8) / 0.2 * 4.5;
+  disc.visible = crusherFace.visible = cyc > 0.6;
+  hero.mixer.update(dt); heavy.mixer.update(dt);
+  camera.position.copy(CAM);                                           // 0.15 s hit shake, the only camera shake allowed
+  if (shake > 0) { shake -= dt; camera.position.x += (Math.random() - 0.5) * 0.12; camera.position.y += (Math.random() - 0.5) * 0.12; }
+  camera.lookAt(LOOK);
+  grade.composer.render();
+});
+</script>
+</body>
+</html>

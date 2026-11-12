@@ -28,7 +28,7 @@ Written 2026-11-11, the night before the start. All times below are Cairo (UTC+2
 ## Machines and engine
 
 - **PC, Windows = everything Unreal.** Editor, project, agents, git and the Windows package the Official Rules
-  require (p1). Claude sessions run there over SSH from the MacBook.
+  require (p1). Claude sessions run there, steered from the MacBook through Remote Control.
 - **MacBook = where Marwan sits.** Claude app, browser work, Moonlight for the PC's screen. No engine on it.
 - **Why not the PC's Linux Mint boot:** the jam doesn't accept Linux builds, Unreal can't package Windows from
   Linux, and Live Coding only exists on Windows. One boot means one engine install and no reboot per package.
@@ -41,8 +41,8 @@ Written 2026-11-11, the night before the start. All times below are Cairo (UTC+2
 
 ## Setup (Thu, from the MacBook)
 
-Setup is prompt-driven: `README.md` lists what to paste, and `setup/` holds one runbook per stage: reaching the PC,
-tools, the project, the pipeline. The pipeline test runs on the real project, not on a throwaway one.
+Setup is automatic after four lines typed at the PC (`README.md`): `go.cmd` starts a Claude session that carries out
+`setup/auto.md`, which chains the stage runbooks: tools, the project, the pipeline. The pipeline test runs on the real project, not on a throwaway one.
 
 ## Lessons carried from Luxel
 
@@ -63,8 +63,8 @@ tools, the project, the pipeline. The pipeline test runs on the real project, no
 
 | When | Goal | Done when |
 |---|---|---|
-| Thu afternoon | PC setup stages 0-1 while the engine downloads (README.md); browser grey boxes of K and L on the Mac | Claude sessions run on the PC; you have played both prototypes |
-| Thu evening | Pick one; write the spec; stages 2-3 as soon as the engine is in | The pick and the spec are in docs/STATUS.md; a Windows zip of the template runs |
+| Thu afternoon | Automatic PC setup while the engine downloads (README.md); browser grey boxes of K and L on the Mac | Claude sessions run on the PC; you have played both prototypes |
+| Thu evening | Pick one; write the spec; the setup finishes by itself once the engine is in | The pick and the spec are in docs/STATUS.md; a Windows zip of the template runs |
 | Thu night - Fri morning | Unreal grey box of the pick | It runs in play-in-editor |
 | Fri | Core loop in grey boxes, one level start to finish | Playable from title to end |
 | **Sat 12:00** | **Fun gate** + packaged builds (Windows, and Web if stage 3 passed) | A cold player wants another go; the Windows zip runs on another PC |

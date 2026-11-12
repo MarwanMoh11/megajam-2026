@@ -37,3 +37,8 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   for the whole jam. The MacBook still drives everything: SSH for the Claude sessions, Sunshine and Moonlight for
   the screen. Claude rewrote the runbooks a second time, so that one paste at the PC's keyboard sets up SSH, the
   tools and Visual Studio while the engine downloads.
+- **14:00. Setup becomes one command.** Marwan wanted to go upstairs once, start Claude Code with all permissions
+  and walk away. So the Windows runbooks are now chained by `setup/auto.md`: four lines typed at the PC start a
+  session that installs the tools, waits for the engine, creates the project, opens the editor and starts the next
+  session itself. Claude Code runs on the PC and is steered from the Mac through Remote Control, which replaced the
+  SSH plan before it was ever used. Signing in stays Marwan's: Claude, GitHub and the Epic Games Launcher.

@@ -5,8 +5,9 @@ tools. This stage does once, on the untouched template, everything Sunday night 
 C++, package for Windows, package for the browser, and build the zip. Each failure found now costs minutes; found on
 Sunday it costs the entry.
 
-You are in an SSH session on the PC; Marwan watches its screen from a MacBook through Moonlight. Anything with a
-window starts through `tools\on-desktop.ps1`, and there is no clipboard between the Mac and the PC.
+You are Claude Code on the PC itself, started by the setup session with all permissions; the rules for this run are
+in `setup/auto.md`, under "Rules for this run". Marwan is at a MacBook: they read you at claude.ai/code and see
+this PC's screen through Moonlight. Don't end your turn to ask what you can decide or check yourself.
 
 **Done when:** each test below has passed or has a one-line reason it didn't; `docs/UNREAL_MCP.md` exists; the
 commands in `CLAUDE.md` are the ones that worked on this PC; times and sizes are in `docs/DEVLOG.md`; and the work
@@ -49,8 +50,7 @@ toolset if there is one; otherwise ask Marwan to press Ctrl+Alt+F11 in the edito
 effect in play-in-editor, and time it.
 
 Then time the slow route, which every new class and every header change needs: exit the editor through its tool,
-build with `Build.bat`, start the editor again with `tools\on-desktop.ps1`, and get the `unreal-mcp` tools back in
-this session. Write down exactly how the reconnect works. Put both timings in `docs/UNREAL_MCP.md` and in the "C++
+build with `Build.bat`, start the editor again, and get the `unreal-mcp` tools back in this session. Write down exactly how the reconnect works. Put both timings in `docs/UNREAL_MCP.md` and in the "C++
 changes" section of `CLAUDE.md`. Then revert the test change and compile again.
 
 ## 4. Package for Windows
@@ -64,8 +64,9 @@ afterwards. Run in the background, with the log at `C:\Jam\Builds\package-win.lo
 
 - `-prereqs` bundles the Visual C++ runtime installer, so the game starts on a judge's PC that lacks it.
 - Don't add `-NoCleanStage`: in this Preview it can ship stale content.
-- Start the packaged `.exe` on the desktop with `tools\on-desktop.ps1`, check the process is still alive after 20
-  seconds, ask Marwan whether the level showed and the character moved, then close it.
+- Start the packaged `.exe` windowed and check the process is still alive after 20 seconds. Marwan may not be
+  watching: take a screenshot of the desktop if you can and describe it, close the game, and put "did the level show
+  and the character move?" on Marwan's list instead of waiting for an answer.
 - Zip the packaged folder with 7-Zip as `C:\Jam\Builds\Test_Reel.zip` and report its size. The jam's limit is 1 GB.
 
 ## 5. Package for the browser (stop after 30 minutes)
@@ -76,8 +77,8 @@ clock at the first command; when it runs out, write down how far it got and stop
 - Use the platform name stage 2 wrote in `docs/MACHINE.md`. Same command as above with that platform, Shipping, its
   own log. If the command line won't take it, ask Marwan to run it from the editor: Platforms > Web (or Wasm) >
   Shipping > Package Project.
-- Start the result with the `Play_*.bat` in the packaged folder, on the desktop (opening `index.html` from disk
-  fails by design), and ask Marwan whether it plays in the PC's browser.
+- Start the result with the `Play_*.bat` in the packaged folder (opening `index.html` from disk fails by design).
+  Whether it plays in the PC's browser goes on Marwan's list, to check through Moonlight.
 - Check the limits: under 500 MB in total, under 200 MB per file, `index.html` at the top level of the zip.
 - Write the outcome under "Not decided" in `docs/STATUS.md`: Web ships, or Windows only and why.
 
@@ -97,6 +98,7 @@ End by telling Marwan, in a short table, what passed and what didn't, then the t
 
 1. **Rehearse the upload** (10 minutes, in a browser): on itch.io create a new project and leave it as a **Draft**,
    upload `Test_Reel.zip` (and the Web zip marked "playable in the browser", if it worked), open the draft page, then
-   delete the test uploads. itch.io is signed in on the Mac, so fetch the zip there first:
-   `scp jam-pc:C:/Jam/Builds/Test_Reel.zip ~/Downloads/`. Keep the draft: it becomes the real page, and its devlog is the Glass Box entry.
-2. **Start the game:** the prompt is under "The game" in `README.md`.
+   delete the test uploads. Do it in the PC's browser through Moonlight, where the
+   zip is. Keep the draft: it becomes the real page, and its devlog is the Glass Box entry.
+2. **Start the game:** the prompt is under "The game" in `README.md`. It goes into a new session, started from
+   claude.ai/code on the `jam-pc` door, with the editor open.

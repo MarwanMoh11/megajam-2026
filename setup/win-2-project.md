@@ -4,9 +4,8 @@ Stage 1 is done: the engine is installed through the Launcher and Visual Studio 
 real jam project inside this repo and gets the editor running with the Unreal MCP server (the local server through
 which Claude drives the editor), ready for a new session to connect to.
 
-You are in an SSH session on the PC; Marwan watches its screen from a MacBook through Moonlight. Anything with a
-window starts through `tools\on-desktop.ps1`, and there is no clipboard between the Mac and the PC (stage 1 has the
-details).
+You are Claude Code on the PC itself, running as administrator; `setup/auto.md` has the rules for this run. Marwan
+is at a MacBook: they read you at claude.ai/code and see this PC's screen through Moonlight.
 
 **Done when:** `Reel\Reel.uproject` exists as a C++ project and builds from the command line; the All Toolsets
 plugin is on; the editor is open and answering on port 8000; the paths under "Commands" in `CLAUDE.md` are real; and
@@ -31,16 +30,31 @@ name can't cheaply.
   HTML5) and whether its files are present. Write the name in `docs/MACHINE.md`; stage 3 needs it. If it is absent,
   write that: the game ships on Windows only, and nothing else changes.
 
-## 2. Ask Marwan to create the project (the one step that needs the wizard)
+## 2. Create the project
 
-There is no supported command line for creating a project from a template, so give Marwan these clicks, to do
-through Moonlight, and end your turn. Carry on when they reply.
+The supported way to create a project from a template is the editor's new-project wizard, which needs clicks. Try
+to do without it first, for **30 minutes at most**:
+
+- Spend up to five minutes looking for a supported route in this engine version (a commandlet, an editor
+  command-line switch, an MCP or Python call). Use it if there is one.
+- Otherwise do what the wizard does, by hand. The C++ Third Person template is under `<UE>\Templates\` (in recent
+  versions `TP_ThirdPerson`), and its `Config\TemplateDefs.ini` lists every step: which folders and files to skip,
+  which names to replace in file names and file contents (the template's name becomes `Reel`), and which shared
+  content packs to copy in from `<UE>\Templates\TemplateResources\`. Copy it to `C:\Jam\megajam\Reel`, apply those
+  steps, and set the `.uproject`'s engine association to this install. If the template offers variants, keep the
+  plain one. No Starter Content.
+- **Accept it only if all of this holds:** the command-line build in section 3 succeeds; the editor opens
+  `Reel.uproject` with no dialog about missing modules or assets; and the editor log shows the third-person map
+  loading with no "Failed to load", missing-class or missing-asset errors. Stage 3 then checks play-in-editor.
+- If the clock runs out or any check fails, don't debug it: delete `Reel\` and use the wizard.
+
+**The wizard, if it comes to that.** Give Marwan these clicks, to do through Moonlight, and wait for their reply:
 
 1. Epic Games Launcher > Unreal Engine > Library > **Launch** on 5.9 MegaJam Preview.
 2. In the project browser: **Games** > **Third Person**. If it offers variants, keep the plain one.
 3. Project defaults on the right: **C++** (not Blueprint), Target Platform **Desktop**, Quality Preset **Maximum**,
    **Starter Content off**.
-4. Project Location: the folder of this repo (for example `C:\Jam\megajam`). Project Name: `Reel`.
+4. Project Location: `C:\Jam\megajam`. Project Name: `Reel`.
 5. **Create**. The first compile takes a few minutes, then the editor opens. Visual Studio may open as well; close
    it. Press Play (Alt+P) once to see the character run, then **close the editor** and reply "created".
 
@@ -58,8 +72,11 @@ them retry.
   `{ "Name": "<file name without .uplugin>", "Enabled": true }` unless it is already enabled by default. All
   Toolsets is required: without it the agent connects but has no tools for levels, actors or Blueprints (a known
   bug in this Preview, UE-412135).
-- **`.mcp.json`** is already at the repo root and points Claude Code at `http://127.0.0.1:8000/mcp` under the name
-  `unreal-mcp`. The first session that sees it asks Marwan to approve the server; that is expected.
+- **The MCP server entry.** `.mcp.json` at the repo root points Claude Code at `http://127.0.0.1:8000/mcp` under the
+  name `unreal-mcp`, but a session asks for approval before using a server from a project file, and the next
+  session starts unattended. So register the same server for this Windows user as well:
+  `claude mcp add --transport http --scope user unreal-mcp http://127.0.0.1:8000/mcp`. If `claude mcp list` then
+  shows it twice, delete the repo's `.mcp.json` and commit that.
 - **Command-line build.** Build the editor target once to prove the path works without the editor, and time it:
   ```
   "<UE>\Engine\Build\BatchFiles\Build.bat" ReelEditor Win64 Development -Project="<repo>\Reel\Reel.uproject" -WaitMutex
@@ -68,10 +85,8 @@ them retry.
 
 ## 4. Start the editor and wait for the server
 
-- Start the editor on the desktop, with the `.uproject` path as its argument:
-  ```
-  powershell -ExecutionPolicy Bypass -File tools\on-desktop.ps1 "<UE>\Engine\Binaries\Win64\UnrealEditor.exe" "C:\Jam\megajam\Reel\Reel.uproject"
-  ```
+- Start `<UE>\Engine\Binaries\Win64\UnrealEditor.exe` with the `.uproject` path as its argument, detached, so it
+  outlives this session.
 - Wait, in one bounded loop of at most five minutes, for port 8000 on 127.0.0.1 to accept a connection
   (`Test-NetConnection`). The first launch compiles shaders, so it is slow.
 - If the port never opens: read the newest log in `Reel\Saved\Logs\` for lines about MCP or Agentic Workflows. Then
@@ -88,5 +103,6 @@ them retry.
 
 ## 6. Hand over
 
-Tell Marwan: leave the editor open, start a **new** session on `jam-pc` in this folder (a session only connects to
-the Unreal server if the editor was running when the session started), and paste the stage 3 prompt from `README.md`.
+Leave the editor open. If `setup/auto.md` sent you here, go back to it: its next step starts the stage 3 session.
+Otherwise tell Marwan to start a **new** session in this folder (a session only connects to the Unreal server if
+the editor was running when the session started) and give it: `Read setup/win-3-pipeline.md and carry it out.`
