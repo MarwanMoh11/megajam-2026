@@ -1,0 +1,2311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meanwhile... (K 3D prototype)</title>
+<!-- K "Meanwhile..." as a third-person shooter, Nitrate look. Needs an internet connection: three.js, the stand-in
+     robot (RobotExpressive, CC0) and the fonts come from CDNs. Opens straight from file://. Notes: NOTES.md. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Josefin+Sans:wght@600;700&family=Limelight&display=swap">
+<style>
+  :root { --ink: #0D0C0B; --paper: #F1EADB; --bone: #C9C2B4; --silver: #7A756D; --red: #D3301F; --gold: #E9B949; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--ink); color: var(--paper);
+    font: 700 13px 'Josefin Sans', system-ui, sans-serif; letter-spacing: .08em; user-select: none; }
+  canvas#c { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+  .abs { position: fixed; pointer-events: none; }
+  #picture { position: absolute; inset: 0; border-radius: 2.5vh; overflow: hidden; }
+  .corner { position: absolute; width: 2.6vh; height: 2.6vh; }
+  #pov { overflow: hidden; }
+  #roomName { text-align: center; text-transform: uppercase; letter-spacing: .3em; font-size: 1.7vh; opacity: .85; }
+  .cameo { position: fixed; pointer-events: none; text-align: center; }
+  .cameo .mask { position: absolute; left: 0; top: 0; border-radius: 50%;
+    background: radial-gradient(circle closest-side, transparent 96%, var(--ink) 97.5%); }
+  .cameo .ring { position: absolute; left: 0; top: 0; border-radius: 50%; box-sizing: border-box; border: 2px solid var(--paper); }
+  .cameo .lab { position: absolute; left: -10px; right: -10px; text-transform: uppercase; letter-spacing: .15em; font-size: 1.6vh; line-height: 1.35; }
+  .cameo .lab small { display: block; font-size: 1.25vh; opacity: .7; }
+  .cameo .bar, .hbar { height: .9vh; background: rgba(241,234,219,.15); position: relative; }
+  .cameo .bar { position: absolute; left: 12%; right: 12%; }
+  .cameo .bar i, .hbar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--paper); }
+  .cameo .st { position: absolute; left: 0; right: 0; font-size: 1.5vh; letter-spacing: .2em; }
+  .cameo .tag { position: absolute; left: 0; right: 0; font-size: 1.2vh; letter-spacing: .18em; opacity: 0; }
+  .cameo.cue .tag { opacity: 1; }
+  .cameo .nosig { position: absolute; left: 0; top: 0; border-radius: 50%; display: grid; place-items: center;
+    background: #1a1816; font: italic 400 1.7vh 'IM Fell English', serif; letter-spacing: 0; color: var(--bone); opacity: 0; }
+  .cameo.off .nosig { opacity: 1; }
+  .cameo.danger .ring { border-color: var(--red); animation: flash .33s steps(2) infinite; }
+  .cameo.danger .bar i { background: var(--red); }
+  .cameo.danger .st { color: var(--red); }
+  .cameo.hit .ring { transform: scale(1.06); }
+  .cameo.reject { animation: shake .25s; }
+  @keyframes flash { 50% { border-color: var(--paper); } }
+  @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+  #reel { text-transform: uppercase; }
+  #reel b { display: block; letter-spacing: .3em; font-size: 1.6vh; opacity: .8; }
+  #feet { display: block; font: 400 4.4vh Limelight, serif; letter-spacing: 0; line-height: 1.1; }
+  #feet small { font: 700 1.4vh 'Josefin Sans'; letter-spacing: .2em; opacity: .7; }
+  #chain { display: block; font-size: 1.6vh; color: var(--paper); opacity: 0; letter-spacing: .15em; }
+  #heroCard { text-transform: uppercase; }
+  #hName { font: 400 3.2vh Limelight, serif; letter-spacing: .02em; }
+  #hName small { font: 700 1.3vh 'Josefin Sans'; letter-spacing: .2em; opacity: .7; display: block; }
+  #heroCard .hbar { margin: .7vh 0; }
+  #heroCard.low .hbar i { background: var(--red); }
+  #armorTag { font-size: 1.3vh; letter-spacing: .15em; margin-bottom: .8vh; }
+  #armorTag.on { color: var(--gold); }
+  #armorTag.gone { color: var(--red); }
+  #ammo { display: flex; flex-wrap: wrap; gap: .35vh; margin: .5vh 0 .9vh; }
+  #ammo i { width: .55vh; height: 1.8vh; background: var(--paper); }
+  #ammo i.spent { background: rgba(241,234,219,.18); }
+  #ammo.reload i { animation: flash2 .3s steps(2) infinite; }
+  @keyframes flash2 { 50% { opacity: .2; } }
+  #scriptSt { font-size: 1.35vh; letter-spacing: .15em; border: 2px solid var(--paper); padding: .5vh .7vh; display: inline-block; }
+  #scriptSt.off { background: var(--paper); color: var(--ink); }
+  #keysHelp { font-size: 1.2vh; letter-spacing: .12em; opacity: .55; line-height: 1.6; margin-top: 1.2vh; }
+  /* in-picture overlays */
+  #xhair { position: absolute; left: 50%; top: 50%; width: 0; height: 0; z-index: 30; }
+  #xhair i { position: absolute; background: var(--paper); box-shadow: 0 0 0 1px rgba(13,12,11,.6); }
+  #xhair .dot { width: 3px; height: 3px; left: -1.5px; top: -1.5px; }
+  #hitm { position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px; z-index: 31; opacity: 0;
+    background: linear-gradient(45deg, transparent 46%, var(--paper) 46%, var(--paper) 54%, transparent 54%),
+                linear-gradient(-45deg, transparent 46%, var(--paper) 46%, var(--paper) 54%, transparent 54%); }
+  #hitm.head { background: linear-gradient(45deg, transparent 44%, var(--gold) 44%, var(--gold) 56%, transparent 56%),
+                linear-gradient(-45deg, transparent 44%, var(--gold) 44%, var(--gold) 56%, transparent 56%); }
+  .arc { position: absolute; left: 50%; top: 50%; width: 0; height: 0; z-index: 29; opacity: 0; }
+  .arc i { position: absolute; left: -7vh; top: -17vh; width: 14vh; height: 3vh; border-top: .8vh solid var(--red); border-radius: 50% 50% 0 0; }
+  #vig { position: absolute; inset: 0; z-index: 12; opacity: 0;
+    background: radial-gradient(ellipse at center, transparent 45%, rgba(13,12,11,.9) 100%); }
+  #redVig { position: absolute; inset: 0; z-index: 12; opacity: 0; box-shadow: inset 0 0 9vh var(--red); }
+  #prompt { position: absolute; left: 0; right: 0; bottom: 13%; text-align: center; z-index: 30; font-size: 1.8vh; letter-spacing: .15em; text-transform: uppercase; }
+  #prompt span { border: 2px solid var(--paper); padding: .6vh 1.2vh; background: rgba(13,12,11,.55); }
+  #prompt span.red { border-color: var(--red); color: var(--paper); background: var(--red); }
+  #cue { position: absolute; left: 0; right: 0; top: 3%; text-align: center; z-index: 30; font-size: 1.6vh; letter-spacing: .2em; text-transform: uppercase; opacity: 0; }
+  #cue b { font: 400 2.6vh Limelight, serif; letter-spacing: .05em; }
+  #stamp { position: absolute; right: 4%; top: 10%; z-index: 32; font: 400 3.2vh Limelight, serif; padding: .6vh 1.4vh;
+    border: 3px solid var(--paper); transform: rotate(-8deg) scale(1.4); opacity: 0; }
+  #stamp.show { animation: stamp 1.6s forwards; }
+  @keyframes stamp { 0% { opacity: 0; transform: rotate(-8deg) scale(1.6); } 8% { opacity: 1; transform: rotate(-8deg) scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: rotate(-8deg) scale(1); } }
+  #jit { position: absolute; left: 0; right: 0; top: 13%; text-align: center; z-index: 33; color: var(--gold); opacity: 0;
+    font: 400 7.6vh Limelight, serif; text-shadow: 0 .4vh 0 var(--ink); }
+  #jit small { display: block; font: italic 400 3vh 'IM Fell English', serif; color: var(--paper); }
+  #icard { position: absolute; left: 20%; right: 20%; bottom: 5%; z-index: 34; background: var(--ink); text-align: center;
+    font: italic 400 3.3vh 'IM Fell English', Georgia, serif; letter-spacing: 0; padding: 2.2vh 2vh; opacity: 0;
+    outline: 3px solid var(--paper); outline-offset: -12px; box-shadow: inset 0 0 0 19px var(--ink), inset 0 0 0 20px var(--paper); }
+  #icard small { display: block; font: 700 1.3vh 'Josefin Sans'; font-style: normal; letter-spacing: .25em; text-transform: uppercase; opacity: .7; margin-top: .6vh; }
+  #actCard { position: absolute; inset: 0; z-index: 40; background: var(--ink); display: none; place-items: center; text-align: center;
+    outline: 3px solid var(--paper); outline-offset: -2.4vh; box-shadow: inset 0 0 0 3.6vh var(--ink), inset 0 0 0 3.75vh var(--paper); }
+  #actCard.show { display: grid; }
+  #actCard .k { font-size: 1.8vh; letter-spacing: .4em; opacity: .75; }
+  #actCard .t { font: 400 7.5vh Limelight, serif; margin: 1.4vh 0; }
+  #actCard .s { font: italic 400 3vh 'IM Fell English', serif; letter-spacing: 0; max-width: 44vh; margin: 0 auto; }
+  #actCard .skip { font-size: 1.3vh; letter-spacing: .25em; opacity: .5; margin-top: 4vh; }
+  #pops { position: absolute; inset: 0; z-index: 31; }
+  .pop { position: absolute; transform: translate(-50%, -50%); white-space: nowrap; font: 400 2.5vh Limelight, serif;
+    text-shadow: 0 2px 0 var(--ink); transition: transform .9s ease-out, opacity .9s ease-in; }
+  .pop small { display: block; font: 700 1.3vh 'Josefin Sans'; letter-spacing: .18em; text-align: center; }
+  .pop.gold { color: var(--gold); }
+  #armorTxt { position: absolute; left: 0; right: 0; top: 60%; text-align: center; z-index: 30; color: var(--gold);
+    font-size: 1.9vh; letter-spacing: .35em; opacity: 0; }
+  #banner { position: absolute; left: 0; right: 0; top: 30%; text-align: center; z-index: 33; opacity: 0;
+    font: italic 400 3.4vh 'IM Fell English', serif; letter-spacing: 0; text-shadow: 0 2px 0 var(--ink); }
+  #banner small { display: block; font: 700 1.5vh 'Josefin Sans'; font-style: normal; letter-spacing: .2em; text-transform: uppercase; }
+  /* full screens */
+  #screen { position: fixed; inset: 0; z-index: 60; display: none; place-items: center; background: rgba(13,12,11,.94); text-align: center; }
+  #screen.show { display: grid; }
+  #screen .box { max-width: 120vh; padding: 2vh; }
+  #screen h1 { font: 400 11vh Limelight, serif; margin: 0; letter-spacing: .02em; white-space: nowrap; }
+  #screen h2 { font: italic 400 3.4vh 'IM Fell English', serif; margin: 1vh 0 3vh; letter-spacing: 0; }
+  #screen .how { font-size: 1.75vh; line-height: 2.1; letter-spacing: .12em; text-transform: uppercase; }
+  #screen .how b { border: 2px solid var(--paper); padding: .1vh .6vh; margin: 0 .2vh; }
+  #screen .go { margin-top: 3.5vh; font: 400 3.4vh Limelight, serif; animation: flash2 1.2s steps(2) infinite; }
+  #screen .note { margin-top: 1.4vh; font: italic 400 2vh 'IM Fell English', serif; opacity: .75; letter-spacing: 0; }
+  #screen .medal { width: 12vh; height: 12vh; border-radius: 50%; margin: 1.4vh auto; display: grid; place-items: center;
+    font: 400 6vh Limelight, serif; color: var(--ink); background: var(--bone); box-shadow: 0 0 0 .5vh var(--ink), 0 0 0 .8vh var(--bone); }
+  #screen .medal.gold { background: var(--gold); box-shadow: 0 0 0 .5vh var(--ink), 0 0 0 .8vh var(--gold); }
+  #screen .medal.none { background: #2a2724; color: var(--bone); box-shadow: 0 0 0 .5vh var(--ink), 0 0 0 .8vh #2a2724; }
+  #screen .medal small { display: block; font: 700 .85vh 'Josefin Sans'; letter-spacing: .15em; margin-top: -1.5vh; }
+  #screen table { margin: 1.2vh auto 0; border-collapse: collapse; font-size: 1.7vh; letter-spacing: .1em; text-transform: uppercase; }
+  #screen td { padding: .25vh 1.5vh; text-align: left; }
+  #screen td:last-child { text-align: right; font: 400 2.2vh Limelight, serif; letter-spacing: .02em; }
+  #screen .cmp { margin-top: 2.2vh; font: italic 400 2.3vh 'IM Fell English', serif; letter-spacing: 0; line-height: 1.5; }
+  #screen .cmp b { font: 700 1.4vh 'Josefin Sans'; font-style: normal; letter-spacing: .2em; display: block; text-transform: uppercase; opacity: .7; }
+  .gold { color: var(--gold); }
+  .redt { color: var(--red); }
+  #dbg { position: fixed; right: 0; top: 0; bottom: 0; width: 300px; overflow: auto; z-index: 80; background: rgba(13,12,11,.95);
+    font: 11px ui-monospace, Menlo, monospace; letter-spacing: 0; padding: 8px; display: none; }
+  #dbg.show { display: block; }
+  #dbg label { display: flex; justify-content: space-between; gap: 6px; margin: 2px 0; }
+  #dbg input[type=number] { width: 70px; background: #222; color: #eee; border: 1px solid #444; font: inherit; }
+  #dbg button { font: inherit; margin: 6px 4px 0 0; }
+  #err { position: fixed; left: 0; right: 0; top: 0; z-index: 99; background: var(--red); color: #fff; padding: 10px; font: 13px ui-monospace, monospace; display: none; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="gate" class="abs"><div id="picture"></div>
+  <div class="corner" id="k0"></div><div class="corner" id="k1"></div><div class="corner" id="k2"></div><div class="corner" id="k3"></div></div>
+<div id="roomName" class="abs"></div>
+<div class="cameo" id="cm0"><div class="nosig"></div><div class="mask"></div><div class="ring"></div><div class="tag">THE SCRIPT WANTS THIS</div><div class="st"></div><div class="lab"></div><div class="bar"><i></i></div></div>
+<div class="cameo" id="cm1"><div class="nosig"></div><div class="mask"></div><div class="ring"></div><div class="tag">THE SCRIPT WANTS THIS</div><div class="st"></div><div class="lab"></div><div class="bar"><i></i></div></div>
+<div id="reel" class="abs"><b id="reelN">REEL 1</b><span id="feet">0</span><small id="chain"></small></div>
+<div id="heroCard" class="abs"><div id="hName"></div><div class="hbar"><i id="hBar"></i></div><div id="armorTag"></div>
+  <div id="ammo"></div><div id="scriptSt">ON SCRIPT</div>
+  <div id="keysHelp">1 2 3 CUT · TAB BACK TO SCRIPT<br>SPACE COVER · SHIFT DODGE<br>R RELOAD · F GUN-FU · ESC PAUSE</div></div>
+<div id="pov" class="abs">
+  <div id="vig"></div><div id="redVig"></div>
+  <div id="xhair"><i class="dot"></i><i id="xl"></i><i id="xr"></i><i id="xt"></i><i id="xb"></i></div>
+  <div id="hitm"></div>
+  <div class="arc" id="arc0"><i></i></div><div class="arc" id="arc1"><i></i></div><div class="arc" id="arc2"><i></i></div><div class="arc" id="arc3"><i></i></div>
+  <div id="armorTxt">PLOT ARMOR</div>
+  <div id="prompt"></div><div id="cue"></div><div id="stamp">OFF SCRIPT</div>
+  <div id="banner"></div><div id="jit"></div><div id="icard"></div><div id="pops"></div>
+  <div id="actCard"><div><div class="k" id="acK"></div><div class="t" id="acT"></div><div class="s" id="acS"></div><div class="skip">SPACE TO SKIP</div></div></div>
+</div>
+<div id="screen" class="show"><div class="box" id="screenBox">
+  <h1>Meanwhile...</h1><h2>Loading the reel...</h2></div></div>
+<div id="dbg"></div><div id="err"></div>
+
+<!-- ===================================================================================
+     RULES: plain JS, no DOM, no three.js. bots.js runs this exact block in Node.
+     Units are metres and seconds. Each set keeps local x/z; the renderer adds the set's cx.
+     =================================================================================== -->
+<script id="rules">
+const CONFIG = {
+  // --- the film ---
+  thirdHero: true,          // a third hero (Juno) joins in Act Two
+  loneArmor: false,         // false: a hero with nobody left to cut to loses plot armor
+  actHeal: 0.3,             // health every survivor gets back between acts
+  firstBruteAt: 20,         // s into Act One when the first heavy walks into the Railway
+  act1Min: 70, act1Max: 125, act2Min: 80, act2Max: 150, // act length (s): ends after min once its heavies are dealt with
+  cardTime: 3.6,            // act title card (s); SPACE skips
+  wrapTime: 2.4,            // beat after the last heavy falls / everyone dies, before the end card
+  // --- the studio's script ---
+  scriptAuto: true,         // on script, the film cuts itself to whoever the script wants
+  cueWarn: 3,               // s of countdown before a scripted cut
+  // --- you: the hero on camera ---
+  heroSpeed: 6, aimSpeed: 3.2, coverSpeed: 2.8, heroAccel: 16,
+  fireInterval: 0.16, magSize: 12, reloadTime: 1.25, fireRange: 60,
+  spreadHip: 0.025, spreadMove: 0.045, spreadAim: 0.004, spreadBlind: 0.1, recoil: 0.01, aimAssist: 0.12,
+  bodyDmg: 1, headDmg: 3, bigHeadDmg: 2, mookHp: 2, // two to the body or one to the head
+  meleeRange: 2.4, meleeCooldown: 0.7, meleeTime: 0.4, meleeBruteDmg: 3,
+  coverReach: 1.5, coverLeave: 0.2, // SPACE takes cover within this gap; pull away this long to leave
+  dodgeTime: 0.34, dodgeSpeed: 12, dodgeIframes: 0.42, dodgeCooldown: 0.5,
+  knockdownTime: 1.0, knockback: 6,
+  camDamageMult: 0.75,      // on camera you do get hurt...
+  armorFloor: 0.12,         // ...but plot armor stops you here
+  regenDelay: 2.5, regenRate: 0.07, regenCoverMult: 2, // on camera only, after this long unhurt
+  // --- camera rig (shared by the renderer and the shot ray) ---
+  camDist: 5.0, camSide: 1.3, camUp: 0.8, camPivot: 1.55, crouchPivot: 1.0, aimDist: 2.7, aimSide: 1.35,
+  camFov: 60, aimFov: 40, pitchMin: -0.6, pitchMax: 0.75, mouseSens: 0.0022,
+  // --- heroes off camera (simple AI) ---
+  aiSpeed: 3.6, aiFireInterval: 1.0, aiAccMook: 0.45, aiCoverPenalty: 0.5, aiBruteAcc: 0.5, aiBruteDmg: 0.25,
+  aiDodge: 0.3, aiRange: 22, aiKnockdownTime: 0.7,
+  // --- mooks: they take cover and pop up to shoot ---
+  mookSpeed: 3.4, mookFireMin: 1.3, mookFireMax: 2.3, mookAim: 0.55, mookUpTime: 0.6, mookAcc: 0.5, mookDamage: 0.035,
+  mookRelocMin: 7, mookRelocMax: 12, mookRushChance: 0.18,
+  maxMooks: 4, maxMooksA2: 5, maxMooksFinale: 7,
+  mookIntervalA1: 2.8, mookIntervalA2: 2.4, mookIntervalA3: 2.0, mookRamp: 0.7, // s between mooks per set; x ramp over 60 s
+  // --- heavies ---
+  bruteHp: 30, bruteSpeed: 3.3, slamRange: 3.2, slamRadius: 3.1, slamWind: 0.7, slamRecover: 1.2, slamDamage: 0.2,
+  chargeMin: 10, chargeWind: 0.65, chargeTime: 0.85, chargeSpeed: 14, chargeHitR: 1.5, chargeRecover: 1.4,
+  chargeDamage: 0.15, chargeCooldown: 4,
+  recoverDamageMult: 2,     // shots during a heavy's recovery do this much more
+  // --- the Bull (finale) ---
+  bullHp: 110, bullSpeed: 3.7, bullSlamDamage: 0.22, bullOffCamBias: 0.75, // chance it picks a hero who is NOT on camera
+  // --- cutting and score (score is in feet of film) ---
+  cutCooldown: 0.35,
+  bonusStart: 0.5, tierClose: 0.25, tierJIT: 0.12, // health on arrival: under 50% pays, under 12% is JUST IN TIME
+  bonusMax: 2500, bonusPow: 1.4, bonusBruteMult: 1.5,
+  bonusMinAway: 2, bonusMinLoss: 0.08, // no bonus unless they were away 2 s and lost 8% (stops cut ping-pong)
+  killPoints: 50, chainWindow: 2.2, chainMax: 4, pointBlank: 2.5, pointBlankBonus: 50, headshotBonus: 50,
+  meleeBonus: 150, dodgeBonus: 150, brutePoints: 1500, bullPoints: 4000, survivorBonus: 2500,
+  star1: 6000, star2: 12000, star3: 20000, star4: 28000, star5: 36000,
+  dcMinOff: 15,             // s off script before your edit counts as a Director's Cut
+  corpseTime: 7,
+  // --- feedback only ---
+  hints: true, shake: 1, volume: 0.6, music: 0.7, slowmo: 0.3,
+};
+const DEFAULTS = JSON.parse(JSON.stringify(CONFIG));
+
+const ARENA_HW = 18, ARENA_HD = 13, WALL_H = 4.2, HERO_R = 0.42;
+// body sizes; the head is a sphere at HEAD_Y * height with radius HEAD_R * height (fitted to the stand-in robot)
+const DIM = { hero: { r: 0.42, h: 1.8 }, mook: { r: 0.42, h: 1.8 }, brute: { r: 0.8, h: 2.6 }, bull: { r: 1.1, h: 3.1 } };
+const HEAD_Y = 0.79, HEAD_R = 0.15, CROUCH = 0.62;
+// obstacles: [x, z, half width, half depth, height]. Under 1.5 m is low cover (crouch behind it, aim over it).
+const SETS = [
+  { key: 'mill', name: 'THE MILL', where: 'at the Mill', tone: 'amber', cx: 0, spawn: [0, -6], time: '11:58 PM',
+    obstacles: [[-8, -3, 2.2, 0.6, 1.1], [8, -3, 2.2, 0.6, 1.1], [0, 3, 1.4, 1.4, 1.15], [-11, 6, 0.6, 0.6, 3.4], [11, 6, 0.6, 0.6, 3.4],
+      [-4, 9, 2.5, 0.6, 1.1], [5, 9.5, 1.5, 1, 1.15], [0, -10, 0.6, 0.6, 3.4], [-14, -8, 1, 1, 1.15], [14, -8, 1, 1, 1.15]],
+    doors: [[-18, 0], [18, 0], [-10, 13], [10, 13], [-15, -13], [15, -13]] },
+  { key: 'rail', name: 'THE RAILWAY', where: 'at the Railway', tone: 'green', cx: 400, spawn: [0, -6], time: '11:58 PM',
+    obstacles: [[-6, 4, 5, 1.3, 3.0], [9, -1, 1.2, 4, 3.0], [-12, -4, 1, 1, 1.15], [3, 9, 2, 0.6, 1.1], [-3, -7.2, 1.5, 0.5, 1.0],
+      [13, 8, 1, 1, 1.15], [5, -10, 1, 0.6, 1.1], [-14, 9, 1.2, 0.6, 1.1]],
+    doors: [[-18, -6], [-18, 9], [18, -7], [18, 7], [-9, -13], [9, 13]] },
+  { key: 'roof', name: 'THE ROOFTOP', where: 'on the Rooftop', tone: 'night', cx: 800, spawn: [0, -6], time: '12:31 AM',
+    obstacles: [[-8, 3, 1.8, 1.2, 1.1], [8, 3, 1.8, 1.2, 1.1], [-12, -6, 0.8, 0.8, 3.0], [12, -6, 0.8, 0.8, 3.0], [0, 9.5, 2.5, 1, 1.2],
+      [0, 2, 1.2, 1.2, 2.6], [-4, -9.5, 1.2, 0.6, 1.1], [6, -9.5, 1.2, 0.6, 1.1], [-14, 8, 1, 1.4, 1.1], [14, 8, 1, 1.4, 1.1]],
+    doors: [[-18, 3], [18, 3], [-6, 13], [6, 13], [0, -13]] },
+  { key: 'palace', name: 'THE PICTURE PALACE', where: 'at the Picture Palace', tone: 'silver', cx: 1200, spawn: [0, -6], time: '1:20 AM',
+    obstacles: [[-8, -2, 4.5, 0.45, 1.0], [8, -2, 4.5, 0.45, 1.0], [-8, 3, 4.5, 0.45, 1.0], [8, 3, 4.5, 0.45, 1.0],
+      [-8, 8, 4.5, 0.45, 1.0], [8, 8, 4.5, 0.45, 1.0], [-15, -7, 0.7, 0.7, 3.6], [15, -7, 0.7, 0.7, 3.6]],
+    doors: [[-18, 0], [18, 0], [0, 13], [-13, 13], [13, 13]] },
+];
+const FINALE_SPOTS = [[-5, -7], [5, -7], [0, -9]];
+const HEROES = [{ name: 'VERA', set: 0 }, { name: 'MOSS', set: 1 }, { name: 'JUNO', set: 2 }];
+const ACTS = [
+  { title: 'ACT ONE', name: 'Two Names', sub: 'Two hired guns. One camera.', sets: () => [0, 1], min: c => c.act1Min, max: c => c.act1Max,
+    mook: c => c.mookIntervalA1, cap: c => c.maxMooks,
+    brutes: c => [{ set: 1, t: c.firstBruteAt }, { set: 0, t: c.firstBruteAt + 24 }] },
+  { title: 'ACT TWO', name: 'The Third Name', sub: 'Somebody new is on the poster.', sets: c => c.thirdHero ? [0, 1, 2] : [0, 1],
+    min: c => c.act2Min, max: c => c.act2Max, mook: c => c.mookIntervalA2, cap: c => c.maxMooksA2,
+    brutes: c => c.thirdHero ? [{ set: 2, t: 6 }, { set: 1, t: 26 }, { set: 0, t: 33 }, { set: 2, t: 55 }]
+                             : [{ set: 0, t: 6 }, { set: 1, t: 26 }, { set: 0, t: 38 }] },
+  { title: 'ACT THREE', name: 'The Picture Palace', sub: 'Everyone in one room. And the Bull.', finale: true, sets: () => [3],
+    mook: c => c.mookIntervalA3, cap: c => c.maxMooksFinale, min: () => 0, max: () => 1e9, brutes: () => [{ set: 3, t: 2, kind: 'bull' }] },
+];
+// The studio's intended edit: who the camera is on, and when. It follows story beats, not danger.
+const SCRIPT = [
+  [{ t: 0, hero: 0, beat: 'Vera walks into the Mill' }, { t: 17, hero: 1, beat: 'The Railway job' }, { t: 32, hero: 0, beat: "Vera's big scene" },
+   { t: 60, hero: 1, beat: 'Moss holds the line' }, { t: 82, hero: 0, beat: 'Vera reloads' }, { t: 102, hero: 1, beat: 'Last train' }],
+  [{ t: 0, hero: 2, beat: 'Introducing Juno' }, { t: 22, hero: 2, beat: "Juno's montage" }, { t: 42, hero: 0, beat: 'Vera, cornered' },
+   { t: 58, hero: 2, beat: 'Juno, encore' }, { t: 78, hero: 1, beat: 'Moss, alone' }, { t: 98, hero: 0, beat: 'Vera, again' },
+   { t: 118, hero: 2, beat: 'Juno takes a bow' }],
+  [{ t: 0, hero: 0, beat: 'The Picture Palace' }, { t: 14, hero: 1, beat: 'Moss, front row' }, { t: 28, hero: 2, beat: 'Juno, the balcony' },
+   { t: 42, hero: 0, beat: 'Vera, centre aisle' }, { t: 56, hero: 1, beat: 'Moss, reloading' }, { t: 70, hero: 2, beat: 'Juno, the curtain' },
+   { t: 84, hero: 0, beat: 'Vera, the last reel' }, { t: 98, hero: 1, beat: 'Moss, the exit' }, { t: 112, hero: 2, beat: 'Juno, the end' },
+   { t: 126, hero: 0, beat: 'Vera, again' }, { t: 140, hero: 1, beat: 'Moss, again' }, { t: 154, hero: 2, beat: 'Juno, again' }],
+];
+const SCRIPT_TWO = [{ t: 0, hero: 0, beat: 'Vera, back at the Mill' }, { t: 24, hero: 1, beat: 'Moss, the night shift' },
+  { t: 46, hero: 0, beat: 'Vera, cornered' }, { t: 68, hero: 1, beat: 'Moss, alone' }, { t: 92, hero: 0, beat: 'Vera, again' },
+  { t: 114, hero: 1, beat: 'Moss, again' }];
+
+function makeRng(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+function wrapA(a) { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; }
+function turnTo(a, b, m) { return a + clamp(wrapA(b - a), -m, m); }
+
+// cover spots for mooks: points just outside each face of each low obstacle
+function inObstacle(set, x, z, r) {
+  for (const [bx, bz, hw, hd] of SETS[set].obstacles) if (Math.abs(x - bx) < hw + r && Math.abs(z - bz) < hd + r) return true;
+  return false;
+}
+const SPOTS = SETS.map((S, si) => {
+  const out = [];
+  S.obstacles.forEach(([bx, bz, hw, hd, hh], i) => {
+    if (hh > 1.5) return;
+    for (const [nx, nz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const ext = nx ? hd : hw, off = (nx ? hw : hd) + 0.5, n = Math.max(1, Math.round(ext * 2 / 1.5));
+      for (let k = 0; k < n; k++) {
+        const u = n === 1 ? 0 : -ext + 0.4 + (2 * ext - 0.8) * k / (n - 1);
+        const x = bx + nx * off + (nx ? 0 : u), z = bz + nz * off + (nx ? u : 0);
+        if (Math.abs(x) > ARENA_HW - 0.8 || Math.abs(z) > ARENA_HD - 0.8 || inObstacle(si, x, z, 0.4)) continue;
+        out.push({ x, z, nx, nz, ob: i });
+      }
+    }
+  });
+  return out;
+});
+
+function newGame(cfg, seed) {
+  if (seed == null) seed = (Math.random() * 1e9) | 0;
+  return {
+    cfg, seed, rng: makeRng(seed), t: 0, act: -1, nextAct: 0, actT: 0, phase: 'card', cardT: cfg.cardTime,
+    heroes: HEROES.map((d, i) => ({ id: i, name: d.name, home: d.set, set: d.set, x: 0, z: 0, vx: 0, vz: 0, face: 0,
+      hp: 1, alive: true, joined: i < 2, fireCd: 0, aimT: 0, dodgeT: 0, dodgeCd: 0, ddx: 0, ddz: 1, iframe: 0,
+      downT: 0, downMax: 1, kx: 0, kz: 0, awayT: 0, hpLeft: 1, aiFireCd: 1, aiStrafe: i % 2 ? 1 : -1, aiFlipT: 2,
+      deadT: 0, ammo: cfg.magSize, reloadT: 0, meleeT: 0, meleeCd: 0, aiming: false, aimK: 0, crouch: false, crouchK: 0,
+      cover: null, coverU: 0, leaveT: 0, leanX: 0, leanZ: 0, lastHitT: 9 })),
+    enemies: [], nextId: 100, cam: 0, camYaw: 0, camPitch: -0.08, cutCd: 0, claims: [{}, {}, {}, {}],
+    score: 0, styleScore: 0, bonusTotal: 0, survivorScore: 0, kills: 0, camKills: 0, heads: 0, bruteKills: 0, chain: 0, chainT: 0,
+    tiers: { tense: 0, close: 0, jit: 0 }, cuts: 0, dodges: 0, schedule: [], spawnT: [0, 0, 0, 0],
+    killedOff: [], lone: false, wrapT: 0, ending: null,
+    mode: 'script', scriptHero: 0, cue: null, offT: 0, breaks: 0, shotIdx: -1,
+  };
+}
+
+function shotList(s) { return s.act === 1 && !s.cfg.thirdHero ? SCRIPT_TWO : SCRIPT[s.act]; }
+function scriptAt(s, t) {
+  let want = -1, idx = -1;
+  shotList(s).forEach((sh, i) => { if (sh.t <= t && s.heroes[sh.hero].joined && s.heroes[sh.hero].alive) { want = sh.hero; idx = i; } });
+  if (want < 0) { const h = s.heroes.find(x => x.joined && x.alive); want = h ? h.id : 0; }
+  return { hero: want, idx };
+}
+function nextCue(s) {
+  for (const sh of shotList(s)) {
+    if (sh.t <= s.actT) continue;
+    const h = s.heroes[sh.hero];
+    if (h.joined && h.alive && sh.hero !== s.scriptHero) return { hero: sh.hero, in: sh.t - s.actT, beat: sh.beat };
+  }
+  return null;
+}
+
+function startAct(s, n, ev) {
+  const c = s.cfg, A = ACTS[n];
+  s.act = n; s.actT = 0; s.phase = 'play'; s.enemies = []; s.wrapT = 0; s.claims = [{}, {}, {}, {}];
+  if (n === 1 && c.thirdHero) s.heroes[2].joined = true;
+  for (const h of s.heroes) {
+    if (!h.joined || !h.alive) continue;
+    if (n > 0) h.hp = Math.min(1, h.hp + c.actHeal);
+    if (A.finale) { h.set = 3; h.x = FINALE_SPOTS[h.id][0]; h.z = FINALE_SPOTS[h.id][1]; }
+    else { h.set = h.home; h.x = SETS[h.set].spawn[0]; h.z = SETS[h.set].spawn[1]; }
+    Object.assign(h, { vx: 0, vz: 0, face: 0, downT: 0, dodgeT: 0, iframe: 0, awayT: 0, hpLeft: h.hp, fireCd: 0, cover: null,
+      crouch: false, crouchK: 0, leanX: 0, leanZ: 0, ammo: c.magSize, reloadT: 0, meleeT: 0, aimK: 0 });
+  }
+  const sc = scriptAt(s, 0); s.scriptHero = sc.hero; s.shotIdx = sc.idx; s.cam = sc.hero;
+  s.camYaw = 0; s.camPitch = -0.08;
+  s.schedule = A.brutes(c).map(b => Object.assign({ kind: 'brute', done: false }, b));
+  const camSet = s.heroes[s.cam].set;
+  s.spawnT = [0, 1, 2, 3].map(i => i === camSet ? 1.2 : 2.5 + i * 0.7);
+  ev.push({ type: 'actStart', act: n, cam: s.cam });
+}
+function endAct(s, ev) { s.phase = 'card'; s.cardT = s.cfg.cardTime; s.nextAct = s.act + 1; ev.push({ type: 'actEnd', act: s.act }); }
+function endFilm(s, ev) {
+  const c = s.cfg; s.phase = 'end';
+  const surv = s.heroes.filter(h => h.joined && h.alive);
+  s.survivorScore = surv.length * c.survivorBonus; s.score += s.survivorScore;
+  let stars = 0; for (const v of [c.star1, c.star2, c.star3, c.star4, c.star5]) if (s.score >= v) stars++;
+  stars = Math.min(stars, 5 - s.killedOff.length); // each hero killed off caps the rating one star lower
+  if (!surv.length) stars = 0;
+  s.ending = { survivors: surv.map(h => h.id), killed: s.killedOff.slice(), stars, cancelled: !surv.length,
+    cast: s.heroes.filter(h => h.joined).length, offT: s.offT, breaks: s.breaks, director: s.offT >= c.dcMinOff };
+  ev.push({ type: 'end', ending: s.ending });
+}
+
+function setHero(s, set) { return s.heroes.find(h => h.home === set && h.joined && h.alive && h.set === set) || null; }
+function activeSets(s) { const A = ACTS[s.act]; return A.finale ? [3] : A.sets(s.cfg).filter(i => setHero(s, i)); }
+function isArmored(s, h) { return h.id === s.cam && (s.cfg.loneArmor || !s.lone); }
+function bigTargeting(s, set, heroId) {
+  for (const e of s.enemies) if (e.alive && e.kind !== 'mook' && e.set === set && e.target === heroId) return e;
+  return null;
+}
+function bigP(c, e) {
+  const b = e.kind === 'bull';
+  return { speed: b ? c.bullSpeed : c.bruteSpeed, slamR: c.slamRadius * (b ? 1.2 : 1), slamRange: c.slamRange * (b ? 1.2 : 1),
+    slamWind: c.slamWind * (b ? 1.1 : 1), slamDmg: b ? c.bullSlamDamage : c.slamDamage, chargeDmg: c.chargeDamage * (b ? 1.2 : 1),
+    hitR: c.chargeHitR * (b ? 1.3 : 1) };
+}
+function eHeight(e) { return DIM[e.kind].h * (e.crouch ? CROUCH : 1); }
+function collide(o, r) {
+  let hit = false;
+  if (o.x < -ARENA_HW + r) { o.x = -ARENA_HW + r; hit = true; } else if (o.x > ARENA_HW - r) { o.x = ARENA_HW - r; hit = true; }
+  if (o.z < -ARENA_HD + r) { o.z = -ARENA_HD + r; hit = true; } else if (o.z > ARENA_HD - r) { o.z = ARENA_HD - r; hit = true; }
+  for (const [bx, bz, hw, hd] of SETS[o.set].obstacles) {
+    const nx = clamp(o.x, bx - hw, bx + hw), nz = clamp(o.z, bz - hd, bz + hd);
+    const dx = o.x - nx, dz = o.z - nz, d2 = dx * dx + dz * dz;
+    if (d2 >= r * r) continue;
+    hit = true;
+    if (d2 > 1e-8) { const d = Math.sqrt(d2), p = (r - d) / d; o.x += dx * p; o.z += dz * p; }
+    else {
+      const px = hw + r - Math.abs(o.x - bx), pz = hd + r - Math.abs(o.z - bz);
+      if (px < pz) o.x += (o.x >= bx ? 1 : -1) * px; else o.z += (o.z >= bz ? 1 : -1) * pz;
+    }
+  }
+  return hit;
+}
+
+// ---------- rays (3D): obstacles are boxes from the floor up to their height; walls and floor bound the set ----------
+function rayBox(ox, oy, oz, dx, dy, dz, x0, y0, z0, x1, y1, z1) {
+  let tmin = 0, tmax = 1e9;
+  const ax = [[ox, dx, x0, x1], [oy, dy, y0, y1], [oz, dz, z0, z1]];
+  for (const [o, d, lo, hi] of ax) {
+    if (Math.abs(d) < 1e-9) { if (o < lo || o > hi) return -1; continue; }
+    let t1 = (lo - o) / d, t2 = (hi - o) / d; if (t1 > t2) { const k = t1; t1 = t2; t2 = k; }
+    if (t1 > tmin) tmin = t1; if (t2 < tmax) tmax = t2; if (tmin > tmax) return -1;
+  }
+  return tmin;
+}
+function rayWorld(set, ox, oy, oz, dx, dy, dz, maxT) {
+  let best = maxT;
+  for (const [bx, bz, hw, hd, hh] of SETS[set].obstacles) {
+    const t = rayBox(ox, oy, oz, dx, dy, dz, bx - hw, 0, bz - hd, bx + hw, hh, bz + hd);
+    if (t >= 0 && t < best) best = t;
+  }
+  const planes = [[dx, ARENA_HW - ox], [dx, -ARENA_HW - ox], [dz, ARENA_HD - oz], [dz, -ARENA_HD - oz]];
+  for (const [d, gap] of planes) if (Math.abs(d) > 1e-9) { const t = gap / d; if (t > 0 && t < best && oy + dy * t < WALL_H) best = t; }
+  if (dy < -1e-9) { const t = -oy / dy; if (t > 0 && t < best) best = t; }
+  return best;
+}
+function segBlocked(set, ax, ay, az, bx, by, bz) {
+  const dx = bx - ax, dy = by - ay, dz = bz - az, L = Math.hypot(dx, dy, dz) || 1;
+  const t = rayWorld(set, ax, ay, az, dx / L, dy / L, dz / L, L);
+  return t < L - 0.05 ? t / L : -1;
+}
+function rayEnemy(e, ox, oy, oz, dx, dy, dz, assist) {
+  const D = DIM[e.kind], H = eHeight(e), hy = H * HEAD_Y, hr = D.h * HEAD_R + 0.03;
+  let best = -1, head = false;
+  // head sphere
+  const lx = ox - e.x, ly = oy - hy, lz = oz - e.z, b = lx * dx + ly * dy + lz * dz, cc = lx * lx + ly * ly + lz * lz - hr * hr, disc = b * b - cc;
+  if (disc >= 0) { const t = -b - Math.sqrt(disc); if (t > 0) { best = t; head = true; } }
+  // body cylinder
+  const r = D.r + assist, a = dx * dx + dz * dz;
+  if (a > 1e-9) {
+    const bb = 2 * (dx * lx + dz * lz), c2 = lx * lx + lz * lz - r * r, d2 = bb * bb - 4 * a * c2;
+    if (d2 >= 0) {
+      const t = (-bb - Math.sqrt(d2)) / (2 * a), y = oy + dy * t;
+      if (t > 0 && y >= 0 && y <= hy - hr * 0.5 && (best < 0 || t < best)) { best = t; head = false; }
+    }
+  }
+  return best < 0 ? null : { t: best, head };
+}
+// the shoulder camera: renderer and shot ray both use this, so the crosshair is exact
+function camRig(s, h) {
+  const c = s.cfg, y = s.camYaw, p = s.camPitch, k = h.aimK;
+  const cp = Math.cos(p), fx = Math.sin(y) * cp, fy = Math.sin(p), fz = Math.cos(y) * cp, rx = -Math.cos(y), rz = Math.sin(y);
+  const px = h.x + h.leanX, pz = h.z + h.leanZ, py = lerp(c.camPivot, c.crouchPivot, h.crouchK) + c.camUp;
+  const dist = lerp(c.camDist, c.aimDist, k), side = lerp(c.camSide, c.aimSide, k);
+  let sx = px + rx * side, sz = pz + rz * side;
+  const st = rayWorld(h.set, px, py, pz, rx, 0, rz, side + 0.25);  // keep the shoulder point out of walls
+  if (st < side + 0.25) { const d = Math.max(0, st - 0.25); sx = px + rx * d; sz = pz + rz * d; }
+  const t = rayWorld(h.set, sx, py, sz, -fx, -fy, -fz, dist + 0.3);
+  const d = t < dist + 0.3 ? Math.max(0.25, t - 0.3) : dist;
+  return { x: sx - fx * d, y: Math.max(0.25, py - fy * d), z: sz - fz * d, fx, fy, fz, rx, rz, dist: d, fov: lerp(c.camFov, c.aimFov, k) };
+}
+function look(s, dyaw, dpitch) {
+  s.camYaw = wrapA(s.camYaw + dyaw);
+  s.camPitch = clamp(s.camPitch + dpitch, s.cfg.pitchMin, s.cfg.pitchMax);
+}
+
+// ---------- spawning ----------
+function pickDoor(s, set, far) {
+  const D = SETS[set].doors, hs = s.heroes.filter(h => h.joined && h.alive && h.set === set);
+  const dist = d => hs.length ? Math.min(...hs.map(h => Math.hypot(h.x - d[0], h.z - d[1]))) : 99;
+  if (far) { let best = D[0], bd = -1; for (const d of D) { const v = dist(d); if (v > bd) { bd = v; best = d; } } return best; }
+  const ok = D.filter(d => dist(d) > 8), L = ok.length ? ok : D;
+  return L[(s.rng() * L.length) | 0];
+}
+function baseEnemy(s, kind, set, d) {
+  const x = clamp(d[0], -ARENA_HW + 1, ARENA_HW - 1), z = clamp(d[1], -ARENA_HD + 1, ARENA_HD - 1);
+  return { id: s.nextId++, kind, set, x, z, face: Math.atan2(-x, -z), hp: 1, maxHp: 1, alive: true, r: DIM[kind].r, state: 'move',
+    stT: 0, fireCd: 0, aimT: 0, upT: 0, range: 8, strafe: s.rng() < 0.5 ? -1 : 1, target: -1, deadT: 0, fallX: 0, fallZ: 1, hitT: 0,
+    stuckT: 0, detour: 0, detourT: 0, retT: 2, chargeCd: 0, sx: 0, sz: 0, cdx: 0, cdz: 1, aiRolled: false, chargeHit: false,
+    spot: -1, relocT: 0, crouch: false, moving: 0, head: false, lastBy: -1 };
+}
+function spawnMook(s, set, ev) {
+  const c = s.cfg, e = baseEnemy(s, 'mook', set, pickDoor(s, set, false));
+  e.hp = e.maxHp = c.mookHp; e.fireCd = 1 + s.rng(); e.range = 6 + s.rng() * 4;
+  e.target = pickEnemyTarget(s, e);
+  if (s.act > 0 && s.rng() < c.mookRushChance) e.state = 'rush';
+  s.enemies.push(e); ev.push({ type: 'spawn', id: e.id, kind: 'mook', set });
+}
+function spawnBig(s, set, kind, ev) {
+  const c = s.cfg, bull = kind === 'bull', e = baseEnemy(s, kind, set, pickDoor(s, set, true));
+  e.hp = e.maxHp = bull ? c.bullHp : c.bruteHp; e.state = 'chase'; e.chargeCd = 2.5;
+  e.target = pickEnemyTarget(s, e);
+  s.enemies.push(e); ev.push({ type: 'bruteEnter', id: e.id, kind, set, hero: e.target });
+}
+function pickEnemyTarget(s, e) {
+  if (e.kind === 'bull') return chooseBullTarget(s, e);
+  let best = -1, bd = 1e9;
+  for (const h of s.heroes) {
+    if (!h.joined || !h.alive || h.set !== e.set) continue;
+    const d = (h.x - e.x) ** 2 + (h.z - e.z) ** 2; if (d < bd) { bd = d; best = h.id; }
+  }
+  return best;
+}
+function chooseBullTarget(s, e) {
+  const c = s.heroes.filter(h => h.joined && h.alive && h.set === e.set);
+  if (!c.length) return -1;
+  const off = c.filter(h => h.id !== s.cam);
+  if (off.length && s.rng() < s.cfg.bullOffCamBias) return off[(s.rng() * off.length) | 0].id;
+  const on = c.find(h => h.id === s.cam); return on ? on.id : c[0].id;
+}
+
+// ---------- damage ----------
+function hurt(s, h, dmg, ev, src, from) {
+  if (!h.alive) return false;
+  const c = s.cfg, onCam = h.id === s.cam, fx = from ? from.x : h.x, fz = from ? from.z : h.z;
+  h.lastHitT = 0;
+  if (onCam) dmg *= c.camDamageMult;
+  if (isArmored(s, h)) {
+    const before = h.hp; h.hp = Math.max(Math.min(before, c.armorFloor), h.hp - dmg);
+    ev.push({ type: 'heroHit', hero: h.id, dmg: before - h.hp, src, onCam, armor: h.hp <= c.armorFloor + 1e-6, fx, fz });
+    return true;
+  }
+  h.hp -= dmg;
+  ev.push({ type: 'heroHit', hero: h.id, dmg, src, onCam, armor: false, fx, fz });
+  if (h.hp <= 0) killHero(s, h, ev);
+  return true;
+}
+function killHero(s, h, ev) {
+  h.alive = false; h.hp = 0; h.deadT = 0; h.cover = null; h.crouch = false;
+  const a = s.rng() * Math.PI * 2; h.fallX = Math.sin(a); h.fallZ = Math.cos(a);
+  s.killedOff.push({ id: h.id, act: s.act, t: s.t });
+  ev.push({ type: 'killedOff', hero: h.id, set: h.set, onCam: h.id === s.cam });
+  for (const e of s.enemies) if (e.alive && e.target === h.id) e.target = -1;
+  if (!s.heroes.some(x => x.joined && x.alive)) s.wrapT = s.cfg.wrapTime;
+}
+function bigHit(s, e, h, dmg, ev, kind) {
+  const c = s.cfg, onCam = h.id === s.cam;
+  if (h.iframe > 0) {
+    ev.push({ type: 'dodged', hero: h.id, by: e.id, onCam, set: h.set, x: h.x, z: h.z });
+    if (onCam) addStyle(s, c.dodgeBonus, 'CLOSE SHAVE', ev, h.x, h.z);
+    return;
+  }
+  const dx = h.x - e.x, dz = h.z - e.z, d = Math.hypot(dx, dz) || 1;
+  h.kx = dx / d * c.knockback; h.kz = dz / d * c.knockback;
+  h.downT = h.downMax = onCam ? c.knockdownTime : c.aiKnockdownTime; h.dodgeT = 0; h.cover = null; h.crouch = false; h.reloadT = 0;
+  ev.push({ type: 'knock', hero: h.id, by: e.id, kind, onCam, set: h.set, x: h.x, z: h.z });
+  hurt(s, h, dmg, ev, kind, e);
+}
+function addStyle(s, pts, label, ev, x, z) { s.styleScore += pts; s.score += pts; ev.push({ type: 'style', pts, label, x, z }); }
+function releaseSpot(s, e) { if (e.spot >= 0 && s.claims[e.set][e.spot] === e.id) delete s.claims[e.set][e.spot]; e.spot = -1; }
+function damageEnemy(s, e, dmg, dirx, dirz, h, dist, ev, head, melee) {
+  const c = s.cfg, onCam = h.id === s.cam;
+  if (e.kind !== 'mook' && e.state === 'recover') dmg *= c.recoverDamageMult;
+  e.hp -= dmg; e.hitT = 0.09; e.head = !!head; e.lastBy = h.id;
+  if (e.hp > 0) { ev.push({ type: 'hit', id: e.id, kind: e.kind, set: e.set, x: e.x, z: e.z, hp: e.hp / e.maxHp, onCam, head }); return; }
+  e.alive = false; e.deadT = 0; e.fallX = dirx; e.fallZ = dirz; e.aimT = 0; releaseSpot(s, e);
+  let pts = 0, chain = 0, pb = false;
+  if (onCam) {
+    if (e.kind === 'mook') {
+      s.chain = s.chainT > 0 ? Math.min(c.chainMax, s.chain + 1) : 1; s.chainT = c.chainWindow; chain = s.chain;
+      pb = dist <= c.pointBlank;
+      pts = c.killPoints * chain + (pb && !melee ? c.pointBlankBonus : 0) + (head ? c.headshotBonus : 0) + (melee ? c.meleeBonus : 0);
+    } else pts = e.kind === 'bull' ? c.bullPoints : c.brutePoints;
+    s.styleScore += pts; s.score += pts; s.camKills++; if (head) s.heads++;
+  }
+  s.kills++; if (e.kind !== 'mook') s.bruteKills++;
+  ev.push({ type: 'kill', id: e.id, kind: e.kind, set: e.set, x: e.x, z: e.z, onCam, pts, chain, pb, head, melee, by: h.id });
+  if (e.kind === 'bull') { s.wrapT = c.wrapTime; ev.push({ type: 'bullDown', by: h.id }); }
+}
+
+// ---------- cutting ----------
+function cutBonus(s, h) {
+  const c = s.cfg, hp = Math.max(0, h.hp), brute = !!bigTargeting(s, h.set, h.id);
+  const tier = hp < c.tierJIT ? 'jit' : hp < c.tierClose ? 'close' : hp < c.bonusStart ? 'tense' : 'safe';
+  const ok = tier !== 'safe' && h.awayT >= c.bonusMinAway && (h.hpLeft - hp) >= c.bonusMinLoss;
+  const bonus = ok ? Math.round(c.bonusMax * Math.pow((c.bonusStart - hp) / c.bonusStart, c.bonusPow) * (brute ? c.bonusBruteMult : 1) / 10) * 10 : 0;
+  return { bonus, tier: ok ? tier : 'safe', brute, hp };
+}
+function camFocus(s, h) {
+  let big = null, bs = 1e9, mk = null, md = 1e9;
+  for (const e of s.enemies) {
+    if (!e.alive || e.set !== h.set) continue;
+    const d = Math.hypot(e.x - h.x, e.z - h.z);
+    if (e.kind !== 'mook') { const sc = d - (e.target === h.id ? 100 : 0); if (sc < bs) { bs = sc; big = e; } }
+    else if (d < md && d < 22) { md = d; mk = e; }
+  }
+  return big || mk;
+}
+// how: 'you' (a cut key), 'script' (the studio's auto-cut), 'follow' (TAB: back to the script)
+function doCut(s, idx, ev, how) {
+  const c = s.cfg, h = s.heroes[idx];
+  how = how || 'you';
+  if (!h || !h.joined) { ev.push({ type: 'cutRejected', to: idx, why: 'nosignal' }); return; }
+  if (!h.alive) { ev.push({ type: 'cutRejected', to: idx, why: 'dead' }); return; }
+  if (how === 'you') {
+    const was = s.mode; s.mode = idx === s.scriptHero ? 'script' : 'director';
+    if (was !== s.mode) ev.push({ type: s.mode === 'director' ? 'offScript' : 'onScript' });
+    if (s.mode === 'director' && was !== 'director') s.breaks++;
+  }
+  if (how === 'follow' && s.mode !== 'script') { s.mode = 'script'; ev.push({ type: 'onScript' }); }
+  if (idx === s.cam) { ev.push({ type: 'cutSame', to: idx }); return; }
+  if (s.cutCd > 0 && how !== 'script') { ev.push({ type: 'cutRejected', to: idx, why: 'cooldown' }); return; }
+  const from = s.heroes[s.cam], b = how === 'you' ? cutBonus(s, h) : { bonus: 0, tier: 'safe', brute: false, hp: h.hp };
+  from.awayT = 0; from.hpLeft = from.hp; from.dodgeT = 0; from.aiFireCd = 0.3; from.cover = null; from.crouch = false;
+  from.aimK = 0; from.leanX = from.leanZ = 0; from.reloadT = 0; from.ammo = c.magSize;
+  s.cam = idx; s.cutCd = c.cutCooldown; s.cuts++;
+  h.fireCd = 0; h.vx = h.vz = 0; h.aimT = 0; h.aimK = 0; h.crouchK = 0;
+  if (b.bonus) { s.bonusTotal += b.bonus; s.score += b.bonus; s.tiers[b.tier]++; }
+  const f = camFocus(s, h); s.camYaw = f ? Math.atan2(f.x - h.x, f.z - h.z) : h.face; s.camPitch = -0.08;
+  const sh = shotList(s)[s.shotIdx];
+  ev.push({ type: 'cut', from: from.id, to: idx, hp: b.hp, bonus: b.bonus, tier: b.tier, brute: b.brute, same: from.set === h.set,
+    how, mode: s.mode, beat: how === 'script' && sh ? sh.beat : '' });
+}
+
+// ---------- presses (applied the frame they happen, before any movement) ----------
+function startDodge(h, dx, dz, c) { h.dodgeT = c.dodgeTime; h.ddx = dx; h.ddz = dz; h.iframe = c.dodgeIframes; h.dodgeCd = c.dodgeCooldown; }
+function leaveCover(s, h, ev) { if (!h.cover) return; h.cover = null; h.crouch = false; ev.push({ type: 'leaveCover', hero: h.id }); }
+function tryCover(s, h, ev) {
+  const c = s.cfg, ob = SETS[h.set].obstacles, fx = Math.sin(s.camYaw), fz = Math.cos(s.camYaw);
+  let best = -1, bs = 1e9;
+  ob.forEach(([bx, bz, hw, hd], i) => {
+    const qx = clamp(h.x, bx - hw, bx + hw), qz = clamp(h.z, bz - hd, bz + hd), dx = qx - h.x, dz = qz - h.z, dl = Math.hypot(dx, dz);
+    const d = dl - HERO_R; if (d > c.coverReach) return;
+    const sc = d - (dl > 0.01 ? (dx * fx + dz * fz) / dl : 0) * 0.6;
+    if (sc < bs) { bs = sc; best = i; }
+  });
+  if (best < 0) { ev.push({ type: 'noCover', hero: h.id }); return; }
+  const [bx, bz, hw, hd, hh] = ob[best], rx = (h.x - bx) / hw, rz = (h.z - bz) / hd;
+  let nx = 0, nz = 0; if (Math.abs(rx) > Math.abs(rz)) nx = Math.sign(rx) || 1; else nz = Math.sign(rz) || 1;
+  const ax = nz ? 1 : 0, az = nx ? 1 : 0, ext = nx ? hd : hw, off = (nx ? hw : hd) + HERO_R + 0.03;
+  const px = bx + nx * off, pz = bz + nz * off;
+  h.cover = { ob: best, nx, nz, ax, az, px, pz, lo: -ext, hi: ext, tall: hh > 1.5, h: hh };
+  h.coverU = clamp(nx ? h.z - bz : h.x - bx, -ext, ext); h.x = px + ax * h.coverU; h.z = pz + az * h.coverU;
+  h.vx = h.vz = 0; h.leaveT = 0; h.dodgeT = 0;
+  ev.push({ type: 'cover', hero: h.id, set: h.set, x: h.x, z: h.z, tall: hh > 1.5 });
+}
+function startReload(s, h, ev) {
+  if (h.reloadT > 0 || h.ammo >= s.cfg.magSize) return;
+  h.reloadT = s.cfg.reloadTime; ev.push({ type: 'reload', hero: h.id });
+}
+function tryMelee(s, h, ev) {
+  const c = s.cfg; if (h.meleeCd > 0 || h.downT > 0) return;
+  let best = null, bd = 1e9;
+  const fx = Math.sin(s.camYaw), fz = Math.cos(s.camYaw);
+  for (const e of s.enemies) {
+    if (!e.alive || e.set !== h.set) continue;
+    const dx = e.x - h.x, dz = e.z - h.z, d = Math.hypot(dx, dz) - e.r;
+    if (d > c.meleeRange) continue;
+    const front = (dx * fx + dz * fz) / (Math.hypot(dx, dz) || 1);
+    if (front < 0.2 && d > 1.0) continue;
+    if (d < bd) { bd = d; best = e; }
+  }
+  h.meleeT = c.meleeTime; h.meleeCd = c.meleeCooldown; leaveCover(s, h, ev);
+  if (!best) { ev.push({ type: 'melee', hero: h.id, set: h.set, hit: false }); return; }
+  const dx = best.x - h.x, dz = best.z - h.z, d = Math.hypot(dx, dz) || 1;
+  h.face = Math.atan2(dx, dz); s.camYaw = turnTo(s.camYaw, h.face, 0.6);
+  ev.push({ type: 'melee', hero: h.id, set: h.set, hit: true, id: best.id, x: best.x, z: best.z });
+  if (best.kind === 'mook') damageEnemy(s, best, best.hp, dx / d, dz / d, h, d, ev, false, true);
+  else { damageEnemy(s, best, c.meleeBruteDmg, dx / d, dz / d, h, d, ev, false, true); best.x += dx / d * 0.6; best.z += dz / d * 0.6; collide(best, best.r); }
+}
+function applyPress(s, p, ev) {
+  ev = ev || [];
+  if (!p) return ev;
+  if (p.skip) { if (s.phase === 'card' && s.cardT < s.cfg.cardTime - 0.35) startAct(s, s.nextAct, ev); return ev; }
+  if (s.phase !== 'play' || s.wrapT > 0) return ev;
+  const c = s.cfg;
+  if (p.cut != null) doCut(s, p.cut, ev, 'you');
+  if (p.follow) doCut(s, s.scriptHero, ev, 'follow');
+  const h = s.heroes[s.cam];
+  if (!h.alive) return ev;
+  if (p.cover) { if (h.cover) leaveCover(s, h, ev); else if (h.downT <= 0 && h.dodgeT <= 0) tryCover(s, h, ev); }
+  if (p.reload) startReload(s, h, ev);
+  if (p.melee) tryMelee(s, h, ev);
+  if (p.dodge && h.downT <= 0 && h.dodgeT <= 0 && h.dodgeCd <= 0) {
+    let dx = 0, dz = 0;
+    if (p.wx != null) { dx = p.wx; dz = p.wz; }
+    else if (p.mx || p.my) { const y = s.camYaw; dx = -Math.cos(y) * p.mx + Math.sin(y) * p.my; dz = Math.sin(y) * p.mx + Math.cos(y) * p.my; }
+    else { dx = -Math.sin(s.camYaw); dz = -Math.cos(s.camYaw); }
+    const l = Math.hypot(dx, dz) || 1; leaveCover(s, h, ev); startDodge(h, dx / l, dz / l, c); s.dodges++;
+    ev.push({ type: 'dodge', hero: h.id, set: h.set, x: h.x, z: h.z });
+  }
+  if (p.fire) tryFire(s, h, ev, true);
+  return ev;
+}
+function tryFire(s, h, ev, fresh) {
+  const c = s.cfg;
+  if (h.downT > 0 || h.dodgeT > 0 || h.meleeT > 0 || h.reloadT > 0) return;
+  if (h.ammo <= 0) { if (fresh) ev.push({ type: 'dry', hero: h.id }); startReload(s, h, ev); return; }
+  if (h.fireCd > (fresh ? c.fireInterval * 0.4 : 0)) return;
+  fireCam(s, h, ev);
+}
+function traceShot(s, h, ox, oy, oz, dx, dy, dz, tMin) {
+  const c = s.cfg;
+  let t = rayWorld(h.set, ox + dx * tMin, oy + dy * tMin, oz + dz * tMin, dx, dy, dz, c.fireRange) + tMin, hit = null;
+  for (const e of s.enemies) {
+    if (!e.alive || e.set !== h.set) continue;
+    const r = rayEnemy(e, ox, oy, oz, dx, dy, dz, c.aimAssist);
+    if (r && r.t > tMin && r.t < t) { t = r.t; hit = { e, head: r.head }; }
+  }
+  return { t, x: ox + dx * t, y: oy + dy * t, z: oz + dz * t, e: hit ? hit.e : null, head: hit ? hit.head : false };
+}
+function gunPos(s, h) {
+  const f = h.face, rx = -Math.cos(f), rz = Math.sin(f);
+  const y = h.crouch && h.cover ? h.cover.h + 0.15 : 1.32;
+  return [h.x + h.leanX + Math.sin(f) * 0.45 + rx * 0.22, y, h.z + h.leanZ + Math.cos(f) * 0.45 + rz * 0.22];
+}
+function fireCam(s, h, ev) {
+  const c = s.cfg; h.fireCd = c.fireInterval; h.ammo--; h.aimT = 0.7; h.face = s.camYaw;
+  const R = camRig(s, h), moving = Math.hypot(h.vx, h.vz) > 1.2;
+  let sp = h.aiming ? c.spreadAim : moving ? c.spreadMove : c.spreadHip;
+  if (h.cover && h.crouch) sp = c.spreadBlind;
+  const a = s.rng() * Math.PI * 2, m = Math.sqrt(s.rng()) * sp;
+  let dx = R.fx + R.rx * Math.cos(a) * m, dy = R.fy + Math.sin(a) * m, dz = R.fz + R.rz * Math.cos(a) * m;
+  const L = Math.hypot(dx, dy, dz); dx /= L; dy /= L; dz /= L;
+  const tr = traceShot(s, h, R.x, R.y, R.z, dx, dy, dz, R.dist * 0.92);
+  const [gx, gy, gz] = gunPos(s, h);
+  const blk = segBlocked(h.set, gx, gy, gz, tr.x, tr.y, tr.z);
+  let ix = tr.x, iy = tr.y, iz = tr.z, e = tr.e;
+  if (blk >= 0) { ix = gx + (tr.x - gx) * blk; iy = gy + (tr.y - gy) * blk; iz = gz + (tr.z - gz) * blk; e = null; }
+  s.camPitch = clamp(s.camPitch + c.recoil, c.pitchMin, c.pitchMax);
+  ev.push({ type: 'shot', hero: h.id, set: h.set, onCam: true, gx, gy, gz, x: ix, y: iy, z: iz, target: e ? e.id : -1,
+    head: !!(e && tr.head), blocked: blk >= 0, world: !e });
+  if (h.ammo <= 0) startReload(s, h, ev);
+  if (e) {
+    const d = Math.hypot(e.x - h.x, e.z - h.z) || 1;
+    damageEnemy(s, e, tr.head ? (e.kind === 'mook' ? c.headDmg : c.bigHeadDmg) : c.bodyDmg, (e.x - h.x) / d, (e.z - h.z) / d, h, d, ev, tr.head, false);
+  }
+}
+
+// ---------- heroes ----------
+function knockSlide(h, dt) {
+  h.downT -= dt; h.x += h.kx * dt; h.z += h.kz * dt;
+  const k = Math.exp(-6 * dt); h.kx *= k; h.kz *= k; h.vx = h.vz = 0; collide(h, HERO_R);
+}
+function updateCamHero(s, h, inp, dt, ev) {
+  const c = s.cfg;
+  h.aiming = !!inp.aim && h.downT <= 0 && h.dodgeT <= 0 && h.meleeT <= 0;
+  h.aimK += ((h.aiming ? 1 : 0) - h.aimK) * Math.min(1, 14 * dt);
+  if (h.reloadT > 0 && (h.reloadT -= dt) <= 0) { h.reloadT = 0; h.ammo = c.magSize; ev.push({ type: 'reloaded', hero: h.id }); }
+  if (h.meleeT > 0) h.meleeT -= dt;
+  if (h.aimT > 0) h.aimT -= dt;
+  if (h.ammo <= 0 && h.reloadT <= 0 && h.downT <= 0) startReload(s, h, ev);
+  let leanT = 0;
+  if (h.downT > 0) { knockSlide(h, dt); h.crouch = false; }
+  else if (h.dodgeT > 0) {
+    h.dodgeT -= dt; h.x += h.ddx * c.dodgeSpeed * dt; h.z += h.ddz * c.dodgeSpeed * dt; collide(h, HERO_R);
+    h.face = Math.atan2(h.ddx, h.ddz); h.crouch = false;
+  } else {
+    let mx = inp.mx || 0, my = inp.my || 0; const ml = Math.hypot(mx, my); if (ml > 1) { mx /= ml; my /= ml; }
+    const y = s.camYaw, wx = -Math.cos(y) * mx + Math.sin(y) * my, wz = Math.sin(y) * mx + Math.cos(y) * my;
+    const cv = h.cover;
+    if (cv) {
+      const along = wx * cv.ax + wz * cv.az, away = wx * cv.nx + wz * cv.nz;
+      if (away > 0.6) { if ((h.leaveT += dt) > c.coverLeave) leaveCover(s, h, ev); } else h.leaveT = 0;
+    }
+    if (h.cover) {
+      h.coverU = clamp(h.coverU + along(cv, wx, wz) * c.coverSpeed * dt, cv.lo, cv.hi);
+      h.x = cv.px + cv.ax * h.coverU; h.z = cv.pz + cv.az * h.coverU;
+      h.vx = cv.ax * along(cv, wx, wz) * c.coverSpeed; h.vz = cv.az * along(cv, wx, wz) * c.coverSpeed;
+      collide(h, HERO_R);
+      if (cv.tall && h.aiming) { if (h.coverU > cv.hi - 0.9) leanT = 1; else if (h.coverU < cv.lo + 0.9) leanT = -1; }
+      h.crouch = !cv.tall && !h.aiming;
+      h.face = h.aiming || h.aimT > 0 ? s.camYaw : Math.atan2(-cv.nx, -cv.nz); // crouched facing the cover
+    } else {
+      const sp = h.aiming ? c.aimSpeed : c.heroSpeed, k = Math.min(1, c.heroAccel * dt);
+      h.vx += (wx * sp - h.vx) * k; h.vz += (wz * sp - h.vz) * k;
+      h.x += h.vx * dt; h.z += h.vz * dt; collide(h, HERO_R);
+      h.crouch = false;
+      if (h.aiming || h.aimT > 0) h.face = turnTo(h.face, s.camYaw, 20 * dt);
+      else if (ml > 0.1) h.face = turnTo(h.face, Math.atan2(wx, wz), 14 * dt);
+    }
+  }
+  const cv = h.cover, lx = cv ? cv.ax * leanT * 0.75 : 0, lz = cv ? cv.az * leanT * 0.75 : 0, lk = Math.min(1, 12 * dt);
+  h.leanX += (lx - h.leanX) * lk; h.leanZ += (lz - h.leanZ) * lk;
+  h.crouchK += ((h.crouch ? 1 : 0) - h.crouchK) * Math.min(1, 12 * dt);
+  if (inp.fire) tryFire(s, h, ev, false);
+}
+function along(cv, wx, wz) { return wx * cv.ax + wz * cv.az; }
+function updateAIHero(s, h, dt, ev) {
+  const c = s.cfg, rng = s.rng;
+  h.aimK = 0; h.crouchK = 0; h.leanX = h.leanZ = 0;
+  if (h.downT > 0) { knockSlide(h, dt); return; }
+  if (h.dodgeT > 0) { h.dodgeT -= dt; h.x += h.ddx * c.dodgeSpeed * dt; h.z += h.ddz * c.dodgeSpeed * dt; collide(h, HERO_R); return; }
+  let big = null, bd = 1e9, mook = null, md = 1e9;
+  for (const e of s.enemies) {
+    if (!e.alive || e.set !== h.set) continue;
+    const d = Math.hypot(e.x - h.x, e.z - h.z);
+    if (e.kind === 'mook') { if (d < md) { md = d; mook = e; } } else if (d < bd) { bd = d; big = e; }
+  }
+  if ((h.aiFlipT -= dt) <= 0) { h.aiFlipT = 1.5 + rng() * 2.5; if (rng() < 0.5) h.aiStrafe = -h.aiStrafe; }
+  const away = (e, d, near, far) => {
+    const ux = (h.x - e.x) / (d || 1), uz = (h.z - e.z) / (d || 1), r = d < near ? 1 : d > far ? -1 : 0;
+    return [ux * r * 0.8 - uz * h.aiStrafe * 0.7, uz * r * 0.8 + ux * h.aiStrafe * 0.7];
+  };
+  let wx = 0, wz = 0, spd = c.aiSpeed;
+  if (big && (big.target === h.id || bd < 6)) {
+    [wx, wz] = away(big, bd, 5, 9);
+    if (big.target === h.id && (big.state === 'windSlam' || big.state === 'windCharge')) {
+      if (!big.aiRolled) {
+        big.aiRolled = true;
+        if (rng() < c.aiDodge) {
+          let dx, dz;
+          if (big.state === 'windSlam') { dx = h.x - big.sx; dz = h.z - big.sz; }
+          else { const side = ((h.x - big.x) * -big.cdz + (h.z - big.z) * big.cdx) >= 0 ? 1 : -1; dx = -big.cdz * side; dz = big.cdx * side; }
+          const l = Math.hypot(dx, dz) || 1; startDodge(h, dx / l, dz / l, c);
+          ev.push({ type: 'dodge', hero: h.id, set: h.set, x: h.x, z: h.z, ai: true }); return;
+        }
+      }
+      if (big.state === 'windSlam') spd *= 0.3;
+    }
+  } else if (mook) [wx, wz] = away(mook, md, 4, 9);
+  else { const d = Math.hypot(h.x, h.z); if (d > 3) { wx = -h.x / d * 0.5; wz = -h.z / d * 0.5; } }
+  if (Math.abs(h.x) > ARENA_HW - 3) wx -= Math.sign(h.x) * 0.6;
+  if (Math.abs(h.z) > ARENA_HD - 3) wz -= Math.sign(h.z) * 0.6;
+  const wl = Math.hypot(wx, wz); if (wl > 1) { wx /= wl; wz /= wl; }
+  h.vx = wx * spd; h.vz = wz * spd; h.x += h.vx * dt; h.z += h.vz * dt;
+  collide(h, HERO_R);
+  const tgt = mook && md <= c.aiRange ? mook : big && bd <= c.aiRange ? big : null;
+  if (tgt) h.face = Math.atan2(tgt.x - h.x, tgt.z - h.z); else if (wl > 0.1) h.face = Math.atan2(wx, wz);
+  if (h.aimT > 0) h.aimT -= dt;
+  if ((h.aiFireCd -= dt) <= 0 && tgt) {
+    h.aiFireCd = c.aiFireInterval * (0.8 + rng() * 0.4); h.aimT = 0.6;
+    let acc = tgt.kind === 'mook' ? c.aiAccMook : c.aiBruteAcc;
+    if (tgt.crouch) acc *= c.aiCoverPenalty;
+    const hit = rng() < acc, d = Math.hypot(tgt.x - h.x, tgt.z - h.z) || 1, H = eHeight(tgt);
+    const [gx, gy, gz] = gunPos(s, h);
+    ev.push({ type: 'shot', hero: h.id, set: h.set, onCam: false, gx, gy, gz, x: tgt.x + (hit ? 0 : (rng() - 0.5) * 3), y: H * 0.6,
+      z: tgt.z + (hit ? 0 : (rng() - 0.5) * 3), target: hit ? tgt.id : -1, head: false, blocked: false, world: !hit });
+    if (hit) damageEnemy(s, tgt, tgt.kind === 'mook' ? tgt.hp : c.aiBruteDmg, (tgt.x - h.x) / d, (tgt.z - h.z) / d, h, d, ev, false, false);
+  }
+}
+
+// ---------- enemies ----------
+function moveEnemy(s, e, wx, wz, spd, dt) {
+  if (e.detourT > 0) { e.detourT -= dt; const px = -wz * e.detour, pz = wx * e.detour; wx = wx * 0.3 + px; wz = wz * 0.3 + pz; }
+  const ox = e.x, oz = e.z; e.x += wx * spd * dt; e.z += wz * spd * dt;
+  const hit = collide(e, e.r), want = Math.hypot(wx, wz) * spd * dt;
+  e.moving = want / dt;
+  if (hit && want > 0 && Math.hypot(e.x - ox, e.z - oz) < want * 0.35) {
+    if ((e.stuckT += dt) > 0.25) { e.stuckT = 0; e.detour = s.rng() < 0.5 ? -1 : 1; e.detourT = 0.9; }
+  } else e.stuckT = 0;
+  return hit;
+}
+function enemyHero(s, e, dt) {
+  let h = e.target >= 0 ? s.heroes[e.target] : null;
+  const finale = ACTS[s.act].finale;
+  if (!h || !h.alive || h.set !== e.set || (finale && e.kind === 'mook' && (e.retT -= dt) <= 0)) {
+    e.retT = 2.5; e.target = pickEnemyTarget(s, e); h = e.target >= 0 ? s.heroes[e.target] : null;
+  }
+  return h;
+}
+function mookFire(s, e, h, ev) {
+  const c = s.cfg;
+  const gx = e.x + Math.sin(e.face) * 0.45, gy = 1.32, gz = e.z + Math.cos(e.face) * 0.45;
+  const tx = h.x + h.leanX, ty = h.crouch ? 0.62 : 1.2, tz = h.z + h.leanZ;
+  const blk = segBlocked(e.set, gx, gy, gz, tx, ty, tz), d = Math.hypot(tx - gx, tz - gz);
+  let acc = c.mookAcc * clamp(1.25 - d / 24, 0.45, 1);
+  if (Math.hypot(h.vx, h.vz) > 3) acc *= 0.75;
+  const hit = blk < 0 && h.iframe <= 0 && s.rng() < acc;
+  let x = tx, y = ty, z = tz;
+  if (blk >= 0) { x = gx + (tx - gx) * blk; y = gy + (ty - gy) * blk; z = gz + (tz - gz) * blk; }
+  else if (!hit) { const side = s.rng() < 0.5 ? -1 : 1, off = 0.6 + s.rng() * 1.2, ux = (tx - gx) / (d || 1), uz = (tz - gz) / (d || 1);
+    x = tx - uz * off * side + ux * 6; z = tz + ux * off * side + uz * 6; y = ty + (s.rng() - 0.3) * 0.8; }
+  ev.push({ type: 'mookShot', id: e.id, set: e.set, gx, gy, gz, x, y, z, hit, blocked: blk >= 0, hero: h.id, onCam: h.id === s.cam });
+  if (hit) hurt(s, h, c.mookDamage, ev, 'mook', e);
+}
+function spotGood(s, e, h) {
+  if (e.spot < 0) return false;
+  const p = SPOTS[e.set][e.spot], vx = h.x - p.x, vz = h.z - p.z, d = Math.hypot(vx, vz) || 1;
+  return d > 3.5 && (vx * p.nx + vz * p.nz) / d < -0.3;
+}
+function pickSpot(s, e, h) {
+  let best = -1, bs = 1e9; const cl = s.claims[e.set];
+  SPOTS[e.set].forEach((p, i) => {
+    if (cl[i] && cl[i] !== e.id) return;
+    const vx = h.x - p.x, vz = h.z - p.z, d = Math.hypot(vx, vz);
+    if (d < 5 || d > 17 || (vx * p.nx + vz * p.nz) / d > -0.45) return;
+    const sc = Math.abs(d - 10) + Math.hypot(p.x - e.x, p.z - e.z) * 0.35 + s.rng() * 2;
+    if (sc < bs) { bs = sc; best = i; }
+  });
+  return best;
+}
+function updateMook(s, e, dt, ev) {
+  const c = s.cfg, h = enemyHero(s, e, dt);
+  e.moving = 0;
+  if (!h) { e.aimT = 0; e.crouch = false; return; }
+  const dx = h.x - e.x, dz = h.z - e.z, d = Math.hypot(dx, dz) || 1, toH = Math.atan2(dx, dz);
+  switch (e.state) {
+    case 'move': {
+      e.crouch = false;
+      if (!spotGood(s, e, h)) {
+        releaseSpot(s, e); e.spot = pickSpot(s, e, h);
+        if (e.spot < 0) { e.state = 'stand'; e.stT = 3; break; }
+        s.claims[e.set][e.spot] = e.id;
+      }
+      const p = SPOTS[e.set][e.spot], px = p.x - e.x, pz = p.z - e.z, pd = Math.hypot(px, pz);
+      if (pd < 0.3) {
+        e.x = p.x; e.z = p.z; e.state = 'cover'; e.crouch = true; e.stT = 0.5 + s.rng() * 0.9;
+        e.relocT = lerp(c.mookRelocMin, c.mookRelocMax, s.rng()); break;
+      }
+      moveEnemy(s, e, px / pd, pz / pd, c.mookSpeed, dt); e.face = turnTo(e.face, Math.atan2(px, pz), 10 * dt);
+      break; }
+    case 'cover':
+      e.crouch = true; e.face = turnTo(e.face, toH, 6 * dt);
+      if (!spotGood(s, e, h) || (e.relocT -= dt) <= 0) { e.state = 'move'; e.crouch = false; releaseSpot(s, e); break; }
+      if ((e.stT -= dt) <= 0 && d < 24) { e.state = 'up'; e.crouch = false; e.aimT = c.mookAim; e.upT = c.mookUpTime; ev.push({ type: 'mookAim', id: e.id, set: e.set }); }
+      break;
+    case 'up':
+      e.crouch = false; e.face = turnTo(e.face, toH, 10 * dt);
+      if (e.aimT > 0) { if ((e.aimT -= dt) <= 0) { e.aimT = 0; mookFire(s, e, h, ev); } }
+      else if ((e.upT -= dt) <= 0) { e.state = 'cover'; e.crouch = true; e.stT = lerp(c.mookFireMin, c.mookFireMax, s.rng()); }
+      break;
+    case 'rush':
+      e.crouch = false; e.face = turnTo(e.face, toH, 10 * dt);
+      if (d > 5) moveEnemy(s, e, dx / d, dz / d, c.mookSpeed * 1.25, dt); else { e.state = 'stand'; e.range = 5; e.stT = 6; }
+      break;
+    default: { // 'stand': no cover to use: keep range, strafe, shoot
+      e.crouch = false; e.face = turnTo(e.face, toH, 10 * dt);
+      let mv = 0, st = 0;
+      if (e.aimT <= 0) { if (d > e.range) mv = 1; else if (d < e.range - 2.5) mv = -0.6; else st = 0.45; }
+      if (mv || st) { if (moveEnemy(s, e, dx / d * mv - dz / d * e.strafe * st, dz / d * mv + dx / d * e.strafe * st, c.mookSpeed, dt) && st) e.strafe = -e.strafe; }
+      if ((e.stT -= dt) <= 0) { e.stT = 3; if (pickSpot(s, e, h) >= 0 && e.aimT <= 0) { e.state = 'move'; break; } }
+      if (d > 24) { e.aimT = 0; break; }
+      if (e.aimT > 0) { if ((e.aimT -= dt) <= 0) { e.aimT = 0; mookFire(s, e, h, ev); } }
+      else if ((e.fireCd -= dt) <= 0) { e.aimT = c.mookAim; e.fireCd = lerp(c.mookFireMin, c.mookFireMax, s.rng()); ev.push({ type: 'mookAim', id: e.id, set: e.set }); }
+    }
+  }
+}
+function updateBig(s, e, dt, ev) {
+  const c = s.cfg, P = bigP(c, e), bull = e.kind === 'bull';
+  e.chargeCd -= dt; e.moving = 0;
+  const h = enemyHero(s, e, dt);
+  if (!h) { e.state = 'chase'; return; }
+  const dx = h.x - e.x, dz = h.z - e.z, d = Math.hypot(dx, dz) || 1;
+  switch (e.state) {
+    case 'chase':
+      e.face = turnTo(e.face, Math.atan2(dx, dz), 5 * dt);
+      moveEnemy(s, e, dx / d, dz / d, P.speed, dt);
+      if (d <= P.slamRange) {
+        e.state = 'windSlam'; e.stT = P.slamWind; e.sx = h.x; e.sz = h.z; e.aiRolled = false;
+        ev.push({ type: 'wind', id: e.id, kind: 'slam', set: e.set });
+      } else if (d >= c.chargeMin && e.chargeCd <= 0) {
+        e.state = 'windCharge'; e.stT = c.chargeWind; e.cdx = dx / d; e.cdz = dz / d; e.face = Math.atan2(dx, dz); e.aiRolled = false;
+        ev.push({ type: 'wind', id: e.id, kind: 'charge', set: e.set });
+      }
+      break;
+    case 'windSlam':
+      e.face = turnTo(e.face, Math.atan2(e.sx - e.x, e.sz - e.z), 6 * dt);
+      if ((e.stT -= dt) <= 0) {
+        e.state = 'recover'; e.stT = c.slamRecover;
+        ev.push({ type: 'slam', id: e.id, set: e.set, x: e.sx, z: e.sz, r: P.slamR });
+        for (const o of s.heroes) if (o.joined && o.alive && o.set === e.set && Math.hypot(o.x - e.sx, o.z - e.sz) <= P.slamR + HERO_R * 0.5) bigHit(s, e, o, P.slamDmg, ev, 'slam');
+      }
+      break;
+    case 'windCharge':
+      if ((e.stT -= dt) <= 0) { e.state = 'charge'; e.stT = c.chargeTime; e.chargeHit = false; ev.push({ type: 'charge', id: e.id, set: e.set }); }
+      break;
+    case 'charge': {
+      e.stT -= dt; e.x += e.cdx * c.chargeSpeed * dt; e.z += e.cdz * c.chargeSpeed * dt; e.moving = c.chargeSpeed;
+      const blocked = collide(e, e.r);
+      if (!e.chargeHit) for (const o of s.heroes) {
+        if (o.joined && o.alive && o.set === e.set && Math.hypot(o.x - e.x, o.z - e.z) < P.hitR) { e.chargeHit = true; bigHit(s, e, o, P.chargeDmg, ev, 'charge'); break; }
+      }
+      if (e.stT <= 0 || blocked) {
+        e.state = 'recover'; e.stT = c.chargeRecover; e.chargeCd = c.chargeCooldown;
+        if (blocked) ev.push({ type: 'wallHit', id: e.id, set: e.set, x: e.x, z: e.z });
+      }
+      break; }
+    case 'recover':
+      if ((e.stT -= dt) <= 0) {
+        e.state = 'chase';
+        if (bull) { const old = e.target; e.target = chooseBullTarget(s, e); if (e.target !== old) ev.push({ type: 'retarget', id: e.id, hero: e.target }); }
+      }
+      break;
+    default: e.state = 'chase';
+  }
+}
+function separate(s) {
+  const E = s.enemies;
+  for (let i = 0; i < E.length; i++) {
+    const a = E[i]; if (!a.alive) continue;
+    for (let j = i + 1; j < E.length; j++) {
+      const b = E[j]; if (!b.alive || b.set !== a.set) continue;
+      const dx = b.x - a.x, dz = b.z - a.z, d2 = dx * dx + dz * dz, m = a.r + b.r;
+      if (d2 >= m * m || d2 < 1e-9) continue;
+      const d = Math.sqrt(d2), p = (m - d) / d * 0.5, wa = a.kind === 'mook' ? 1 : 0.2, wb = b.kind === 'mook' ? 1 : 0.2;
+      a.x -= dx * p * wa; a.z -= dz * p * wa; b.x += dx * p * wb; b.z += dz * p * wb;
+    }
+    for (const h of s.heroes) {
+      if (!h.joined || !h.alive || h.set !== a.set) continue;
+      const dx = h.x - a.x, dz = h.z - a.z, d2 = dx * dx + dz * dz, m = a.r + HERO_R;
+      if (d2 >= m * m || d2 < 1e-9) continue;
+      const d = Math.sqrt(d2), p = (m - d) / d;
+      if (a.kind === 'mook' || h.cover) { a.x -= dx * p; a.z -= dz * p; } else { h.x += dx * p; h.z += dz * p; collide(h, HERO_R); }
+    }
+  }
+}
+function updateScript(s, dt, ev) {
+  const sc = scriptAt(s, s.actT);
+  if (sc.hero !== s.scriptHero || sc.idx !== s.shotIdx) { s.scriptHero = sc.hero; s.shotIdx = sc.idx; ev.push({ type: 'shotChange', hero: sc.hero }); }
+  s.cue = nextCue(s);
+  if (s.mode === 'director') s.offT += dt;
+  else if (s.cfg.scriptAuto && s.cam !== s.scriptHero && s.heroes[s.scriptHero].alive) doCut(s, s.scriptHero, ev, 'script');
+}
+function updateLone(s, ev) {
+  const n = s.heroes.filter(h => h.joined && h.alive).length, lone = n <= 1;
+  if (lone === s.lone) return;
+  s.lone = lone;
+  if (!s.cfg.loneArmor && n >= 1) ev.push({ type: lone ? 'armorLost' : 'armorBack', hero: s.cam });
+}
+
+// ---------- one fixed tick (60 Hz) ----------
+function step(s, inp, dt) {
+  const ev = []; inp = inp || {};
+  if (inp.dyaw || inp.dpitch) look(s, inp.dyaw || 0, inp.dpitch || 0);
+  if (inp.press) applyPress(s, inp.press, ev);
+  if (s.phase === 'card') { if ((s.cardT -= dt) <= 0) startAct(s, s.nextAct, ev); return ev; }
+  if (s.phase !== 'play') return ev;
+  const c = s.cfg, A = ACTS[s.act];
+  if (s.wrapT > 0) {
+    for (const h of s.heroes) if (h.joined && !h.alive) h.deadT += dt;
+    for (const e of s.enemies) if (!e.alive) e.deadT += dt;
+    if ((s.wrapT -= dt) <= 0) endFilm(s, ev); return ev;
+  }
+  s.t += dt; s.actT += dt;
+  if (s.cutCd > 0) s.cutCd -= dt;
+  if (s.chainT > 0 && (s.chainT -= dt) <= 0) s.chain = 0;
+  // 1. the studio's script (auto-cuts while you're on script)
+  updateScript(s, dt, ev);
+  // 2. scheduled heavies walk in
+  for (const b of s.schedule) {
+    if (b.done || s.actT < b.t) continue;
+    b.done = true;
+    if (A.finale || setHero(s, b.set)) spawnBig(s, b.set, b.kind, ev);
+  }
+  // 3. mooks walk in
+  for (const set of activeSets(s)) {
+    if ((s.spawnT[set] -= dt) > 0) continue;
+    s.spawnT[set] = A.mook(c) * lerp(1, c.mookRamp, clamp(s.actT / 60, 0, 1)) * (0.75 + s.rng() * 0.5);
+    let n = 0; for (const e of s.enemies) if (e.alive && e.set === set && e.kind === 'mook') n++;
+    if (n < A.cap(c)) spawnMook(s, set, ev);
+  }
+  // 4. heroes: you on camera, the AI off camera
+  for (const h of s.heroes) {
+    if (!h.joined) continue;
+    if (!h.alive) { h.deadT += dt; continue; }
+    if (h.fireCd > 0) h.fireCd -= dt;
+    if (h.dodgeCd > 0) h.dodgeCd -= dt;
+    if (h.meleeCd > 0) h.meleeCd -= dt;
+    if (h.iframe > 0) h.iframe -= dt;
+    h.lastHitT += dt;
+    if (h.id === s.cam) updateCamHero(s, h, inp, dt, ev); else { h.awayT += dt; updateAIHero(s, h, dt, ev); }
+  }
+  // 5. enemies (their shots and slams resolve damage and deaths here)
+  for (const e of s.enemies) {
+    if (!e.alive) { e.deadT += dt; continue; }
+    if (e.hitT > 0) e.hitT -= dt;
+    if (e.kind === 'mook') updateMook(s, e, dt, ev); else updateBig(s, e, dt, ev);
+  }
+  // 6. bodies push apart
+  separate(s);
+  // 7. on camera, health comes back after a moment unhurt (faster in cover)
+  const ch = s.heroes[s.cam];
+  if (ch.alive && ch.hp < 1 && ch.lastHitT > c.regenDelay) ch.hp = Math.min(1, ch.hp + c.regenRate * (ch.cover ? c.regenCoverMult : 1) * dt);
+  // 8. clear old corpses
+  if (s.enemies.some(e => !e.alive && e.deadT > c.corpseTime)) s.enemies = s.enemies.filter(e => e.alive || e.deadT <= c.corpseTime);
+  // 9. nobody left to cut to?
+  updateLone(s, ev);
+  // 10. act over?
+  if (s.wrapT <= 0 && s.phase === 'play' && !A.finale) {
+    const pending = s.schedule.some(b => !b.done);
+    const liveBig = s.enemies.some(e => e.alive && e.kind !== 'mook' && e.target >= 0);
+    if ((s.actT >= A.min(c) && !pending && !liveBig) || s.actT >= A.max(c)) endAct(s, ev);
+  }
+  return ev;
+}
+
+// ---------- autoplay bots (the test hook, the theatrical replay and bots.js) ----------
+const BOT_KINDS = {
+  director: { brute: 0.55, low: 0.3, emergency: 0.15, dwell: 2.5, react: 0.28 }, // breaks script for heroes in trouble
+  greedy: { brute: 0.3, low: 0.2, emergency: 0.1, dwell: 2.5, react: 0.28 },     // breaks script late, for the bonus
+  script: { never: true, react: 0.28 },                                          // never cuts: the studio's edit
+  idle: { never: true, idle: true },                                             // presses nothing
+};
+function botChooseCut(s, P, dwell) {
+  const cur = s.heroes[s.cam], curBig = bigTargeting(s, cur.set, cur.id);
+  let best = -1, bu = 0;
+  for (const h of s.heroes) {
+    if (!h.joined || !h.alive || h.id === s.cam) continue;
+    const big = bigTargeting(s, h.set, h.id);
+    const u = h.hp < P.emergency ? 3 : big && h.hp < P.brute ? 2 : h.hp < P.low ? 1 : 0;
+    if (u > bu || (u === bu && u > 0 && h.hp < s.heroes[best].hp)) { bu = u; best = h.id; }
+  }
+  if (best < 0) return -1;
+  if (curBig && bu < 3) return -1;
+  if (dwell < P.dwell && bu < 3) return -1;
+  return best;
+}
+function makeBot(kind, seed) {
+  const P = BOT_KINDS[kind] || BOT_KINDS.director, rng = makeRng(seed || 7);
+  let think = 0, dwell = 0, strafe = 1, flipT = 2, lastCam = -1;
+  return function (s, dt) {
+    const out = { mx: 0, my: 0, fire: false, aim: false, dyaw: 0, dpitch: 0, press: null };
+    if (s.phase !== 'play' || s.wrapT > 0) return out;
+    const c = s.cfg;
+    if (s.cam !== lastCam) { lastCam = s.cam; dwell = 0; }
+    dwell += dt;
+    if (!P.never && (think -= dt) <= 0) {
+      think = 0.2 + rng() * 0.15;
+      const to = botChooseCut(s, P, dwell);
+      if (to >= 0) { out.press = { cut: to }; return out; }
+    }
+    if (P.idle) return out;
+    const h = s.heroes[s.cam]; if (!h.alive) return out;
+    if ((flipT -= dt) <= 0) { flipT = 1.5 + rng() * 2; strafe = -strafe; }
+    let big = null, bd = 1e9, mk = null, md = 1e9, up = null, ud = 1e9;
+    for (const e of s.enemies) {
+      if (!e.alive || e.set !== h.set) continue;
+      const d = Math.hypot(e.x - h.x, e.z - h.z);
+      if (e.kind === 'mook') { if (d < md) { md = d; mk = e; } if (!e.crouch && d < ud) { ud = d; up = e; } } else if (d < bd) { bd = d; big = e; }
+    }
+    const ring = (e, d, near, far) => {
+      const ux = (e.x - h.x) / (d || 1), uz = (e.z - h.z) / (d || 1), k = d < near ? -1 : d > far ? 1 : 0;
+      return [ux * k - uz * strafe * 0.8, uz * k + ux * strafe * 0.8];
+    };
+    let wx = 0, wz = 0;
+    if (big) {
+      [wx, wz] = ring(big, bd, 6, 8.5);
+      const P2 = bigP(c, big); let threat = false, ax = 0, az = 0;
+      if (big.state === 'windSlam' && P2.slamWind - big.stT >= P.react) {
+        const dx = h.x - big.sx, dz = h.z - big.sz, d = Math.hypot(dx, dz);
+        if (d < P2.slamR + 1) { threat = true; ax = d > 0.01 ? dx / d : 1; az = d > 0.01 ? dz / d : 0; }
+      }
+      if (big.state === 'windCharge' && c.chargeWind - big.stT >= P.react) {
+        const px = h.x - big.x, pz = h.z - big.z, al = px * big.cdx + pz * big.cdz, perp = px * -big.cdz + pz * big.cdx;
+        if (al > -1 && Math.abs(perp) < P2.hitR + 1.2) { threat = true; const sg = perp >= 0 ? 1 : -1; ax = -big.cdz * sg; az = big.cdx * sg; }
+      }
+      if (threat && h.dodgeCd <= 0 && h.dodgeT <= 0) out.press = { dodge: true, wx: ax, wz: az };
+      else if (threat) { wx = ax; wz = az; }
+    } else if (mk) [wx, wz] = ring(mk, md, 4, 9);
+    else { const d = Math.hypot(h.x, h.z); if (d > 3) { wx = -h.x / d; wz = -h.z / d; } }
+    if (Math.abs(h.x) > ARENA_HW - 3) wx -= Math.sign(h.x) * 0.7;
+    if (Math.abs(h.z) > ARENA_HD - 3) wz -= Math.sign(h.z) * 0.7;
+    // aim the camera like a player would: turn toward the target's chest, fire when on it
+    const tgt = big || up || mk;
+    if (tgt) {
+      const R = camRig(s, h), ty = eHeight(tgt) * 0.55;
+      const dx = tgt.x - R.x, dy = ty - R.y, dz = tgt.z - R.z;
+      const ey = wrapA(Math.atan2(dx, dz) - s.camYaw), ep = Math.atan2(dy, Math.hypot(dx, dz)) - s.camPitch, turn = 7 * dt;
+      out.dyaw = clamp(ey, -turn, turn) + (rng() - 0.5) * 0.004; out.dpitch = clamp(ep, -turn, turn);
+      const dist = Math.hypot(tgt.x - h.x, tgt.z - h.z);
+      out.aim = dist > 9;
+      out.fire = Math.abs(ey) < 0.05 && Math.abs(ep) < 0.06 && !(tgt.kind === 'mook' && tgt.crouch);
+      if (tgt.kind === 'mook' && dist < c.meleeRange && h.meleeCd <= 0 && !out.press) out.press = { melee: true };
+    }
+    const y = s.camYaw;
+    out.mx = wx * -Math.cos(y) + wz * Math.sin(y); out.my = wx * Math.sin(y) + wz * Math.cos(y);
+    return out;
+  };
+}
+
+if (typeof window !== 'undefined') window.RULES = { CONFIG, DEFAULTS, SETS, HEROES, ACTS, SCRIPT, FINALE_SPOTS, ARENA_HW, ARENA_HD, WALL_H,
+  DIM, HEAD_Y, HEAD_R, CROUCH, SPOTS, newGame, step, applyPress, look, camRig, gunPos, eHeight, makeBot, BOT_KINDS, isArmored,
+  cutBonus, bigTargeting, bigP, shotList };
+</script>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+
+<!-- ===================================================================================
+     PRESENTATION: three.js, Nitrate grade, rigged characters, cameras, HUD, sound and score.
+     Reads the rules' state; changes it only through look(), applyPress() and step().
+     =================================================================================== -->
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+
+const R = window.RULES;
+const { CONFIG, SETS, HEROES, ACTS, ARENA_HW, ARENA_HD, WALL_H, DIM, HEAD_Y, HEAD_R, CROUCH } = R;
+const DT = 1 / 60;
+const $ = id => document.getElementById(id);
+// Stand-in rigged character (CC0, from the three.js examples). Any rigged glTF with these clip and bone names drops in.
+const MODEL_URL = 'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r170/examples/models/gltf/RobotExpressive/RobotExpressive.glb';
+
+// ===== Nitrate: from prototypes/style/nitrate.js (locked Nov 12). Changed: the composer draws into a viewport, so the
+// 4:3 gate and the round cameos share one canvas, each with its own room's tone. =====
+const PALETTE = { ink: '#0D0C0B', silver: '#7A756D', bone: '#C9C2B4', paper: '#F1EADB', red: '#D3301F', gold: '#E9B949' };
+const TONES = {
+  night: ['#0B1420', '#5F7387', '#EEF0EA'], amber: ['#1A1108', '#9B7A4D', '#F6EBD3'],
+  green: ['#0E1712', '#6C806D', '#EEF0E4'], silver: ['#0D0C0B', '#7A756D', '#F1EADB'],
+};
+const srgbVec = (hex) => { const n = parseInt(hex.slice(1), 16); return new THREE.Vector3((n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255); };
+const NitrateGradeShader = {
+  uniforms: { tDiffuse: { value: null }, uDark: { value: srgbVec(TONES.silver[0]) }, uMid: { value: srgbVec(TONES.silver[1]) },
+    uLight: { value: srgbVec(TONES.silver[2]) }, uCurve: { value: 0.35 }, uAmount: { value: 1.0 } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: `
+    uniform sampler2D tDiffuse; uniform vec3 uDark, uMid, uLight; uniform float uCurve, uAmount; varying vec2 vUv;
+    void main(){
+      vec3 c = texture2D(tDiffuse, vUv).rgb;
+      float v = clamp(dot(c, vec3(0.2126, 0.7152, 0.0722)), 0.0, 1.0);
+      float s = v < 0.5 ? 2.0 * v * v : 1.0 - 2.0 * (1.0 - v) * (1.0 - v);
+      v = mix(v, s, uCurve);
+      vec3 toned = v < 0.5 ? mix(uDark, uMid, v / 0.5) : mix(uMid, uLight, (v - 0.5) / 0.5);
+      float mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b));
+      float sat = mx > 0.0 ? (mx - mn) / mx : 0.0;
+      vec3 graded = mix(toned, c, smoothstep(0.30, 0.55, sat));
+      gl_FragColor = vec4(mix(c, graded, uAmount), 1.0);
+    }`,
+};
+
+const canvas = $('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+renderer.toneMapping = THREE.NoToneMapping;           // keeps the value ladder predictable
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.autoClear = false;
+const scene = new THREE.Scene(); scene.background = new THREE.Color(PALETTE.ink);
+
+function makeGrade(tone) {
+  const composer = new EffectComposer(renderer);
+  const rp = new RenderPass(scene, null); composer.addPass(rp); composer.addPass(new OutputPass());
+  const pass = new ShaderPass(NitrateGradeShader); composer.addPass(pass);
+  const g = { composer, rp, pass, tone: '', setTone(name) {
+    if (g.tone === name) return; g.tone = name; const [d, m, l] = TONES[name];
+    pass.uniforms.uDark.value.copy(srgbVec(d)); pass.uniforms.uMid.value.copy(srgbVec(m)); pass.uniforms.uLight.value.copy(srgbVec(l)); } };
+  g.setTone(tone); return g;
+}
+const mainGrade = makeGrade('amber'), cmGrade = [makeGrade('green'), makeGrade('night')];
+
+// Film layers over the picture (grain, flicker, dust, splice), ticking at 24 fps. From nitrate.js filmOverlay().
+function filmOverlay(picture, { grain = 0.10, flicker = 0.04 } = {}) {
+  const layer = (css) => { const d = document.createElement('div'); d.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:10;' + css; picture.appendChild(d); return d; };
+  const noise = document.createElement('canvas'); noise.width = noise.height = 256;
+  const nc = noise.getContext('2d'), img = nc.createImageData(256, 256);
+  for (let i = 0; i < img.data.length; i += 4) { const v = 128 + (Math.random() - 0.5) * 255; img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
+  nc.putImageData(img, 0, 0);
+  layer('background:radial-gradient(ellipse at center, transparent 55%, rgba(13,12,11,.55) 100%);');
+  const grainL = layer(`background-image:url(${noise.toDataURL()});background-size:256px 256px;opacity:${grain};mix-blend-mode:overlay;`);
+  const flick = layer('background:#000;opacity:0;'), specks = layer(''), flash = layer(`background:${PALETTE.paper};opacity:0;`);
+  const bar = layer(`top:auto;height:0;background:${PALETTE.ink};`);
+  let lastTick = -1, nextScratch = 8, splicing = -1;
+  const tick = (now) => {
+    requestAnimationFrame(tick);
+    const t = now / 1000, frame = Math.floor(t * 24);
+    if (frame === lastTick) return; lastTick = frame;
+    grainL.style.backgroundPosition = `${Math.random() * 256 | 0}px ${Math.random() * 256 | 0}px`;
+    flick.style.opacity = (Math.random() * flicker).toFixed(3);
+    specks.innerHTML = '';
+    if (Math.random() < 2 / 24) {
+      const s = 2 + Math.random() * 4, light = Math.random() < 0.5;
+      specks.innerHTML = `<i style="position:absolute;left:${Math.random() * 100}%;top:${Math.random() * 100}%;width:${s}px;height:${s}px;border-radius:50%;background:${light ? '#eee' : '#111'};opacity:.7"></i>`;
+    }
+    if (t > nextScratch) {
+      specks.innerHTML += `<i style="position:absolute;left:${10 + Math.random() * 80}%;top:0;bottom:0;width:1px;background:rgba(240,235,220,.35)"></i>`;
+      if (t > nextScratch + 2 / 24) nextScratch = t + 6 + Math.random() * 4;
+    }
+    if (splicing >= 0) { flash.style.opacity = splicing === 0 ? 0.85 : 0; bar.style.height = ['2%', '4%', '2%'][splicing] || '0'; splicing = splicing >= 2 ? -1 : splicing + 1; }
+    else { flash.style.opacity = 0; bar.style.height = '0'; }
+  };
+  requestAnimationFrame(tick);
+  return { splice() { splicing = 0; lastTick = -1; } };
+}
+const film = filmOverlay($('picture'));
+
+// ===== lights: one hard white key with one shadow, low fill. The key follows the room on camera. =====
+const hemi = new THREE.HemisphereLight(0xffffff, 0x202020, 0.6);
+const key = new THREE.DirectionalLight(0xffffff, 2.5);
+key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.0006; key.shadow.normalBias = 0.02;
+Object.assign(key.shadow.camera, { left: -24, right: 24, top: 24, bottom: -24, near: 1, far: 90 });
+scene.add(hemi, key, key.target);
+const KEY_DIR = new THREE.Vector3(-0.45, 1, 0.3).normalize();
+let keySet = -1;
+function aimKey(set) {
+  if (set === keySet) return; keySet = set;
+  const cx = SETS[set].cx; key.target.position.set(cx, 0, 0); key.position.set(cx + KEY_DIR.x * 40, KEY_DIR.y * 40, KEY_DIR.z * 40);
+  key.target.updateMatrixWorld();
+}
+
+// ===== materials on the value ladder (sRGB greys; the grade tones them) =====
+const MATS = {};
+const grey = (v, rough = 0.85) => MATS['g' + v + rough] || (MATS['g' + v + rough] = (() => {
+  const m = new THREE.MeshStandardMaterial({ roughness: rough, metalness: 0 }); m.color.setRGB(v / 255, v / 255, v / 255, THREE.SRGBColorSpace); return m; })());
+const flatGrey = v => MATS['f' + v] || (MATS['f' + v] = (() => { const m = new THREE.MeshBasicMaterial({ fog: false }); m.color.setRGB(v / 255, v / 255, v / 255, THREE.SRGBColorSpace); return m; })());
+const STENCIL = { red: new THREE.MeshBasicMaterial({ color: PALETTE.red }), gold: new THREE.MeshBasicMaterial({ color: PALETTE.gold }),
+  paper: new THREE.MeshBasicMaterial({ color: PALETTE.paper }) };
+const redT = new THREE.MeshBasicMaterial({ color: PALETTE.red, transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide });
+const G = { box: new THREE.BoxGeometry(1, 1, 1), plane: new THREE.PlaneGeometry(1, 1), cyl: new THREE.CylinderGeometry(1, 1, 1, 20),
+  sph: new THREE.SphereGeometry(1, 16, 12), disc: new THREE.CircleGeometry(1, 48), ring: new THREE.RingGeometry(0.9, 1, 48) };
+function box(p, x, y, z, w, h, d, m, cast = true) { const o = new THREE.Mesh(G.box, m); o.scale.set(w, h, d); o.position.set(x, y, z); o.castShadow = cast; o.receiveShadow = true; p.add(o); return o; }
+function cyl(p, x, y, z, r, h, m) { const o = new THREE.Mesh(G.cyl, m); o.scale.set(r, h, r); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; p.add(o); return o; }
+function flat(p, x, z, w, d, m, y = 0) { const o = new THREE.Mesh(G.plane, m); o.rotation.x = -Math.PI / 2; o.scale.set(w, d, 1); o.position.set(x, y, z); o.receiveShadow = true; p.add(o); return o; }
+function backdrop(p, x, y, z, w, h, v, ry = 0) { const o = new THREE.Mesh(G.plane, flatGrey(v)); o.scale.set(w, h, 1); o.position.set(x, y, z); o.rotation.y = ry; p.add(o); return o; }
+
+// ===== the four sets (grey boxes on the value ladder; the characters are the real models) =====
+const FLOOR = [112, 104, 100, 96], WALLV = [118, 108, 92, 84];
+function walls(g, i) {
+  const S = SETS[i], gap = 1.6, H = WALL_H, wm = grey(WALLV[i]), trim = grey(150), dark = grey(16);
+  const sides = [
+    { fixed: 'x', v: -ARENA_HW, from: -ARENA_HD, to: ARENA_HD }, { fixed: 'x', v: ARENA_HW, from: -ARENA_HD, to: ARENA_HD },
+    { fixed: 'z', v: -ARENA_HD, from: -ARENA_HW, to: ARENA_HW }, { fixed: 'z', v: ARENA_HD, from: -ARENA_HW, to: ARENA_HW }];
+  for (const sd of sides) {
+    const doors = S.doors.filter(d => Math.abs((sd.fixed === 'x' ? d[0] : d[1]) - sd.v) < 0.5).map(d => sd.fixed === 'x' ? d[1] : d[0]).sort((a, b) => a - b);
+    let a = sd.from; const segs = [];
+    for (const dc of doors) { segs.push([a, dc - gap]); a = dc + gap; }
+    segs.push([a, sd.to]);
+    const out = sd.v + Math.sign(sd.v) * 0.3;
+    for (const [s0, s1] of segs) {
+      if (s1 - s0 < 0.05) continue;
+      const m = (s0 + s1) / 2, L = s1 - s0;
+      if (sd.fixed === 'x') { box(g, out, H / 2, m, 0.6, H, L, wm); box(g, out, H + 0.1, m, 0.8, 0.2, L, trim); }
+      else { box(g, m, H / 2, out, L, H, 0.6, wm); box(g, m, H + 0.1, out, L, 0.2, 0.8, trim); }
+    }
+    for (const dc of doors) { // dark doorway, lintel above
+      if (sd.fixed === 'x') { box(g, out + Math.sign(sd.v) * 0.6, 1.6, dc, 0.4, 3.2, gap * 2, dark, false); box(g, out, 3.7, dc, 0.6, 1.0, gap * 2, wm); }
+      else { box(g, dc, 1.6, out + Math.sign(sd.v) * 0.6, gap * 2, 3.2, 0.4, dark, false); box(g, dc, 3.7, out, gap * 2, 1.0, 0.6, wm); }
+    }
+  }
+}
+function obstacle(g, i, [x, z, hw, hd, h]) {
+  const tall = h > 1.5;
+  if (i === 0) { // Mill: posts and sacks
+    if (tall) { box(g, x, h / 2, z, hw * 2, h, hd * 2, grey(92)); box(g, x, h + 0.6, z, hw * 2 + 0.3, 1.2, hd * 2 + 0.3, grey(84)); }
+    else { box(g, x, h * 0.3, z, hw * 2, h * 0.6, hd * 2, grey(138)); box(g, x, h * 0.8, z, hw * 2 - 0.2, h * 0.4, hd * 2 - 0.15, grey(150)); }
+  } else if (i === 1) { // Railway: boxcars and crates
+    if (tall) {
+      box(g, x, 0.55 + (h - 0.55) / 2, z, hw * 2, h - 0.55, hd * 2, grey(86)); box(g, x, h + 0.08, z, hw * 2 + 0.25, 0.16, hd * 2 + 0.25, grey(70));
+      const long = hw > hd, n = 4;
+      for (let k = 0; k < n; k++) {
+        const u = (k / (n - 1) - 0.5) * (long ? hw : hd) * 1.6;
+        const w = cyl(g, x + (long ? u : 0), 0.4, z + (long ? 0 : u), 0.4, (long ? hd : hw) * 2 + 0.1, grey(30));
+        w.rotation.set(long ? Math.PI / 2 : 0, 0, long ? 0 : Math.PI / 2);
+      }
+    } else { box(g, x, h / 2, z, hw * 2, h, hd * 2, grey(132)); box(g, x, h / 2, z, hw * 2 + 0.04, 0.1, hd * 2 + 0.04, grey(100)); }
+  } else if (i === 2) { // Rooftop: chimneys, skylights, vents
+    if (tall) { box(g, x, h / 2, z, hw * 2, h, hd * 2, grey(96)); box(g, x, h + 0.12, z, hw * 2 + 0.25, 0.24, hd * 2 + 0.25, grey(120)); }
+    else { box(g, x, h * 0.4, z, hw * 2, h * 0.8, hd * 2, grey(116)); box(g, x, h * 0.9, z, hw * 2 - 0.2, h * 0.2, hd * 2 - 0.2, grey(178, 0.3)); }
+  } else { // Picture Palace: seat rows and columns
+    if (tall) cyl(g, x, h / 2, z, hw, h, grey(120));
+    else {
+      box(g, x, 0.25, z, hw * 2, 0.5, hd * 2, grey(70));
+      box(g, x, 0.75, z + hd * 0.6, hw * 2, 0.5, hd * 0.8, grey(62));
+      for (let k = -hw + 0.45; k < hw; k += 0.9) box(g, x + k, 0.55, z - hd * 0.2, 0.06, 0.12, hd * 1.2, grey(40), false);
+    }
+  }
+}
+function decor(g, i) {
+  if (i === 0) { // the Mill: a great wheel on the back wall, beams, hanging lamps
+    const wheel = new THREE.Group(); wheel.position.set(0, 4.5, ARENA_HD + 1.2); g.add(wheel);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(5, 0.35, 8, 40), grey(80)); wheel.add(rim);
+    for (let k = 0; k < 8; k++) { const sp = box(wheel, 0, 0, 0, 0.3, 10, 0.3, grey(80)); sp.rotation.z = k * Math.PI / 8; }
+    for (const x of [-12, -4, 4, 12]) box(g, x, 5.4, 0, 0.5, 0.5, ARENA_HD * 2 + 1, grey(60));
+    for (const [x, z] of [[-8, -6], [8, -6], [0, 6], [-8, 6], [8, 6]]) {
+      box(g, x, 4.9, z, 0.03, 1.0, 0.03, grey(40), false);
+      const b = new THREE.Mesh(G.sph, STENCIL.paper); b.scale.setScalar(0.18); b.position.set(x, 4.35, z); g.add(b);
+      const sh = new THREE.Mesh(new THREE.ConeGeometry(0.45, 0.35, 16, 1, true), grey(50)); sh.position.set(x, 4.55, z); g.add(sh);
+    }
+    backdrop(g, 0, 9, ARENA_HD + 8, 80, 20, 60); backdrop(g, 0, 9, -ARENA_HD - 8, 80, 20, 60, Math.PI);
+    backdrop(g, -ARENA_HW - 8, 9, 0, 60, 20, 60, Math.PI / 2); backdrop(g, ARENA_HW + 8, 9, 0, 60, 20, 60, -Math.PI / 2);
+  } else if (i === 1) { // the Railway: track across the yard, a signal, low hills at dusk
+    for (const z of [11.2, 12.4]) box(g, 0, 0.06, z, ARENA_HW * 2, 0.12, 0.12, grey(150, 0.4), false);
+    for (let x = -17; x <= 17; x += 1.4) box(g, x, 0.03, 11.8, 0.3, 0.06, 2.2, grey(70), false);
+    cyl(g, -16, 3, -11, 0.12, 6, grey(50)); const lamp = new THREE.Mesh(G.sph, STENCIL.paper); lamp.scale.setScalar(0.22); lamp.position.set(-16, 5.8, -11); g.add(lamp);
+    backdrop(g, 0, 10, ARENA_HD + 18, 120, 26, 170); backdrop(g, 0, 10, -ARENA_HD - 18, 120, 26, 170, Math.PI);
+    backdrop(g, -ARENA_HW - 18, 10, 0, 120, 26, 170, Math.PI / 2); backdrop(g, ARENA_HW + 18, 10, 0, 120, 26, 170, -Math.PI / 2);
+    for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2, r = 34; const m = new THREE.Mesh(G.sph, flatGrey(110)); m.scale.set(9, 4 + (k % 3) * 2, 9); m.position.set(Math.cos(a) * r, -1, Math.sin(a) * r); g.add(m); }
+  } else if (i === 2) { // the Rooftop: a skyline, lit windows, the moon, a water tower
+    backdrop(g, 0, 18, ARENA_HD + 60, 200, 60, 150); backdrop(g, 0, 18, -ARENA_HD - 60, 200, 60, 150, Math.PI);
+    backdrop(g, -ARENA_HW - 60, 18, 0, 200, 60, 150, Math.PI / 2); backdrop(g, ARENA_HW + 60, 18, 0, 200, 60, 150, -Math.PI / 2);
+    const moon = new THREE.Mesh(G.disc, flatGrey(240)); moon.scale.setScalar(4); moon.position.set(-20, 26, ARENA_HD + 55); moon.rotation.y = Math.PI; g.add(moon);
+    const N = 70, city = new THREE.InstancedMesh(G.box, flatGrey(48), N), win = new THREE.InstancedMesh(G.plane, flatGrey(225), N * 3);
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), pos = new THREE.Vector3(); let wi = 0;
+    for (let k = 0; k < N; k++) {
+      const a = (k / N) * Math.PI * 2 + 0.1 * Math.sin(k * 7), r = 34 + (k * 37 % 17), h = 8 + (k * 53 % 23);
+      const x = Math.cos(a) * r * 1.2, z = Math.sin(a) * r; pos.set(x, h / 2 - 12, z); sc.set(5 + k % 4, h, 5 + (k * 3) % 4);
+      q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), -a); m4.compose(pos, q, sc); city.setMatrixAt(k, m4);
+      for (let w = 0; w < 3; w++) {
+        const wy = h / 2 - 12 + (w - 1) * h * 0.25, ux = Math.cos(a), uz = Math.sin(a);
+        pos.set(x - ux * 3.2 + (w - 1) * uz * 1.2, wy, z - uz * 3.2 - (w - 1) * ux * 1.2); sc.set(0.7, 1.0, 1);
+        q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(-ux, -uz)); m4.compose(pos, q, sc); if ((k + w) % 3) win.setMatrixAt(wi++, m4);
+      }
+    }
+    win.count = wi; g.add(city, win);
+    const tower = new THREE.Group(); tower.position.set(15.5, 0, 15); g.add(tower);
+    cyl(tower, 0, 7.5, 0, 2.2, 3.2, grey(70)); for (const [a, b] of [[-1.4, -1.4], [1.4, -1.4], [-1.4, 1.4], [1.4, 1.4]]) box(tower, a, 3, b, 0.2, 6, 0.2, grey(40));
+  } else { // the Picture Palace: the screen, curtains, a projector beam
+    const scr = backdrop(g, 0, 5.2, ARENA_HD + 0.25, 16, 6.5, 198, Math.PI); scr.position.z = ARENA_HD - 0.05;
+    box(g, -9.5, 4.5, ARENA_HD - 0.4, 3, 8.5, 0.5, grey(28)); box(g, 9.5, 4.5, ARENA_HD - 0.4, 3, 8.5, 0.5, grey(28));
+    box(g, 0, 9.0, ARENA_HD - 0.4, 22, 1.4, 0.5, grey(28));
+    const beam = new THREE.Mesh(new THREE.ConeGeometry(5, ARENA_HD * 2, 24, 1, true),
+      new THREE.MeshBasicMaterial({ color: PALETTE.paper, transparent: true, opacity: 0.05, depthWrite: false, side: THREE.DoubleSide }));
+    beam.rotation.x = -Math.PI / 2; beam.position.set(0, 5.5, 0); g.add(beam);
+    backdrop(g, 0, 9, -ARENA_HD - 6, 80, 20, 40, 0); backdrop(g, -ARENA_HW - 6, 9, 0, 60, 20, 40, Math.PI / 2); backdrop(g, ARENA_HW + 6, 9, 0, 60, 20, 40, -Math.PI / 2);
+    backdrop(g, 0, 9, ARENA_HD + 6, 80, 20, 40, Math.PI);
+  }
+}
+const SETG = SETS.map((S, i) => {
+  const g = new THREE.Group(); g.position.x = S.cx; scene.add(g);
+  flat(g, 0, 0, ARENA_HW * 2 + 1.2, ARENA_HD * 2 + 1.2, grey(FLOOR[i]));
+  flat(g, 0, 0, 260, 260, grey(Math.max(40, FLOOR[i] - 40)), -0.02);
+  walls(g, i); S.obstacles.forEach(o => obstacle(g, i, o)); decor(g, i);
+  return g;
+});
+
+// ===== characters: one rigged model, reskinned per role, a mixer each =====
+// value ladder per role and source material: the hero is the lightest thing on screen, the heavies the darkest
+const SHADE = { hero: { Main: 236, Grey: 198, Black: 70 }, mook: { Main: 74, Grey: 96, Black: 26 },
+  brute: { Main: 36, Grey: 54, Black: 14 }, bull: { Main: 26, Grey: 40, Black: 10 } };
+const SIZE = { hero: 1.8, mook: 1.8, brute: 2.6, bull: 3.1 };
+let MODEL = null;
+const roleMat = (role, name) => {
+  const k = 'r' + role + name;
+  if (!MATS[k]) { const v = (SHADE[role][name] ?? SHADE[role].Grey); MATS[k] = grey(v, 0.6).clone();
+    if (role === 'hero') MATS[k].emissive.copy(MATS[k].color).multiplyScalar(0.45); }
+  return MATS[k];
+};
+const FLASH = new THREE.MeshBasicMaterial({ color: PALETTE.paper });
+async function loadModel() {
+  const gltf = await new GLTFLoader().loadAsync(MODEL_URL);
+  const base = gltf.scene; base.updateMatrixWorld(true);
+  const b = new THREE.Box3().setFromObject(base, true);
+  MODEL = { scene: base, clips: gltf.animations, h: b.max.y - b.min.y, minY: b.min.y };
+}
+const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quaternion(), _qp = new THREE.Quaternion(), _qd = new THREE.Quaternion();
+const UP = new THREE.Vector3(0, 1, 0);
+function makeActor(kind) {
+  const root = SkeletonUtils.clone(MODEL.scene), g = new THREE.Group(); g.add(root); scene.add(g);
+  const sc = SIZE[kind] / MODEL.h; root.scale.setScalar(sc); root.position.y = -MODEL.minY * sc;
+  const meshes = [];
+  root.traverse(o => { if (o.isMesh) { o.material = roleMat(kind, o.material.name); o.userData.base = o.material; o.castShadow = true; o.receiveShadow = false; meshes.push(o); } });
+  const mixer = new THREE.AnimationMixer(root), acts = {};
+  for (const c of MODEL.clips) acts[c.name] = mixer.clipAction(c);
+  const bone = n => root.getObjectByName(n) || root.getObjectByName(n.replace(/[.\[\]:\/]/g, '')); // GLTFLoader strips dots: 'Palm2.R' -> 'Palm2R'
+  const A = { kind, g, root, meshes, mixer, acts, cur: null, curName: '', look: 'base',
+    armR: bone('UpperArm.R'), foreR: bone('LowerArm.R'), palmR: bone('Palm2.R'), armL: bone('UpperArm.L'), foreL: bone('LowerArm.L'),
+    neck: bone('Neck'), head: bone('Head') };
+  g.updateMatrixWorld(true);
+  if (A.palmR) { // a pistol in the right hand
+    const ws = A.palmR.getWorldScale(_v).x, gun = new THREE.Group(); gun.scale.setScalar(1 / ws); A.palmR.add(gun);
+    const gm = grey(kind === 'hero' ? 40 : 22);
+    box(gun, 0, 0.1, 0.02, 0.05, 0.26, 0.08, gm); box(gun, 0, 0.0, -0.05, 0.045, 0.08, 0.12, gm);
+    A.muzzle = new THREE.Object3D(); A.muzzle.position.set(0, 0.25, 0.02); gun.add(A.muzzle);
+  }
+  if (kind === 'hero' && A.neck) { // the hero's gold accent: a scarf that follows the animation
+    const ws = A.neck.getWorldScale(_v).x, scarf = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.05, 8, 24), STENCIL.gold);
+    scarf.scale.setScalar(1 / ws); scarf.rotation.x = Math.PI / 2; A.neck.add(scarf);
+  }
+  play(A, 'Idle', { fade: 0 });
+  return A;
+}
+function play(A, name, { fade = 0.15, once = false, speed = 1, restart = false } = {}) {
+  const next = A.acts[name]; if (!next) return;
+  if (A.curName === name && !restart) { next.timeScale = speed; return; }
+  next.reset(); next.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity); next.clampWhenFinished = once;
+  next.timeScale = speed; next.setEffectiveWeight(1); next.play();
+  if (A.cur && A.cur !== next && fade > 0) next.crossFadeFrom(A.cur, fade, false); else if (A.cur && A.cur !== next) A.cur.stop();
+  A.cur = next; A.curName = name;
+}
+function setLook(A, look) {
+  if (A.look === look) return; A.look = look;
+  for (const m of A.meshes) m.material = look === 'red' ? STENCIL.red : look === 'flash' ? FLASH : m.userData.base;
+}
+// procedural aim on top of the clip: turn a bone so its length axis (+Y, toward its child) points along dir
+function pointBone(b, dir, w) {
+  if (!b) return;
+  b.getWorldQuaternion(_q); _v.copy(UP).applyQuaternion(_q);
+  _qd.setFromUnitVectors(_v, dir); _q.premultiply(_qd);
+  b.parent.getWorldQuaternion(_qp); _qp.invert(); _q.premultiply(_qp);
+  b.quaternion.slerp(_q, w); b.updateMatrixWorld(true);
+}
+const _dirL = new THREE.Vector3(), _palm = new THREE.Vector3();
+function aimPose(A, dir, w) {
+  A.g.updateMatrixWorld(true);
+  pointBone(A.armR, dir, w); pointBone(A.foreR, dir, w);
+  if (A.armL && A.palmR) { // left hand comes over to support the grip
+    A.palmR.getWorldPosition(_palm);
+    A.armL.getWorldPosition(_v2); _dirL.subVectors(_palm, _v2).normalize(); pointBone(A.armL, _dirL, w * 0.9);
+    A.foreL.getWorldPosition(_v2); _dirL.subVectors(_palm, _v2).normalize(); pointBone(A.foreL, _dirL, w * 0.9);
+  }
+}
+function removeActor(A) { scene.remove(A.g); A.mixer.stopAllAction(); if (A.glint) scene.remove(A.glint); }
+
+// telegraphs for a heavy: slam disc + ring, charge lane (stencil red: danger, now)
+function makeTelegraph() {
+  const disc = new THREE.Mesh(G.disc, redT.clone()), ring = new THREE.Mesh(G.ring, STENCIL.red), lane = new THREE.Mesh(G.plane, redT.clone());
+  for (const m of [disc, ring, lane]) { m.rotation.x = -Math.PI / 2; m.visible = false; m.renderOrder = 2; scene.add(m); }
+  return { disc, ring, lane };
+}
+
+// ===== effects (pooled) =====
+const FX = { tracers: [], sparks: [], flashes: [], puffs: [], ti: 0, si: 0, fi: 0, pi: 0 };
+const SOFT = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, '#fff'); g.addColorStop(0.35, 'rgba(255,255,255,.9)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })(); // soft round sprite for flashes, glints and dust
+const tracerMat = () => new THREE.MeshBasicMaterial({ color: PALETTE.paper, transparent: true, opacity: 1, depthWrite: false });
+for (let i = 0; i < 48; i++) { const m = new THREE.Mesh(G.box, tracerMat()); m.visible = false; scene.add(m); FX.tracers.push({ m, life: 0, max: 1 }); }
+for (let i = 0; i < 90; i++) { const m = new THREE.Mesh(G.box, STENCIL.paper); m.visible = false; scene.add(m); FX.sparks.push({ m, life: 0, max: 1, v: new THREE.Vector3() }); }
+for (let i = 0; i < 16; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ color: PALETTE.paper, map: SOFT, depthWrite: false })); s.visible = false; scene.add(s); FX.flashes.push({ m: s, life: 0, max: 1, size: 1 }); }
+for (let i = 0; i < 24; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ color: PALETTE.bone, map: SOFT, transparent: true, depthWrite: false })); s.visible = false; scene.add(s); FX.puffs.push({ m: s, life: 0, max: 1, size: 1, v: new THREE.Vector3() }); }
+const _a = new THREE.Vector3(), _b = new THREE.Vector3();
+function tracer(ax, ay, az, bx, by, bz, life = 0.07, w = 0.025) {
+  const T = FX.tracers[FX.ti++ % FX.tracers.length]; _a.set(ax, ay, az); _b.set(bx, by, bz);
+  const L = _a.distanceTo(_b); if (L < 0.01) return;
+  T.m.position.copy(_a).lerp(_b, 0.5); T.m.scale.set(w, w, L); T.m.lookAt(_b); T.m.visible = true; T.life = T.max = life; T.m.material.opacity = 1;
+}
+function sparks(x, y, z, n, spd = 4, size = 0.05, life = 0.18) {
+  for (let i = 0; i < n; i++) {
+    const S = FX.sparks[FX.si++ % FX.sparks.length], a = Math.random() * Math.PI * 2, u = Math.random() * 0.8 + 0.2;
+    S.v.set(Math.cos(a) * spd * u, (Math.random() * 0.8 + 0.2) * spd, Math.sin(a) * spd * u);
+    S.m.position.set(x, y, z); S.m.scale.set(size, size, size * 4); S.m.lookAt(x + S.v.x, y + S.v.y, z + S.v.z);
+    S.m.visible = true; S.life = S.max = life * (0.7 + Math.random() * 0.6);
+  }
+}
+function muzzle(x, y, z, size = 0.55) { const F = FX.flashes[FX.fi++ % FX.flashes.length]; F.m.position.set(x, y, z); F.size = size; F.m.scale.setScalar(size); F.m.visible = true; F.life = F.max = 0.05; }
+function puff(x, y, z, n, size = 1.2, spd = 2.5) {
+  for (let i = 0; i < n; i++) {
+    const P = FX.puffs[FX.pi++ % FX.puffs.length], a = Math.random() * Math.PI * 2;
+    P.v.set(Math.cos(a) * spd, 0.6 + Math.random(), Math.sin(a) * spd); P.m.position.set(x, y, z); P.size = size * (0.6 + Math.random() * 0.6);
+    P.m.visible = true; P.life = P.max = 0.6 + Math.random() * 0.4; P.m.material.opacity = 0.5;
+  }
+}
+function updateFx(dt) {
+  for (const T of FX.tracers) if (T.life > 0) { T.life -= dt; T.m.material.opacity = Math.max(0, T.life / T.max); if (T.life <= 0) T.m.visible = false; }
+  for (const S of FX.sparks) if (S.life > 0) {
+    S.life -= dt; S.v.y -= 14 * dt; S.m.position.addScaledVector(S.v, dt); const k = Math.max(0.01, S.life / S.max); S.m.scale.z = S.m.scale.x * 4 * k;
+    if (S.life <= 0) S.m.visible = false;
+  }
+  for (const F of FX.flashes) if (F.life > 0) { F.life -= dt; F.m.scale.setScalar(F.size * (0.6 + Math.random() * 0.6)); if (F.life <= 0) F.m.visible = false; }
+  for (const P of FX.puffs) if (P.life > 0) {
+    P.life -= dt; P.m.position.addScaledVector(P.v, dt); P.v.multiplyScalar(Math.exp(-3 * dt)); const k = 1 - P.life / P.max;
+    P.m.scale.setScalar(P.size * (0.5 + k)); P.m.material.opacity = 0.5 * (1 - k); if (P.life <= 0) P.m.visible = false;
+  }
+}
+
+// ===== sound: WebAudio placeholders, plus an original procedural action score =====
+let AC = null, master = null, sfxBus = null, musBus = null, NOISE = null, DIST = null, delayIn = null, muted = false;
+function ac() {
+  if (AC) return AC;
+  const C = window.AudioContext || window.webkitAudioContext; if (!C) return null;
+  AC = new C();
+  const comp = AC.createDynamicsCompressor(); comp.threshold.value = -12; comp.ratio.value = 4; comp.connect(AC.destination);
+  master = AC.createGain(); master.gain.value = muted ? 0 : CONFIG.volume; master.connect(comp);
+  sfxBus = AC.createGain(); sfxBus.connect(master);
+  musBus = AC.createGain(); musBus.gain.value = CONFIG.music; musBus.connect(master);
+  NOISE = AC.createBuffer(1, AC.sampleRate * 2, AC.sampleRate);
+  const d = NOISE.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  DIST = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = i / 512 - 1; DIST[i] = Math.tanh(x * 4); }
+  delayIn = AC.createGain(); const dl = AC.createDelay(1), fb = AC.createGain(), wet = AC.createGain();
+  dl.delayTime.value = 60 / MUS.bpm * 0.75; fb.gain.value = 0.38; wet.gain.value = 0.32;
+  delayIn.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(wet); wet.connect(musBus);
+  return AC;
+}
+function env(g, t, a, peak, dec) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + dec); }
+function osc(bus, type, f0, f1, t, dur, vol, filt) {
+  const o = AC.createOscillator(), g = AC.createGain(); o.type = type; o.frequency.setValueAtTime(f0, t);
+  if (f1 && f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  env(g, t, 0.004, vol, dur); let n = o; if (filt) { n.connect(filt); n = filt; } n.connect(g); g.connect(bus); o.start(t); o.stop(t + dur + 0.05); return o;
+}
+function nz(bus, t, dur, vol, type, f, q = 1, f1) {
+  const s = AC.createBufferSource(), fl = AC.createBiquadFilter(), g = AC.createGain(); s.buffer = NOISE;
+  fl.type = type; fl.frequency.setValueAtTime(f, t); fl.Q.value = q; if (f1) fl.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  env(g, t, 0.003, vol, dur); s.connect(fl); fl.connect(g); g.connect(bus); s.start(t, Math.random() * 1.5); s.stop(t + dur + 0.05);
+}
+const SFX = {
+  gun() { const t = AC.currentTime; nz(sfxBus, t, 0.11, 0.9, 'bandpass', 1500, 0.6, 400); osc(sfxBus, 'sine', 150, 42, t, 0.16, 0.9); nz(sfxBus, t + 0.02, 0.4, 0.18, 'lowpass', 700); },
+  gunFar() { const t = AC.currentTime; nz(sfxBus, t, 0.08, 0.25, 'bandpass', 1100, 0.7, 500); },
+  mook(v = 0.45) { const t = AC.currentTime; nz(sfxBus, t, 0.08, v, 'bandpass', 900, 0.8, 350); osc(sfxBus, 'sine', 110, 45, t, 0.1, v * 0.8); },
+  ric() { const t = AC.currentTime; osc(sfxBus, 'triangle', 2600 + Math.random() * 800, 1500, t, 0.14, 0.12); nz(sfxBus, t, 0.04, 0.3, 'highpass', 3000); },
+  whiz() { const t = AC.currentTime; nz(sfxBus, t, 0.16, 0.22, 'bandpass', 3200, 3, 700); },
+  hit() { const t = AC.currentTime; osc(sfxBus, 'sine', 200, 60, t, 0.08, 0.55); nz(sfxBus, t, 0.05, 0.4, 'lowpass', 900); },
+  head() { SFX.hit(); osc(sfxBus, 'square', 1900, 1900, AC.currentTime, 0.05, 0.1); },
+  kill() { const t = AC.currentTime; osc(sfxBus, 'sine', 95, 38, t, 0.22, 0.7); },
+  click(f = 1500, d = 0) { osc(sfxBus, 'square', f, f, AC.currentTime + d, 0.02, 0.14); },
+  reload() { SFX.click(1400); nz(sfxBus, AC.currentTime + 0.25, 0.12, 0.2, 'bandpass', 2400, 2); SFX.click(900, CONFIG.reloadTime - 0.2); },
+  cover() { const t = AC.currentTime; nz(sfxBus, t, 0.14, 0.55, 'lowpass', 320); osc(sfxBus, 'sine', 90, 50, t, 0.1, 0.4); },
+  dodge() { const t = AC.currentTime; nz(sfxBus, t, 0.26, 0.32, 'bandpass', 500, 1.5, 2200); },
+  punch() { const t = AC.currentTime; osc(sfxBus, 'sine', 130, 40, t, 0.12, 0.95); nz(sfxBus, t, 0.05, 0.5, 'bandpass', 1600); },
+  roar() { const t = AC.currentTime, f = AC.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 420; osc(sfxBus, 'sawtooth', 78, 48, t, 0.95, 0.35, f); nz(sfxBus, t, 0.8, 0.3, 'lowpass', 260); },
+  wind(d) { for (let k = 0; k < 6; k++) { const f = AC.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 600; osc(sfxBus, 'sawtooth', 98, 98, AC.currentTime + k * d / 6, d / 7, 0.16, f); } },
+  slam() { const t = AC.currentTime; osc(sfxBus, 'sine', 75, 26, t, 1.0, 1.0); nz(sfxBus, t, 0.6, 0.7, 'lowpass', 420); },
+  crash() { const t = AC.currentTime; nz(sfxBus, t, 0.5, 0.8, 'lowpass', 900); osc(sfxBus, 'sine', 60, 30, t, 0.4, 0.8); },
+  cut() { const t = AC.currentTime; nz(sfxBus, t, 0.025, 0.6, 'highpass', 2200); osc(sfxBus, 'square', 70, 60, t, 0.05, 0.25); nz(sfxBus, t + 0.06, 0.02, 0.35, 'highpass', 3500); },
+  reject() { osc(sfxBus, 'square', 140, 110, AC.currentTime, 0.12, 0.12); },
+  jit() { const t = AC.currentTime; for (const f of [659, 831, 988, 1319]) osc(sfxBus, 'sawtooth', f, f, t, 0.6, 0.05); nz(sfxBus, t, 1.4, 0.35, 'highpass', 5000); osc(sfxBus, 'sine', 80, 35, t, 0.5, 0.8); },
+  bonus() { const t = AC.currentTime; for (const [k, f] of [[0, 659], [1, 988]]) osc(sfxBus, 'triangle', f, f, t + k * 0.07, 0.2, 0.12); },
+  killedOff() { const t = AC.currentTime; for (const f of [82.4, 98, 123.5]) osc(sfxBus, 'sine', f, f * 0.94, t, 1.8, 0.28); duckMusic(); },
+  heart() { const t = AC.currentTime; osc(sfxBus, 'sine', 62, 40, t, 0.12, 0.5); osc(sfxBus, 'sine', 58, 38, t + 0.17, 0.12, 0.4); },
+  dry() { SFX.click(600); },
+  style() { osc(sfxBus, 'triangle', 1320, 1320, AC.currentTime, 0.06, 0.08); },
+  armor() { const t = AC.currentTime; osc(sfxBus, 'triangle', 1760, 1320, t, 0.18, 0.08); },
+};
+function sfx(name, ...a) { if (!ac() || AC.state !== 'running' || muted) return; SFX[name](...a); }
+
+// The score: dark four-on-the-floor action cues in E Phrygian, 126 BPM, built note by note. Intensity follows the fight:
+// 0 = cards (pad and a slow pulse), 1 = walking, 2 = gunfight, 3 = a heavy on camera or someone dying.
+const MUS = { on: false, bpm: 126, step: 0, nextT: 0, timer: 0, level: 0, want: 0 };
+const CHORDS = [[0, [0, 3, 7]], [1, [0, 4, 7]], [0, [0, 3, 7]], [-4, [0, 4, 7]]]; // Em, F, Em, C: two bars each
+const hz = (semi) => 41.2 * Math.pow(2, semi / 12); // E1
+function musStart() { if (!ac() || MUS.on) return; MUS.on = true; MUS.step = 0; MUS.nextT = AC.currentTime + 0.1; MUS.timer = setInterval(musTick, 25); }
+function musTick() {
+  if (!AC || AC.state !== 'running') return;
+  const spb = 60 / MUS.bpm / 4;
+  if (MUS.nextT < AC.currentTime - 0.25) MUS.nextT = AC.currentTime + 0.05;
+  while (MUS.nextT < AC.currentTime + 0.12) { musStep(MUS.step, MUS.nextT); MUS.nextT += spb; MUS.step++; }
+}
+function musStep(n, t) {
+  const s16 = n % 16, bar = (n / 16) | 0, spb = 60 / MUS.bpm / 4;
+  if (s16 === 0 && (MUS.want > MUS.level || bar % 2 === 0)) MUS.level = MUS.want;
+  const L = MUS.level, [root, tri] = CHORDS[((bar / 2) | 0) % 4];
+  if (s16 === 0 && bar % 2 === 0) pad(t, root, tri, spb * 32, L >= 2 ? 0.03 : 0.045);
+  if (L <= 0) { if (s16 === 0 || s16 === 10) kick(t, 0.35); return; }
+  if (s16 % 4 === 0) kick(t, L >= 2 ? 0.95 : 0.7);
+  if (L === 1 && s16 % 4 === 2) bass(t, root, spb * 1.6, 0.24, false);
+  if (L >= 2 && s16 % 4 !== 0) bass(t, root + (s16 % 4 === 3 ? 12 : 0) + (bar % 2 && s16 === 14 ? 3 : 0), spb * 0.9, 0.2, L >= 3);
+  if (s16 % 2 === 0) hat(t, s16 % 4 === 2 ? 0.08 : 0.035, s16 % 4 === 2 && L >= 2); else if (L >= 2) hat(t, 0.022, false);
+  if (L >= 2 && (s16 === 4 || s16 === 12)) clap(t, 0.32);
+  if (L >= 3 && bar % 4 === 3 && s16 >= 12) clap(t, 0.12 + (s16 - 12) * 0.05);
+  if (L >= 2 && bar % 2 === 1 && (s16 === 0 || s16 === 3 || s16 === 6)) stab(t, root, tri, 0.075);
+  if (L >= 3 && s16 % 2 === 0) { const arp = [0, 7, 12, 7, 15, 12, 7, 3]; lead(t, root + 36 + arp[(n >> 1) % 8], spb * 1.6, 0.045); }
+}
+function kick(t, v) { const o = AC.createOscillator(), g = AC.createGain(); o.frequency.setValueAtTime(155, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.11);
+  env(g, t, 0.002, v, 0.3); o.connect(g); g.connect(musBus); o.start(t); o.stop(t + 0.35); }
+function bass(t, semi, dur, v, dirty) {
+  const o = AC.createOscillator(), f = AC.createBiquadFilter(), g = AC.createGain(); o.type = 'sawtooth'; o.frequency.value = hz(semi);
+  f.type = 'lowpass'; f.Q.value = 7; f.frequency.setValueAtTime(dirty ? 1400 : 700, t); f.frequency.exponentialRampToValueAtTime(140, t + dur);
+  env(g, t, 0.004, v, dur); o.connect(f);
+  if (dirty) { const ws = AC.createWaveShaper(); ws.curve = DIST; f.connect(ws); ws.connect(g); } else f.connect(g);
+  g.connect(musBus); o.start(t); o.stop(t + dur + 0.05);
+}
+function hat(t, v, open) { const s = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain(); s.buffer = NOISE; f.type = 'highpass'; f.frequency.value = 7600;
+  env(g, t, 0.001, v, open ? 0.16 : 0.03); s.connect(f); f.connect(g); g.connect(musBus); s.start(t, Math.random()); s.stop(t + 0.2); }
+function clap(t, v) { const s = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain(); s.buffer = NOISE; f.type = 'bandpass'; f.frequency.value = 1700; f.Q.value = 1.3;
+  g.gain.setValueAtTime(0.0001, t); for (const k of [0, 0.012, 0.024]) { g.gain.setValueAtTime(v, t + k); g.gain.exponentialRampToValueAtTime(v * 0.2, t + k + 0.01); }
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18); s.connect(f); f.connect(g); g.connect(musBus); s.start(t, Math.random()); s.stop(t + 0.2); }
+function pad(t, root, tri, dur, v) {
+  for (const iv of tri) for (const det of [-6, 6]) {
+    const o = AC.createOscillator(), f = AC.createBiquadFilter(), g = AC.createGain(); o.type = 'sawtooth'; o.frequency.value = hz(root + 24 + iv); o.detune.value = det;
+    f.type = 'lowpass'; f.frequency.value = 650; g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v / 3, t + 0.8); g.gain.linearRampToValueAtTime(0.0001, t + dur);
+    o.connect(f); f.connect(g); g.connect(musBus); o.start(t); o.stop(t + dur + 0.05);
+  }
+}
+function stab(t, root, tri, v) {
+  for (const iv of [...tri, 12]) { const o = AC.createOscillator(), f = AC.createBiquadFilter(), g = AC.createGain(); o.type = 'sawtooth'; o.frequency.value = hz(root + 36 + iv);
+    f.type = 'lowpass'; f.frequency.setValueAtTime(2600, t); f.frequency.exponentialRampToValueAtTime(400, t + 0.14); env(g, t, 0.003, v / 2, 0.14);
+    o.connect(f); f.connect(g); g.connect(musBus); g.connect(delayIn); o.start(t); o.stop(t + 0.2); }
+}
+function lead(t, semi, dur, v) { const o = AC.createOscillator(), f = AC.createBiquadFilter(), g = AC.createGain(); o.type = 'square'; o.frequency.value = hz(semi);
+  f.type = 'lowpass'; f.frequency.value = 2800; env(g, t, 0.003, v, dur); o.connect(f); f.connect(g); g.connect(musBus); g.connect(delayIn); o.start(t); o.stop(t + dur + 0.05); }
+function duckMusic() { if (!AC) return; const t = AC.currentTime, g = musBus.gain; g.cancelScheduledValues(t); g.setValueAtTime(g.value, t);
+  g.linearRampToValueAtTime(0.03, t + 0.35); g.setValueAtTime(0.03, t + 1.6); g.linearRampToValueAtTime(CONFIG.music, t + 3.2); }
+function setVolumes() { if (!AC) return; master.gain.value = muted ? 0 : CONFIG.volume; musBus.gain.value = CONFIG.music; }
+
+// ===== cameras and layout: a 4:3 picture in the middle, the other rooms as round cameos in the side margins =====
+const mainCam = new THREE.PerspectiveCamera(60, 4 / 3, 0.08, 160);
+const cmCam = [new THREE.PerspectiveCamera(48, 1, 0.1, 120), new THREE.PerspectiveCamera(48, 1, 0.1, 120)];
+const L = { pic: { x: 0, y: 0, w: 4, h: 3 }, cm: [{ x: 0, y: 0, s: 1 }, { x: 0, y: 0, s: 1 }] };
+function place(el, x, y, w, h) { Object.assign(el.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px' }); }
+function layout() {
+  const W = innerWidth, H = innerHeight, pr = renderer.getPixelRatio();
+  renderer.setSize(W, H, false);
+  const pad = Math.round(H * 0.045), minM = Math.round(H * 0.17);
+  let ph = H - pad * 2, pw = Math.round(ph * 4 / 3);
+  if (W - pw < 2 * minM) { pw = Math.max(320, W - 2 * minM); ph = Math.round(pw * 3 / 4); }
+  const px = Math.round((W - pw) / 2), py = Math.round((H - ph) / 2);
+  L.pic = { x: px, y: py, w: pw, h: ph };
+  place($('gate'), px, py, pw, ph); place($('pov'), px, py, pw, ph);
+  const k = Math.round(H * 0.026), ink = PALETTE.ink;
+  [[0, 0, 'right bottom'], [pw - k, 0, 'left bottom'], [0, ph - k, 'right top'], [pw - k, ph - k, 'left top']].forEach(([x, y, at], i) => {
+    const el = $('k' + i); place(el, x, y, k, k); el.style.background = `radial-gradient(circle at ${at}, transparent ${k - 1}px, ${ink} ${k}px)`; });
+  place($('roomName'), px, Math.max(2, py - H * 0.034), pw, H * 0.03);
+  const mw = px, size = Math.round(Math.min(H * 0.21, mw * 0.84));
+  L.cm[0] = { x: Math.round(mw / 2 - size / 2), y: py + Math.round(H * 0.06), s: size };
+  L.cm[1] = { x: Math.round(px + pw + mw / 2 - size / 2), y: py + Math.round(H * 0.06), s: size };
+  [0, 1].forEach(i => {
+    const c = L.cm[i], el = $('cm' + i); place(el, c.x, c.y, c.s, c.s);
+    for (const sel of ['.mask', '.ring', '.nosig']) { const e = el.querySelector(sel); e.style.width = e.style.height = c.s + 'px'; }
+    el.querySelector('.tag').style.top = -H * 0.03 + 'px';
+    el.querySelector('.st').style.top = c.s * 0.42 + 'px';
+    el.querySelector('.lab').style.top = c.s + H * 0.012 + 'px';
+    el.querySelector('.bar').style.top = c.s + H * 0.068 + 'px';
+    cmGrade[i].composer.setPixelRatio(pr); cmGrade[i].composer.setSize(c.s, c.s);
+  });
+  const mx = Math.max(8, Math.round(mw * 0.1));
+  place($('reel'), mx, py + ph - H * 0.13, mw - mx * 2, H * 0.13);
+  place($('heroCard'), px + pw + mx, py + ph - H * 0.29, mw - mx * 2, H * 0.29);
+  mainGrade.composer.setPixelRatio(pr); mainGrade.composer.setSize(pw, ph);
+  mainCam.aspect = pw / ph; mainCam.updateProjectionMatrix();
+}
+addEventListener('resize', layout);
+
+// ===== game state =====
+let S = null, bot = null, acc = 0, last = performance.now(), titleT = 0;
+const ui = { mode: 'loading', lastHint: '' };
+const fx = { shake: 0, slowT: 0, freeze: 0, jitT: 0, icardT: 0, bannerT: 0, redT: 0, hitmT: 0, armorT: 0, heartT: 0, cueBeep: -1, arcs: [0, 0, 0, 0], arcI: 0,
+  seen: {}, rejectT: [0, 0], hitCm: [0, 0] };
+let heroActors = [], enemyActors = new Map(), telegraphs = new Map(), armorRing = null;
+const pendingPress = [];
+const press = p => pendingPress.push(p);
+
+function clearWorld() {
+  for (const A of enemyActors.values()) removeActor(A); enemyActors.clear();
+  for (const T of telegraphs.values()) for (const m of Object.values(T)) scene.remove(m); telegraphs.clear();
+}
+function begin(restart, noLock) {
+  clearWorld();
+  if (!heroActors.length) {
+    heroActors = HEROES.map(() => makeActor('hero'));
+    armorRing = new THREE.Mesh(G.ring, STENCIL.gold); armorRing.rotation.x = -Math.PI / 2; armorRing.scale.setScalar(0.62); scene.add(armorRing);
+  }
+  for (const A of heroActors) { A.g.visible = false; setLook(A, 'base'); }
+  S = R.newGame(CONFIG); acc = 0; ui.mode = 'play'; ui.lastHint = ''; ui.theatrical = null;
+  Object.assign(fx, { shake: 0, slowT: 0, freeze: 0, jitT: 0, icardT: 0, bannerT: 0, redT: 0, hitmT: 0, armorT: 0, seen: {} });
+  $('screen').classList.remove('show'); $('pops').innerHTML = '';
+  if (restart) S.cardT = 0.25; // a retry skips the Act One card
+  musStart(); if (AC && AC.state !== 'running') AC.resume();
+  if (!noLock) requestLock();
+}
+function requestLock() {
+  if (lockFail || !canvas.requestPointerLock) return;
+  try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => { lockErrs++; if (lockErrs >= 2) lockFail = true; }); } catch (e) { lockFail = true; }
+}
+let locked = false, lockFail = false, lockErrs = 0;
+document.addEventListener('pointerlockchange', () => {
+  locked = document.pointerLockElement === canvas;
+  if (locked) lockErrs = 0;
+  if (!locked && ui.mode === 'play' && !bot) pause();
+});
+document.addEventListener('pointerlockerror', () => { lockErrs++; if (lockErrs >= 2) lockFail = true; });
+function pause() {
+  if (ui.mode !== 'play') return;
+  ui.mode = 'pause';
+  showScreen(`<h1 style="font-size:8vh">Intermission</h1><h2>The reel is paused.</h2>${HOW}<div class="go">CLICK TO RESUME</div><div class="note">R restarts · M mutes</div>`);
+}
+function resume() { if (ui.mode !== 'pause') return; ui.mode = 'play'; $('screen').classList.remove('show'); last = performance.now(); requestLock(); }
+function showScreen(html) { $('screenBox').innerHTML = html; $('screen').classList.add('show'); }
+const HOW = `<div class="how"><b>MOUSE</b> aim · <b>LMB</b> shoot · <b>RMB</b> aim down sights · <b>WASD</b> move<br>
+  <b>SPACE</b> take cover · <b>SHIFT</b> dodge · <b>R</b> reload · <b>F</b> gun-fu<br>
+  <b>1</b> <b>2</b> <b>3</b> cut to a hero · <b>TAB</b> back to the studio's script</div>`;
+function showTitle() {
+  ui.mode = 'title';
+  showScreen(`<h1>Meanwhile...</h1><h2>Plot armor goes where the camera goes.</h2>${HOW}
+    <div class="note">The studio wrote an edit. Follow it, or cut away and save the ones it forgets.</div>
+    <div class="go">CLICK TO ROLL</div>`);
+}
+$('screen').addEventListener('mousedown', (e) => {
+  if (e.button !== 0) return;
+  if (ui.mode === 'title') begin(false);
+  else if (ui.mode === 'pause') resume();
+  else if (ui.mode === 'end') begin(true);
+});
+
+// ===== input =====
+const keys = {};
+let mouseL = false, mouseR = false, lookDX = 0, lookDY = 0;
+function moveAxes() { return [(keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0), (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0)]; }
+function mute() { muted = !muted; setVolumes(); banner(muted ? 'Sound off' : 'Sound on', '', 0.8); }
+function onKey(e, down) {
+  if (e.code === 'Backquote') { if (down) toggleDbg(); return; }
+  if (e.target && e.target.tagName === 'INPUT') return;
+  keys[e.code] = down;
+  if (['Space', 'Tab', 'ShiftLeft', 'ShiftRight', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();
+  if (!down || e.repeat) return;
+  if (ui.mode === 'title') { if (e.code === 'Enter' || e.code === 'Space') begin(false); return; }
+  if (ui.mode === 'end') { if (e.code === 'KeyR' || e.code === 'Enter') begin(true); return; }
+  if (ui.mode === 'pause') { if (e.code === 'KeyR') begin(true); else if (e.code === 'KeyM') mute(); else if (e.code === 'Enter') resume(); return; }
+  if (ui.mode !== 'play' || !S) return;
+  const c = { Digit1: 0, Digit2: 1, Digit3: 2, Numpad1: 0, Numpad2: 1, Numpad3: 2 }[e.code];
+  if (c != null) { press({ cut: c }); return; }
+  switch (e.code) {
+    case 'Tab': press({ follow: true }); break;
+    case 'Space': press(S.phase === 'card' ? { skip: true } : { cover: true }); break;
+    case 'ShiftLeft': case 'ShiftRight': { const [mx, my] = moveAxes(); press({ dodge: true, mx, my }); break; }
+    case 'KeyR': press({ reload: true }); break;
+    case 'KeyF': case 'KeyV': case 'KeyE': press({ melee: true }); break;
+    case 'KeyM': mute(); break;
+    case 'KeyP': pause(); break;
+  }
+}
+addEventListener('keydown', e => onKey(e, true));
+addEventListener('keyup', e => onKey(e, false));
+canvas.addEventListener('mousedown', e => {
+  if (ui.mode !== 'play') return;
+  if (!locked && !lockFail) requestLock();
+  if (e.button === 0) { mouseL = true; press({ fire: true }); }
+  if (e.button === 2) mouseR = true;
+});
+addEventListener('mouseup', e => { if (e.button === 0) mouseL = false; if (e.button === 2) mouseR = false; });
+addEventListener('contextmenu', e => e.preventDefault());
+addEventListener('mousemove', e => { if (ui.mode === 'play' && (locked || lockFail)) { lookDX += e.movementX || 0; lookDY += e.movementY || 0; } });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouseL = mouseR = false; });
+document.addEventListener('visibilitychange', () => { if (document.hidden && !bot) pause(); });
+function readInput() { const [mx, my] = moveAxes(); return { mx, my, fire: mouseL, aim: mouseR }; }
+
+// ===== feedback for rules events =====
+const camSet = () => S.heroes[S.cam].set;
+const wx = (set, x) => SETS[set].cx + x;
+function toPic(set, x, y, z) {
+  _v.set(wx(set, x), y, z).project(mainCam);
+  return _v.z < 1 ? [(_v.x + 1) / 2 * L.pic.w, (1 - _v.y) / 2 * L.pic.h] : null;
+}
+function pop(text, set, x, y, z, cls, sub) {
+  if (set !== camSet()) return;
+  const p = toPic(set, x, y, z); if (!p) return;
+  const el = document.createElement('div'); el.className = 'pop ' + (cls || ''); el.innerHTML = text + (sub ? `<small>${sub}</small>` : '');
+  el.style.left = p[0] + 'px'; el.style.top = p[1] + 'px'; $('pops').appendChild(el);
+  requestAnimationFrame(() => { el.style.transform = 'translate(-50%, -160%)'; el.style.opacity = 0; });
+  setTimeout(() => el.remove(), 950);
+}
+function icard(text, sub, t) { $('icard').innerHTML = text + (sub ? `<small>${sub}</small>` : ''); fx.icardT = t || 1.1; }
+function banner(text, sub, t, cls) { $('banner').innerHTML = text + (sub ? `<small>${sub}</small>` : ''); $('banner').className = cls || ''; fx.bannerT = t || 2.2; }
+function stamp(text) { const el = $('stamp'); el.textContent = text; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); }
+function shake(a) { fx.shake = Math.max(fx.shake, a * CONFIG.shake); }
+function titleCase(s) { return s.toLowerCase().replace(/\b\w/g, m => m.toUpperCase()); }
+const where = set => SETS[set].where;
+function actorMuzzle(A, out) { if (A && A.muzzle) { A.muzzle.getWorldPosition(out); return true; } return false; }
+const _m = new THREE.Vector3();
+function handle(evs, quiet) {
+  for (const e of evs) {
+    const onSet = S && S.phase === 'play' && e.set != null && e.set === camSet();
+    switch (e.type) {
+      case 'actStart': {
+        const set = S.heroes[S.cam].set;
+        icard(`${titleCase(SETS[set].name.replace('THE ', 'The '))}, ${SETS[set].time}`, ACTS[e.act].title + ' · ' + ACTS[e.act].name, 2.4);
+        if (e.act === 1 && S.cfg.thirdHero && !quiet) banner('Introducing Juno.', 'a third name on the poster · key 3', 2.6);
+        break; }
+      case 'actEnd': break;
+      case 'cut': {
+        if (!quiet) { film.splice(); sfx('cut'); }
+        const to = S.heroes[e.to];
+        icard(e.same ? 'Meanwhile, across the room...' : `Meanwhile, ${where(to.set)}...`, e.how === 'script' ? 'the script: ' + e.beat : e.mode === 'director' ? 'your cut' : 'back on script', 1.15);
+        if (e.bonus) {
+          fx.jitT = 1.6; fx.slowT = e.tier === 'jit' ? 0.5 : 0;
+          const word = e.tier === 'jit' ? 'Just in time!' : e.tier === 'close' ? 'Close call!' : 'Tense!';
+          $('jit').innerHTML = `${word}<small>+${e.bonus.toLocaleString()} feet of film${e.brute ? ' · a heavy was on them' : ''}</small>`;
+          if (!quiet) sfx(e.tier === 'jit' ? 'jit' : 'bonus');
+        }
+        fx.seen.cut = true;
+        break; }
+      case 'offScript': stamp('OFF SCRIPT'); break;
+      case 'onScript': stamp('ON SCRIPT'); break;
+      case 'shotChange': break;
+      case 'cutRejected': { const slot = slotOf(e.to); if (slot >= 0) fx.rejectT[slot] = 0.3; if (!quiet) sfx('reject'); break; }
+      case 'shot': {
+        const A = heroActors[e.hero];
+        if (!actorMuzzle(A, _m)) _m.set(wx(e.set, e.gx), e.gy, e.gz);
+        if (onSet || e.set === slotSetVisible(e.set)) { tracer(_m.x, _m.y, _m.z, wx(e.set, e.x), e.y, e.z, 0.06); muzzle(_m.x, _m.y, _m.z); }
+        if (e.onCam) {
+          if (!quiet) sfx('gun'); shake(0.05);
+          if (e.world || e.blocked) sparks(wx(e.set, e.x), e.y, e.z, 4, 3, 0.03, 0.15);
+        } else if (onSet && !quiet) sfx('gunFar');
+        break; }
+      case 'hit': {
+        const A = enemyActors.get(e.id);
+        if (A) A.hitT = 0.07;
+        sparks(wx(e.set, e.x), (e.head ? DIM[e.kind].h * HEAD_Y : 1.1), e.z, 3, 5, 0.03, 0.12);
+        if (e.onCam) { fx.hitmT = 0.12; $('hitm').className = e.head ? 'head' : ''; if (!quiet) sfx(e.head ? 'head' : 'hit'); }
+        break; }
+      case 'kill': {
+        const h = DIM[e.kind].h;
+        sparks(wx(e.set, e.x), h * 0.6, e.z, e.kind === 'mook' ? 5 : 14, 5, 0.035, 0.18);
+        if (e.onCam) {
+          fx.hitmT = 0.2; $('hitm').className = e.head ? 'head' : ''; if (!quiet) { sfx(e.head ? 'head' : 'hit'); sfx('kill'); }
+          const lab = e.melee ? 'GUN-FU' : e.head ? 'HEADSHOT' : e.pb ? 'POINT BLANK' : e.chain > 1 ? 'x' + e.chain : '';
+          if (e.kind === 'mook') pop('+' + e.pts, e.set, e.x, 2.1, e.z, e.head || e.melee ? 'gold' : '', lab);
+          else { pop('+' + e.pts, e.set, e.x, h + 0.5, e.z, 'gold', e.kind === 'bull' ? 'THE BULL IS DOWN' : 'HEAVY DOWN'); fx.freeze = 0.12; shake(0.4); }
+        }
+        if (e.kind !== 'mook' && !e.onCam && !quiet) banner(`${S.heroes[e.by].name} put the heavy down`, 'off camera, so it pays nothing', 1.8);
+        break; }
+      case 'mookAim': break;
+      case 'mookShot': {
+        const A = enemyActors.get(e.id);
+        if (!actorMuzzle(A, _m)) _m.set(wx(e.set, e.gx), e.gy, e.gz);
+        tracer(_m.x, _m.y, _m.z, wx(e.set, e.x), e.y, e.z, 0.08, 0.02); muzzle(_m.x, _m.y, _m.z, 0.4);
+        if (e.blocked) sparks(wx(e.set, e.x), e.y, e.z, 5, 3.5, 0.03, 0.15);
+        if (e.onCam && !quiet) {
+          sfx('mook', 0.4);
+          if (e.blocked) sfx('ric'); else if (!e.hit) sfx('whiz');
+        }
+        break; }
+      case 'heroHit':
+        if (e.onCam) {
+          fx.redT = 0.35; shake(0.12);
+          const h = S.heroes[e.hero], ang = Math.atan2(e.fx - h.x, e.fz - h.z) - S.camYaw;
+          fx.arcs[fx.arcI] = 0.9; const el = $('arc' + fx.arcI); el.style.transform = `rotate(${-ang}rad)`; fx.arcI = (fx.arcI + 1) % 4;
+          if (e.armor) { fx.armorT = 1.2; if (!quiet) sfx('armor'); }
+          if (!quiet) sfx('hit');
+        } else { const slot = slotOf(e.hero); if (slot >= 0) fx.hitCm[slot] = 0.15; }
+        break;
+      case 'cover': if (!quiet) sfx('cover'); fx.seen.cover = true; break;
+      case 'noCover': break;
+      case 'leaveCover': break;
+      case 'dodge': if (onSet && !e.ai && !quiet) sfx('dodge'); fx.seen.dodge = true; break;
+      case 'reload': if (e.hero === S.cam && !quiet) sfx('reload'); break;
+      case 'reloaded': break;
+      case 'dry': if (!quiet) sfx('dry'); break;
+      case 'melee': if (!quiet) sfx(e.hit ? 'punch' : 'dodge'); if (e.hit) { shake(0.15); sparks(wx(e.set, e.x), 1.4, e.z, 6, 4, 0.04, 0.15); } break;
+      case 'bruteEnter': {
+        if (!quiet) sfx('roar');
+        const h = e.hero >= 0 ? S.heroes[e.hero] : null;
+        if (e.kind === 'bull') banner('The Bull.', 'it hunts whoever the camera is not on', 2.6);
+        else if (h && h.id !== S.cam) fx.seen.heavyHint = (fx.seen.heavyHint || 0) + 1, banner(`A heavy walks in on ${h.name}.`, `press ${h.id + 1} to cut to ${where(h.set).replace(/^(at|on) /, '')}`, 2.4);
+        else banner('A heavy.', 'dodge the red, shoot it while it is dazed', 2.2);
+        break; }
+      case 'wind': if (onSet && !quiet) sfx('wind', e.kind === 'slam' ? CONFIG.slamWind : CONFIG.chargeWind); break;
+      case 'slam': if (onSet) { if (!quiet) sfx('slam'); shake(0.3); puff(wx(e.set, e.x), 0.3, e.z, 8, 1.6, 4); } break;
+      case 'charge': if (onSet && !quiet) sfx('roar'); break;
+      case 'wallHit': if (onSet) { if (!quiet) sfx('crash'); shake(0.3); puff(wx(e.set, e.x), 1, e.z, 6, 1.4, 3); } break;
+      case 'knock': if (e.onCam) { shake(0.5); if (!quiet) sfx('punch'); } break;
+      case 'dodged': if (e.onCam) pop('CLOSE SHAVE', e.set, e.x, 2.2, e.z, 'gold', '+' + CONFIG.dodgeBonus); break;
+      case 'style': if (e.label !== 'CLOSE SHAVE' && !quiet) sfx('style'); break;
+      case 'retarget': break;
+      case 'killedOff': {
+        const h = S.heroes[e.hero];
+        icard(`${titleCase(h.name)} was written out of the picture.`, e.onCam ? 'no plot armor left' : 'it happened off camera', 2.6);
+        if (!quiet) sfx('killedOff');
+        break; }
+      case 'armorLost': banner('Nobody left to cut to.', 'plot armor is gone: this one can die', 3.2, 'redt'); break;
+      case 'armorBack': break;
+      case 'bullDown': fx.slowT = 1.6; break;
+      case 'end': if (!quiet) showEnd(); break;
+    }
+  }
+}
+
+// ===== the end: your cut against the studio's =====
+const RATE = ['Straight to video', 'Matinee filler', 'Cult classic', 'Theatrical release', 'Critics\' pick', 'A masterpiece'];
+function runTheatrical(seed) {
+  const s = R.newGame(Object.assign({}, CONFIG), seed), b = R.makeBot('script', seed * 7919 + 1);
+  let n = 0; while (s.phase !== 'end' && n < 60 * 900) { R.step(s, b(s, DT), DT); n++; }
+  return s;
+}
+const mmss = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+function castLine(s) {
+  const surv = s.heroes.filter(h => h.joined && h.alive).map(h => titleCase(h.name)), dead = s.killedOff.map(k => `${titleCase(HEROES[k.id].name)} (${ACTS[k.act].title.toLowerCase().replace('act', 'Act')}, ${mmss(k.t)})`);
+  if (!surv.length) return 'Nobody walks out. Cancelled.';
+  const join = a => a.length > 1 ? a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1] : a[0];
+  return (dead.length ? `${join(dead)} written out. ` : '') + `${join(surv)} walk${surv.length > 1 ? '' : 's'} out.`;
+}
+function showEnd() {
+  ui.mode = 'end'; if (document.pointerLockElement) document.exitPointerLock();
+  const E = S.ending, n = E.survivors.length;
+  const title = E.cancelled ? 'Cancelled' : n === E.cast ? 'Everybody Walks' : n === 1 ? 'Lone Survivor' : 'Bittersweet';
+  const sub = E.cancelled ? 'The studio pulls the picture.' : n === E.cast ? 'Not one name written out.' : 'Somebody did not make the sequel.';
+  const draw = (th) => {
+    let medal = '<div class="medal none">?<small>SCREENING</small></div>', verdict = 'The studio is screening its cut...';
+    if (th) {
+      const T = th.ending.survivors.length;
+      if (E.cancelled) { medal = '<div class="medal none">X<small>CANCELLED</small></div>'; verdict = 'Nobody to put on the poster.'; }
+      else if (!E.director) { medal = '<div class="medal">SC<small>STUDIO CUT</small></div>'; verdict = 'You kept to the studio\'s script.'; }
+      else if (n > T) { medal = '<div class="medal gold">DC<small>DIRECTOR\'S CUT</small></div>'; verdict = `Your cut saved ${n - T === 1 ? 'one' : n - T} the studio would have lost.`; }
+      else if (n === T) { medal = '<div class="medal">AC<small>ALTERNATE CUT</small></div>'; verdict = 'You broke script; the body count is the same.'; }
+      else { medal = '<div class="medal none">RC<small>RECUT</small></div>'; verdict = 'The studio\'s script would have done better.'; }
+    }
+    showScreen(`<h1 style="font-size:7.5vh">${title}</h1><h2>${sub}</h2>${medal}<h2 style="margin:0">${verdict}</h2>
+      <table><tr><td>Feet of film</td><td>${S.score.toLocaleString()}</td></tr>
+      <tr><td>Style</td><td>${S.styleScore.toLocaleString()}</td></tr>
+      <tr><td>Just in time</td><td>${S.bonusTotal.toLocaleString()}</td></tr>
+      <tr><td>Off script</td><td>${mmss(S.offT)} of ${mmss(S.t)}</td></tr>
+      <tr><td>Headshots</td><td>${S.heads}</td></tr>
+      <tr><td>The papers say</td><td>${'★'.repeat(E.stars)}${'☆'.repeat(5 - E.stars)}</td></tr></table>
+      <div class="cmp"><b>Your cut</b>${castLine(S)}<b style="margin-top:1vh">The studio's cut</b>${th ? castLine(th) : '...'}</div>
+      <div class="note">${RATE[E.stars]}</div><div class="go">R · ROLL IT AGAIN</div>`);
+  };
+  draw(null);
+  setTimeout(() => { if (ui.mode === 'end') { ui.theatrical = runTheatrical(S.seed); draw(ui.theatrical); } }, 60);
+}
+
+// ===== syncing the scene to the rules =====
+const _dir = new THREE.Vector3();
+function slotHeroes() { if (!S) return [1, 2]; return [0, 1, 2].filter(i => i !== S.cam); }
+function slotOf(id) { return slotHeroes().indexOf(id); }
+function slotSetVisible(set) { if (!S) return -1; for (const id of slotHeroes()) { const h = S.heroes[id]; if (h.joined && h.set === set) return set; } return -1; }
+function syncHero(h, A, adt) {
+  A.g.visible = h.joined && (h.alive || h.deadT < 30) && !(h.id === S.cam && ui.mode === 'play' && R.camRig(S, h).dist < 1.4); // camera jammed into a wall: hide the star
+  if (!A.g.visible) return;
+  A.g.position.set(wx(h.set, h.x + h.leanX), 0, h.z + h.leanZ); A.g.rotation.y = h.face;
+  const sp = Math.hypot(h.vx, h.vz), onCam = h.id === S.cam;
+  if (!h.alive) play(A, 'Death', { once: true, fade: 0.1 });
+  else if (h.downT > 0) play(A, 'Death', { once: true, fade: 0.08, speed: 2.2 });
+  else if (h.dodgeT > 0) play(A, 'Jump', { once: true, fade: 0.06, speed: 1.6 });
+  else if (h.meleeT > 0) play(A, 'Punch', { once: true, fade: 0.05, speed: 2 });
+  else if (h.crouchK > 0.5) play(A, 'Sitting', { once: true, fade: 0.12 });
+  else if (sp > 0.6) play(A, h.aiming || sp < 3.6 ? 'Walking' : 'Running', { speed: h.aiming || sp < 3.6 ? Math.max(0.8, sp / 2.4) : sp / 5.4 });
+  else play(A, 'Idle', { fade: 0.2 });
+  setLook(A, 'base');
+  A.mixer.update(adt);
+  const armed = h.alive && h.downT <= 0 && h.dodgeT <= 0 && h.meleeT <= 0 && h.crouchK < 0.5 && (h.aiming || h.aimT > 0 || (onCam && h.aimK > 0.2));
+  if (armed) {
+    if (onCam) { const Rg = R.camRig(S, h); _dir.set(Rg.fx, Rg.fy, Rg.fz); }
+    else _dir.set(Math.sin(h.face), -0.05, Math.cos(h.face));
+    aimPose(A, _dir.normalize(), 1);
+  }
+}
+function syncEnemy(e, A, adt) {
+  A.g.position.set(wx(e.set, e.x), 0, e.z);
+  if (e.alive) A.g.rotation.y = e.face;
+  else if (!A.deadSet) { A.deadSet = true; A.g.rotation.y = Math.atan2(-e.fallX, -e.fallZ); }
+  const big = e.kind !== 'mook';
+  if (!e.alive) play(A, 'Death', { once: true, fade: 0.06, speed: 1.3 });
+  else if (!big) {
+    if (e.crouch) play(A, 'Sitting', { once: true, fade: 0.12 });
+    else if (e.moving > 0.4) play(A, e.moving > 3.8 ? 'Running' : 'Walking', { speed: e.moving > 3.8 ? e.moving / 4.5 : 1.2 });
+    else play(A, 'Idle', { fade: 0.15 });
+  } else {
+    const P = R.bigP(CONFIG, e);
+    switch (e.state) {
+      case 'windSlam': play(A, 'Punch', { once: true, fade: 0.1, speed: 0.36 / P.slamWind }); break;
+      case 'recover': play(A, 'No', { fade: 0.15, speed: 1.2 }); break;
+      case 'windCharge': play(A, 'Idle', { fade: 0.1, speed: 2.5 }); break;
+      case 'charge': play(A, 'Running', { fade: 0.08, speed: 1.9 }); break;
+      default: play(A, 'Walking', { speed: (e.kind === 'bull' ? CONFIG.bullSpeed : CONFIG.bruteSpeed) / 2.6 });
+    }
+  }
+  if (A.hitT > 0) { A.hitT -= adt; setLook(A, 'flash'); }
+  else setLook(A, e.alive && big && (e.state === 'windSlam' || e.state === 'windCharge' || e.state === 'charge') ? 'red' : 'base');
+  A.mixer.update(adt);
+  if (e.alive && !big && (e.state === 'up' || e.aimT > 0 || (e.state === 'stand' && e.moving < 0.4))) {
+    const h = e.target >= 0 ? S.heroes[e.target] : null;
+    if (h) { _dir.set(h.x - e.x, (h.crouch ? 0.6 : 1.2) - 1.35, h.z - e.z).normalize(); aimPose(A, _dir, 1); }
+  }
+  // the red glint: a mook about to fire (danger, now)
+  if (!A.glint) { A.glint = new THREE.Sprite(new THREE.SpriteMaterial({ color: PALETTE.red, map: SOFT, depthWrite: false })); scene.add(A.glint); }
+  A.glint.visible = e.alive && e.aimT > 0;
+  if (A.glint.visible && actorMuzzle(A, _m)) { A.glint.position.copy(_m); A.glint.scale.setScalar(0.25 + (1 - e.aimT / CONFIG.mookAim) * 0.55); }
+  if (big) {
+    let T = telegraphs.get(e.id); if (!T) { T = makeTelegraph(); telegraphs.set(e.id, T); }
+    const P = R.bigP(CONFIG, e), cx = SETS[e.set].cx;
+    T.disc.visible = T.ring.visible = e.alive && e.state === 'windSlam';
+    if (T.disc.visible) {
+      const k = 1 - e.stT / P.slamWind;
+      T.ring.position.set(cx + e.sx, 0.03, e.sz); T.ring.scale.setScalar(P.slamR);
+      T.disc.position.set(cx + e.sx, 0.025, e.sz); T.disc.scale.setScalar(P.slamR * Math.max(0.05, k)); T.disc.material.opacity = 0.35 + 0.5 * k;
+    }
+    T.lane.visible = e.alive && (e.state === 'windCharge' || e.state === 'charge');
+    if (T.lane.visible) {
+      const len = 16, ang = Math.atan2(e.cdx, e.cdz);
+      T.lane.position.set(cx + e.x + e.cdx * len / 2, 0.025, e.z + e.cdz * len / 2); T.lane.rotation.set(-Math.PI / 2, 0, ang);
+      T.lane.scale.set(P.hitR * 2, len, 1); T.lane.material.opacity = e.state === 'charge' ? 0.75 : 0.3 + 0.4 * (1 - e.stT / CONFIG.chargeWind);
+    }
+  }
+}
+function syncWorld(adt) {
+  const alive = new Set();
+  for (const e of S.enemies) {
+    alive.add(e.id);
+    let A = enemyActors.get(e.id); if (!A) { A = makeActor(e.kind); A.hitT = 0; enemyActors.set(e.id, A); }
+    syncEnemy(e, A, adt);
+  }
+  for (const [id, A] of enemyActors) if (!alive.has(id)) { removeActor(A); if (A.glint) scene.remove(A.glint); enemyActors.delete(id);
+    const T = telegraphs.get(id); if (T) { for (const m of Object.values(T)) scene.remove(m); telegraphs.delete(id); } }
+  S.heroes.forEach((h, i) => syncHero(h, heroActors[i], adt));
+  const ch = S.heroes[S.cam];
+  armorRing.visible = ch.alive && S.phase === 'play';
+  armorRing.position.set(wx(ch.set, ch.x + ch.leanX), 0.03, ch.z + ch.leanZ);
+  armorRing.material = R.isArmored(S, ch) ? STENCIL.gold : STENCIL.red;
+}
+
+// ===== cameras =====
+function updateCams(rdt) {
+  if (!S || ui.mode === 'title' || ui.mode === 'loading') { // title: a slow orbit of the Mill
+    titleT += rdt; const a = titleT * 0.08;
+    mainCam.position.set(Math.sin(a) * 14, 5.5, Math.cos(a) * 11); mainCam.lookAt(0, 1.2, 0); mainCam.fov = 50; mainCam.updateProjectionMatrix(); return;
+  }
+  const h = S.heroes[S.cam], Rg = R.camRig(S, h), cx = SETS[h.set].cx;
+  mainCam.position.set(cx + Rg.x, Rg.y, Rg.z);
+  if (fx.shake > 0) { const k = fx.shake * 0.5; mainCam.position.x += (Math.random() - 0.5) * k; mainCam.position.y += (Math.random() - 0.5) * k; fx.shake = Math.max(0, fx.shake - rdt * 2.5); }
+  mainCam.lookAt(mainCam.position.x + Rg.fx, mainCam.position.y + Rg.fy, mainCam.position.z + Rg.fz);
+  if (Math.abs(mainCam.fov - Rg.fov) > 0.05) { mainCam.fov = Rg.fov; mainCam.updateProjectionMatrix(); }
+  slotHeroes().forEach((id, k) => { // cameos: a high camera behind each other hero, looking down at them
+    const o = S.heroes[id]; if (!o.joined) return; const ocx = SETS[o.set].cx, C = cmCam[k];
+    const bx = clamp3(o.x * 0.55, ARENA_HW - 2), bz = clamp3(o.z - 8.5, ARENA_HD - 1);
+    C.position.set(ocx + bx, 8.5, bz); C.lookAt(ocx + o.x, 1.0, o.z);
+  });
+}
+const clamp3 = (v, m) => Math.max(-m, Math.min(m, v));
+function view(g, cam, r, tone) {
+  g.setTone(tone); g.rp.camera = cam;
+  const y = innerHeight - r.y - r.h;
+  renderer.setViewport(r.x, y, r.w, r.h); renderer.setScissor(r.x, y, r.w, r.h); renderer.setScissorTest(true);
+  g.composer.render();
+}
+function render() {
+  renderer.setScissorTest(false); renderer.setViewport(0, 0, innerWidth, innerHeight); renderer.setClearColor(PALETTE.ink, 1); renderer.clear();
+  const set = S && ui.mode !== 'title' ? camSet() : 0;
+  aimKey(set); renderer.shadowMap.autoUpdate = true;
+  view(mainGrade, mainCam, L.pic, SETS[set].tone);
+  renderer.shadowMap.autoUpdate = false;
+  if (!S || ui.mode === 'title') return;
+  slotHeroes().forEach((id, k) => {
+    const o = S.heroes[id]; if (!o.joined || (!o.alive && o.deadT > 2.5)) return;
+    const c = L.cm[k]; view(cmGrade[k], cmCam[k], { x: c.x, y: c.y, w: c.s, h: c.s }, SETS[o.set].tone);
+  });
+  renderer.setScissorTest(false);
+}
+
+// ===== HUD =====
+let ammoN = -1;
+function setCls(el, name, on) { if (el.classList.contains(name) !== on) el.classList.toggle(name, on); }
+function updateHud(rdt) {
+  const show = S && ui.mode !== 'title' && ui.mode !== 'loading';
+  for (const id of ['roomName', 'reel', 'heroCard', 'pov', 'cm0', 'cm1']) $(id).style.visibility = show ? 'visible' : 'hidden';
+  if (!show) return;
+  const ch = S.heroes[S.cam], cset = ch.set, c = CONFIG, playing = S.phase === 'play';
+  $('roomName').textContent = `${SETS[cset].name} · ${ch.name}`;
+  // act card
+  const card = S.phase === 'card';
+  setCls($('actCard'), 'show', card);
+  if (card) { const A = ACTS[S.nextAct]; $('acK').textContent = A.title; $('acT').textContent = A.name; $('acS').textContent = A.sub; }
+  // cameos
+  slotHeroes().forEach((id, k) => {
+    const o = S.heroes[id], el = $('cm' + k), big = R.bigTargeting(S, o.set, o.id);
+    const dead = o.joined && !o.alive, off = !o.joined || (dead && o.deadT > 2.5);
+    setCls(el, 'off', off);
+    el.querySelector('.nosig').textContent = !o.joined ? (CONFIG.thirdHero && S.act < 1 ? 'joins in Act Two' : 'no signal') : dead ? 'Written out.' : '';
+    el.querySelector('.lab').innerHTML = o.joined ? `${id + 1} · ${o.name}<small>${SETS[o.set].name}</small>` : `${id + 1} · ???<small>NO SIGNAL</small>`;
+    el.querySelector('.bar i').style.width = (o.joined ? Math.max(0, o.hp) * 100 : 0) + '%';
+    el.querySelector('.bar').style.visibility = o.joined && o.alive ? 'visible' : 'hidden';
+    const danger = playing && o.alive && o.joined && (big || o.hp < 0.25);
+    setCls(el, 'danger', !!danger);
+    el.querySelector('.st').textContent = !playing || !o.alive || !o.joined ? '' : big ? 'HEAVY!' : o.hp < 0.25 ? 'DYING' : '';
+    setCls(el, 'cue', playing && o.alive && S.scriptHero === id);
+    el.querySelector('.tag').textContent = S.mode === 'script' && S.cue && S.cue.hero === id ? `SCRIPT CUTS HERE IN ${Math.ceil(S.cue.in)}` : 'THE SCRIPT WANTS THIS';
+    if (S.mode === 'script' && S.cue && S.cue.hero === id && S.cue.in < c.cueWarn) el.classList.add('cue');
+    if (fx.rejectT[k] > 0) { fx.rejectT[k] -= rdt; setCls(el, 'reject', true); } else setCls(el, 'reject', false);
+    if (fx.hitCm[k] > 0) { fx.hitCm[k] -= rdt; setCls(el, 'hit', true); } else setCls(el, 'hit', false);
+  });
+  // reel and score (in feet of film)
+  $('reelN').textContent = `REEL ${Math.max(1, S.act + 1 || S.nextAct + 1)}`;
+  $('feet').innerHTML = `${S.score.toLocaleString()} <small>FT</small>`;
+  $('chain').textContent = S.chain > 1 ? `x${S.chain} CHAIN` : ''; $('chain').style.opacity = S.chain > 1 ? 1 : 0;
+  // hero card
+  $('hName').innerHTML = `${ch.id + 1} · ${ch.name}<small>${SETS[cset].name}</small>`;
+  $('hBar').style.width = Math.max(0, ch.hp) * 100 + '%';
+  setCls($('heroCard'), 'low', ch.hp < 0.3);
+  const armored = R.isArmored(S, ch);
+  $('armorTag').textContent = armored ? 'PLOT ARMOR · CAN\'T DIE ON CAMERA' : 'NO PLOT ARMOR';
+  $('armorTag').className = armored ? 'on' : 'gone';
+  if (ammoN !== ch.ammo * 100 + c.magSize) { ammoN = ch.ammo * 100 + c.magSize; $('ammo').innerHTML = Array.from({ length: c.magSize }, (_, i) => `<i class="${i < ch.ammo ? '' : 'spent'}"></i>`).join(''); }
+  setCls($('ammo'), 'reload', ch.reloadT > 0);
+  $('scriptSt').textContent = S.mode === 'script' ? 'ON SCRIPT · THE STUDIO CUTS' : 'OFF SCRIPT · YOUR CUT';
+  setCls($('scriptSt'), 'off', S.mode !== 'script');
+  // crosshair: gap shows the spread
+  const moving = Math.hypot(ch.vx, ch.vz) > 1.2, blind = ch.cover && ch.crouch;
+  const sp = blind ? c.spreadBlind : ch.aimK > 0.5 ? c.spreadAim : moving ? c.spreadMove : c.spreadHip;
+  const gap = 4 + sp / Math.tan(mainCam.fov * Math.PI / 360) * L.pic.h / 2, len = ch.aimK > 0.5 ? 7 : 10;
+  const XS = { xl: [-gap - len, -1, len, 2], xr: [gap, -1, len, 2], xt: [-1, -gap - len, 2, len], xb: [-1, gap, 2, len] };
+  for (const k in XS) { const [x, y, w, h] = XS[k]; Object.assign($(k).style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px' }); }
+  $('xhair').style.opacity = playing && ch.alive ? 1 : 0;
+  fx.hitmT = Math.max(0, fx.hitmT - rdt); $('hitm').style.opacity = fx.hitmT > 0 ? 1 : 0;
+  for (let i = 0; i < 4; i++) { fx.arcs[i] = Math.max(0, fx.arcs[i] - rdt); $('arc' + i).style.opacity = Math.min(1, fx.arcs[i] * 1.5); }
+  fx.redT = Math.max(0, fx.redT - rdt); $('redVig').style.opacity = fx.redT * 1.6 + (playing && !armored && ch.hp < 0.35 ? 0.35 + 0.25 * Math.sin(performance.now() / 160) : 0);
+  $('vig').style.opacity = playing && ch.hp < 0.4 ? (0.4 - ch.hp) * 2 : 0;
+  fx.armorT = Math.max(0, fx.armorT - rdt); $('armorTxt').style.opacity = Math.min(1, fx.armorT * 2);
+  // the script cue
+  let cue = '';
+  if (playing && S.mode === 'script' && S.cue && S.cue.in < c.cueWarn) cue = `The script cuts to <b>${S.heroes[S.cue.hero].name}</b> in ${Math.ceil(S.cue.in)}`;
+  else if (playing && S.mode === 'director' && S.scriptHero !== S.cam) cue = `The script wants <b>${S.heroes[S.scriptHero].name}</b> · TAB to follow it`;
+  $('cue').innerHTML = cue; $('cue').style.opacity = cue ? 1 : 0;
+  if (playing && S.mode === 'script' && S.cue && S.cue.in < c.cueWarn) { const n = Math.ceil(S.cue.in); if (n !== fx.cueBeep) { fx.cueBeep = n; sfx('click', 2200); } } else fx.cueBeep = -1;
+  // timers
+  fx.jitT = Math.max(0, fx.jitT - rdt); const jk = fx.jitT > 1.42 ? 1.35 - (1.6 - fx.jitT) / 0.18 * 0.35 : 1;
+  $('jit').style.opacity = fx.jitT > 0 ? Math.min(1, fx.jitT * 2) : 0; $('jit').style.transform = `scale(${jk})`;
+  fx.icardT = Math.max(0, fx.icardT - rdt); $('icard').style.opacity = fx.icardT > 0 && !card ? 1 : 0;
+  fx.bannerT = Math.max(0, fx.bannerT - rdt); $('banner').style.opacity = Math.min(1, fx.bannerT * 2);
+  // heartbeat when someone off camera is dying
+  const dying = S.heroes.some(o => o.joined && o.alive && o.id !== S.cam && o.hp < 0.25);
+  if (playing && dying && (fx.heartT -= rdt) <= 0) { fx.heartT = 0.9; sfx('heart'); }
+  // one hint at a time, most urgent first
+  $('prompt').innerHTML = hint(ch, playing);
+}
+function hint(ch, playing) {
+  if (!playing || !c_hints()) return '';
+  const others = S.heroes.filter(o => o.joined && o.alive && o.id !== S.cam);
+  const dying = others.filter(o => o.hp < 0.25).sort((a, b) => a.hp - b.hp)[0];
+  if (dying) return `<span class="red">${dying.name} IS DYING · PRESS ${dying.id + 1}</span>`;
+  const heavy = others.find(o => R.bigTargeting(S, o.set, o.id));
+  if (heavy && (fx.seen.heavyHint || 0) < 3) return `<span class="red">A HEAVY IS ON ${heavy.name} · PRESS ${heavy.id + 1}</span>`;
+  const myBig = R.bigTargeting(S, ch.set, ch.id);
+  if (myBig && myBig.state === 'recover') return '<span>IT\'S DAZED · SHOOT IT NOW (DOUBLE DAMAGE)</span>';
+  if (myBig && !fx.seen.dodge) return '<span>RED MEANS MOVE · SHIFT TO DODGE</span>';
+  if (ch.ammo <= 0 && ch.reloadT <= 0) return '<span>R · RELOAD</span>';
+  if (S.act === 0 && S.actT < 30) {
+    if (S.actT < 9) return '<span>MOUSE AIM · LMB SHOOT · RMB AIM DOWN SIGHTS</span>';
+    if (!fx.seen.cover && S.actT < 21) return '<span>SPACE NEXT TO A CRATE · TAKE COVER</span>';
+    return '<span>HEADSHOTS DROP THEM IN ONE · F UP CLOSE</span>';
+  }
+  if (!ch.cover && !fx.seen.cover && nearCover(ch)) return '<span>SPACE · TAKE COVER</span>';
+  return '';
+}
+function c_hints() { return CONFIG.hints; }
+function nearCover(h) { for (const [bx, bz, hw, hd] of SETS[h.set].obstacles) { const dx = Math.max(Math.abs(h.x - bx) - hw, 0), dz = Math.max(Math.abs(h.z - bz) - hd, 0); if (Math.hypot(dx, dz) < CONFIG.coverReach + 0.4) return true; } return false; }
+function musicWant() {
+  if (!S || ui.mode !== 'play' || S.phase !== 'play') return 0;
+  const ch = S.heroes[S.cam];
+  const big = S.enemies.some(e => e.alive && e.kind !== 'mook' && e.set === ch.set);
+  const danger = S.heroes.some(o => o.joined && o.alive && o.id !== S.cam && o.hp < 0.3 && R.bigTargeting(S, o.set, o.id));
+  if (big || danger || S.lone) return 3;
+  return S.enemies.some(e => e.alive && e.set === ch.set && Math.hypot(e.x - ch.x, e.z - ch.z) < 26) ? 2 : 1;
+}
+
+// ===== the frame =====
+function frame(now) {
+  requestAnimationFrame(frame);
+  const rdt = Math.min(0.05, (now - last) / 1000); last = now;
+  let adt = ui.mode === 'pause' || ui.mode === 'frozen' ? 0 : rdt;
+  if (S && ui.mode === 'play') {
+    const ch = S.heroes[S.cam], sens = CONFIG.mouseSens * (ch.aimK > 0.5 ? 0.65 : 1);
+    if (lookDX || lookDY) { R.look(S, -lookDX * sens, -lookDY * sens); lookDX = lookDY = 0; } // mouse look lands this frame
+    while (pendingPress.length) handle(R.applyPress(S, pendingPress.shift()));             // so do presses
+    let simDt = rdt;
+    if (fx.freeze > 0) { fx.freeze -= rdt; simDt = 0; }
+    else if (fx.slowT > 0) { fx.slowT -= rdt; simDt *= CONFIG.slowmo; }
+    adt = simDt; acc += simDt;
+    while (acc >= DT && S.phase !== 'end') { acc -= DT; handle(R.step(S, bot ? bot(S, DT) : readInput(), DT)); }
+    MUS.want = musicWant();
+  } else MUS.want = 0;
+  if (S && ui.mode !== 'title') syncWorld(adt);
+  updateFx(adt);
+  updateCams(rdt);
+  render();
+  updateHud(rdt);
+}
+
+// ===== tuning panel (backtick) =====
+function toggleDbg() {
+  const d = $('dbg');
+  if (!d.innerHTML) {
+    d.innerHTML = '<b>TUNING</b> (backtick closes)<br>' + Object.keys(CONFIG).map(k => typeof CONFIG[k] === 'boolean'
+      ? `<label>${k}<input type="checkbox" data-k="${k}" ${CONFIG[k] ? 'checked' : ''}></label>`
+      : `<label>${k}<input type="number" step="any" data-k="${k}" value="${CONFIG[k]}"></label>`).join('') +
+      '<button id="dbgReset">defaults</button><button id="dbgRestart">restart</button>';
+    d.addEventListener('input', e => { const k = e.target.dataset.k; if (!k) return; CONFIG[k] = e.target.type === 'checkbox' ? e.target.checked : +e.target.value; setVolumes(); });
+    d.addEventListener('click', e => {
+      if (e.target.id === 'dbgReset') { Object.assign(CONFIG, JSON.parse(JSON.stringify(R.DEFAULTS))); d.innerHTML = ''; toggleDbg(); toggleDbg(); setVolumes(); }
+      if (e.target.id === 'dbgRestart') begin(true);
+    });
+  }
+  d.classList.toggle('show');
+  if (d.classList.contains('show') && document.pointerLockElement) document.exitPointerLock();
+}
+
+// ===== test hook =====
+window.KM = {
+  get state() { return S; }, get ui() { return ui; }, CONFIG, R, get theatrical() { return ui.theatrical; },
+  start(skipCard) { begin(!!skipCard, true); },
+  press(p) { press(p); },
+  setBot(k) { bot = k ? R.makeBot(k, 1234) : null; },
+  fastForward(sec, policy) {
+    const b = policy ? R.makeBot(policy, 99) : bot || R.makeBot('director', 99);
+    for (let i = 0; i < sec * 60 && S.phase !== 'end'; i++) handle(R.step(S, b(S, DT), DT), true);
+    if (S.phase === 'end' && ui.mode !== 'end') showEnd();
+    return { phase: S.phase, act: S.act, t: +S.t.toFixed(1), score: S.score, mode: S.mode, killed: S.killedOff.map(k => k.id) };
+  },
+  actors() { return { heroes: heroActors.length, enemies: enemyActors.size }; },
+  glints() { const out = []; for (const [id, A] of enemyActors) if (A.glint) { const p = A.glint.position.clone().project(mainCam);
+    out.push({ id, vis: A.glint.visible, inScene: !!A.glint.parent, scale: +A.glint.scale.x.toFixed(2), sx: +p.x.toFixed(2), sy: +p.y.toFixed(2), z: +p.z.toFixed(3) }); } return out.filter(g => g.vis); },
+  headCheck() { // where the robot's head bone really is, against the rules' head sphere
+    const A = heroActors[S.cam]; if (!A || !A.head) return null; A.head.getWorldPosition(_v);
+    return { headBoneY: +_v.y.toFixed(3), rulesHeadY: +(DIM.hero.h * HEAD_Y).toFixed(3), headR: +(DIM.hero.h * HEAD_R).toFixed(3) };
+  },
+};
+
+layout();
+requestAnimationFrame(frame);
+// URL test scenes for headless screenshots: index.html#scene=cover | aim | slam | mook | cut | end
+async function runScene(name) {
+  const wait = ms => new Promise(r => setTimeout(r, ms)), until = async (f, ms = 30000) => { const t0 = performance.now(); while (!f() && performance.now() - t0 < ms) await new Promise(r => requestAnimationFrame(r)); };
+  const freeze = () => { ui.mode = 'frozen'; };
+  KM.setBot(name === 'cover' || name === 'aim' ? null : 'director'); KM.start(true);
+  const S = KM.state; await until(() => S.phase === 'play'); await wait(400);
+  if (name === 'cover' || name === 'aim') {
+    const h = S.heroes[0]; h.x = 0.6; h.z = 0.9; S.camYaw = 0.25; S.camPitch = -0.1; press({ cover: true }); await wait(900);
+    if (name === 'aim') { mouseR = true; await wait(600); }
+    freeze();
+  } else if (name === 'slam') { KM.fastForward(42); await until(() => S.phase === 'play' && S.enemies.some(e => e.alive && e.kind === 'brute' && e.set === camSet() && e.state === 'windSlam' && e.stT < 0.3)); freeze(); }
+  else if (name === 'mook') { await until(() => S.phase === 'play' && S.enemies.some(e => e.alive && e.set === camSet() && e.aimT > 0 && e.aimT < 0.3 && Math.hypot(e.x - S.heroes[S.cam].x, e.z - S.heroes[S.cam].z) < 12)); freeze(); }
+  else if (name === 'cut') { KM.setBot('greedy'); await until(() => fx.jitT > 1.4, 200000); freeze(); }
+  else if (name === 'end') { KM.fastForward(600); }
+}
+addEventListener('keydown', e => { if (ui.mode === 'frozen' && e.code === 'KeyP') ui.mode = 'play'; });
+loadModel().then(() => { const m = /scene=(\w+)/.exec(location.hash); if (m) runScene(m[1]); else if (ui.mode === 'loading') showTitle(); }).catch(err => {
+  showScreen(`<h1>Meanwhile...</h1><h2>The reel would not load.</h2><div class="note">Couldn't fetch the character model (${String(err.message || err).slice(0, 120)}). This prototype needs an internet connection.</div>`);
+  ui.mode = 'error';
+});
+</script>
+<script>
+// shows a plain message when three.js or the module fails (no internet, or an old browser)
+addEventListener('error', e => { const el = document.getElementById('err'); el.style.display = 'block'; el.textContent += (e.message || 'error') + (e.filename ? ' @ ' + e.filename.split('/').pop() + ':' + e.lineno : '') + '\n'; });
+setTimeout(() => { if (!window.KM) { const el = document.getElementById('err'); el.style.display = 'block';
+  el.textContent += 'three.js did not load. This prototype needs an internet connection (three.js, the character model and fonts come from CDNs).\n'; } }, 8000);
+</script>
+</body>
+</html>
