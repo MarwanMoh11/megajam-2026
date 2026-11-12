@@ -1,99 +1,98 @@
 # Stage 0: reach the PC from the MacBook
 
-The PC upstairs dual-boots Linux Mint and Windows. The game is built on Mint; Windows is booted only to package,
-because the jam accepts Windows builds and not Linux ones. Everything after this stage is done from the MacBook:
+One trip upstairs, about 15 minutes at the PC's keyboard in Windows. After it, everything is done from the Mac: SSH
+carries the Claude sessions, Sunshine (on the PC) and Moonlight (on the Mac) carry the screen.
 
-- **SSH** carries the agents. The Claude app on the Mac starts sessions that run on the PC.
-- **Sunshine** (on the PC) and **Moonlight** (on the Mac) carry the screen, for the editor and for playing the game.
+**None of this has been run.** If a line fails, carry on with the next one and tell Claude on the Mac what it said.
 
-Both are free and open source, and on a home network neither needs an account or a cloud relay.
+## A. At the PC, in Windows
 
-**Nothing here has been run on this PC.** Commands are from each project's documentation.
+Open this page in the PC's browser (github.com > `megajam-2026` > `setup/0-remote.md`), so the blocks can be copied.
+Then right-click Start > **Terminal (Admin)** or **Windows PowerShell (Admin)**.
 
-## A. At the PC's keyboard, in Mint (5 minutes, the only trip upstairs)
+**Block 1: SSH, the small tools, and the two facts the Mac needs (about 5 minutes).** It installs Windows' own SSH
+server, lets in one key (the MacBook's, made for this jam), opens port 22 on the home network, stops the PC from
+sleeping, and installs the Epic Games Launcher, Git, the GitHub CLI, Sunshine, 7-Zip and OBS Studio. The winget
+flags accept each package's licence terms for you.
 
-1. Open a terminal:
-   ```
-   sudo apt update && sudo apt install -y openssh-server
-   hostname -I | awk '{print $1}'; whoami
-   ```
-   Note the two lines it prints: the PC's address and your username.
-2. **Start the long download now.** In Firefox, open
-   https://forums.unrealengine.com/t/unreal-engine-5-9-megajam-preview/2852840 , follow the "here for Linux" link,
-   sign in to Epic and download the Linux build of the 5.9 MegaJam Preview into `~/Downloads`. It is tens of GB.
-3. So you never have to come back up:
-   - Menu > Login Window > Users: turn on **automatic login** for your user. Sunshine only runs once you are logged
-     in, so without this you can't reach the desktop after a reboot.
-   - Menu > Power Management: never suspend, never turn the screen off on idle.
-   - Leave the monitor connected (it can be switched off at its button) and the PC on wired Ethernet if you can.
+```powershell
+Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+Set-Service sshd -StartupType Automatic; Start-Service sshd
+$key = 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPTGjksrzOrUuK6woAF0/alCcZOPxASnjgApIxaZRRJP jam-mac'
+Add-Content C:\ProgramData\ssh\administrators_authorized_keys $key -Encoding ascii
+icacls C:\ProgramData\ssh\administrators_authorized_keys /inheritance:r /grant "*S-1-5-32-544:F" /grant "*S-1-5-18:F"
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.ssh" | Out-Null
+Add-Content "$env:USERPROFILE\.ssh\authorized_keys" $key -Encoding ascii
+New-NetFirewallRule -Name Jam-SSH -DisplayName "Jam SSH" -Direction Inbound -Protocol TCP -LocalPort 22 -Action Allow -ErrorAction SilentlyContinue | Out-Null
+powercfg /change standby-timeout-ac 0; powercfg /change hibernate-timeout-ac 0
+foreach ($id in 'EpicGames.EpicGamesLauncher','Git.Git','GitHub.cli','LizardByte.Sunshine','7zip.7zip','OBSProject.OBSStudio') { winget install -e --id $id --accept-source-agreements --accept-package-agreements }
+Restart-Service sshd
+"ADDRESS: " + (Get-NetIPConfiguration | Where-Object { $_.IPv4DefaultGateway }).IPv4Address.IPAddress; "USER: $env:USERNAME"
+```
+
+Write down the **ADDRESS** and **USER** it prints (a phone photo will do).
+
+**Block 2: Visual Studio with the Unreal workloads (20 to 40 minutes, unattended).** Paste it and leave the window
+open.
+
+```powershell
+winget install -e --id Microsoft.VisualStudio.2022.Community --accept-source-agreements --accept-package-agreements --override "--passive --wait --norestart --includeRecommended --add Microsoft.VisualStudio.Workload.NativeGame --add Microsoft.VisualStudio.Workload.NativeDesktop --add Microsoft.VisualStudio.Workload.ManagedDesktop"
+```
+
+**The engine (the longest download, so start it now).** Open the Epic Games Launcher from the Start menu and sign in
+with the Epic account whose email will go on the submission form. Unreal Engine > Library > the **+** beside "Engine
+Versions" > the version dropdown > **5.9 MegaJam Preview** > Install. In Options keep Core Components, Templates and
+Feature Packs, Engine Source, and **Web** if it is listed (it may be called Wasm); untick Editor symbols for
+debugging, Starter Content and every other platform. It needs about 120 GB free.
+
+**Before leaving:** the PC stays on, signed in to Windows, with its monitor connected (Sunshine streams a real
+display).
 
 ## B. On the MacBook
 
-Tell the main Claude session the address and username; it writes the SSH config and makes a key. By hand it is:
+1. Send Claude the ADDRESS and USER. Claude writes the `jam-pc` entry in `~/.ssh/config` (the key is already made)
+   and checks that `ssh jam-pc` gets in without a password.
+2. Sign the PC in to GitHub. It prints a code: type it at https://github.com/login/device on the Mac. The token is
+   stored in a plain file on the PC, because Windows' credential store can't be read from an SSH session.
 
-1. A key just for this PC:
    ```bash
-   ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_jampc -N ""
+   ssh -t jam-pc "gh auth login -p https -w --insecure-storage"
    ```
-2. Two entries in `~/.ssh/config`. Both boots share one address but have different host keys; `HostKeyAlias` keeps
-   them apart so SSH doesn't raise a "host identification has changed" alarm when you switch.
-   ```
-   Host jam-mint
-     HostName <address>
-     User <mint username>
-     IdentityFile ~/.ssh/id_ed25519_jampc
-     HostKeyAlias jam-mint
 
-   Host jam-win
-     HostName <address>
-     User <windows username>
-     IdentityFile ~/.ssh/id_ed25519_jampc
-     HostKeyAlias jam-win
-   ```
-3. Install the key on Mint. It asks for your PC password once:
+3. Clone the repo on the PC:
+
    ```bash
-   ssh-copy-id -i ~/.ssh/id_ed25519_jampc.pub jam-mint
+   ssh jam-pc "gh auth setup-git && git lfs install && gh repo clone MarwanMoh11/megajam-2026 C:\Jam\megajam"
    ```
-4. Check it, then install the few packages that need your password (the agents never type it):
-   ```bash
-   ssh -t jam-mint 'sudo apt install -y git git-lfs gh curl rsync p7zip-full efibootmgr vulkan-tools'
-   ```
-5. Sign the PC in to GitHub and clone the repo. `gh` prints a one-time code; open the address it shows on the Mac:
-   ```bash
-   ssh -t jam-mint 'gh auth login -p https -w && gh auth setup-git && gh repo clone MarwanMoh11/megajam-2026 ~/Jam/megajam'
-   ```
-6. In the Claude app: the environment selector under the prompt box > **New environment** > **SSH** tab > Host list >
-   **Add SSH connection...** Name `jam-mint`, SSH host `jam-mint`. Then pick the folder `~/Jam/megajam` and create
-   the environment. The app installs Claude Code on the PC the first time it connects.
-7. Moonlight, for the screen:
+
+4. Install Moonlight:
+
    ```bash
    brew install --cask moonlight
    ```
 
-## C. Pair the screen (after stage 1 has installed Sunshine)
+5. In the Claude app: the environment selector under the prompt box > New environment > **SSH** > Add SSH
+   connection: name `jam-pc`, SSH host `jam-pc`, folder `C:\Jam\megajam`. The app installs Claude Code on the PC the
+   first time it connects.
+6. Start a session on `jam-pc` and paste the stage 1 prompt from `README.md`.
 
-1. On the Mac, open `https://<address>:47990` and accept the certificate warning (Sunshine signs its own). Create
-   Sunshine's username and password.
-2. Open Moonlight. The PC appears by itself, or add it by address. Click it: Moonlight shows a four-digit PIN.
-3. Enter the PIN on Sunshine's PIN page. Start the **Desktop** stream.
+## C. The screen: pair Moonlight with Sunshine (from the Mac)
 
-In Moonlight's settings choose 1080p at 60 fps to start with, and raise it if the network keeps up.
+1. In the Mac's browser open `https://<ADDRESS>:47990`. The browser warns about the certificate, because Sunshine
+   signs its own: continue. Create a Sunshine username and password of your choice.
+2. Open Moonlight. The PC appears by itself, or add it by its ADDRESS. Click it: Moonlight shows a four-digit PIN.
+3. In the Sunshine page, **PIN** tab: enter the PIN and any device name.
+4. In Moonlight, click the PC > **Desktop**. Quit the stream with Ctrl+Option+Shift+Q.
 
-## D. Switching to Windows and back without going upstairs
-
-- **Mint to Windows:** find the Windows entry with `efibootmgr` (it is called "Windows Boot Manager"), then
-  ```
-  ssh -t jam-mint 'sudo efibootmgr -n <its four-digit number> && sudo reboot'
-  ```
-  `-n` sets the next boot only; nothing permanent changes.
-- **Windows to Mint:** restart Windows. The normal boot order takes it back to Mint. **Always use Restart, never
-  Shut down:** a Windows shutdown leaves its partition locked and Mint can then only read it.
-- Reaching Windows from the Mac needs its own one-time setup: `setup/win-1-tools.md`.
+Sunshine runs as a Windows service, so the stream works at the sign-in screen and shows Windows' permission prompts.
+There is no shared clipboard: when something long has to be typed on the PC, ask the Claude session to do it or to
+write it into a file there.
 
 ## If it doesn't work
 
-- **`ssh` times out:** the PC and the Mac must be on the same network; check the address again with `hostname -I`.
-- **Moonlight shows a black screen:** the PC needs a connected display and a logged-in desktop session.
-- **The stream stutters:** lower the bitrate in Moonlight, or move the PC to Ethernet.
-- **Sunshine won't capture at all:** RustDesk is the fallback. It is open source too, but slower, so judge game feel
-  at the PC itself.
+- **`ssh jam-pc` asks for a password or is refused:** in the admin PowerShell on the PC, `Get-Service sshd` should
+  say Running, and `Get-Content C:\ProgramData\ssh\administrators_authorized_keys` should show the key line.
+- **Claude sessions over SSH fight back on Windows:** install the Claude desktop app on the PC and use it through
+  Moonlight. Clunkier, but everything else in the runbooks still holds.
+- **Moonlight shows a black screen:** the monitor is off or unplugged. Turn it on, or ask the Claude session to
+  check Sunshine's log.
