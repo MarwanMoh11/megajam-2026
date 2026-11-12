@@ -1,0 +1,905 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Tight Edit (grey box)</title>
+</head>
+<body>
+<style>
+  html, body { margin: 0; height: 100%; background: #111114; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; touch-action: none; }
+  #dbg { position: fixed; top: 8px; right: 8px; width: 320px; max-height: calc(100vh - 16px); overflow: auto;
+         background: rgba(18,18,22,.96); color: #ddd; font: 12px/1.45 ui-monospace, Menlo, Consolas, monospace;
+         padding: 10px; border: 1px solid #444; border-radius: 6px; display: none; }
+  #dbg.on { display: block; }
+  #dbg label { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin: 1px 0; }
+  #dbg input[type=number] { width: 84px; background: #222; color: #eee; border: 1px solid #555; }
+  #dbg button { margin: 6px 4px 0 0; background: #333; color: #eee; border: 1px solid #666; padding: 3px 7px; cursor: pointer; }
+  #dbg pre { white-space: pre-wrap; color: #9fd8b0; margin: 8px 0 0; }
+</style>
+<canvas id="c"></canvas>
+<div id="dbg"></div>
+<script id="rules">
+// ============================================================================
+// RULES: shared by the game (below) and the solver (here and in solve.mjs).
+// Plain JS, no DOM. solve.mjs extracts this <script id="rules"> block and runs it in node.
+// ============================================================================
+var TightEdit = (function () {
+  'use strict';
+
+  // Every tunable lives here. The debug panel (key D, ` or F2) edits it live.
+  const CONFIG = {
+    // --- rules (changing these changes the solver's numbers; re-run it from the debug panel) ---
+    fps: 24,               // timeline grid: one frame = 1/24 s; every margin is counted in frames
+    starSpeed: 4.0,        // m/s along the fixed path
+    starWidth: 0.5,        // m
+    crusherWidth: 1.0,     // m
+    nearMissFrames: 6,     // a gap of fewer frames than this scores (6 frames = 0.25 s)
+    oneTrack: true,        // THE coupling: one camera, one track; clips can't overlap
+    starWaits: false,      // rejected coupling, kept for comparison: star stops at a closed crusher
+    dcSlack: 17,           // Director's Cut threshold = best possible score minus this (17 = one frame on one trap)
+    // --- feel ---
+    playRate: 1.0,         // playback speed of a take (hold Shift during a take for x3)
+    slowmoScale: 0.25,     // time scale around a near miss
+    slowmoBefore: 2,       // frames of slow motion before a near miss
+    slowmoAfter: 2,        // frames of slow motion after it
+    hitstop: 0.3,          // s frozen when the star is crushed
+    flashTime: 0.22,       // s
+    shake: 10,             // px, scaled by closeness
+    volume: 0.35,
+    showPassMarks: true,   // show on the timeline where the star is under each crusher
+    showGhost: true,       // dashed outline of the last take's clips while re-editing
+    tailFrames: 8,         // frames after the last event before the result card
+  };
+
+  // Level data. x in metres; the star starts at startX and runs right at CONFIG.starSpeed.
+  // clips[k].drives lists the crushers clip k drops (default: crusher k). start = the opening edit.
+  const LEVELS = [
+    // 1. Tutorial: short clips, no conflicts. The opening edit gives a free near miss on 1, then 2 crushes him.
+    { name: 'Take 1: The Corridor', frames: 120, startX: 0, exitX: 18,
+      crushers: [{ x: 4 }, { x: 9 }, { x: 14 }],
+      clips: [{ len: 18, start: 0 }, { len: 18, start: 46 }, { len: 18, start: 96 }] },
+    // 2. Opens as a safe, boring Studio Cut. Sliding each clip toward the star tops out at 250; 300 needs
+    //    clip 1 hopped to the far side of its crusher so clip 2 has room.
+    { name: 'Take 2: The Long Clip', frames: 138, startX: 0, exitX: 18,
+      crushers: [{ x: 6 }, { x: 10.5 }, { x: 14 }],
+      clips: [{ len: 30, start: 66 }, { len: 18, start: 96 }, { len: 24, start: 114 }] },
+    // 3. The rough cut came back backwards (clips 3-2-1). It survives, scores 0, and no single clip move gets
+    //    past 100. 300 is impossible here: the best is 250, reached two ways, with 11 patterns within 80%.
+    { name: 'Take 3: Backwards', frames: 120, startX: 0, exitX: 16,
+      crushers: [{ x: 4.5 }, { x: 7.5 }, { x: 12 }],
+      clips: [{ len: 18, start: 102 }, { len: 30, start: 72 }, { len: 24, start: 10 }] },
+  ];
+
+  function drivesOf(level, k) { return level.clips[k].drives || [k]; }
+
+  function validEdit(level, starts, cfg) {
+    const c = level.clips;
+    for (let k = 0; k < c.length; k++) {
+      if (starts[k] < 0 || starts[k] + c[k].len > level.frames) return false;
+    }
+    if (cfg.oneTrack) {
+      for (let a = 0; a < c.length; a++) for (let b = a + 1; b < c.length; b++) {
+        if (starts[a] < starts[b] + c[b].len && starts[b] < starts[a] + c[a].len) return false;
+      }
+    }
+    return true;
+  }
+
+  // One take, frame by frame. Order inside each frame (the tick):
+  //   1. every crusher takes the state its clip(s) give it (down while the playhead is inside a clip)
+  //   2. the star moves one frame along the path (with starWaits: stops at the edge of a down crusher)
+  //   3. collision: star overlapping a down crusher = crushed; else record under / down frames for margins
+  //   4. the star's back edge past exitX = cleared the set
+  // Margins are in whole frames: 0 = the crusher dropped on the very next frame after the star cleared it
+  // (behind), or lifted on the frame just before the star got under it (front).
+  function simulate(level, starts, cfg, trace) {
+    const F = level.frames, nC = level.crushers.length, nK = level.clips.length;
+    const step = cfg.starSpeed / cfg.fps;
+    const half = (cfg.starWidth + cfg.crusherWidth) / 2;
+    const down = new Array(nC), firstUnder = new Array(nC), lastUnder = new Array(nC);
+    const lastDownBefore = new Array(nC), firstDownAfter = new Array(nC), waited = new Array(nC);
+    for (let i = 0; i < nC; i++) { firstUnder[i] = lastUnder[i] = lastDownBefore[i] = firstDownAfter[i] = -1; waited[i] = false; }
+    let x = level.startX, dead = false, deadBy = -1, deadAt = -1, finishAt = -1;
+    const tx = trace ? new Float32Array(F) : null;
+    const tw = trace ? new Uint8Array(F) : null;
+    for (let f = 0; f < F; f++) {
+      // 1. crushers
+      for (let i = 0; i < nC; i++) down[i] = false;
+      for (let k = 0; k < nK; k++) {
+        if (f >= starts[k] && f < starts[k] + level.clips[k].len) {
+          const d = drivesOf(level, k);
+          for (let j = 0; j < d.length; j++) down[d[j]] = true;
+        }
+      }
+      // 2. star
+      let waiting = false;
+      if (!dead && finishAt < 0) {
+        let nx = x + step;
+        if (cfg.starWaits) {
+          for (let i = 0; i < nC; i++) {
+            if (!down[i]) continue;
+            const edge = level.crushers[i].x - half;
+            if (x <= edge + 1e-9 && nx > edge) { nx = edge; waited[i] = true; waiting = true; }
+          }
+        }
+        x = nx;
+      }
+      // 3. collision and bookkeeping
+      if (!dead) {
+        for (let i = 0; i < nC; i++) {
+          const under = Math.abs(x - level.crushers[i].x) < half - 1e-9;
+          if (under) {
+            if (down[i]) { dead = true; deadBy = i; deadAt = f; break; }
+            if (firstUnder[i] < 0) firstUnder[i] = f;
+            lastUnder[i] = f;
+          } else if (down[i]) {
+            if (firstUnder[i] < 0) lastDownBefore[i] = f;
+            else if (firstDownAfter[i] < 0) firstDownAfter[i] = f;
+          }
+        }
+      }
+      // 4. cleared the set
+      if (!dead && finishAt < 0 && x - cfg.starWidth / 2 >= level.exitX) finishAt = f;
+      if (tx) { tx[f] = x; tw[f] = waiting ? 1 : 0; }
+      if (dead && !trace) break;
+    }
+    const W = cfg.nearMissFrames;
+    const traps = [];
+    let total = 0;
+    for (let i = 0; i < nC; i++) {
+      let front = Infinity, behind = Infinity;
+      if (firstUnder[i] >= 0) {
+        if (lastDownBefore[i] >= 0 && !waited[i]) front = firstUnder[i] - lastDownBefore[i] - 1;
+        if (firstDownAfter[i] >= 0) behind = firstDownAfter[i] - lastUnder[i] - 1;
+      }
+      const margin = Math.min(front, behind);
+      const side = margin === Infinity ? null : (front <= behind ? 'front' : 'behind');
+      const near = margin < W;
+      const pts = near ? Math.round(100 * (W - margin) / W) : 0;
+      // the frame the near miss happens on screen: the slam behind him, or him dashing under a just-lifted crusher
+      const frame = side === 'front' ? firstUnder[i] : side === 'behind' ? firstDownAfter[i] : -1;
+      traps.push({ margin, side, near, pts, frame, waited: waited[i], under: [firstUnder[i], lastUnder[i]] });
+      total += pts;
+    }
+    const ok = !dead && finishAt >= 0;
+    return { ok, dead, deadBy, deadAt, finishAt, outOfFilm: !dead && finishAt < 0,
+             traps, score: ok ? total : 0, trace: tx, waiting: tw };
+  }
+
+  // score used by every search: -1 for a failed take
+  function scoreOf(level, starts, cfg) {
+    if (!validEdit(level, starts, cfg)) return -2;
+    const r = simulate(level, starts, cfg, false);
+    return r.ok ? r.score : -1;
+  }
+
+  function signature(level, starts, cfg) {
+    // which side each trap's near miss is on (F front, B behind, - none) + clip order on the track
+    const r = simulate(level, starts, cfg, false);
+    const sides = r.traps.map(t => t.near ? (t.side === 'front' ? 'F' : 'B') : '-').join('');
+    const order = starts.map((s, k) => [s, k + 1]).sort((a, b) => a[0] - b[0]).map(p => p[1]).join('');
+    return sides + '/' + order;
+  }
+
+  // One-clip-at-a-time tuning: repeatedly move a single clip to its best position (anywhere on the track)
+  // given the others, keeping a move only if it strictly improves the score. Stops when no single move helps.
+  function greedy(level, starts, cfg) {
+    const cur = starts.slice();
+    let curS = scoreOf(level, cur, cfg);
+    for (let round = 0; round < 30; round++) {
+      let improved = false;
+      for (let k = 0; k < cur.length; k++) {
+        const keep = cur[k];
+        let bestS = curS, bestP = keep;
+        for (let p = 0; p + level.clips[k].len <= level.frames; p++) {
+          if (p === keep) continue;
+          cur[k] = p;
+          const s = scoreOf(level, cur, cfg);
+          if (s > bestS) { bestS = s; bestP = p; }
+        }
+        cur[k] = bestP;
+        if (bestP !== keep) { curS = bestS; improved = true; }
+      }
+      if (!improved) break;
+    }
+    return { starts: cur, score: curS };
+  }
+
+  // The chore, automated: slide one clip toward the star until it nearly touches (stopping before it would
+  // crush him, hit another clip or the track's end) and keep the slide if the score went up. Never hops a clip
+  // over another clip or over its own pass mark. If this reaches the best edit, the level is homework.
+  function slideTune(level, starts, cfg) {
+    const cur = starts.slice();
+    let curS = scoreOf(level, cur, cfg);
+    for (let round = 0; round < 30; round++) {
+      let improved = false;
+      for (let k = 0; k < cur.length; k++) {
+        const keep = cur[k];
+        let bestS = curS, bestP = keep;
+        for (const dir of [-1, 1]) {
+          let p = keep;
+          for (;;) {
+            cur[k] = p + dir;
+            const s = scoreOf(level, cur, cfg);
+            if (s < 0) break;
+            p += dir;
+            if (s > bestS) { bestS = s; bestP = p; }
+          }
+        }
+        cur[k] = bestP;
+        if (bestP !== keep) { curS = bestS; improved = true; }
+      }
+      if (!improved) break;
+    }
+    return { starts: cur, score: curS };
+  }
+
+  // Exhaustive search on the frame grid.
+  function solve(level, cfg, opt) {
+    opt = opt || {};
+    const nK = level.clips.length, F = level.frames;
+    const maxS = level.clips.map(c => F - c.len);
+    const s = new Array(nK).fill(0);
+    let valid = 0, survive = 0, best = -1, bestCount = 0, bestEdit = null;
+    const surv = []; // [score, starts...] flat, for the near-best pass and greedy samples
+    for (;;) {
+      if (validEdit(level, s, cfg)) {
+        valid++;
+        const r = simulate(level, s, cfg, false);
+        if (r.ok) {
+          survive++;
+          surv.push(r.score, ...s);
+          if (r.score > best) { best = r.score; bestCount = 1; bestEdit = s.slice(); }
+          else if (r.score === best) bestCount++;
+        }
+      }
+      let k = 0;
+      while (k < nK && ++s[k] > maxS[k]) { s[k] = 0; k++; }
+      if (k === nK) break;
+    }
+    const stride = nK + 1;
+    const dc = best > 0 ? Math.max(1, best - cfg.dcSlack) : null;
+    // ways to get close: distinct side/order patterns among edits within reach of the best
+    const patsDC = new Set(), patsClose = new Set();
+    let countDC = 0;
+    for (let i = 0; i < surv.length; i += stride) {
+      const sc = surv[i];
+      if (best > 0 && sc >= 0.8 * best) {
+        const st = surv.slice(i + 1, i + stride);
+        const sig = signature(level, st, cfg);
+        patsClose.add(sig);
+        if (sc >= dc) { patsDC.add(sig); countDC++; }
+      }
+    }
+    // one-clip-at-a-time tuning from the opening edit and from random Studio Cuts
+    const opening = level.clips.map(c => c.start);
+    const fromStart = greedy(level, opening, cfg);
+    const slideStart = slideTune(level, opening, cfg);
+    const n = Math.min(opt.samples ?? 200, survive);
+    let reachBest = 0, reachDC = 0, sum = 0, slideDC = 0;
+    let seed = 12345;
+    const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+    for (let j = 0; j < n; j++) {
+      const idx = Math.floor(rnd() * survive) * stride;
+      const st = surv.slice(idx + 1, idx + stride);
+      const g = greedy(level, st, cfg);
+      sum += g.score;
+      if (g.score >= best) reachBest++;
+      if (dc !== null && g.score >= dc) reachDC++;
+      if (dc !== null && slideTune(level, st, cfg).score >= dc) slideDC++;
+    }
+    return {
+      name: level.name, valid, survive, survivePct: valid ? 100 * survive / valid : 0,
+      studioCut: survive > 0, best, bestCount, bestEdit, dcThreshold: dc,
+      editsAtDC: countDC, patternsAtDC: [...patsDC], patternsClose: patsClose.size,
+      greedyFromStart: fromStart.score, greedyFromStartEdit: fromStart.starts,
+      slideFromStart: slideStart.score, slideFromStartEdit: slideStart.starts,
+      greedySamples: n, greedyReachBestPct: n ? 100 * reachBest / n : 0,
+      greedyReachDCPct: n ? 100 * reachDC / n : 0, greedyMean: n ? sum / n : 0,
+      slideReachDCPct: n ? 100 * slideDC / n : 0,
+    };
+  }
+
+  return { CONFIG, LEVELS, simulate, validEdit, scoreOf, greedy, slideTune, solve, signature, drivesOf };
+})();
+if (typeof module !== 'undefined') module.exports = TightEdit;
+</script>
+<script id="game">
+// ============================================================================
+// GAME: canvas grey box. Everything here is presentation and input; the rules are above.
+// ============================================================================
+(function () {
+  'use strict';
+  const { CONFIG, LEVELS, simulate, validEdit, solve, drivesOf } = TightEdit;
+  const VW = 1280, VH = 720;
+  const COL = ['#f2a43a', '#3fb7e6', '#d86be6', '#8be05a'];
+  const FONT = 'system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif';
+  const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+  let dpr = 1, scl = 1, ox = 0, oy = 0;
+  function resize() {
+    dpr = window.devicePixelRatio || 1;
+    cv.width = Math.round(innerWidth * dpr); cv.height = Math.round(innerHeight * dpr);
+    scl = Math.min(innerWidth / VW, innerHeight / VH);
+    ox = (innerWidth - VW * scl) / 2; oy = (innerHeight - VH * scl) / 2;
+  }
+  addEventListener('resize', resize); resize();
+
+  // ---------------- state ----------------
+  const S = {
+    li: 0, L: null, edit: [], sel: 0, mode: 'edit', take: null, last: null, lastEdit: null,
+    best: LEVELS.map(() => -1), medal: LEVELS.map(() => 0), solvedCache: {}, drag: null, hover: -1,
+    stats: LEVELS.map(() => ({ takes: 0, takeOfFirstStudio: -1, takesAfterStudio: 0, editsAfterStudio: 0 })),
+    bump: { k: -1, until: 0 },
+  };
+  const FX = { flash: 0, flashCol: '255,255,255', shake: 0, texts: [], dust: [], hitstop: 0 };
+  const keys = {};
+
+  function loadLevel(i) {
+    S.li = (i + LEVELS.length) % LEVELS.length; S.L = LEVELS[S.li];
+    S.edit = S.L.clips.map(c => c.start); fixEdit();
+    S.sel = 0; S.mode = 'edit'; S.take = null; S.last = null; S.lastEdit = null;
+    FX.texts.length = 0; FX.dust.length = 0;
+    solved(S.li);
+    updDbg();
+  }
+  function fitsAt(k, p) {
+    const c = S.L.clips;
+    if (p < 0 || p + c[k].len > S.L.frames) return false;
+    if (!CONFIG.oneTrack) return true;
+    for (let j = 0; j < c.length; j++) if (j !== k && p < S.edit[j] + c[j].len && S.edit[j] < p + c[k].len) return false;
+    return true;
+  }
+  function placeClip(k, want) { // nearest legal start to where the player wants it (can hop over other clips)
+    let best = -1, bd = 1e9;
+    for (let p = 0; p + S.L.clips[k].len <= S.L.frames; p++) {
+      if (fitsAt(k, p) && Math.abs(p - want) < bd) { bd = Math.abs(p - want); best = p; }
+    }
+    return best < 0 ? S.edit[k] : best;
+  }
+  function fixEdit() { for (let k = 0; k < S.edit.length; k++) if (!fitsAt(k, S.edit[k])) S.edit[k] = placeClip(k, S.edit[k]); }
+  function ruleKey() { return ['fps', 'starSpeed', 'starWidth', 'crusherWidth', 'nearMissFrames', 'oneTrack', 'starWaits', 'dcSlack'].map(k => CONFIG[k]).join('|'); }
+  function solved(i) {
+    const key = i + '#' + ruleKey();
+    if (!S.solvedCache[key]) S.solvedCache[key] = solve(LEVELS[i], CONFIG, { samples: 0 });
+    return S.solvedCache[key];
+  }
+  function isDown(i, f, edit) {
+    for (let k = 0; k < S.L.clips.length; k++) {
+      if (f >= edit[k] && f < edit[k] + S.L.clips[k].len && drivesOf(S.L, k).includes(i)) return true;
+    }
+    return false;
+  }
+  function passWindows() {
+    if (CONFIG.starWaits && S.last) return S.last.traps.map(t => t.under);
+    return simulate(S.L, S.L.clips.map(() => 1e9), CONFIG, false).traps.map(t => t.under);
+  }
+
+  // ---------------- audio (WebAudio beeps, no assets) ----------------
+  let AC = null, master = null, noiseBuf = null;
+  function audio() {
+    if (!AC) {
+      try { AC = new (window.AudioContext || window.webkitAudioContext)(); master = AC.createGain(); master.connect(AC.destination); }
+      catch (e) { return null; }
+    }
+    if (AC.state === 'suspended') AC.resume();
+    master.gain.value = CONFIG.volume;
+    return AC;
+  }
+  function tone(f0, dur, type, vol, f1, delay) {
+    if (!AC) return;
+    const t = AC.currentTime + (delay || 0), o = AC.createOscillator(), g = AC.createGain();
+    o.type = type || 'square'; o.frequency.setValueAtTime(f0, t);
+    if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.02);
+  }
+  function noise(dur, vol, freq) {
+    if (!AC) return;
+    if (!noiseBuf) {
+      noiseBuf = AC.createBuffer(1, AC.sampleRate * 0.6, AC.sampleRate);
+      const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    const s = AC.createBufferSource(), fl = AC.createBiquadFilter(), g = AC.createGain(), t = AC.currentTime;
+    s.buffer = noiseBuf; fl.type = 'lowpass'; fl.frequency.value = freq || 400;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(fl); fl.connect(g); g.connect(master); s.start(t); s.stop(t + dur);
+  }
+  const SFX = {
+    slam() { noise(0.2, 0.9, 260); tone(95, 0.16, 'sine', 0.5, 45); },
+    lift() { tone(320, 0.05, 'triangle', 0.12, 520); },
+    near(c) { const f = 520 * Math.pow(2, c * 1.2); tone(f, 0.16, 'square', 0.22); tone(f * 1.5, 0.28, 'square', 0.2, null, 0.07); },
+    dead() { tone(240, 0.55, 'sawtooth', 0.32, 60); noise(0.45, 1, 900); },
+    wrap() { [523, 659, 784].forEach((f, i) => tone(f, 0.22, 'triangle', 0.25, null, i * 0.08)); },
+    medal() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.3, 'square', 0.16, null, 0.3 + i * 0.1)); },
+    tick() { tone(1400, 0.02, 'square', 0.04); },
+    bump() { tone(110, 0.06, 'square', 0.12); },
+  };
+
+  // ---------------- takes ----------------
+  function play() {
+    audio();
+    const edit = S.edit.slice();
+    const res = simulate(S.L, edit, CONFIG, true);
+    const ev = [];
+    for (let k = 0; k < S.L.clips.length; k++) {
+      for (const i of drivesOf(S.L, k)) {
+        ev.push({ f: edit[k], type: 'slam', i });
+        ev.push({ f: edit[k] + S.L.clips[k].len, type: 'lift', i });
+      }
+    }
+    res.traps.forEach((t, i) => { if (t.near && (!res.dead || t.frame < res.deadAt)) ev.push({ f: t.frame, type: 'near', i, t }); });
+    let end;
+    if (res.dead) { ev.push({ f: res.deadAt, type: 'dead', i: res.deadBy }); end = res.deadAt + 16; }
+    else {
+      end = res.finishAt < 0 ? S.L.frames - 1 : res.finishAt;
+      if (res.finishAt >= 0) ev.push({ f: res.finishAt, type: 'wrap' });
+      for (const t of res.traps) if (t.near && t.frame > end) end = t.frame;
+      end += CONFIG.tailFrames;
+    }
+    ev.sort((a, b) => a.f - b.f || (a.type === 'dead' ? 1 : -1));
+    S.take = { res, edit, t: 0, end, ev: ev.filter(e => e.f <= end && !(res.dead && e.f > res.deadAt && e.type !== 'dead')), ei: 0 };
+    S.mode = 'play'; FX.texts.length = 0; FX.dust.length = 0; FX.hitstop = 0;
+    const st = S.stats[S.li]; st.takes++; if (st.takeOfFirstStudio >= 0) st.takesAfterStudio++;
+    updDbg();
+  }
+  function curFrame() { return S.take ? Math.floor(S.take.t * CONFIG.fps) : 0; }
+  function fire(e, quiet) {
+    const L = S.L, p = ppm();
+    const cx = e.i !== undefined && e.i >= 0 ? sxm(L.crushers[e.i].x) : 0;
+    if (e.type === 'slam') {
+      if (!quiet) { SFX.slam(); FX.shake = Math.max(FX.shake, 3); }
+      for (let n = 0; n < 10; n++) FX.dust.push({ x: cx + (Math.random() - 0.5) * CONFIG.crusherWidth * p, y: SC.floor - 2, vx: (Math.random() - 0.5) * 160, vy: -Math.random() * 90, life: 0.5 });
+    } else if (e.type === 'lift') { if (!quiet) SFX.lift(); }
+    else if (e.type === 'near') {
+      const W = CONFIG.nearMissFrames, c = (W - e.t.margin) / W;
+      if (!quiet) { SFX.near(c); FX.shake = Math.max(FX.shake, CONFIG.shake * c); }
+      FX.flash = 0.35 + 0.65 * c; FX.flashCol = '255,255,255';
+      const m = e.t.margin;
+      const word = m === 0 ? 'SHAVED! 0 FRAMES' : m === 1 ? '1 FRAME!' : `${m} FRAMES`;
+      FX.texts.push({ x: cx, y: SC.floor - 230, s: word, sub: `${e.t.side === 'behind' ? 'right behind him' : 'lifted just in time'}  +${e.t.pts}`, col: COL[e.i], size: 22 + 16 * c, life: 1.6, age: 0 });
+    } else if (e.type === 'dead') {
+      if (!quiet) { SFX.dead(); FX.hitstop = CONFIG.hitstop; }
+      FX.shake = CONFIG.shake * 1.6; FX.flash = 1; FX.flashCol = '255,40,40';
+      FX.texts.push({ x: cx, y: SC.floor - 230, s: 'CUT! MEDIC!', sub: `crusher ${e.i + 1} got him`, col: '#ff5a5a', size: 40, life: 2.5, age: 0 });
+    } else if (e.type === 'wrap') {
+      if (!quiet) SFX.wrap();
+      FX.texts.push({ x: sxm(L.exitX) - 70, y: SC.top + 60, s: "THAT'S A WRAP", sub: '', col: '#8f8', size: 22, life: 1.5, age: 0 });
+    }
+  }
+  function endTake() {
+    const tk = S.take, res = tk.res, st = S.stats[S.li];
+    S.mode = 'result'; S.last = res; S.lastEdit = tk.edit;
+    if (res.ok) {
+      const sv = solved(S.li), medal = res.score >= sv.dcThreshold ? 2 : 1;
+      if (medal === 2 && S.medal[S.li] < 2) SFX.medal();
+      S.medal[S.li] = Math.max(S.medal[S.li], medal);
+      S.best[S.li] = Math.max(S.best[S.li], res.score);
+      if (st.takeOfFirstStudio < 0) st.takeOfFirstStudio = st.takes;
+    }
+    updDbg();
+  }
+  function skip() { // Enter: jump to the result
+    if (S.mode !== 'play') return;
+    const tk = S.take;
+    while (tk.ei < tk.ev.length) fire(tk.ev[tk.ei++], true);
+    tk.t = (tk.end + 0.5) / CONFIG.fps; FX.hitstop = 0;
+    endTake();
+  }
+  function edited() {
+    if (S.mode !== 'edit') { S.mode = 'edit'; S.take = null; FX.hitstop = 0; }
+    const st = S.stats[S.li]; if (st.takeOfFirstStudio >= 0) st.editsAfterStudio++;
+  }
+  function nudge(d) {
+    const k = S.sel, want = S.edit[k] + d, s = Math.sign(d);
+    let q = S.edit[k];
+    while (q !== want && fitsAt(k, q + s)) q += s;
+    if (q === S.edit[k]) { S.bump = { k, until: performance.now() + 180 }; SFX.bump(); edited(); return; }
+    S.edit[k] = q; SFX.tick(); edited();
+  }
+
+  function update(dt) {
+    FX.flash = Math.max(0, FX.flash - dt / CONFIG.flashTime);
+    FX.shake = Math.max(0, FX.shake - dt * 40);
+    for (const t of FX.texts) t.age += dt;
+    FX.texts = FX.texts.filter(t => t.age < t.life);
+    for (const d of FX.dust) { d.x += d.vx * dt; d.y += d.vy * dt; d.vy += 300 * dt; d.life -= dt; }
+    FX.dust = FX.dust.filter(d => d.life > 0);
+    if (S.mode !== 'play') return;
+    if (FX.hitstop > 0) { FX.hitstop -= dt; return; }
+    const tk = S.take, fr = tk.t * CONFIG.fps;
+    let sc = 1;
+    for (const e of tk.ev) if (e.type === 'near' && fr >= e.f - CONFIG.slowmoBefore && fr < e.f + 1 + CONFIG.slowmoAfter) sc = CONFIG.slowmoScale;
+    if (keys.Shift) sc *= 3;
+    tk.t += dt * CONFIG.playRate * sc;
+    const f = curFrame();
+    while (tk.ei < tk.ev.length && tk.ev[tk.ei].f <= f) fire(tk.ev[tk.ei++]);
+    if (f >= tk.end) endTake();
+  }
+
+  // ---------------- layout ----------------
+  const SC = { x0: 30, x1: 940, top: 104, floor: 398 };
+  const TL = { x: 30, w: 910, ruler: 448, y: 464, h1: 70, hN: 40 };
+  const PN = { x: 960, y: 104, w: 290, h: 570 };
+  function ppm() { const L = S.L; return (SC.x1 - SC.x0 - 40) / (L.exitX - L.startX + 2.2); }
+  function sxm(m) { return SC.x0 + 20 + (m - S.L.startX + 1) * ppm(); }
+  function rows() { return CONFIG.oneTrack ? 1 : S.L.clips.length; }
+  function rowH() { return rows() === 1 ? TL.h1 : TL.hN; }
+  function rowY(r) { return TL.y + r * (rowH() + 6); }
+  function rowOfClip(k) { return CONFIG.oneTrack ? 0 : k; }
+  function rowOfCrusher(i) { for (let k = 0; k < S.L.clips.length; k++) if (drivesOf(S.L, k).includes(i)) return rowOfClip(k); return 0; }
+  function pf() { return TL.w / S.L.frames; }
+  function fx(f) { return TL.x + f * pf(); }
+  function clipRect(k, edit) { const c = S.L.clips[k]; return { x: fx((edit || S.edit)[k]), y: rowY(rowOfClip(k)), w: c.len * pf(), h: rowH() }; }
+  function toLogical(e) { return { x: (e.clientX - ox) / scl, y: (e.clientY - oy) / scl }; }
+  function hitClip(p) { for (let k = 0; k < S.L.clips.length; k++) { const r = clipRect(k); if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) return k; } return -1; }
+  const levelRows = [];
+
+  // ---------------- drawing ----------------
+  function txt(s, x, y, size, col, align, weight) {
+    ctx.font = (weight || '600') + ' ' + size + 'px ' + FONT; ctx.fillStyle = col;
+    ctx.textAlign = align || 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillText(s, x, y);
+  }
+  function rr(x, y, w, h, r) { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); }
+  function alpha(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
+
+  function drawHeader() {
+    const W = CONFIG.nearMissFrames;
+    txt('THE TIGHT EDIT', 30, 40, 26, '#fff', 'left', '800');
+    txt(`Take ${S.li + 1}/${LEVELS.length}: ${S.L.name.replace(/^Take \d+: /, '')}`, 262, 40, 18, '#aab');
+    txt('grey box', 1250, 40, 12, '#666', 'right');
+    txt('Each crusher drops while its clip plays. Drag the clips so the star gets through, then press SPACE to roll the take.', 30, 68, 15.5, '#e6e6e6', 'left', '500');
+    txt(`Near misses score: a crusher that misses him by under ${W} frames. The closer, the more points. Top scores earn the Director's Cut.`, 30, 90, 14, '#9fc79f', 'left', '500');
+  }
+
+  function drawScene(f, x, dead, waiting, edit) {
+    const L = S.L, p = ppm();
+    ctx.fillStyle = '#19191f'; rr(SC.x0, SC.top, SC.x1 - SC.x0, SC.floor - SC.top + 18, 6); ctx.fill();
+    ctx.fillStyle = '#2b2b35'; ctx.fillRect(SC.x0, SC.top, SC.x1 - SC.x0, 10);
+    ctx.fillStyle = '#3b3b46'; ctx.fillRect(SC.x0, SC.floor, SC.x1 - SC.x0, 14);
+    // path, start and wrap line
+    const ex = sxm(L.exitX);
+    ctx.strokeStyle = '#5c5'; ctx.setLineDash([6, 6]); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(ex, SC.top + 14); ctx.lineTo(ex, SC.floor); ctx.stroke(); ctx.setLineDash([]);
+    txt('WRAP', ex + 6, SC.top + 30, 12, '#7d7', 'left', '700');
+    // crushers
+    const cw = CONFIG.crusherWidth * p, bh = 60, upY = SC.floor - 170;
+    for (let i = 0; i < L.crushers.length; i++) {
+      const cx = sxm(L.crushers[i].x), d = isDown(i, f, edit), by = d ? SC.floor : upY;
+      ctx.fillStyle = '#474752'; ctx.fillRect(cx - 4, SC.top + 10, 8, by - bh - SC.top - 10);
+      ctx.fillStyle = COL[i]; ctx.fillRect(cx - cw / 2, by - bh, cw, bh);
+      ctx.fillStyle = 'rgba(0,0,0,.25)'; for (let s = 0; s < cw; s += 14) ctx.fillRect(cx - cw / 2 + s, by - 10, 7, 10);
+      txt(String(i + 1), cx, by - bh / 2 + 9, 24, '#111', 'center', '800');
+      if (d) { // on camera: viewfinder brackets
+        const bx = cx - cw / 2 - 16, bw = cw + 32, ty = SC.top + 22, bb = SC.floor - 6, c = 14;
+        ctx.strokeStyle = COL[i]; ctx.lineWidth = 3; ctx.beginPath();
+        ctx.moveTo(bx, ty + c); ctx.lineTo(bx, ty); ctx.lineTo(bx + c, ty);
+        ctx.moveTo(bx + bw - c, ty); ctx.lineTo(bx + bw, ty); ctx.lineTo(bx + bw, ty + c);
+        ctx.moveTo(bx, bb - c); ctx.lineTo(bx, bb); ctx.lineTo(bx + c, bb);
+        ctx.moveTo(bx + bw - c, bb); ctx.lineTo(bx + bw, bb); ctx.lineTo(bx + bw, bb - c); ctx.stroke();
+        ctx.fillStyle = '#f33'; ctx.beginPath(); ctx.arc(bx + 8, ty + 24, 4, 0, 7); ctx.fill();
+        txt('REC', bx + 16, ty + 28, 11, '#f66', 'left', '700');
+      }
+    }
+    // the star
+    const sw = CONFIG.starWidth * p, sh = Math.max(46, 1.15 * p), px = sxm(x);
+    if (dead) { ctx.fillStyle = '#eee'; rr(px - sw, SC.floor - 9, sw * 2, 9, 4); ctx.fill(); }
+    else {
+      ctx.fillStyle = waiting ? '#ffd166' : '#f4f4f4'; rr(px - sw / 2, SC.floor - sh, sw, sh, sw / 2); ctx.fill();
+      ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(px + sw * 0.18, SC.floor - sh + sw * 0.5, 2.5, 0, 7); ctx.fill();
+      if (S.mode === 'edit') txt('STAR', px, SC.floor - sh - 8, 11, '#bbb', 'center', '700');
+    }
+    for (const d of FX.dust) { ctx.fillStyle = `rgba(200,200,190,${Math.max(0, d.life * 1.6)})`; ctx.fillRect(d.x - 2, d.y - 2, 4, 4); }
+    if (S.mode === 'edit' && !S.last) txt('SPACE to roll the take', (SC.x0 + SC.x1) / 2, SC.top + 60, 20, '#fff', 'center', '700');
+  }
+
+  function drawTimeline(f, playing) {
+    const L = S.L, F = L.frames, w = pf(), W = CONFIG.nearMissFrames;
+    txt(CONFIG.oneTrack ? "TIMELINE  ·  one camera: all clips share one track and can't overlap" : 'TIMELINE  ·  one track per clip',
+      TL.x, TL.ruler - 10, 13, '#aaa', 'left', '700');
+    txt(`1 frame = 1/${CONFIG.fps} s`, TL.x + TL.w, TL.ruler - 10, 12, '#777', 'right');
+    ctx.fillStyle = '#666';
+    for (let fr = 0; fr <= F; fr++) {
+      const h = fr % CONFIG.fps === 0 ? 10 : fr % 6 === 0 ? 6 : 3;
+      ctx.fillRect(TL.x + fr * w, TL.ruler, 1, h);
+      if (fr % CONFIG.fps === 0 && fr > 0) txt(fr / CONFIG.fps + 's', TL.x + fr * w + 3, TL.ruler + 10, 10, '#888');
+    }
+    const n = rows(), rh = rowH();
+    for (let r = 0; r < n; r++) {
+      ctx.fillStyle = '#202028'; ctx.fillRect(TL.x, rowY(r), TL.w, rh);
+      ctx.fillStyle = 'rgba(255,255,255,.04)';
+      for (let fr = 6; fr < F; fr += 6) ctx.fillRect(TL.x + fr * w, rowY(r), 1, rh);
+    }
+    const wins = passWindows();
+    // near-miss zones and pass marks (under the clips)
+    if (CONFIG.showPassMarks) {
+      wins.forEach(([a, b], i) => {
+        if (a < 0) return;
+        const y = rowY(rowOfCrusher(i));
+        let g = ctx.createLinearGradient(fx(a - W), 0, fx(a), 0); g.addColorStop(0, alpha(COL[i], 0)); g.addColorStop(1, alpha(COL[i], 0.28));
+        ctx.fillStyle = g; ctx.fillRect(fx(a - W), y, W * w, rh);
+        g = ctx.createLinearGradient(fx(b + 1), 0, fx(b + 1 + W), 0); g.addColorStop(0, alpha(COL[i], 0.28)); g.addColorStop(1, alpha(COL[i], 0));
+        ctx.fillStyle = g; ctx.fillRect(fx(b + 1), y, W * w, rh);
+      });
+    }
+    // ghost of the last take's edit
+    if (CONFIG.showGhost && S.lastEdit && S.mode === 'edit') {
+      ctx.setLineDash([4, 4]); ctx.lineWidth = 1.5;
+      for (let k = 0; k < L.clips.length; k++) {
+        if (S.lastEdit[k] === S.edit[k]) continue;
+        const r = clipRect(k, S.lastEdit); ctx.strokeStyle = alpha(COL[k], 0.8); ctx.strokeRect(r.x + 1, r.y + 3, r.w - 2, r.h - 6);
+      }
+      ctx.setLineDash([]);
+    }
+    // clips
+    const now = performance.now(), edit = playing ? S.take.edit : S.edit;
+    for (let k = 0; k < L.clips.length; k++) {
+      const r = clipRect(k, edit), drv = drivesOf(L, k);
+      ctx.fillStyle = alpha(COL[drv[0]], 0.88); rr(r.x, r.y + 2, r.w, r.h - 4, 5); ctx.fill();
+      if (drv.length > 1) { ctx.fillStyle = alpha(COL[drv[1]], 0.88); rr(r.x, r.y + r.h / 2, r.w, r.h / 2 - 2, 5); ctx.fill(); }
+      // overlap with its own crusher's pass mark = this clip crushes him
+      for (const i of drv) {
+        const [a, b] = wins[i]; if (a < 0) continue;
+        const lo = Math.max(edit[k], a), hi = Math.min(edit[k] + L.clips[k].len, b + 1);
+        if (hi > lo) { ctx.fillStyle = 'rgba(255,40,40,.75)'; ctx.fillRect(fx(lo), r.y + 2, (hi - lo) * w, r.h - 4); txt('✕', fx((lo + hi) / 2), r.y + r.h / 2 + 7, 18, '#fff', 'center', '800'); }
+      }
+      txt(`${k + 1}`, r.x + 8, r.y + 24, 18, '#111', 'left', '800');
+      if (r.w > 60) txt(`${(L.clips[k].len / CONFIG.fps).toFixed(2).replace(/0$/, '')} s`, r.x + r.w - 6, r.y + r.h - 9, 11, 'rgba(0,0,0,.65)', 'right', '700');
+      const selected = k === S.sel && !playing, bumped = S.bump.k === k && now < S.bump.until;
+      if (selected || bumped || k === S.hover) {
+        ctx.strokeStyle = bumped ? '#f44' : selected ? '#fff' : 'rgba(255,255,255,.5)'; ctx.lineWidth = selected || bumped ? 3 : 1.5;
+        rr(r.x, r.y + 2, r.w, r.h - 4, 5); ctx.stroke();
+      }
+    }
+    // pass marks on top: where the star is under each crusher
+    if (CONFIG.showPassMarks) {
+      wins.forEach(([a, b], i) => {
+        if (a < 0) return;
+        const y = rowY(rowOfCrusher(i)), x0 = fx(a), x1 = fx(b + 1);
+        ctx.save(); ctx.beginPath(); ctx.rect(x0, y, x1 - x0, rh); ctx.clip();
+        ctx.strokeStyle = alpha(COL[i], 0.9); ctx.lineWidth = 2;
+        for (let s = -rh; s < x1 - x0 + rh; s += 7) { ctx.beginPath(); ctx.moveTo(x0 + s, y + rh); ctx.lineTo(x0 + s + rh, y); ctx.stroke(); }
+        ctx.restore();
+        ctx.strokeStyle = COL[i]; ctx.lineWidth = 2; ctx.strokeRect(x0, y, x1 - x0, rh);
+        txt(`star under ${i + 1}`, (x0 + x1) / 2, y + rh + 13, 10, COL[i], 'center', '700');
+      });
+    }
+    // margins from the last take, over the clip it belongs to
+    if (S.last && S.lastEdit && !playing) {
+      for (let k = 0; k < L.clips.length; k++) {
+        const i = drivesOf(L, k)[0], t = S.last.traps[i], r = clipRect(k, S.lastEdit);
+        let s, col;
+        if (S.last.dead && S.last.deadBy === i) { s = '✕ crushed'; col = '#ff6b6b'; }
+        else if (t.margin === Infinity) { s = '—'; col = '#888'; }
+        else { s = `${t.margin} fr`; col = t.near ? '#fff' : '#999'; }
+        txt(s, r.x + r.w / 2, r.y - 4, 12, col, 'center', '800');
+      }
+    }
+    // playhead
+    if (playing || S.mode === 'result') {
+      const x = fx(Math.min(f, F)), yb = rowY(n - 1) + rh;
+      ctx.fillStyle = '#ff4d4d'; ctx.fillRect(x - 1, TL.ruler - 2, 2, yb - TL.ruler + 4);
+      ctx.beginPath(); ctx.moveTo(x - 6, TL.ruler - 8); ctx.lineTo(x + 6, TL.ruler - 8); ctx.lineTo(x, TL.ruler); ctx.fill();
+    }
+  }
+
+  function drawPanel() {
+    const sv = solved(S.li), W = CONFIG.nearMissFrames;
+    ctx.fillStyle = '#19191f'; rr(PN.x, PN.y, PN.w, PN.h, 6); ctx.fill();
+    let x = PN.x + 16, y = PN.y + 28;
+    txt('LAST TAKE', x, y, 12, '#888', 'left', '700'); y += 34;
+    const r = S.mode === 'play' ? null : S.last;
+    if (S.mode === 'play') { txt('Rolling…', x, y, 26, '#fff', 'left', '800'); y += 26; txt('SPACE replay · Enter skip · hold Shift fast', x, y, 12, '#888'); y += 24; }
+    else if (!r) { txt('Not rolled yet', x, y, 24, '#bbb', 'left', '800'); y += 26; txt('Press SPACE to roll the take.', x, y, 13, '#999'); y += 24; }
+    else if (r.dead) { txt('CUT! MEDIC!', x, y, 28, '#ff5a5a', 'left', '800'); y += 24; txt(`Crusher ${r.deadBy + 1} got him. Move clip ${r.deadBy + 1} off his mark.`, x, y, 13, '#ddd'); y += 24; }
+    else if (r.outOfFilm) { txt('OUT OF FILM', x, y, 26, '#ffb35a', 'left', '800'); y += 24; txt('He never reached the wrap line.', x, y, 13, '#ddd'); y += 24; }
+    else {
+      const dc = r.score >= sv.dcThreshold;
+      txt(dc ? "DIRECTOR'S CUT ★" : 'STUDIO CUT ✓', x, y, 26, dc ? '#ffd23f' : '#8fe08f', 'left', '800'); y += 24;
+      txt(dc ? 'As tight as it gets.' : 'He lived.', x, y, 13, '#ddd'); y += 24;
+    }
+    // per crusher readout
+    if (r) {
+      let closest = -1, cm = Infinity;
+      r.traps.forEach((t, i) => { if (!(r.dead && r.deadBy === i) && t.margin < cm) { cm = t.margin; closest = i; } });
+      r.traps.forEach((t, i) => {
+        ctx.fillStyle = COL[i]; ctx.fillRect(x, y - 13, 16, 16);
+        txt(String(i + 1), x + 8, y, 12, '#111', 'center', '800');
+        let s, pts = '';
+        if (r.dead && r.deadBy === i) s = 'crushed him';
+        else if (r.dead && t.under[0] < 0) s = 'never reached';
+        else if (t.margin === Infinity) s = t.waited ? 'held him up' : 'never in play';
+        else { s = `${t.margin} fr ${t.side === 'behind' ? 'behind him' : 'before him'}`; pts = t.near ? `+${t.pts}` : '0'; }
+        const hl = i === closest && t.near;
+        txt(s, x + 26, y, 15, hl ? '#fff' : '#bbb', 'left', hl ? '800' : '500');
+        txt(pts, PN.x + PN.w - 16, y, 15, t.near ? '#fff' : '#777', 'right', '800');
+        if (hl) txt('closest', x + 26, y + 15, 10, COL[i], 'left', '700');
+        y += 34;
+      });
+      y += 6;
+      txt('SCORE', x, y, 12, '#888', 'left', '700');
+      txt(String(r.score), PN.x + PN.w - 16, y + 6, 30, '#fff', 'right', '800'); y += 34;
+    } else y += 8;
+    // goals
+    ctx.fillStyle = '#2c2c36'; ctx.fillRect(x, y, PN.w - 32, 1); y += 24;
+    txt('Studio Cut', x, y, 14, '#8fe08f', 'left', '700'); txt('he survives', PN.x + PN.w - 16, y, 14, '#bbb', 'right'); y += 22;
+    txt("Director's Cut", x, y, 14, '#ffd23f', 'left', '700'); txt(`score ${sv.dcThreshold}+`, PN.x + PN.w - 16, y, 14, '#bbb', 'right'); y += 22;
+    txt('Best possible edit', x, y, 14, '#ccc', 'left', '700'); txt(String(sv.best), PN.x + PN.w - 16, y, 14, '#bbb', 'right'); y += 22;
+    const myBest = S.best[S.li];
+    txt('Your best', x, y, 14, '#ccc', 'left', '700');
+    txt(myBest < 0 ? '—' : `${myBest}  (${sv.best - myBest} to go)`, PN.x + PN.w - 16, y, 14, '#fff', 'right', '700'); y += 30;
+    ctx.fillStyle = '#2c2c36'; ctx.fillRect(x, y - 10, PN.w - 32, 1); y += 14;
+    // takes (levels)
+    levelRows.length = 0;
+    LEVELS.forEach((L, i) => {
+      const m = S.medal[i], cur = i === S.li;
+      if (cur) { ctx.fillStyle = '#2a2a36'; ctx.fillRect(PN.x + 8, y - 18, PN.w - 16, 26); }
+      txt(`${i + 1}. ${L.name.replace(/^Take \d+: /, '')}`, x, y, 14, cur ? '#fff' : '#aaa', 'left', cur ? '700' : '500');
+      txt(m === 2 ? '★' : m === 1 ? '✓' : '·', PN.x + PN.w - 70, y, 16, m === 2 ? '#ffd23f' : m === 1 ? '#8fe08f' : '#666', 'center', '800');
+      txt(S.best[i] < 0 ? '' : String(S.best[i]), PN.x + PN.w - 16, y, 13, '#bbb', 'right');
+      levelRows.push({ i, y0: y - 18, y1: y + 8 });
+      y += 28;
+    });
+  }
+
+  function drawFooter() {
+    txt('Drag a clip  ·  ←/→ nudge 1 frame (Shift: 6)  ·  Tab or 1-3 pick a clip  ·  SPACE roll / replay  ·  Enter skip  ·  R reset edit  ·  N/P next/prev take  ·  D debug',
+      VW / 2, 706, 12.5, '#8a8a95', 'center', '500');
+  }
+
+  function drawFxText() {
+    for (const t of FX.texts) {
+      const a = Math.min(1, (t.life - t.age) * 2), k = Math.min(1, t.age * 8), y = t.y - t.age * 14;
+      ctx.globalAlpha = a;
+      ctx.font = `800 ${t.size * (0.7 + 0.3 * k)}px ${FONT}`; ctx.textAlign = 'center';
+      const xx = Math.max(SC.x0 + 150, Math.min(SC.x1 - 150, t.x));
+      ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(0,0,0,.8)'; ctx.strokeText(t.s, xx, y); ctx.fillStyle = t.col; ctx.fillText(t.s, xx, y);
+      if (t.sub) { ctx.font = `700 14px ${FONT}`; ctx.lineWidth = 4; ctx.strokeText(t.sub, xx, y + 22); ctx.fillStyle = '#fff'; ctx.fillText(t.sub, xx, y + 22); }
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  function draw() {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = '#111114'; ctx.fillRect(0, 0, cv.width, cv.height);
+    const sh = FX.shake, jx = sh ? (Math.random() - 0.5) * sh : 0, jy = sh ? (Math.random() - 0.5) * sh : 0;
+    ctx.setTransform(dpr * scl, 0, 0, dpr * scl, dpr * (ox + jx * scl), dpr * (oy + jy * scl));
+    const playing = S.mode === 'play' || S.mode === 'result';
+    let f = 0, x = S.L.startX, dead = false, waiting = false, edit = S.edit;
+    if (playing && S.take) {
+      const tk = S.take, res = tk.res;
+      f = Math.min(curFrame(), tk.end); edit = tk.edit;
+      const fi = Math.min(f, S.L.frames - 1);
+      x = res.trace[fi]; waiting = !!res.waiting[fi]; dead = res.dead && f >= res.deadAt;
+    }
+    drawHeader();
+    drawScene(f, x, dead, waiting, edit);
+    drawTimeline(f, S.mode === 'play');
+    drawPanel();
+    drawFooter();
+    drawFxText();
+    if (FX.flash > 0) { ctx.fillStyle = `rgba(${FX.flashCol},${FX.flash * 0.45})`; ctx.fillRect(SC.x0, SC.top, SC.x1 - SC.x0, SC.floor - SC.top + 18); }
+  }
+
+  let lastT = performance.now();
+  function loop(now) {
+    const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
+    update(dt); draw();
+    requestAnimationFrame(loop);
+  }
+
+  // ---------------- input ----------------
+  cv.addEventListener('pointerdown', (e) => {
+    audio();
+    const p = toLogical(e), k = hitClip(p);
+    if (k >= 0) {
+      S.sel = k; S.drag = { k, off: (p.x - TL.x) / pf() - S.edit[k] };
+      edited(); SFX.tick(); cv.setPointerCapture(e.pointerId); return;
+    }
+    if (p.x >= PN.x && p.x <= PN.x + PN.w) for (const r of levelRows) if (p.y >= r.y0 && p.y <= r.y1) { loadLevel(r.i); return; }
+  });
+  cv.addEventListener('pointermove', (e) => {
+    const p = toLogical(e);
+    if (S.drag) {
+      const want = Math.round((p.x - TL.x) / pf() - S.drag.off), k = S.drag.k;
+      const q = placeClip(k, want);
+      if (q !== S.edit[k]) { S.edit[k] = q; SFX.tick(); edited(); }
+    } else {
+      S.hover = hitClip(p);
+      cv.style.cursor = S.hover >= 0 ? 'grab' : 'default';
+    }
+  });
+  const endDrag = () => { S.drag = null; };
+  cv.addEventListener('pointerup', endDrag); cv.addEventListener('pointercancel', endDrag);
+
+  addEventListener('keydown', (e) => {
+    keys.Shift = e.shiftKey;
+    if (e.target && e.target.tagName === 'INPUT') return;
+    audio();
+    const n = S.L.clips.length;
+    switch (e.code) {
+      case 'Space': e.preventDefault(); play(); break;
+      case 'Enter': skip(); break;
+      case 'Escape': if (S.mode === 'play') { S.mode = S.last ? 'result' : 'edit'; S.mode = 'edit'; S.take = null; } break;
+      case 'ArrowLeft': e.preventDefault(); nudge(e.shiftKey ? -6 : -1); break;
+      case 'ArrowRight': e.preventDefault(); nudge(e.shiftKey ? 6 : 1); break;
+      case 'Tab': e.preventDefault(); S.sel = (S.sel + (e.shiftKey ? n - 1 : 1)) % n; SFX.tick(); break;
+      case 'Digit1': case 'Digit2': case 'Digit3': case 'Digit4': { const k = Number(e.code.slice(5)) - 1; if (k < n) { S.sel = k; SFX.tick(); } break; }
+      case 'KeyR': S.edit = S.L.clips.map(c => c.start); fixEdit(); edited(); SFX.tick(); break;
+      case 'KeyN': loadLevel(S.li + 1); break;
+      case 'KeyP': loadLevel(S.li - 1); break;
+      case 'Backquote': case 'KeyD': case 'F2': e.preventDefault(); dbg.classList.toggle('on'); updDbg(); break;
+      default: if (e.key === '`') { dbg.classList.toggle('on'); updDbg(); }
+    }
+  });
+  addEventListener('keyup', (e) => { keys.Shift = e.shiftKey; });
+  addEventListener('blur', () => { keys.Shift = false; S.drag = null; });
+
+  // ---------------- debug panel (`) ----------------
+  const dbg = document.getElementById('dbg');
+  (function buildDebug() {
+    let h = '<b>CONFIG</b> &nbsp;(D closes)<br>';
+    for (const k of Object.keys(CONFIG)) {
+      const v = CONFIG[k];
+      h += typeof v === 'boolean'
+        ? `<label>${k}<input type="checkbox" data-k="${k}" ${v ? 'checked' : ''}></label>`
+        : `<label>${k}<input type="number" step="any" data-k="${k}" value="${v}"></label>`;
+    }
+    h += '<div><button data-a="solve">Solve this take</button><button data-a="all">Solve all</button>' +
+         '<button data-a="best">Load best edit</button><button data-a="start">Load opening edit</button></div><pre id="dbgout"></pre>';
+    dbg.innerHTML = h;
+  })();
+  const out = () => document.getElementById('dbgout');
+  function fmtSolve(r) {
+    return `${r.name}\n edits ${r.valid}, survive ${r.survive} (${r.survivePct.toFixed(1)}%)\n best ${r.best} x${r.bestCount} at [${r.bestEdit}]\n` +
+      ` DC >= ${r.dcThreshold}: ${r.editsAtDC} edits, ${r.patternsAtDC.length} patterns (${r.patternsAtDC.join(' ')})\n` +
+      ` patterns within 80% of best: ${r.patternsClose}\n one-clip tuning from opening edit: ${r.greedyFromStart}\n` +
+      (r.greedySamples ? ` one-clip tuning from ${r.greedySamples} Studio Cuts: best ${r.greedyReachBestPct.toFixed(0)}%, DC ${r.greedyReachDCPct.toFixed(0)}%\n` : '') +
+      ` slide-toward-star tuning: from opening ${r.slideFromStart}` + (r.greedySamples ? `, reaches DC from Studio Cuts ${r.slideReachDCPct.toFixed(0)}%\n` : '\n');
+  }
+  function updDbg() {
+    if (!dbg.classList.contains('on') || !S.L) return;
+    const st = S.stats[S.li], sv = solved(S.li);
+    out().textContent = `this take: best ${sv.best}, DC ${sv.dcThreshold}, survive ${sv.survivePct.toFixed(1)}%\n` +
+      `playtest: takes ${st.takes}, first Studio Cut on take ${st.takeOfFirstStudio < 0 ? '-' : st.takeOfFirstStudio}, ` +
+      `takes after it ${st.takesAfterStudio}, edits after it ${st.editsAfterStudio}\n`;
+  }
+  dbg.addEventListener('input', (e) => {
+    const k = e.target.dataset.k; if (!k) return;
+    CONFIG[k] = e.target.type === 'checkbox' ? e.target.checked : Number(e.target.value);
+    if (k === 'oneTrack') fixEdit();
+    if (master) master.gain.value = CONFIG.volume;
+    updDbg();
+  });
+  dbg.addEventListener('click', (e) => {
+    const a = e.target.dataset.a; if (!a) return;
+    if (a === 'best') { S.edit = solved(S.li).bestEdit.slice(); edited(); }
+    if (a === 'start') { S.edit = S.L.clips.map(c => c.start); fixEdit(); edited(); }
+    if (a === 'solve' || a === 'all') {
+      out().textContent = 'solving…';
+      setTimeout(() => {
+        const list = a === 'all' ? LEVELS.map((_, i) => i) : [S.li];
+        out().textContent = list.map(i => fmtSolve(solve(LEVELS[i], CONFIG, { samples: 200 }))).join('\n');
+      }, 30);
+    }
+    e.target.blur();
+  });
+
+  // ---------------- test hook (for scripted checks) ----------------
+  window.TE_TEST = {
+    load: (i) => loadLevel(i),
+    setEdit: (a) => { S.edit = a.slice(); edited(); return validEdit(S.L, S.edit, CONFIG); },
+    play, skip, edited,
+    solved: (i) => solved(i === undefined ? S.li : i),
+    state: () => ({ li: S.li, mode: S.mode, edit: S.edit.slice(), frame: curFrame(),
+      last: S.last && { ok: S.last.ok, dead: S.last.dead, deadBy: S.last.deadBy, score: S.last.score, margins: S.last.traps.map(t => t.margin), sides: S.last.traps.map(t => t.side) },
+      best: S.best.slice(), medal: S.medal.slice(), stats: S.stats[S.li] }),
+  };
+
+  loadLevel(0);
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

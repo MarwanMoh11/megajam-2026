@@ -1,0 +1,729 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Meanwhile... (K grey box)</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #0b0b0d; color: #ddd; overflow: hidden;
+    font: 12px/1.35 ui-monospace, Menlo, Consolas, monospace; }
+  #wrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  canvas { width: min(100vw, 177.78vh); height: min(56.25vw, 100vh); display: block; background: #0d0d10; }
+  #dbg { position: fixed; top: 6px; left: 6px; width: 340px; max-height: calc(100vh - 12px); overflow: auto;
+    background: rgba(12,12,16,.95); border: 1px solid #555; padding: 6px 10px 10px; display: none; z-index: 5; }
+  #dbg.on { display: block; }
+  #dbg h3 { margin: 10px 0 4px; font-size: 11px; color: #f0c040; text-transform: uppercase; letter-spacing: .08em; }
+  #dbg .row { display: grid; grid-template-columns: 128px 1fr 56px; gap: 6px; align-items: center; margin: 2px 0; }
+  #dbg .row label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #dbg input[type=range] { width: 100%; }
+  #dbg input[type=number] { width: 52px; background: #222; color: #eee; border: 1px solid #444; font: inherit; }
+  #dbg button, #dbg select { background: #2a2a30; color: #eee; border: 1px solid #555; font: inherit; padding: 2px 6px; cursor: pointer; }
+  #dbg .live { white-space: pre; color: #9fd; background: #111; padding: 4px; margin-top: 4px; }
+  #dbg .note { color: #999; }
+  #dbg textarea { width: 100%; height: 90px; background: #111; color: #cfc; font: inherit; display: none; }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="c" width="1280" height="720"></canvas></div>
+<div id="dbg"></div>
+
+<!-- ===================================================================================
+     RULES: pure game logic, no DOM. bots.js loads this exact block in Node, so the
+     headless bots and the browser run the same code. Tunables are all in CONFIG.
+     =================================================================================== -->
+<script id="rules">
+const CONFIG = {
+  // --- the reel ---
+  reelSeconds: 120,          // run length; survive it = "That's a wrap"
+  // --- rooms and the hero on screen ---
+  roomW: 800, roomH: 500,
+  heroSpeed: 270,            // px/s
+  heroRadius: 14,
+  swingRadius: 64,           // the on-screen hero auto-swings at boxes this close
+  swingCooldown: 0.26,       // s between swings
+  swingMaxHits: 3,           // boxes killed per swing
+  // --- boxes ---
+  boxSize: 18,
+  boxSpeedStart: 65, boxSpeedEnd: 95,          // px/s, ramps over the reel
+  spawnIntervalStart: 1.1, spawnIntervalEnd: 0.5, // s between spawns per room, ramps over the reel
+  maxBoxesPerRoom: 60,
+  // --- danger (the room you are NOT watching) ---
+  dangerPerBox: 0.025,       // danger/s for each box grabbing the helpless hero (1.0 = killed off)
+  dangerContactCap: 6,       // max boxes that count at once (top speed = cap x perBox = 15%/s)
+  dangerDecay: 0.35,         // danger/s that drains while the room is on screen
+  // --- cutting and score ---
+  cutCooldown: 0.4,          // s before you can cut again
+  bonusMin: 0.5,             // danger at which a cut-back starts paying
+  tierClose: 0.75,           // "Close call!"
+  tierJIT: 0.9,              // "JUST IN TIME!"
+  bonusMax: 400,             // bonus at 100% danger
+  bonusPow: 2,               // curve: bonus = bonusMax * ((d - bonusMin) / (1 - bonusMin)) ^ bonusPow
+  killPoints: 10,
+  wrapBonus: 1000,           // for surviving the whole reel
+  deathScoreMult: 1,         // score multiplier when a hero is killed off
+  // --- rule variations (toggles) ---
+  vRescueBlast: false, blastRadius: 150,      // a paying cut-back blasts boxes off the rescued hero
+  vStreak: false, streakStep: 0.5, streakCap: 5, // paying cuts in a row multiply the bonus; a safe cut resets
+  vCleanExit: false, cleanRadius: 160, cleanMult: 2, // bonus x cleanMult if no box is near the hero you leave
+  // --- feedback only (no effect on rules) ---
+  warnAt: 0.6, alarmAt: 0.85, shake: 1, volume: 0.6,
+};
+
+const DEFAULTS = JSON.parse(JSON.stringify(CONFIG));
+
+function makeRng(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const lerp = (a, b, t) => a + (b - a) * t;
+const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const dist2 = (a, b) => (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
+const grabDist = cfg => cfg.heroRadius + cfg.boxSize * 0.75 + 2;
+const stopDist = cfg => cfg.heroRadius + cfg.boxSize * 0.55;
+
+function tierOf(cfg, d) {
+  if (d >= cfg.tierJIT) return 'jit';
+  if (d >= cfg.tierClose) return 'close';
+  if (d >= cfg.bonusMin) return 'nice';
+  return 'safe';
+}
+// Bonus for cutting back into a room at danger d (before streak/clean multipliers).
+function baseBonus(cfg, d) {
+  if (d < cfg.bonusMin) return 0;
+  const k = clamp((d - cfg.bonusMin) / (1 - cfg.bonusMin), 0, 1);
+  return cfg.bonusMax * Math.pow(k, cfg.bonusPow);
+}
+
+function newGame(cfg, seed) {
+  const rng = makeRng(seed == null ? (Date.now() & 0x7fffffff) : seed);
+  const rooms = [0, 1].map(i => ({
+    id: i, hero: { x: cfg.roomW / 2, y: cfg.roomH / 2, fx: 1, fy: 0 },
+    boxes: [], danger: 0, spawnTimer: 0.5 + i * 0.6, grabbed: 0,
+  }));
+  return {
+    cfg, rng, t: 0, over: false, result: null, deadRoom: -1, active: 0, rooms,
+    score: 0, kills: 0, killScore: 0, bonusTotal: 0, wrapBonus: 0, cuts: 0,
+    tiers: { safe: 0, nice: 0, close: 0, jit: 0 }, streak: 0, bestCut: 0,
+    cutCd: 0, swingCd: 0, nextId: 1,
+  };
+}
+
+function spawnBox(s, r) {
+  const cfg = s.cfg, m = cfg.boxSize, e = Math.floor(s.rng() * 4), u = s.rng();
+  let x, y;
+  if (e === 0) { x = m + u * (cfg.roomW - 2 * m); y = m; }
+  else if (e === 1) { x = m + u * (cfg.roomW - 2 * m); y = cfg.roomH - m; }
+  else if (e === 2) { x = m; y = m + u * (cfg.roomH - 2 * m); }
+  else { x = cfg.roomW - m; y = m + u * (cfg.roomH - 2 * m); }
+  r.boxes.push({ id: s.nextId++, x, y });
+}
+
+function killBoxes(s, r, list, ev, why) {
+  if (!list.length) return;
+  const ids = new Set(list.map(b => b.id));
+  r.boxes = r.boxes.filter(b => !ids.has(b.id));
+  s.kills += list.length;
+  s.killScore += list.length * s.cfg.killPoints;
+  s.score += list.length * s.cfg.killPoints;
+  ev.push({ type: why, room: r.id, x: r.hero.x, y: r.hero.y, hits: list.map(b => ({ x: b.x, y: b.y })) });
+}
+
+function doCut(s, ev) {
+  const cfg = s.cfg;
+  if (s.cutCd > 0) { ev.push({ type: 'cutRejected' }); return; }
+  const from = s.rooms[s.active], to = s.rooms[1 - s.active];
+  const clean = cfg.vCleanExit && !from.boxes.some(b => dist2(b, from.hero) < cfg.cleanRadius ** 2);
+  const d = to.danger, tier = tierOf(cfg, d);
+  let bonus = 0, mult = 1, lostStreak = 0;
+  if (tier !== 'safe') {
+    if (cfg.vStreak) { s.streak = Math.min(s.streak + 1, cfg.streakCap); mult *= 1 + (s.streak - 1) * cfg.streakStep; }
+    if (clean) mult *= cfg.cleanMult;
+    bonus = Math.round(baseBonus(cfg, d) * mult);
+  } else if (s.streak > 0) { lostStreak = s.streak; s.streak = 0; }
+  s.active = to.id; s.cutCd = cfg.cutCooldown; s.cuts++; s.tiers[tier]++;
+  s.bonusTotal += bonus; s.score += bonus; s.bestCut = Math.max(s.bestCut, d);
+  ev.push({ type: 'cut', from: from.id, to: to.id, danger: d, tier, bonus, mult, clean, streak: s.streak, lostStreak });
+  if (cfg.vRescueBlast && tier !== 'safe') {
+    killBoxes(s, to, to.boxes.filter(b => dist2(b, to.hero) < cfg.blastRadius ** 2), ev, 'blast');
+  }
+}
+
+// One fixed tick. input = { mx, my, cut }. Returns the events this tick produced.
+// Order: 1 cut, 2 clock, 3 spawn, 4 hero move, 5 box move + separation + grab count,
+//        6 on-screen hero swing, 7 danger, 8 killed-off check, 9 end-of-reel check.
+function step(s, input, dt) {
+  const ev = [];
+  if (s.over) return ev;
+  const cfg = s.cfg;
+  // 1. cut (resolves before anything moves, so the press shows this frame)
+  if (input.cut) doCut(s, ev);
+  s.cutCd = Math.max(0, s.cutCd - dt);
+  s.swingCd = Math.max(0, s.swingCd - dt);
+  // 2. clock
+  s.t += dt;
+  const p = clamp(s.t / cfg.reelSeconds, 0, 1);
+  const spawnInt = lerp(cfg.spawnIntervalStart, cfg.spawnIntervalEnd, p);
+  const speed = lerp(cfg.boxSpeedStart, cfg.boxSpeedEnd, p);
+  // 3. spawn (both rooms, always)
+  for (const r of s.rooms) {
+    r.spawnTimer -= dt;
+    while (r.spawnTimer <= 0) {
+      r.spawnTimer += spawnInt * (0.7 + 0.6 * s.rng());
+      if (r.boxes.length < cfg.maxBoxesPerRoom) spawnBox(s, r);
+    }
+  }
+  // 4. the hero on screen moves
+  const A = s.rooms[s.active];
+  let mx = input.mx || 0, my = input.my || 0;
+  const ml = Math.hypot(mx, my);
+  if (ml > 0) {
+    mx /= ml; my /= ml;
+    A.hero.x = clamp(A.hero.x + mx * cfg.heroSpeed * dt, cfg.heroRadius, cfg.roomW - cfg.heroRadius);
+    A.hero.y = clamp(A.hero.y + my * cfg.heroSpeed * dt, cfg.heroRadius, cfg.roomH - cfg.heroRadius);
+    A.hero.fx = mx; A.hero.fy = my;
+  }
+  // 5. boxes walk at their room's hero, push apart, count grabs
+  const sd = stopDist(cfg), gd2 = grabDist(cfg) ** 2, bs = cfg.boxSize;
+  for (const r of s.rooms) {
+    const h = r.hero, B = r.boxes;
+    for (const b of B) {
+      const dx = h.x - b.x, dy = h.y - b.y, d = Math.hypot(dx, dy) || 0.001;
+      if (d > sd) { const m = Math.min(speed * dt, d - sd); b.x += dx / d * m; b.y += dy / d * m; }
+    }
+    for (let i = 0; i < B.length; i++) {
+      const a = B[i];
+      for (let j = i + 1; j < B.length; j++) {
+        const b = B[j], dx = b.x - a.x, dy = b.y - a.y, d2 = dx * dx + dy * dy;
+        if (d2 < bs * bs && d2 > 1e-6) {
+          const d = Math.sqrt(d2), push = (bs - d) / 2 / d;
+          a.x -= dx * push; a.y -= dy * push; b.x += dx * push; b.y += dy * push;
+        }
+      }
+      const dx = a.x - h.x, dy = a.y - h.y, d = Math.hypot(dx, dy) || 0.001;
+      if (d < sd) { a.x = h.x + dx / d * sd; a.y = h.y + dy / d * sd; }
+    }
+    r.grabbed = 0;
+    for (const b of B) if (dist2(b, h) < gd2) r.grabbed++;
+  }
+  // 6. the hero on screen auto-swings (plot armor: boxes can't hurt them)
+  if (s.swingCd <= 0) {
+    const r2 = cfg.swingRadius ** 2;
+    const inRange = A.boxes.filter(b => dist2(b, A.hero) <= r2);
+    if (inRange.length) {
+      inRange.sort((a, b) => dist2(a, A.hero) - dist2(b, A.hero));
+      killBoxes(s, A, inRange.slice(0, cfg.swingMaxHits), ev, 'swing');
+      s.swingCd = cfg.swingCooldown;
+    }
+  }
+  // 7. danger: grows in the room you left, drains in the room on screen
+  for (const r of s.rooms) {
+    const before = r.danger;
+    if (r.id === s.active) r.danger = Math.max(0, r.danger - cfg.dangerDecay * dt);
+    else r.danger += Math.min(r.grabbed, cfg.dangerContactCap) * cfg.dangerPerBox * dt;
+    if (r.id !== s.active) {
+      if (before < cfg.warnAt && r.danger >= cfg.warnAt) ev.push({ type: 'warn', room: r.id });
+      if (before < cfg.alarmAt && r.danger >= cfg.alarmAt) ev.push({ type: 'alarm', room: r.id });
+    }
+  }
+  // 8. killed off
+  for (const r of s.rooms) {
+    if (r.id !== s.active && r.danger >= 1) {
+      r.danger = 1; s.over = true; s.result = 'dead'; s.deadRoom = r.id;
+      s.score = Math.round(s.score * cfg.deathScoreMult);
+      ev.push({ type: 'dead', room: r.id });
+      return ev;
+    }
+  }
+  // 9. end of the reel
+  if (s.t >= cfg.reelSeconds) {
+    s.over = true; s.result = 'wrap'; s.wrapBonus = cfg.wrapBonus; s.score += cfg.wrapBonus;
+    ev.push({ type: 'wrap' });
+  }
+  return ev;
+}
+
+// Bot: plays the room on screen (chase nearest box, else drift to centre) and cuts when its
+// periodic glance at the monitor sees danger >= threshold, after a human-ish reaction delay.
+// threshold null = never cuts.
+function makeBot(threshold, seed, opt) {
+  opt = opt || {};
+  const rng = makeRng(seed);
+  const react = opt.react == null ? 0.32 : opt.react, jitter = opt.jitter == null ? 0.1 : opt.jitter;
+  let nextGlance = 0, pressAt = -1;
+  return function (s) {
+    const cfg = s.cfg, A = s.rooms[s.active], O = s.rooms[1 - s.active];
+    let tx = cfg.roomW / 2, ty = cfg.roomH / 2, best = Infinity;
+    for (const b of A.boxes) { const d = dist2(b, A.hero); if (d < best) { best = d; tx = b.x; ty = b.y; } }
+    if (best > 260 * 260) { tx = cfg.roomW / 2; ty = cfg.roomH / 2; }
+    let mx = tx - A.hero.x, my = ty - A.hero.y;
+    if (Math.hypot(mx, my) < cfg.swingRadius * 0.5) { mx = 0; my = 0; }
+    let cut = false;
+    if (threshold != null) {
+      if (pressAt >= 0) { if (s.t >= pressAt) { cut = true; pressAt = -1; } }
+      else if (s.t >= nextGlance) {
+        nextGlance = s.t + (O.danger >= 0.6 ? 0.12 + rng() * 0.28 : 0.3 + rng() * 0.6);
+        if (O.danger >= threshold && s.cutCd <= 0) pressAt = s.t + Math.max(0.12, react + (rng() * 2 - 1) * jitter);
+      }
+    }
+    return { mx, my, cut };
+  };
+}
+const BOT_PRESETS = { never: null, safe: 0.35, greedy: 0.9 };
+</script>
+
+<!-- ===================================================================================
+     BROWSER: input, rendering, placeholder feedback (flash, shake, title cards, beeps),
+     debug panel, test hook. Nothing below changes the rules.
+     =================================================================================== -->
+<script>
+(function () {
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const W = 1280, H = 720, DT = 1 / 60;
+const MV = { x: 24, y: 64, s: 1.2 };     // main view: 960 x 600
+const MON = { x: 1008, y: 64, s: 0.32 }; // monitor: 256 x 160
+const ROOMS = [
+  { cam: 'CAM A', name: 'THE ROOFTOP', mw: 'Meanwhile, on the rooftop...', floor: '#1b2531', grid: '#24303f', box: '#8792a0', tint: '#6fa8ff' },
+  { cam: 'CAM B', name: 'THE VAULT', mw: 'Meanwhile, in the vault...', floor: '#2d231b', grid: '#3a2e24', box: '#a3927f', tint: '#ffad5c' },
+];
+const TIER = {
+  safe: { label: 'Safe cut', color: '#9aa0a8' },
+  nice: { label: 'Tense!', color: '#f0d050' },
+  close: { label: 'Close call!', color: '#ff9a3c' },
+  jit: { label: 'JUST IN TIME!', color: '#ff4a4a' },
+};
+
+let S = newGame(CONFIG);
+let phase = 'title';          // title | play | over
+let overT = 0, paused = false, muted = false, botKind = 'off', bot = null;
+const keys = {};
+let cutQueued = false;
+let best = 0;
+try { best = +localStorage.getItem('km_best') || 0; } catch (e) {}
+
+// ---------- audio (WebAudio beeps, no assets) ----------
+let AC = null;
+function ac() {
+  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; } }
+  if (AC && AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function beep(f, dur, type, vol, f2, delay) {
+  const a = AC; if (!a || muted) return;
+  const t0 = a.currentTime + (delay || 0);
+  const o = a.createOscillator(), g = a.createGain();
+  o.type = type || 'square';
+  o.frequency.setValueAtTime(f, t0);
+  if (f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + dur);
+  g.gain.setValueAtTime((vol || 0.08) * CONFIG.volume, t0);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g).connect(a.destination); o.start(t0); o.stop(t0 + dur + 0.02);
+}
+let noiseBuf = null;
+function noise(dur, vol) {
+  const a = AC; if (!a || muted) return;
+  if (!noiseBuf) {
+    noiseBuf = a.createBuffer(1, a.sampleRate * 0.3, a.sampleRate);
+    const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  const src = a.createBufferSource(), g = a.createGain();
+  src.buffer = noiseBuf; g.gain.setValueAtTime(vol * CONFIG.volume, a.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + dur);
+  src.connect(g).connect(a.destination); src.start(); src.stop(a.currentTime + dur + 0.02);
+}
+const sfx = {
+  cut() { noise(0.07, 0.35); beep(2200, 0.03, 'square', 0.06); },
+  reject() { beep(110, 0.14, 'sawtooth', 0.08); },
+  kill() { beep(820 + Math.random() * 260, 0.045, 'square', 0.035); },
+  bonus(tier) {
+    if (tier === 'nice') beep(660, 0.12, 'triangle', 0.12);
+    if (tier === 'close') { beep(660, 0.1, 'triangle', 0.12); beep(880, 0.16, 'triangle', 0.12, null, 0.08); }
+    if (tier === 'jit') { [660, 880, 1320, 1760].forEach((f, i) => beep(f, 0.14, 'square', 0.09, null, i * 0.06)); }
+  },
+  thump(hi) { beep(hi ? 95 : 70, 0.12, 'sine', 0.35, 40); if (hi) beep(1250, 0.05, 'square', 0.04); },
+  dead() { beep(420, 1.0, 'sawtooth', 0.14, 50); noise(0.4, 0.3); },
+  wrap() { [523, 659, 784, 1046].forEach((f, i) => beep(f, 0.25, 'triangle', 0.12, null, i * 0.12)); },
+  streakLost() { beep(330, 0.25, 'triangle', 0.1, 140); },
+  blast() { noise(0.25, 0.3); beep(160, 0.3, 'sine', 0.3, 50); },
+};
+
+// ---------- visual effects ----------
+const fx = { flash: 0, shake: 0, title: null, pops: [], parts: [], arcs: [], rejected: 0, heart: 0, pulse: 0, frozen: 0 };
+function addParts(room, x, y, n, color, spd) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, v = (0.3 + Math.random()) * (spd || 160);
+    fx.parts.push({ room, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, life: 0.35 + Math.random() * 0.25, color });
+  }
+}
+function handle(evs) {
+  for (const e of evs) {
+    if (e.type === 'cut') {
+      fx.flash = 1; fx.title = { text: ROOMS[e.to].mw, t: 0 }; sfx.cut();
+      const T = TIER[e.tier];
+      if (e.tier !== 'safe') {
+        let sub = '+' + e.bonus + '   (' + Math.round(e.danger * 100) + '%)';
+        if (e.mult > 1) sub += '   x' + (+e.mult.toFixed(2));
+        if (e.clean) sub += '   CLEAN EXIT';
+        fx.pops.push({ text: T.label, sub, color: T.color, t: 0, big: e.tier === 'jit' });
+        fx.shake = Math.max(fx.shake, e.tier === 'jit' ? 16 : e.tier === 'close' ? 9 : 4);
+        if (e.tier === 'jit') fx.frozen = 0.06;
+        sfx.bonus(e.tier);
+        const h = S.rooms[e.to].hero; addParts(e.to, h.x, h.y, e.tier === 'jit' ? 26 : 12, T.color, 260);
+      } else {
+        fx.pops.push({ text: 'Safe cut', sub: Math.round(e.danger * 100) + '%  no bonus', color: T.color, t: 0, small: true });
+      }
+      if (e.lostStreak) { fx.pops.push({ text: 'streak lost', sub: '', color: '#888', t: -0.3, small: true }); sfx.streakLost(); }
+    } else if (e.type === 'cutRejected') { fx.rejected = 1; sfx.reject(); }
+    else if (e.type === 'swing' || e.type === 'blast') {
+      fx.arcs.push({ room: e.room, x: e.x, y: e.y, t: 0, r: e.type === 'blast' ? CONFIG.blastRadius : CONFIG.swingRadius, big: e.type === 'blast' });
+      for (const h of e.hits) addParts(e.room, h.x, h.y, 5, '#e8e8e8');
+      if (e.type === 'blast') { sfx.blast(); fx.shake = Math.max(fx.shake, 12); } else sfx.kill();
+    } else if (e.type === 'dead') {
+      fx.shake = 24; sfx.dead(); endRun();
+    } else if (e.type === 'wrap') { sfx.wrap(); endRun(); }
+  }
+}
+function endRun() {
+  phase = 'over'; overT = 0; fx.pops.length = 0; fx.title = null;
+  if (S.score > best) { best = S.score; try { localStorage.setItem('km_best', String(best)); } catch (e) {} }
+}
+
+// ---------- input ----------
+const MOVE = { KeyW: [0, -1], ArrowUp: [0, -1], KeyS: [0, 1], ArrowDown: [0, 1], KeyA: [-1, 0], ArrowLeft: [-1, 0], KeyD: [1, 0], ArrowRight: [1, 0] };
+function startRun() { S = newGame(CONFIG); phase = 'play'; paused = false; cutQueued = false; bot = makeBotFor(botKind);
+  fx.pops.length = 0; fx.parts.length = 0; fx.arcs.length = 0; fx.title = { text: ROOMS[0].mw.replace('Meanwhile, o', 'O'), t: 0 }; fx.flash = 1; }
+function makeBotFor(k) { return k === 'off' ? null : makeBot(BOT_PRESETS[k], (Date.now() & 0xffff) + 1); }
+function onKey(e, down) {
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA')) return;
+  if (e.code === 'Backquote') { if (down) toggleDbg(); e.preventDefault(); return; }
+  if (MOVE[e.code] || e.code === 'Space') e.preventDefault();
+  if (!down) { keys[e.code] = false; return; }
+  ac();
+  if (e.repeat) { keys[e.code] = true; return; }
+  keys[e.code] = true;
+  if (e.code === 'KeyM') { muted = !muted; return; }
+  if (e.code === 'KeyR') { startRun(); return; }
+  if (phase === 'title') { if (e.code === 'Space' || e.code === 'Enter') startRun(); return; }
+  if (phase === 'over') { if ((e.code === 'Space' || e.code === 'Enter') && overT > 0.8) startRun(); return; }
+  if (e.code === 'KeyP') { paused = !paused; return; }
+  if (e.code === 'Space') { cutQueued = true; }
+}
+addEventListener('keydown', e => onKey(e, true));
+addEventListener('keyup', e => onKey(e, false));
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+function readInput() {
+  if (bot) { const b = bot(S); if (cutQueued) { b.cut = true; cutQueued = false; } return b; }
+  let mx = 0, my = 0;
+  for (const c in MOVE) if (keys[c]) { mx += MOVE[c][0]; my += MOVE[c][1]; }
+  const cut = cutQueued; cutQueued = false;
+  return { mx, my, cut };
+}
+
+// ---------- drawing ----------
+function drawRoom(r, onScreen) {
+  const cfg = CONFIG, info = ROOMS[r.id], hb = cfg.boxSize / 2, gd2 = grabDist(cfg) ** 2;
+  ctx.fillStyle = info.floor; ctx.fillRect(0, 0, cfg.roomW, cfg.roomH);
+  ctx.strokeStyle = info.grid; ctx.lineWidth = 1; ctx.beginPath();
+  for (let x = 50; x < cfg.roomW; x += 50) { ctx.moveTo(x, 0); ctx.lineTo(x, cfg.roomH); }
+  for (let y = 50; y < cfg.roomH; y += 50) { ctx.moveTo(0, y); ctx.lineTo(cfg.roomW, y); }
+  ctx.stroke();
+  for (const b of r.boxes) {
+    const grabbing = !onScreen && dist2(b, r.hero) < gd2;
+    ctx.fillStyle = grabbing ? '#e0483f' : info.box;
+    ctx.fillRect(b.x - hb, b.y - hb, cfg.boxSize, cfg.boxSize);
+    ctx.strokeStyle = '#0006'; ctx.strokeRect(b.x - hb + 0.5, b.y - hb + 0.5, cfg.boxSize - 1, cfg.boxSize - 1);
+  }
+  const h = r.hero;
+  let hx = h.x, hy = h.y;
+  if (!onScreen && r.grabbed > 0) { const j = 1 + r.danger * 4; hx += (Math.random() - 0.5) * j; hy += (Math.random() - 0.5) * j; }
+  if (onScreen) {
+    ctx.strokeStyle = 'rgba(255,220,90,0.35)'; ctx.lineWidth = 2; ctx.setLineDash([4, 6]);
+    ctx.beginPath(); ctx.arc(hx, hy, cfg.swingRadius, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = '#ffe066'; ctx.beginPath(); ctx.arc(hx, hy, cfg.heroRadius + 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(hx, hy, cfg.heroRadius, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#222'; ctx.beginPath(); ctx.arc(hx + h.fx * 7, hy + h.fy * 7, 3.5, 0, Math.PI * 2); ctx.fill();
+  } else {
+    const hot = r.grabbed > 0;
+    ctx.fillStyle = hot ? (Math.floor(performance.now() / 90) % 2 ? '#ff6b6b' : '#ffffff') : '#c9c9c9';
+    ctx.beginPath(); ctx.arc(hx, hy, cfg.heroRadius + 2, 0, Math.PI * 2); ctx.fill();
+  }
+  for (const a of fx.arcs) if (a.room === r.id) {
+    const k = a.t / (a.big ? 0.35 : 0.14);
+    ctx.strokeStyle = `rgba(255,255,255,${1 - k})`; ctx.lineWidth = a.big ? 10 : 5;
+    ctx.beginPath(); ctx.arc(a.x, a.y, a.r * (0.6 + 0.4 * k), 0, Math.PI * 2); ctx.stroke();
+  }
+  for (const p of fx.parts) if (p.room === r.id) {
+    ctx.globalAlpha = 1 - p.t / p.life; ctx.fillStyle = p.color; ctx.fillRect(p.x - 3, p.y - 3, 6, 6);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function text(str, x, y, size, color, align, font) {
+  ctx.font = (font || 'bold ') + size + 'px ' + (font && font.includes('serif') ? 'Georgia, serif' : 'ui-monospace, Menlo, Consolas, monospace');
+  ctx.fillStyle = color || '#ddd'; ctx.textAlign = align || 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText(str, x, y);
+}
+const fmt = t => { t = Math.max(0, Math.ceil(t)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
+
+function draw() {
+  const cfg = CONFIG, A = S.rooms[S.active], O = S.rooms[1 - S.active];
+  const mw = cfg.roomW * MV.s, mh = cfg.roomH * MV.s;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#0d0d10'; ctx.fillRect(0, 0, W, H);
+
+  // top bar
+  text('MEANWHILE...', MV.x, 40, 22, '#f0f0f0', 'left', 'italic bold ');
+  const left = cfg.reelSeconds - S.t;
+  text('REEL ' + fmt(left), MV.x + mw / 2, 40, 24, left < 10 && phase === 'play' && Math.floor(S.t * 4) % 2 ? '#ff6b6b' : '#f0f0f0', 'center');
+  ctx.fillStyle = '#333'; ctx.fillRect(MV.x + mw / 2 - 120, 48, 240, 4);
+  ctx.fillStyle = '#ddd'; ctx.fillRect(MV.x + mw / 2 - 120, 48, 240 * clamp(S.t / cfg.reelSeconds, 0, 1), 4);
+  text('SCORE ' + S.score, MV.x + mw, 40, 24, '#ffe066', 'right');
+
+  // main view
+  const sh = fx.shake * cfg.shake;
+  const ox = (Math.random() - 0.5) * sh, oy = (Math.random() - 0.5) * sh;
+  ctx.save(); ctx.beginPath(); ctx.rect(MV.x, MV.y, mw, mh); ctx.clip();
+  ctx.translate(MV.x + ox, MV.y + oy); ctx.scale(MV.s, MV.s); drawRoom(A, true);
+  ctx.restore();
+  text('● ' + ROOMS[A.id].cam + '  ' + ROOMS[A.id].name + '   on screen: plot armor', MV.x + 10, MV.y + 22, 14, ROOMS[A.id].tint, 'left');
+  // edge pulse when the other room is in danger
+  if (phase === 'play' && O.danger >= cfg.warnAt) {
+    const hot = O.danger >= cfg.alarmAt;
+    ctx.strokeStyle = hot ? `rgba(255,60,60,${0.35 + 0.65 * fx.pulse})` : `rgba(255,160,60,${0.2 + 0.5 * fx.pulse})`;
+    ctx.lineWidth = hot ? 10 : 6; ctx.strokeRect(MV.x + 3, MV.y + 3, mw - 6, mh - 6);
+  }
+  // first-run hint until the player has cut once
+  if (phase === 'play' && S.cuts === 0 && O.danger >= 0.3 && Math.floor(performance.now() / 300) % 2) {
+    text('SPACE: cut to ' + (O.id === 0 ? 'the rooftop' : 'the vault') + '!', MV.x + mw / 2, MV.y + 90, 34, '#ff9a3c', 'center');
+    text('their hero is in danger  >>>', MV.x + mw / 2, MV.y + 124, 18, '#ff9a3c', 'center');
+  }
+  // cut flash + title card + popups
+  if (fx.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${0.7 * fx.flash})`; ctx.fillRect(MV.x, MV.y, mw, mh); }
+  if (fx.title) {
+    const a = fx.title.t < 0.9 ? 1 : Math.max(0, 1 - (fx.title.t - 0.9) / 0.4);
+    ctx.fillStyle = `rgba(0,0,0,${0.55 * a})`; ctx.fillRect(MV.x, MV.y + mh - 70, mw, 46);
+    ctx.globalAlpha = a; text(fx.title.text, MV.x + mw / 2, MV.y + mh - 38, 26, '#f4ecd8', 'center', 'italic '); ctx.globalAlpha = 1;
+    text('', 0, 0, 1); // reset font family
+  }
+  for (const p of fx.pops) {
+    if (p.t < 0) continue;
+    const a = p.t < 0.9 ? 1 : Math.max(0, 1 - (p.t - 0.9) / 0.4);
+    const sc = p.big ? 1 + Math.max(0, 0.5 - p.t * 2.5) : 1;
+    const cy = MV.y + mh * 0.32 - p.t * 30 + (p.small ? 70 : 0);
+    ctx.globalAlpha = a;
+    text(p.text, MV.x + mw / 2, cy, Math.round((p.small ? 26 : p.big ? 64 : 44) * sc), p.color, 'center');
+    if (p.sub) text(p.sub, MV.x + mw / 2, cy + (p.small ? 24 : 40), p.small ? 16 : 22, '#f0f0f0', 'center');
+    ctx.globalAlpha = 1;
+  }
+
+  // sidebar: the monitor (the room you are NOT watching)
+  const monW = cfg.roomW * MON.s, monH = cfg.roomH * MON.s;
+  text('MONITOR: the room you left', MON.x, MON.y - 8, 13, '#aaa');
+  ctx.save(); ctx.beginPath(); ctx.rect(MON.x, MON.y, monW, monH); ctx.clip();
+  ctx.translate(MON.x, MON.y); ctx.scale(MON.s, MON.s); drawRoom(O, false); ctx.restore();
+  ctx.fillStyle = 'rgba(0,0,0,0.18)'; for (let y = MON.y; y < MON.y + monH; y += 3) ctx.fillRect(MON.x, y, monW, 1);
+  const d = O.danger, tier = tierOf(cfg, d), tc = d >= cfg.bonusMin ? TIER[tier].color : '#cfcfcf';
+  ctx.strokeStyle = d >= cfg.alarmAt ? `rgba(255,60,60,${0.5 + 0.5 * fx.pulse})` : d >= cfg.warnAt ? '#ff9a3c' : '#666';
+  ctx.lineWidth = d >= cfg.warnAt ? 4 : 2; ctx.strokeRect(MON.x - 1, MON.y - 1, monW + 2, monH + 2);
+  if (Math.floor(performance.now() / 500) % 2) { ctx.fillStyle = '#e33'; ctx.beginPath(); ctx.arc(MON.x + 10, MON.y + 11, 4, 0, 7); ctx.fill(); }
+  text(ROOMS[O.id].cam + ' ' + ROOMS[O.id].name, MON.x + 18, MON.y + 15, 11, ROOMS[O.id].tint);
+
+  // danger bar
+  const by = MON.y + monH + 34, bw = monW, bh = 30;
+  text('DANGER ' + Math.round(d * 100) + '%', MON.x, by - 6, 16, tc);
+  ctx.fillStyle = '#222'; ctx.fillRect(MON.x, by, bw, bh);
+  ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(MON.x + bw * cfg.bonusMin, by, bw * (1 - cfg.bonusMin), bh);
+  ctx.fillStyle = tc; ctx.fillRect(MON.x, by, bw * clamp(d, 0, 1), bh);
+  for (const [v, lab] of [[cfg.bonusMin, '50'], [cfg.tierClose, '75'], [cfg.tierJIT, '90']]) {
+    ctx.fillStyle = '#fff'; ctx.fillRect(MON.x + bw * v - 1, by - 3, 2, bh + 6);
+    text(Math.round(v * 100) + '', MON.x + bw * v, by + bh + 14, 10, '#888', 'center');
+  }
+  text('100 = killed off', MON.x + bw, by - 6, 11, '#e55', 'right');
+  const potential = Math.round(baseBonus(cfg, d) * (cfg.vStreak && d >= cfg.bonusMin ? 1 + Math.min(S.streak, cfg.streakCap - 1) * cfg.streakStep : 1));
+  text(d >= cfg.bonusMin ? 'CUT NOW: +' + potential : 'CUT NOW: no bonus yet', MON.x, by + bh + 38, 18, d >= cfg.bonusMin ? tc : '#888');
+  text(`grabbed by ${O.grabbed}  (+${Math.round(Math.min(O.grabbed, cfg.dangerContactCap) * cfg.dangerPerBox * 100)}%/s)`, MON.x, by + bh + 58, 12, '#999');
+
+  // sidebar: run info
+  let y = by + bh + 96;
+  const cutReady = S.cutCd <= 0;
+  ctx.fillStyle = fx.rejected > 0 ? `rgba(255,60,60,${0.4 + 0.6 * fx.rejected})` : cutReady ? '#2d5e3a' : '#333';
+  ctx.fillRect(MON.x, y - 22, bw, 34);
+  text(cutReady ? '[SPACE] CUT' : 'cut in ' + S.cutCd.toFixed(1) + 's', MON.x + bw / 2, y + 2, 18, '#fff', 'center');
+  y += 40;
+  if (cfg.vStreak) { text('STREAK x' + (1 + Math.max(0, S.streak - 1) * cfg.streakStep).toFixed(1) + '  (' + S.streak + ')', MON.x, y, 15, '#f0d050'); y += 22; }
+  text(`cuts  safe ${S.tiers.safe}  tense ${S.tiers.nice}`, MON.x, y, 12, '#aaa'); y += 17;
+  text(`      close ${S.tiers.close}  JIT ${S.tiers.jit}`, MON.x, y, 12, '#aaa'); y += 17;
+  text(`closest call ${Math.round(S.bestCut * 100)}%   kills ${S.kills}`, MON.x, y, 12, '#aaa'); y += 17;
+  text(`best score ${best}`, MON.x, y, 12, '#aaa'); y += 17;
+  const flags = ['vRescueBlast', 'vStreak', 'vCleanExit'].filter(k => cfg[k]).map(k => k.slice(1)).join(' ');
+  if (flags) { text('variation: ' + flags, MON.x, y, 11, '#9fd'); y += 15; }
+  if (bot) { text('AUTOPLAY: ' + botKind, MON.x, y, 12, '#f6a'); }
+  text('WASD / arrows  move', MON.x, H - 64, 12, '#bbb');
+  text('SPACE  cut      R  restart', MON.x, H - 47, 12, '#bbb');
+  text('P pause  M mute  `  tuning', MON.x, H - 30, 12, '#bbb');
+
+  // overlays
+  if (phase === 'title') drawTitle(mw, mh);
+  else if (phase === 'over') drawOver(mw, mh);
+  else if (paused) { shade(mw, mh, 0.5); text('PAUSED  (P)', MV.x + mw / 2, MV.y + mh / 2, 36, '#fff', 'center'); }
+}
+function shade(mw, mh, a) { ctx.fillStyle = `rgba(0,0,0,${a})`; ctx.fillRect(MV.x, MV.y, mw, mh); }
+function drawTitle(mw, mh) {
+  shade(mw, mh, 0.78);
+  const cx = MV.x + mw / 2; let y = MV.y + 120;
+  text('MEANWHILE...', cx, y, 56, '#fff', 'center', 'italic bold '); y += 70;
+  const lines = [
+    ['Two heroes, two rooms. You only see one.', '#fff'],
+    ['On screen, your hero can\'t be hurt. WASD: walk into the boxes.', '#ffe066'],
+    ['The other hero is helpless. Watch their DANGER bar (top right).', '#ff9a3c'],
+    ['SPACE = CUT to them. The later you cut back, the bigger the bonus.', '#fff'],
+    ['100% = killed off. Survive the 2-minute reel.', '#ff6b6b'],
+  ];
+  for (const [l, c] of lines) { text(l, cx, y, 20, c, 'center'); y += 36; }
+  y += 30;
+  if (Math.floor(performance.now() / 450) % 2) text('[ SPACE ]  roll camera', cx, y, 26, '#fff', 'center');
+}
+function drawOver(mw, mh) {
+  shade(mw, mh, 0.72);
+  const cx = MV.x + mw / 2; let y = MV.y + 110;
+  if (S.result === 'wrap') text("THAT'S A WRAP!", cx, y, 56, '#7fe08a', 'center');
+  else {
+    text('CUT!', cx, y, 64, '#ff4a4a', 'center'); y += 46;
+    text('The hero ' + (S.deadRoom === 0 ? 'on the rooftop' : 'in the vault') + ' was killed off at ' + fmt(S.t).replace(/^/, ''), cx, y, 22, '#fff', 'center');
+  }
+  y += 70;
+  text('SCORE ' + S.score + (S.score >= best && S.score > 0 ? '   NEW BEST' : ''), cx, y, 40, '#ffe066', 'center'); y += 44;
+  const rows = [
+    `kills ${S.kills} x ${CONFIG.killPoints} = ${S.killScore}`,
+    `cut-back bonuses = ${S.bonusTotal}`,
+    S.result === 'wrap' ? `wrap bonus = ${S.wrapBonus}` : (CONFIG.deathScoreMult !== 1 ? `killed off: score x ${CONFIG.deathScoreMult}` : 'no wrap bonus (killed off)'),
+    `cuts: ${S.tiers.safe} safe, ${S.tiers.nice} tense, ${S.tiers.close} close, ${S.tiers.jit} just in time`,
+    `closest call ${Math.round(S.bestCut * 100)}%`,
+  ];
+  for (const r of rows) { text(r, cx, y, 18, '#ddd', 'center'); y += 28; }
+  y += 24;
+  if (overT > 0.8) text('[ SPACE ] or [ R ]  next take', cx, y, 24, '#fff', 'center');
+}
+
+// ---------- loop ----------
+let last = performance.now(), acc = 0;
+function updateFx(dt) {
+  fx.flash = Math.max(0, fx.flash - dt / 0.09);
+  fx.shake *= Math.pow(0.0005, dt); if (fx.shake < 0.2) fx.shake = 0;
+  fx.rejected = Math.max(0, fx.rejected - dt / 0.25);
+  if (fx.title) { fx.title.t += dt; if (fx.title.t > 1.4) fx.title = null; }
+  for (const p of fx.pops) p.t += dt;
+  fx.pops = fx.pops.filter(p => p.t < 1.3);
+  for (const p of fx.parts) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.9; p.vy *= 0.9; }
+  fx.parts = fx.parts.filter(p => p.t < p.life);
+  for (const a of fx.arcs) a.t += dt;
+  fx.arcs = fx.arcs.filter(a => a.t < (a.big ? 0.35 : 0.14));
+  // heartbeat for the room you left
+  const O = S.rooms[1 - S.active], d = O.danger;
+  fx.pulse = Math.max(0, fx.pulse - dt * 4);
+  if (phase === 'play' && !paused && d >= CONFIG.warnAt) {
+    const k = clamp((d - CONFIG.warnAt) / (1 - CONFIG.warnAt), 0, 1);
+    fx.heart += dt;
+    if (fx.heart >= lerp(0.65, 0.16, k)) { fx.heart = 0; fx.pulse = 1; sfx.thump(d >= CONFIG.alarmAt); }
+  } else fx.heart = 0.5;
+}
+function frame(now) {
+  const real = Math.min(0.1, (now - last) / 1000); last = now;
+  if (phase === 'over') overT += real;
+  if (fx.frozen > 0) fx.frozen -= real;
+  else if (phase === 'play' && !paused) {
+    acc += real; let n = 0;
+    while (acc >= DT && n < 6 && phase === 'play') { handle(step(S, readInput(), DT)); acc -= DT; n++; }
+    if (n === 6) acc = 0;
+  }
+  updateFx(real); draw(); updateLive();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// ---------- debug / tuning panel ----------
+const META = [
+  ['Reel', 'reelSeconds', 30, 300, 5],
+  ['Hero on screen', 'heroSpeed', 100, 500, 10], ['Hero on screen', 'swingRadius', 30, 140, 2], ['Hero on screen', 'swingCooldown', 0.05, 1, 0.01], ['Hero on screen', 'swingMaxHits', 1, 12, 1],
+  ['Boxes', 'boxSpeedStart', 20, 200, 5], ['Boxes', 'boxSpeedEnd', 20, 250, 5], ['Boxes', 'spawnIntervalStart', 0.2, 4, 0.05], ['Boxes', 'spawnIntervalEnd', 0.15, 4, 0.05], ['Boxes', 'maxBoxesPerRoom', 5, 150, 1],
+  ['Danger (room you left)', 'dangerPerBox', 0.005, 0.2, 0.005], ['Danger (room you left)', 'dangerContactCap', 1, 20, 1], ['Danger (room you left)', 'dangerDecay', 0, 2, 0.05],
+  ['Cut + score', 'cutCooldown', 0, 2, 0.05], ['Cut + score', 'bonusMin', 0.1, 0.95, 0.05], ['Cut + score', 'tierClose', 0.2, 0.98, 0.01], ['Cut + score', 'tierJIT', 0.3, 0.99, 0.01],
+  ['Cut + score', 'bonusMax', 0, 2000, 25], ['Cut + score', 'bonusPow', 0.5, 4, 0.1], ['Cut + score', 'killPoints', 0, 100, 1], ['Cut + score', 'wrapBonus', 0, 5000, 50], ['Cut + score', 'deathScoreMult', 0, 1, 0.05],
+  ['Variations', 'vRescueBlast'], ['Variations', 'blastRadius', 40, 400, 10], ['Variations', 'vStreak'], ['Variations', 'streakStep', 0, 2, 0.1], ['Variations', 'streakCap', 1, 10, 1],
+  ['Variations', 'vCleanExit'], ['Variations', 'cleanRadius', 40, 400, 10], ['Variations', 'cleanMult', 1, 5, 0.25],
+  ['Feedback', 'warnAt', 0.1, 0.99, 0.01], ['Feedback', 'alarmAt', 0.1, 0.99, 0.01], ['Feedback', 'shake', 0, 3, 0.1], ['Feedback', 'volume', 0, 1, 0.05],
+];
+const dbg = document.getElementById('dbg');
+const inputs = {};
+function buildDbg() {
+  let html = '<div style="display:flex;justify-content:space-between;align-items:center"><b>TUNING  ( ` to close )</b>' +
+    '<span><button id="d_pause">pause</button></span></div>' +
+    '<div class="note">Changes apply live. R restarts with them. Copy JSON to keep them.</div>' +
+    '<div style="margin-top:6px">autoplay <select id="d_bot"><option>off</option><option>safe</option><option>greedy</option><option>never</option></select> ' +
+    '<button id="d_copy">copy JSON</button> <button id="d_reset">defaults</button></div><textarea id="d_json"></textarea><div class="live" id="d_live"></div>';
+  let group = '';
+  for (const [g, k, min, max, st] of META) {
+    if (g !== group) { html += '<h3>' + g + '</h3>'; group = g; }
+    if (typeof CONFIG[k] === 'boolean') html += `<div class="row"><label for="i_${k}">${k}</label><input type="checkbox" id="i_${k}"><span></span></div>`;
+    else html += `<div class="row"><label title="${k}">${k}</label><input type="range" id="r_${k}" min="${min}" max="${max}" step="${st}"><input type="number" id="i_${k}" min="${min}" max="${max}" step="${st}"></div>`;
+  }
+  dbg.innerHTML = html;
+  for (const [, k] of META) {
+    const num = document.getElementById('i_' + k), rng = document.getElementById('r_' + k);
+    inputs[k] = { num, rng };
+    if (typeof CONFIG[k] === 'boolean') num.addEventListener('change', () => { CONFIG[k] = num.checked; num.blur(); });
+    else {
+      rng.addEventListener('input', () => { CONFIG[k] = +rng.value; num.value = rng.value; });
+      rng.addEventListener('change', () => rng.blur());
+      num.addEventListener('change', () => { CONFIG[k] = +num.value; rng.value = num.value; num.blur(); });
+    }
+  }
+  syncDbg();
+  document.getElementById('d_bot').addEventListener('change', e => { botKind = e.target.value; bot = phase === 'play' ? makeBotFor(botKind) : null; e.target.blur(); });
+  document.getElementById('d_pause').addEventListener('click', e => { paused = !paused; e.target.blur(); });
+  document.getElementById('d_reset').addEventListener('click', e => { Object.assign(CONFIG, JSON.parse(JSON.stringify(DEFAULTS))); syncDbg(); e.target.blur(); });
+  document.getElementById('d_copy').addEventListener('click', e => {
+    const json = JSON.stringify(CONFIG, null, 1), ta = document.getElementById('d_json');
+    ta.style.display = 'block'; ta.value = json; ta.select();
+    try { navigator.clipboard && navigator.clipboard.writeText(json).catch(() => {}); } catch (err) {}
+    e.target.blur();
+  });
+}
+function syncDbg() {
+  for (const [, k] of META) {
+    const { num, rng } = inputs[k];
+    if (typeof CONFIG[k] === 'boolean') num.checked = CONFIG[k]; else { num.value = CONFIG[k]; rng.value = CONFIG[k]; }
+  }
+}
+function toggleDbg() { dbg.classList.toggle('on'); }
+let liveT = 0;
+function updateLive() {
+  if (!dbg.classList.contains('on')) return;
+  if ((liveT = (liveT + 1) % 6)) return;
+  const O = S.rooms[1 - S.active];
+  document.getElementById('d_live').textContent =
+    `t ${S.t.toFixed(1)}s  phase ${phase}${paused ? ' (paused)' : ''}\n` +
+    `boxes A ${S.rooms[0].boxes.length}  B ${S.rooms[1].boxes.length}\n` +
+    `other room: danger ${(O.danger * 100).toFixed(0)}%  grabbed ${O.grabbed}  rate ${(Math.min(O.grabbed, CONFIG.dangerContactCap) * CONFIG.dangerPerBox * 100).toFixed(1)}%/s`;
+}
+buildDbg();
+
+// ---------- test hook (for scripted checks; not used by play) ----------
+window.KM = {
+  get state() { return S; }, get phase() { return phase; }, CONFIG,
+  start: startRun, cut() { cutQueued = true; },
+  setBot(k) { botKind = k; bot = phase === 'play' ? makeBotFor(k) : null; },
+  fastForward(sec, policyFn) { // run the sim instantly with an optional input function
+    const n = Math.round(sec / DT);
+    for (let i = 0; i < n && phase === 'play'; i++) handle(step(S, policyFn ? policyFn(S) : readInput(), DT));
+  },
+};
+})();
+</script>
+</body>
+</html>
