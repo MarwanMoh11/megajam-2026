@@ -49,8 +49,10 @@ Marwan is still at the keyboard for these, so get to them before anything slow.
 3. **No sleep:** `powercfg /change standby-timeout-ac 0` and `powercfg /change hibernate-timeout-ac 0`.
 4. **The door.** Open a new console window in `C:\Jam\megajam` running:
    ```
-   claude remote-control --name jam-pc --permission-mode bypassPermissions
+   claude remote-control --name jam-pc --permission-mode bypassPermissions --spawn=same-dir
    ```
+   (Without `--spawn=same-dir` it stops at a "Spawn mode [1/2]" prompt after the enable question. First run on
+   2026-11-12 also asked "Enable Remote Control? (y/n)" once.)
    It lets Marwan start new sessions on this PC from claude.ai/code, even after this session ends. If the window
    asks to enable Remote Control or to trust the folder, tell Marwan to press `y` in it. If it rejects the
    permission mode, use the closest one it lists and say so. If it won't start at all, carry on: sessions can still

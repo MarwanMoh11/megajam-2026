@@ -42,3 +42,11 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   session that installs the tools, waits for the engine, creates the project, opens the editor and starts the next
   session itself. Claude Code runs on the PC and is steered from the Mac through Remote Control, which replaced the
   SSH plan before it was ever used. Signing in stays Marwan's: Claude, GitHub and the Epic Games Launcher.
+- **Afternoon. Setup stalls on a full disk.** The `setup/auto.md` run installed the Launcher, Git, 7-Zip, OBS,
+  Sunshine and Claude Code, turned off sleep, and recorded the PC in `docs/MACHINE.md`. Then it stopped: `C:` is the
+  only Windows drive and had 18 GB free (15.7 GB by the next check), while the engine needs roughly 60-120 GB.
+  Visual Studio 2022 is there, but without the Game development with C++ workload. No engine, no project, no editor
+  yet. Marwan signed in to the Launcher. A separate Claude session now surveys the disk and clears only what Marwan
+  approves, plus Windows bloat. Two snags: computer use is off in the desktop app, so the Launcher clicks wait for
+  it; and the auto-mode safety check refused to start the Remote Control "door", so Marwan starts that by hand. The
+  PC clock also runs about two hours behind (dual boot with Mint).
