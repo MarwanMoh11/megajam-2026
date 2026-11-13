@@ -583,6 +583,15 @@ characters, audio and polish. Every step ends playable, and the Windows package 
 - The rope's beam.
 - A blooper that reloads the level.
 
+**Step 1, smallest fixes made while building (no rule changed):**
+- The test box has no camera C, so its cart is fired from B (`FiredFrom` on the device). Key 3 flashes "No camera C
+  on this set".
+- The follow spot is fired by clicking a watcher on B. Clicking the lamp itself flashes "Click a watcher to spot it".
+- The test box's goal mark sits just outside the red tape, and once Julian stands on it the take is CLEARED: no
+  blooper can fire after that, and R starts a new take.
+- Numbers the spec doesn't give are tunables with a first guess: the cart rolls for 1.0 s, the banner drops in 0.5 s
+  and reaches 6 m, the guard's frame is 9 m long and 30 degrees either side, and he walks at 2 m/s.
+
 **Step 2, the set, its look, Scenes 1 and 2:**
 - The hall on three layers, fronts and backs, and the shot list.
 - The noir film with stencilled red and gold, key and rim lights.

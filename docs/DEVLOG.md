@@ -163,3 +163,17 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
     `docs/ideas/heist-judging.md`.
   - What went wrong: earlier dev-log times said 17:30 when it was 13:35, and they are corrected.
 
+
+- **About 14:25-15:25. Step 1 starts: one header pass, reviewed before anyone writes a body.**
+  - For this step Claude Fable 5.2 plans, splits and checks, and Opus 5.5 agents build. One agent wrote every header
+    for the core loop: 18 classes in `Reel/Source/Reel/Take/`, with every function body left as a marked stub and
+    every tunable exposed in the editor. The headers are the contract between the five builders who come next.
+  - The design it settled: one director actor holds the rules and steps everything in the spec's tick order, and
+    nothing else ticks. Every log line carries the frame number, which is how "same frame" will be checked.
+  - Fable read all the headers and the tick skeleton against the spec and asked for no changes.
+  - What went wrong: the camera enum and the camera actor got the same name in the editor's Python, so the agent
+    renamed one and needed a second build and restart. The PC's clock was 2 hours slow and was corrected mid-run,
+    which made the agent look 2 hours late when it wasn't. The session's own editor tools died at the restart, as
+    expected; `tools/ue_mcp.py` took over.
+  - Smallest fixes, logged in STATUS.md: no camera C in the test box, the spot is fired by clicking a watcher, and
+    the goal mark sits outside the tape.

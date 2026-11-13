@@ -18,13 +18,16 @@ public class Reel : ModuleRules
 			"StateTreeModule",
 			"GameplayStateTreeModule",
 			"UMG",
-			"Slate"
+			"Slate",
+			"SlateCore",
+			"NavigationSystem"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
 
 		PublicIncludePaths.AddRange(new string[] {
 			"Reel",
+			"Reel/Take",
 			"Reel/Variant_Platforming",
 			"Reel/Variant_Platforming/Animation",
 			"Reel/Variant_Combat",

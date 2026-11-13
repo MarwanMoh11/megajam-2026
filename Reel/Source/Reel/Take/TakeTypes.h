@@ -1,0 +1,222 @@
+// Shared types for the take: enums, the press struct, colours, LogTake and TAKE_LOG.
+// Owner: header pass (shared). Builders read this file; they do not change it.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "TakeTypes.generated.h"
+
+class AActor;
+
+DECLARE_LOG_CATEGORY_EXTERN(LogTake, Log, All);
+
+/** "bar.beat" of the running take's clock, e.g. "3.2" ("-.-" when no director is running). Defined in TakeDirector.cpp. */
+FString TakeLogStamp();
+
+/**
+ * One line to LogTake, prefixed with the frame number (GFrameCounter) and the clock's bar.beat:
+ *     LogTake: [f1234 3.2] CUT -> B
+ * Format must be a TEXT("...") literal (it goes through FString::Printf, so the format is checked at compile time).
+ * Every press handler and every visible reaction logs through this macro: the press and its reaction carry the
+ * same f number, and that is how "same frame" gets verified. UE_LOG is compiled out of Shipping: that is fine.
+ */
+#define TAKE_LOG(Format, ...) \
+	UE_LOG(LogTake, Log, TEXT("[f%llu %s] %s"), (unsigned long long)GFrameCounter, *TakeLogStamp(), *FString::Printf(Format, ##__VA_ARGS__))
+
+/** The three cameras. A is the film (Julian), B is Maya's making-of camera, C is Vex's (no C in the test box).
+ *  In Python it is unreal.TakeCameraId (unreal.TakeCamera is the camera actor class). */
+UENUM(BlueprintType, meta = (ScriptName = "TakeCameraId"))
+enum class ETakeCamera : uint8
+{
+	A,
+	B,
+	C
+};
+
+/** What a device does to every watcher in its range (rule 7). */
+UENUM(BlueprintType)
+enum class EDeviceEffect : uint8
+{
+	Blind,	// the frame goes dark for the duration
+	Lure,	// the watcher walks to the device's point, looks at it, and walks back
+	Mask	// a matte blocks frames and the beam (in step 1: switches the beam off; the guard ignores it)
+};
+
+/** The take's phase. Rolling: everything steps. BlooperFreeze: nothing steps for 1 s, then the level reloads.
+ *  Cleared: Julian reached the goal mark; the world keeps running, no blooper can fire, R still starts a new take. */
+UENUM(BlueprintType)
+enum class ETakePhase : uint8
+{
+	Rolling,
+	BlooperFreeze,
+	Cleared
+};
+
+/** Why a blooper fired. None = no blooper (pending slot empty / no blooper yet this session). */
+UENUM(BlueprintType)
+enum class EBlooperReason : uint8
+{
+	None,
+	ComposureZero,
+	BeamTouched
+};
+
+/** What a clickable actor is, for the press routing in rules 3 and 4. */
+UENUM(BlueprintType)
+enum class ETakeClickKind : uint8
+{
+	None,
+	Mark,
+	Device,
+	Watcher
+};
+
+/** One queued press. */
+UENUM(BlueprintType)
+enum class ETakePressType : uint8
+{
+	Cut,		// keys 1/2/3 or TakeCut
+	Click,		// left click, TakeClick or TakeClickAt
+	NewTake		// R or TakeNewTake
+};
+
+/** A watcher's state, shown on its tape label on B and C ("GUARD - LURED"). */
+UENUM(BlueprintType)
+enum class EWatcherState : uint8
+{
+	Watching,	// frame live
+	Off,		// not live yet (the beam before its first live bar)
+	Dropped,	// the beam's one-beat drop
+	Blinded,
+	Lured,
+	Masked
+};
+
+/**
+ * One press, queued by ATakePlayerController during input handling (TG_PrePhysics) and consumed by
+ * ATakeDirector::StepPresses in the same frame. Exec test commands go through the same queue.
+ */
+USTRUCT(BlueprintType)
+struct FTakePress
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	ETakePressType Type = ETakePressType::Click;
+
+	/** Cut: the camera to cut to. */
+	UPROPERTY()
+	ETakeCamera Camera = ETakeCamera::A;
+
+	/** Click: the clickable actor under the pointer when the press happened (null = nothing clickable). */
+	UPROPERTY()
+	TWeakObjectPtr<AActor> Target;
+
+	/** Click: where the trace hit (zero if nothing was hit). */
+	UPROPERTY()
+	FVector HitLocation = FVector::ZeroVector;
+
+	/** Click: the pointer position in viewport pixels. */
+	UPROPERTY()
+	FVector2D ScreenPos = FVector2D::ZeroVector;
+
+	/** "key", "mouse" or "exec": for the log. */
+	UPROPERTY()
+	FString Source;
+
+	/** GFrameCounter when queued (for the log). */
+	uint64 Frame = 0;
+};
+
+/** Shared colours (linear). Used for BasicShapeMaterial's "Color" parameter and for the HUD. */
+namespace TakeColors
+{
+	inline const FLinearColor Gold(1.0f, 0.62f, 0.08f);
+	inline const FLinearColor GoldBright(1.0f, 0.85f, 0.35f);
+	inline const FLinearColor Red(0.85f, 0.03f, 0.02f);
+	inline const FLinearColor RedDark(0.12f, 0.01f, 0.01f);	// a blinded / masked frame
+	inline const FLinearColor WorkBlue(0.25f, 0.45f, 0.8f);
+	inline const FLinearColor White(0.95f, 0.95f, 0.95f);
+	inline const FLinearColor Grey(0.35f, 0.35f, 0.38f);
+	inline const FLinearColor DarkGrey(0.08f, 0.08f, 0.09f);
+	inline const FLinearColor Black(0.0f, 0.0f, 0.0f);
+}
+
+/** Short names for the HUD and the log. */
+namespace TakeText
+{
+	inline const TCHAR* CameraLetter(ETakeCamera C)
+	{
+		switch (C)
+		{
+		case ETakeCamera::A: return TEXT("A");
+		case ETakeCamera::B: return TEXT("B");
+		default: return TEXT("C");
+		}
+	}
+
+	/** The key that cuts to this camera: "1", "2", "3". */
+	inline const TCHAR* CameraKey(ETakeCamera C)
+	{
+		switch (C)
+		{
+		case ETakeCamera::A: return TEXT("1");
+		case ETakeCamera::B: return TEXT("2");
+		default: return TEXT("3");
+		}
+	}
+
+	/** Whose camera it is: "JULIAN", "MAYA", "VEX". */
+	inline const TCHAR* CrewName(ETakeCamera C)
+	{
+		switch (C)
+		{
+		case ETakeCamera::A: return TEXT("JULIAN");
+		case ETakeCamera::B: return TEXT("MAYA");
+		default: return TEXT("VEX");
+		}
+	}
+
+	inline const TCHAR* EffectName(EDeviceEffect E)
+	{
+		switch (E)
+		{
+		case EDeviceEffect::Blind: return TEXT("BLIND");
+		case EDeviceEffect::Lure: return TEXT("LURE");
+		default: return TEXT("MASK");
+		}
+	}
+
+	inline const TCHAR* WatcherStateName(EWatcherState S)
+	{
+		switch (S)
+		{
+		case EWatcherState::Watching: return TEXT("WATCHING");
+		case EWatcherState::Off: return TEXT("OFF");
+		case EWatcherState::Dropped: return TEXT("DROPPED");
+		case EWatcherState::Blinded: return TEXT("BLINDED");
+		case EWatcherState::Lured: return TEXT("LURED");
+		default: return TEXT("MASKED");
+		}
+	}
+
+	inline const TCHAR* BlooperReasonName(EBlooperReason R)
+	{
+		switch (R)
+		{
+		case EBlooperReason::ComposureZero: return TEXT("COMPOSURE ZERO");
+		case EBlooperReason::BeamTouched: return TEXT("BEAM TOUCHED");
+		default: return TEXT("NONE");
+		}
+	}
+
+	inline const TCHAR* PhaseName(ETakePhase P)
+	{
+		switch (P)
+		{
+		case ETakePhase::Rolling: return TEXT("ROLLING");
+		case ETakePhase::BlooperFreeze: return TEXT("BLOOPER_FREEZE");
+		default: return TEXT("CLEARED");
+		}
+	}
+}

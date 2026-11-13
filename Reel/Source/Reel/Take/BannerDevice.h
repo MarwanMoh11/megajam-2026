@@ -1,0 +1,73 @@
+// A banner drop: a matte that masks (rule 7). Owner: (e).
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Device.h"
+#include "BannerDevice.generated.h"
+
+/** Where the banner is on its timeline. */
+enum class EBannerPhase : uint8
+{
+	Up,
+	Dropping,
+	Down,
+	Raising,
+	Spent
+};
+
+/**
+ * Place it at the batten (top). Fired: the matte (Body, a flat box) drops DropDistance in DropSeconds, starting on
+ * the frame it is fired; when it is down it lands: Mask for Duration (10 s) on every watcher within Range of the
+ * effect point (in the test box: the beam); then it winches back up in RaiseSeconds. One use.
+ */
+UCLASS()
+class REEL_API ABannerDevice : public ADevice
+{
+	GENERATED_BODY()
+
+public:
+	ABannerDevice();
+
+	/** Sizes the matte from MatteSize (editor and runtime). */
+	virtual void OnConstruction(const FTransform& Transform) override;	// BODY: (e)
+
+	virtual void BeginPlay() override;	// BODY: (e)
+
+	virtual bool CanFire(FString& OutWhyNot) const override;	// BODY: (e)
+
+	/** Spends the use, starts the drop (first step this frame). */
+	virtual bool Fire() override;	// BODY: (e)
+
+	/** Drop -> lands when down -> holds Duration -> raises -> spent. */
+	virtual void StepDevice(float DeltaSeconds) override;	// BODY: (e)
+
+	/** Actor transform of EffectOffset. */
+	virtual FVector GetEffectPoint() const override;	// BODY: (e)
+
+	/** The matte's size: width (Y), thickness (X), height (Z), cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Banner")
+	FVector MatteSize = FVector(10.f, 400.f, 250.f);
+
+	/** How far the matte falls, cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Banner")
+	float DropDistance = 300.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Banner")
+	float DropSeconds = 0.5f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Banner")
+	float RaiseSeconds = 1.0f;
+
+	/** Centre of the masked area relative to the actor, cm (range is measured from here). A widget in the editor. */
+	UPROPERTY(EditAnywhere, Category = "Take|Banner", meta = (MakeEditWidget = true))
+	FVector EffectOffset = FVector(0.f, 0.f, -300.f);
+
+	/** The batten the matte hangs from (a thin bar). */
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<UStaticMeshComponent> Batten;
+
+protected:
+	EBannerPhase BannerPhase = EBannerPhase::Up;
+	float PhaseSeconds = 0.f;
+};
