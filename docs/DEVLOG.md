@@ -150,3 +150,16 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
     judges re-reading their own fixes scored 4.4 and 4.6.
   - **Stopped at a taste plateau.** The judges began asking for opposite things, so the loop ended there.
   - **What we learned:** a panel that sees every round anchors on its own notes. Only fresh readers catch bloat.
+
+- **About 13:35-14:30. A rubric, then two blind rounds under it.**
+  - Marwan asked for a fixed yardstick so the judging couldn't loop forever. `docs/JUDGING_RUBRIC.md` copies the
+    jam's seven criteria and adds anchors for each score, fresh judges only, a rule for which changes get in, and a
+    stop rule.
+  - Claude wrote the take as a screenplay, with a scorecard for Marwan, on a private page.
+  - Round 1, three blind Opus judges: 4.1, 4.0 and 3.9. Applied: sound-only warnings, one way to be seen, a 32 s
+    replay, the first cut as the front/back flip, one arrival at a time, and seven contradictions fixed.
+  - Round 2, three new judges: 4.1 from all three. The rubric's plateau rule stopped it. Applied: a path that shows
+    only danger that exists now, a grade on deleted scenes alone, and twelve defect fixes. Logged round by round in
+    `docs/ideas/heist-judging.md`.
+  - What went wrong: earlier dev-log times said 17:30 when it was 13:35, and they are corrected.
+

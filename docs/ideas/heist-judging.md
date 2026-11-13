@@ -283,3 +283,65 @@ named the gap but not this fix):
   and nothing concrete to apply.
 - The free spot solves most problems (B3 only).
 - A longer finale peak: B2 and B3 named it, with no concrete change.
+
+### Round 2 (spec v2, 602a749)
+
+| Criterion | B1 | B2 | B3 |
+|---|---|---|---|
+| Ambition | 4 | 4 | 4 |
+| Theme | 5 | 5 | 5 |
+| Fun | 4 | 4 | 4 |
+| Gameplay | 4 | 4 | 4 |
+| Visuals | 4 | 4 | 4 |
+| Level design | 4 | 4 | 4 |
+| Audio | 4 | 4 | 4 |
+| **Mean** | **4.1** | **4.1** | **4.1** |
+
+**Round mean 4.1, up from 4.0.** Theme went to 5 from all three, and no criterion is below 4 any more. **Stop: the
+plateau rule** (a rise of less than 0.2). There is no round 3. The changes below come from round 2 and have not been
+scored.
+
+**Applied, because 2 or more judges asked or named the same gap:**
+
+| Change | Who | Aimed at |
+|---|---|---|
+| The hover path shows only danger that exists now (tape, beam, live frames, the drone's cone); it never forecasts a turn, so the band is the only warning | All three asked | Audio, Gameplay |
+| DIRECTOR'S CUT = all 4 deleted scenes in one take, bloopers ignored (they're spliced out); FINAL CUT = 2 or 3. The stats name each missed deleted scene | B3 asked; B1 and B2 named "no reason or target for a retry" | Fun |
+
+**Defects fixed:**
+- The 32 s replay couldn't hold everything it promised (all three). It keeps the exit and one best phrase: a
+  restored deleted scene first, else the phrase with the most GOOD CUTs.
+- The path forecast contradicted "nothing on screen warns a bar ahead" (all three). Fixed by the first change.
+- The piano warned of a bodyguard who never turns (B1). The piano is no longer a warning; the bodyguard arrives with
+  Vance on the drum roll.
+- Clicks on B and C: a click on a mark broke "a click on B or C means fire", and a click on a watcher on C did
+  nothing defined (B2). Now anything that can't fire flashes the camera that can act on it.
+- The rope checkpoint could save Julian in the bodyguard's frame (B2). It saves on a new mark just past the rope that
+  no frame covers. A mark just short of the rope, outside the tape, also makes The Long Take possible without devices
+  (B1).
+- The finale could force a blooper on arrival (B2). The alarm's first bar is held, and the case is Scene 3's
+  checkpoint.
+- The feedback's 2-bar drop wasn't defined against band breaks (B2). It isn't one.
+- The finale prompts pointed at the pyro while it was locked (B1). They show as the alarm sounds.
+- The cart alone couldn't clear the rope, because the beam stayed live (B3). The paid answers now say what the spot
+  still has to do.
+- An early spot in Scene 1 meant a certain blooper: the Blind ran out, the recharge took 8 s, and composure ran out in
+  3.8 s (B3). The spot is now free, one watcher at a time, and ready again as soon as its 4 s ends (fix designed
+  here).
+- The side exit wasn't shown to fit in 8 bars (B3). It is 14 m (about 11 beats) from the case, and two of the four
+  guards come in through it.
+- The case could be cued before the lift (B3). Its mark appears once Julian has the keycard.
+
+**Not applied:**
+- Cutting one finale device so the peak tests the loop Scene 1 taught: B2 would cut the winch and B3 the pyro.
+  They agree on the aim and disagree on the device. **For Marwan to decide.**
+- The set's back walls fly out at the alarm, opening the film onto the studio in colour (B1 only).
+- The replay shows your real B and C cuts in the making-of look (B2 only).
+- Ambition is 4 from all six round judges. Each named a precedent (Not For Broadcast, Republique, Sin City) or the
+  familiar stealth underneath. None proposed a change.
+
+### Where the rubric rounds leave it
+
+The blind mean went from 4.0 to 4.1. Theme reached 5 everywhere, and Fun rose from a 3 to 4 everywhere. Ambition,
+Gameplay, Visuals, Level design and Audio sit at 4. The rubric's 5s on Fun and Gameplay describe a player's behaviour,
+so on paper they cap at 4. The next score comes from the build: gate 1.

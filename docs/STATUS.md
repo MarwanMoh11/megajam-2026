@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-11-13, about 14:00 Cairo (after rubric round 1). Theme: **Director's Cut**.
+Last updated: 2026-11-13, about 14:30 Cairo (after rubric round 2; review stopped on the plateau rule). Theme: **Director's Cut**.
 
 **Scoring:** any score of this game, by an agent or by Marwan, follows `docs/JUDGING_RUBRIC.md` (the jam's criteria,
 fixed anchors, and when to stop). Design review is closed; the next scores come at gates 1 and 2.
@@ -114,15 +114,15 @@ A jazz quintet on the floor plays at a fixed 120 BPM, so 1 bar is 2 s. They take
   |---|---|
   | The guard | The upright bass |
   | The drone | The muted trumpet |
-  | The bodyguard | The piano |
   | Vance's speech | A drum roll |
 
   You can hear a threat coming before you see it. Each instrument is taught on its own: the first time its watcher
   arrives, it plays the phrase solo while that watcher's tally light blinks.
 - **On screen:** every watcher's frame pulses on the beat, but nothing on screen warns a bar ahead: only the band
-  does. Julian's path shows his arrival count, e.g. "on his mark in 6", and turns red where he would be caught.
-- **It never stops.** The feedback knocks the band out for its 2 bars, and they come back in on the next bar line. The
-  alarm switches to the heist cue at the same tempo.
+  does. Julian's path shows his arrival count, e.g. "on his mark in 6", and turns red only where danger is right now: the red tape, the beam, a
+  live frame, the drone's cone. It never forecasts a turn.
+- **It never stops.** The feedback knocks the band out for its 2 bars, and they come back in on the next bar line. That
+  drop isn't a band break: Vance doesn't speak, and no checkpoint saves. The alarm switches to the heist cue at the same tempo.
 - **Blooper restores:** every patrol, pass and speech is a function of the bar count. A blooper sets the clock back to
   the bar saved at the checkpoint and seeks the music there.
 
@@ -137,7 +137,7 @@ A jazz quintet on the floor plays at a fixed 120 BPM, so 1 bar is 2 s. They take
 - **Action marks** do their action on arrival:
   - the mark at the scanner is a gate: Julian waits on it until the scanner's frame is dark, then walks through;
   - the mark behind Vance lifts the keycard (1.5 s);
-  - the mark at the case opens it;
+  - the mark at the case opens it (it appears once Julian has the keycard);
   - the mark at the side exit makes Julian bow.
 
   A click on A always means "go there".
@@ -147,11 +147,12 @@ A jazz quintet on the floor plays at a fixed 120 BPM, so 1 bar is 2 s. They take
 - **The posts.** Maya and Vex stand still at their post for the scene. Every device they can fire is in their
   camera's view. Devices fire only from B and C.
 - **Hover:** shows the device's range ring, a marker over every watcher it would catch, and its pips.
-- **Clicking a mark** on B or C flashes "[1] to cue Julian".
 - **Click a device:** it fires.
 - **Click a watcher on Maya's camera:** the follow spot blinds it.
+- **Anything else** (a mark, or a watcher on Vex's camera) fires nothing and flashes the camera that can act on it:
+  "[1] to cue Julian", "[2] to spot him".
 
-A click on B or C always means "fire".
+A click on B or C never cues Julian.
 - **Speed:** a crew cut takes about 2 s (cut, click, cut back).
 
 ### 5. Composure (0-100)
@@ -204,7 +205,7 @@ Every device does exactly one of three things to every watcher in its range:
 
 | Device | Who | Effect | Range, duration | Uses |
 |---|---|---|---|---|
-| Follow spot: click a watcher on Maya's camera | Maya | Blind one watcher | 35 m, 4 s | **Free**, recharges in 4 bars |
+| Follow spot: click a watcher on Maya's camera | Maya | Blind one watcher | 35 m, 4 s | **Free**, one watcher at a time: ready again the moment its 4 s ends |
 | Banner drops, two | Maya | Mask | 10 s, then they winch back up | 1 each |
 | Pyro (locked until the alarm) | Maya | Blind everything at the stage end, with sparks and smoke | 6 s | 1, guaranteed |
 | Champagne carts at two service doors (mid-floor, and by the dais) | Vex | Lure everything within 12 m to the crash | 6 s | 1 each |
@@ -238,9 +239,9 @@ current shot.
 3. A red slate reads **"BLOOPER - AGAIN FROM THE ROPE"**, naming whichever checkpoint, and the director says "Cut!"
 4. A rewind whirr plays while the level reloads at the checkpoint, and then the director says "Action!"
 
-**Checkpoints:** the start of each scene, the first bar past the rope on which no frame holds Julian, and every band
+**Checkpoints:** the start of each scene, the mark just past the rope (which no frame covers, the bodyguard's post included), and every band
 break on which Julian stands on a mark, unexposed, with at least 50 composure. A failed attempt replays 16 s at most.
-A reload clears every effect in play, refills composure to 100 and recharges the follow spot.
+A reload clears every effect in play, refills composure to 100 and frees the follow spot.
 
 **What carries across the reload:** the GameInstance (Unreal's object that survives a level load) keeps:
 - the checkpoint and its bar;
@@ -269,8 +270,9 @@ SCENE RESTORED", grabs its own still, and the director says "Keep that in!"
 
 1. A snap to black, the clapper, the **PRINT IT** slate, and the sting.
 2. **YOUR DIRECTOR'S CUT** (32 s, two 8-bar phrases; Space skips). Your take with every blooper spliced out, cut
-   where you cut, trimmed in whole 8-bar phrases (the band's cycle) so the music never jumps. It keeps the phrases
-   with your GOOD CUTs, any restored deleted scene, and the exit. A cold first take and its replay end inside about
+   where you cut, trimmed in whole 8-bar phrases (the band's cycle) so the music never jumps. It keeps two
+   phrases: the exit, and before it your best phrase (a restored deleted scene first, its last 8 bars if longer;
+   otherwise the phrase with the most GOOD CUTs). A cold first take and its replay end inside about
    4 minutes, so the grade and "R: another take" land inside a judge's window.
    - It is the film throughout: camera A's shots, in costume. Where you cut to B or C, the replay covers that moment
      with the drone's broadcast angle, which faces the dressed fronts. The real score runs under it (the band, then
@@ -281,13 +283,14 @@ SCENE RESTORED", grabs its own still, and the director says "Keep that in!"
    Your live cut replaces the automatic one from that moment.
 4. **The contact sheet.** Up to 12 stills grabbed at your cuts. Each is a SceneCapture2D set to Final Color (LDR),
    rendering into one of 12 render targets at 256x144.
-5. **The stats.** CUTS, GOOD CUTS, BLOOPERS, DELETED SCENES n/4, TIME.
+5. **The stats.** CUTS, GOOD CUTS, BLOOPERS, TIME, and DELETED SCENES n/4, with each missed one named by its slate
+   line ("THE LONG TAKE: cross without cutting"), so the next take has a target.
 6. **The grade.**
 
    | Cut | When |
    |---|---|
-   | **DIRECTOR'S CUT** (gold) | No bloopers, and all 4 deleted scenes |
-   | **FINAL CUT** | 2 bloopers or fewer |
+   | **DIRECTOR'S CUT** (gold) | All 4 deleted scenes restored in one take. Bloopers don't count: they are spliced out |
+   | **FINAL CUT** | 2 or 3 restored |
    | **ROUGH CUT** | Finished |
 
 7. **The blooper reel** rolls under the credits: every blooper's freeze frame with its slate.
@@ -326,8 +329,7 @@ instrument's solo phrase for that bar, so no wait is longer than 8 s:
 | The scene's start | The marks, and the patrol guard | The bass |
 | 4 bars in | The rope's beam goes live, before Julian can reach it | The hi-hat splash |
 | The guided win | The drone. Before it can catch anyone, the marks on its path pulse gold and "Off a mark, the drone sees him" shows | The trumpet |
-| Julian crosses the rope | The bodyguard takes his post | The piano |
-| The bodyguard's arrival | Vance takes the mic; from then on he speaks for 4 bars on every band break | The drum roll |
+| Julian crosses the rope | The bodyguard takes his post, facing out, and Vance takes the mic; from then on Vance speaks for 4 bars on every band break | The drum roll |
 
 **The guided win** (first 15 s): "Click the mark by the exhibit". It is inside the exhibit's red tape, so the guard
 can catch Julian there, and camera A's angle on it frames the guard's approach. Then "[2] spot the guard as his frame
@@ -336,7 +338,8 @@ swings onto Julian", and a GOOD CUT.
 **The rope:**
 - **Free:** spot the beam on the bars when the guard faces away (the bass warns a bar before he turns), and cue Julian
   over.
-- **Paid, for a wider window:** a banner on the beam (Mask, 10 s), or the mid-floor cart on the guard (Lure, 6 s).
+- **Paid, for a wider window:** a banner on the beam (Mask, 10 s), leaving the spot for the guard; or the mid-floor cart on
+  the guard (Lure, 6 s), leaving the spot for the beam.
 
 **The lift:**
 - **Vance's frame** has to be off the lift mark: he is speaking (free: 4 bars on every band break), lured, or blinded.
@@ -350,16 +353,18 @@ swings onto Julian", and a GOOD CUT.
 
 ### Scene 3. The Getaway (16 s: the last 8 bars)
 
-On the first take, the prompts return: "[3] VEX: the winch" and "[2] MAYA: the pyro". Cue Julian to the case mark
-and he takes the reel. The alarm stops the band dead, the shutters fall, four guards walk in from both
-sides, the whole floor turns to red tape, and the drone locks on and follows Julian. Camera A bleeds to full colour for the last 8 bars: the alarm's red, the pyro's gold,
+Cue Julian to the case mark (it appears once he has the keycard) and he takes the reel; the case is Scene 3's
+checkpoint. On the first take, the prompts return as the alarm sounds: "[3] VEX: the winch" and "[2] MAYA: the pyro". The alarm stops the band dead, the shutters fall, four guards walk in from both
+sides, the whole floor turns to red tape, and the drone locks on and follows Julian. That first bar is
+held: nothing sees him until the next bar line. Camera A bleeds to full colour for the last 8 bars: the alarm's red, the pyro's gold,
 every colour at once.
 
 **The exits:**
 - **The hatch under the stage, 10 m away (free):** Vex's winch drops the curtain for good, masks both flanks and opens
   the hatch. Maya's pyro blinds the stage end for 6 s.
-- **The gold side exit past the band:** the pyro doesn't reach it. Its two guards, and the drone following Julian, need a
-  Lure, Blind or Mask you saved: a cart, the feedback, or a banner.
+- **The gold side exit past the band,** 14 m from the case (about 11 beats): the pyro doesn't reach it. Two of the
+  four guards come in through it and need a Lure, Blind or Mask you saved (a cart, the feedback or a banner); the
+  spot takes the drone.
 
 **Deleted scene:** The Bow, at the side exit only.
 
@@ -380,7 +385,8 @@ every colour at once.
 - **Cameras:**
   - **Camera A** is the shot list: CineCameraActors (Unreal cameras with real-lens settings), fixed or on a set track,
     switched by zone triggers. Every angle frames the next marks Julian can be cued to.
-  - **Hovering a mark on A** draws his path, red wherever a frame or the drone's cone will catch him on the way.
+  - **Hovering a mark on A** draws his path and beat count, red where the tape, the beam, a live frame or the drone's
+    cone is right now. It never forecasts a turn: the band does that.
   - **B and C** have one fixed camera per scene.
   - **A cut** swaps the player controller's view target on the same frame: no camera flight, no slow motion.
   - **Exposure** is manual on every camera.
@@ -404,7 +410,8 @@ The hall has three layers, each in view of the others:
    - Posed guests.
    - **The band:** a jazz quintet on a riser with its PA. The band and the guests bob on the beat, through a Transform
      (Modify) Bone node in the animation Blueprint driven by the bar clock.
-   - Gold marks by the champagne bar, the paintings, the exhibit and the pillars.
+   - Gold marks by the champagne bar, the paintings, the exhibit and the pillars, and one each side of the rope (the
+     near one outside the tape).
    - The rope and its beam.
    - **The dais:** Vance's podium with the lift mark behind it, the gold case, and the hatch under the stage.
    - The gold side exit past the band.
@@ -477,7 +484,7 @@ backstage.
 - **The finale:** the alarm, the shutters.
 
 **Music source:** WeLoveIndies or ElevenLabs music, at a fixed and known 120 BPM, with separate stems (one track per
-instrument) for the bass, trumpet, piano and drums, so each instrument's warning phrase can be triggered. Voice lines
+instrument) for the bass, trumpet and drums (the warning instruments) and the piano, so each warning's warning phrase can be triggered. Voice lines
 duck the band's bed, never the warning phrases.
 
 **Credits and the key:** every tool and library goes in `docs/CREDITS.md`. Marwan sets `ELEVENLABS_API_KEY` on the PC
@@ -572,7 +579,7 @@ characters, audio and polish. Every step ends playable, and the Windows package 
 - The bar clock on a metronome, with pulsing frames.
 - Composure and the red tape.
 - One patrol guard, whose frame is a flat mesh that ignores walls for now.
-- The spot (free, recharging), a cart and a banner.
+- The spot (free, one watcher at a time), a cart and a banner.
 - The rope's beam.
 - A blooper that reloads the level.
 

@@ -88,6 +88,8 @@ After a stop, nobody re-scores the same version. The next score comes only after
 
 **Design mode reopened** at Marwan's request ("refine to the best possible before we proceed"), under this rubric:
 fresh judges, at most 3 rounds, stop rule as above. Each round is logged in `docs/ideas/heist-judging.md`.
+It ran two rounds (blind means 4.0, then 4.1) and **stopped on the plateau rule** at 14:30. Design mode is closed
+again; what follows below still holds.
 
 **Before that, at 13:35:**
 
