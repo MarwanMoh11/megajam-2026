@@ -96,5 +96,7 @@ Dev log: the agents append to docs/DEVLOG.md at each milestone; post one short i
 
 ## The idea
 
+**Replaced on Nov 13:** the game is Marwan's heist, specced in docs/STATUS.md (K is archived in docs/ideas/).
+
 Two candidates are locked for Thursday's grey-box tests: **K. Meanwhile...** and **L. The Tight Edit**. They are
 described in docs/STATUS.md; the brainstorm, the crossed-out crowd ideas and the tier list are in docs/BRAINSTORM.md.

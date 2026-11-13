@@ -78,11 +78,24 @@ The stages are also separate runbooks, if one has to be rerun: `setup/win-1-tool
 
 ## The game
 
-The game is K, *Meanwhile...*; its spec and build order are in `docs/STATUS.md`. For each build step, start a new
-session on the PC with the editor open (at claude.ai/code, on the `jam-pc` door) and give it, with the step's number:
+The game is a heist shot in one take (working title *Print It*); its spec and build order are in `docs/STATUS.md`.
+For each build step, start a new session on the PC with the editor open (at claude.ai/code, on the `jam-pc` door)
+and give it, with the step's number:
 
 ```text
-Read docs/STATUS.md, then prototypes/k-3d/NOTES.md for the tuned values. Do step 1 of the build order in Unreal, and nothing past it: C++ for the logic with the tunable values exposed, basic shapes, no art, audio or menus. Run it in play-in-editor yourself and fix what breaks. Then tell me in two lines how to play it, and what you could not judge. Commit when it runs.
+Read docs/STATUS.md. Do step 1 of the build order in Unreal, and nothing past it: C++ for the logic with the tunable values exposed, basic shapes, no art, audio or menus. Run it in play-in-editor yourself and fix what breaks. Then tell me in two lines how to play it, and what you could not judge. Commit and push when it runs.
+```
+
+Audio (step 6) runs in parallel in a second session, outside the editor, so it never touches `.uasset` files. First,
+at the PC, sign in to elevenlabs.io in its browser, make an API key, and set it yourself in PowerShell (agents never
+type keys; there is no clipboard from the Mac). Sessions started after this see it:
+
+```powershell
+setx ELEVENLABS_API_KEY "paste-your-key-here"
+```
+
+```text
+Read docs/STATUS.md. Do the audio part of step 6 only, outside the editor: write every voice line, bluff and sound effect the spec lists into docs/AUDIO_SCRIPT.md, generate them with the ElevenLabs API (key in ELEVENLABS_API_KEY; never print it) as WAV files in C:\Jam\Audio, named by event. Keep each voice to one ElevenLabs voice and say which. Log ElevenLabs in docs/CREDITS.md. Don't import into Unreal; the editor session does that. Tell me the credits used and anything that sounds wrong.
 ```
 
 ## By hand, in a browser

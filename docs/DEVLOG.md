@@ -108,3 +108,29 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   attempt ran 34 minutes against a 30-minute clock: the cap fell during the last compression step, so it was let
   finish. The packaged `Play_Reel.bat` couldn't find Python on this PC; `serve.py` run with the engine's Python
   works. The spec, written meanwhile, dropped the Web build; this stays on record in case that changes.
+- **About 12:00-13:00. The game changed: a heist in one take.** Marwan brought a new pitch, written as a screenplay:
+  a con man at a gala, a lighting tech on the catwalk and a props hand backstage, with the player cutting between
+  them so the con man gets the loot out in a single take. Three Opus agents judged it as jam judges, each with a
+  persona: a gameplay designer, a cinematographer turned Unreal artist, and a jam veteran.
+  - **Round 1, the pitch:** a mean of **3.9/5 as written and 2.5/5 as likely shipped.** Each obstacle had one
+    glowing answer, nothing made a cut cost anything, the live AI interrogation couldn't ship safely, and the scope
+    didn't fit.
+  - **The refinement:**
+    - Devices with three verbs (Blind, Lure, Block) that work on any guard.
+    - Marks Julian must stand on before you cut away.
+    - One hall on three layers instead of four areas.
+    - Hard cuts.
+    - A pre-voiced bluff in place of the runtime LLM.
+    - The grey box turned into the style (a soundstage in rehearsal).
+    - The stolen thing is the Director's Cut itself, and the end card is a strip of the player's own cuts.
+  - **Round 2:** a mean of **4.3/5 as written and 3.4/5 as likely shipped.** Their second notes went in too:
+    - Maya and Vex stay at their posts.
+    - Every rule contradiction they found is fixed.
+    - One lens per camera.
+    - Manual exposure, and a skylight for the missing bounce light.
+    - The ending is built before Scene 3.
+    - Step 1 is trimmed to fit Friday night's play gate.
+  - **Files:** the spec is `docs/STATUS.md`; the pitch and both rounds of scores are in `docs/ideas/`, and K's spec
+    is archived there.
+  - **Audio:** ElevenLabs (Marwan's subscription) will voice about 60 lines and make the sound effects, generated
+    outside the editor in a parallel session.
