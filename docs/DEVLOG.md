@@ -99,3 +99,12 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   MATCH CUT for catching one land). Written into docs/STATUS.md with the win rules, tick order, event table, final
   kill list and a build order: core loop first, then the map it needs, then content, look, characters, audio. The
   Web build was dropped. Two play gates: Fri night (two heroes cutting) and Sat evening (a full run).
+- **11:34-12:15. The Web build works on the template.** Marwan OK'd installing emscripten 6.0.10, which Epic's 5.9
+  Wasm platform needs exactly. Claude cloned emsdk and installed it (694 MB over the slow line, 10 minutes; `emsdk.bat`
+  wants `python` on PATH, so the engine's own Python stood in). Epic's guide says AllToolsets must be off for a web
+  cook, so it went off for the package and back on after. The Shipping package took **23 min** the first time (Wasm
+  compile 11.5 min, cook 6 min, Brotli 4 min) and passed Epic's `check_stage.py`: **223 MB** staged, largest file
+  141 MB, **121 MB** zipped. In a Chromium tab with WebGPU it booted to READY in **2.9 s** on the forward tier. The
+  attempt ran 34 minutes against a 30-minute clock: the cap fell during the last compression step, so it was let
+  finish. The packaged `Play_Reel.bat` couldn't find Python on this PC; `serve.py` run with the engine's Python
+  works. The spec, written meanwhile, dropped the Web build; this stays on record in case that changes.

@@ -82,9 +82,14 @@ clock at the first command; when it runs out, write down how far it got and stop
 
 - First, from Epic's own guide (`<UE>\Engine\Platforms\Wasm\Docs\GettingStarted.md` and
   `Skills\web-deploy\SKILL.md`): it needs **emscripten 6.0.10 exactly** (emsdk, with `WASM_EMSDK_ROOT` pointing at
-  it), which no runbook installs; and the AllToolsets/ToolsetRegistry/AIAssistant plugins crash a Wasm cook unless
-  the `.uproject` gives them `"PlatformDenyList": ["Wasm"]`. Its command adds `-iostore -package -unattended` and
-  `-AdditionalCookerOptions="-unattended -nopause -nosplash -nullrhi"`, then `check_stage.py <out>\Wasm`.
+  it), which no runbook installs; and **AllToolsets must be off** while packaging (its toolset plugins are game
+  feature plugins and the Wasm cook fails on them; Epic's fix is `"Enabled": false`, not a deny list). Its command
+  adds `-iostore -package -unattended`, then `check_stage.py <out>\Wasm`.
+- What the first run (2026-11-13) did, with Marwan's OK: emsdk cloned to `C:\Jam\emsdk` and `emsdk install/activate
+  6.0.10` with the engine's Python folder on PATH (10 min, 694 MB); AllToolsets off, package, AllToolsets back on.
+  The package took 23 min and passed `check_stage.py`; the whole attempt ran 34 minutes, 4 over the clock, because
+  the cap fell during the last compression step. The exact commands are in `CLAUDE.md`. `Play_Reel.bat` finds no
+  Python on this PC: run `serve.py` with the engine's Python instead.
 - Use the platform name stage 2 wrote in `docs/MACHINE.md`. Same command as above with that platform, Shipping, its
   own log. If the command line won't take it, ask Marwan to run it from the editor: Platforms > Web (or Wasm) >
   Shipping > Package Project.

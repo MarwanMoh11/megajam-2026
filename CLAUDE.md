@@ -89,6 +89,17 @@ Start-Process "C:\Epic Games\UE_5.9\Engine\Binaries\Win64\UnrealEditor.exe" '"C:
 
 # zip without the 249 MB .pdb: 14 s, 343 MB
 & "C:\Program Files\7-Zip\7z.exe" a -tzip C:\Jam\Builds\TeamName_GameName.zip C:\Jam\Builds\Windows "-xr!*.pdb"
+
+# Web: on the kill list since Nov 13 (docs/STATUS.md); kept only in case that changes.
+# Editor closed, "AllToolsets" set to "Enabled": false in Reel.uproject first (true again afterwards).
+# 23 min the first time (Wasm compile 11.5 min, cook 6 min, Brotli 4 min); output in C:\Jam\Builds\Wasm
+$env:WASM_EMSDK_ROOT = "C:\Jam\emsdk"
+& "C:\Epic Games\UE_5.9\Engine\Build\BatchFiles\RunUAT.bat" BuildCookRun "-project=C:\Jam\megajam\Reel\Reel.uproject" -platform=Wasm -clientconfig=Shipping -build -cook -stage -pak -iostore -package -archive "-archivedirectory=C:\Jam\Builds" -unattended -nop4 -utf8output > C:\Jam\Builds\package-web.log
+& "C:\Epic Games\UE_5.9\Engine\Binaries\ThirdParty\Python3\Win64\python.exe" -I "C:\Epic Games\UE_5.9\Engine\Platforms\Wasm\Build\Tools\deploy\check_stage.py" C:\Jam\Builds\Wasm
+Set-Location C:\Jam\Builds\Wasm; & "C:\Program Files\7-Zip\7z.exe" a -tzip C:\Jam\Builds\TeamName_GameName_Web.zip *   # index.html at the top: 121 MB
+
+# play the Web build locally (Play_Reel.bat finds no Python here), then open http://127.0.0.1:8951/index.html in Chrome
+Set-Location C:\Jam\Builds; & "C:\Epic Games\UE_5.9\Engine\Binaries\ThirdParty\Python3\Win64\python.exe" -I -B serve.py --root Wasm --port 8951
 ```
 - Close the editor before packaging, so Live Coding can't block the build and the editor DLL on disk is fresh.
 - `-prereqs` stages `Engine\Extras\Redist\en-us\vc_redist.x64.exe` (5.9 has no `UEPrereqSetup`). Shipping writes no log.
