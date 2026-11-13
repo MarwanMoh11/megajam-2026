@@ -227,5 +227,59 @@ those two the judges now ask for opposite things:
 That is a taste plateau, so the loop stopped there. What decides Fun and Gameplay from here is gate 1: Marwan playing
 the core loop.
 
-**From Nov 13, 17:45** every round follows `docs/JUDGING_RUBRIC.md`: fresh judges only, fixed anchors, and a stop
+**From Nov 13, 13:35** every round follows `docs/JUDGING_RUBRIC.md`: fresh judges only, fixed anchors, and a stop
 rule. By that rule design review ended here (conflict and plateau); the next scores come from the build.
+
+## Rubric rounds (from Nov 13, 13:45)
+
+Run under `docs/JUDGING_RUBRIC.md`. Each round has three fresh judges who see only the spec (from "The pitch" to "Tick
+order"), the screenplay of one clean take, and the rubric's criteria, anchors and change rules: no scores, no
+history. Personas: B1 a general jam judge, B2 a film and art judge, B3 a hard-to-impress indie designer.
+
+### Round 1 (spec 4e7cc41, script v1)
+
+| Criterion | B1 | B2 | B3 |
+|---|---|---|---|
+| Ambition | 4 | 4 | 4 |
+| Theme | 5 | 4 | 4 |
+| Fun | 4 | 4 | 3 |
+| Gameplay | 4 | 4 | 4 |
+| Visuals | 4 | 4 | 4 |
+| Level design | 4 | 4 | 4 |
+| Audio | 4 | 4 | 4 |
+| **Mean** | **4.1** | **4.0** | **3.9** |
+
+**Round mean 4.0.** Stop check: target not met (below 4.5, and Fun has a 3); first round, so no plateau test; the
+changes below don't conflict; round 1 of 3. **Continue.**
+
+**Applied, because 2 or more judges asked or named the same gap** (marked "fix designed here" where the judges
+named the gap but not this fix):
+
+| Change | Who | Aimed at |
+|---|---|---|
+| Removed the on-screen ghost of each watcher's next turn: only the band warns a bar ahead | B1, B2 asked to remove; B3 to shorten | Audio |
+| The replay is 32 s (two 8-bar phrases: the GOOD CUTs, restored scenes, the exit), not about 60 s, so the grade and R land inside a judge's 5 minutes | All three named the window; B2's fix | Fun |
+| One way to be seen: the scanner and Vance are ordinary frames. NO MATCH, the belt-only rule and the "Security!" instant blooper are gone. Ways to fail: composure, a live beam, the finale clock | B1 asked; B2, B3 named "few rules" | Gameplay |
+| The first cut is the front/back flip: camera A opens on a high angle over the queue, and Maya's catwalk view reverses it | B3 asked; B2 named the flip as underused | Visuals |
+| Scene 2 watchers arrive one at a time on the next 4-bar line (a wait of 8 s at most), each with a one-bar solo; the bodyguard and Vance no longer share a break | B1 asked; B2, B3 named the 70 s plateau (4-bar timing: fix designed here) | Level design |
+
+**Defects fixed** (no agreement needed):
+- The drone's cone exposes Julian only off a mark; the spec contradicted its own prompt (all three).
+- Vance's speeches had two start rules (all three).
+- The beam could be skipped by not stopping at the middle mark; it is now live 4 bars into Scene 2 (all three).
+- Nothing said what moved Julian past the scanner, and a Blind could expire as he arrived (B3). The scanner mark is
+  now a gate: he waits on it until the frame is dark (fix designed here).
+- Reloads could repeat a blooper at once: spot recharge and Lures weren't restored, and the rope checkpoint saved
+  Julian exposed (B1, B3). A reload now clears effects, refills composure and recharges the spot, and the rope
+  checkpoint saves only when no frame holds him.
+- The side exit's guards couldn't expose Julian (no red tape there), and the drone was both "locked on" and "over the
+  band" (B2). The whole floor turns to red tape at the alarm, and the drone follows Julian.
+- The script called the host "Director Vance" (B2). He is "Vance, the host".
+
+**Not applied:**
+- Grade the directing (DIRECTOR'S CUT = no bloopers plus a GOOD CUT per scene, deleted scenes out of the grade): B3
+  only, and B2 wants restored material more central. Conflict.
+- Ambition (4 from all): B1 wants a bolder look; B2 and B3 want a newer core mechanic and proposed none. Conflict,
+  and nothing concrete to apply.
+- The free spot solves most problems (B3 only).
+- A longer finale peak: B2 and B3 named it, with no concrete change.

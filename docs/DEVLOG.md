@@ -134,7 +134,7 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
     is archived there.
   - **Audio:** ElevenLabs (Marwan's subscription) will voice about 60 lines and make the sound effects, generated
     outside the editor in a parallel session.
-- **About 13:15-17:30. Judging the design until it scored 5 (Marwan's request, design only).**
+- **About 12:50-13:35. Judging the design until it scored 5 (Marwan's request, design only).**
   - **The panel.** The same three Opus judges went from round 3 to round 7 at 3.7, 4.3, 4.6, 4.7 and then **5.0**.
     Each round folded their notes into `docs/STATUS.md`:
     - blocking Julian to marks;

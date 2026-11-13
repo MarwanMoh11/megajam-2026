@@ -84,7 +84,12 @@ A review ends at the **first** of these. Write which rule ended it in `heist-jud
 
 After a stop, nobody re-scores the same version. The next score comes only after the build changes.
 
-## 6. Where we are (Nov 13, 17:30)
+## 6. Where we are (Nov 13, 14:00)
+
+**Design mode reopened** at Marwan's request ("refine to the best possible before we proceed"), under this rubric:
+fresh judges, at most 3 rounds, stop rule as above. Each round is logged in `docs/ideas/heist-judging.md`.
+
+**Before that, at 13:35:**
 
 - **Design mode is closed.** It ended on the conflict and plateau rules: cold reads of 3.9, 4.0 and 3.9, re-reads at
   4.4 and 4.6, and opposite requests on Fun and Gameplay. The spec is frozen except for defects found while
