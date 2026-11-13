@@ -215,3 +215,24 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
     the runs now wait on game time. The film's first angle did not have Julian in it, so the camera moved back and
     the west wall came out. A guard who walks between two points was not dangerous enough (a blind crossing left
     Julian alive), so he now stands and turns on bar lines: three bars watching, one bar away.
+
+- **About 17:00-17:30. A fresh reviewer, its fixes, and the Windows package.**
+  - One new Opus agent that had seen none of the work read all the code against the spec's rules and tick order,
+    for bugs only. It confirmed the tick order, the reload and the packaged-build paths, and found eight bugs. The
+    two that mattered were in how effects stack on a watcher: a cart landing on a blinded guard made his frame
+    live again while the spot was still busy on him, and spotting a beam the banner already masked cut the mask
+    from 10 s to 4 s.
+  - The builders who own those files fixed them (separate timers, the longer effect wins), plus: a swept test so
+    a long frame can't carry Julian through the beam, the frame's beat pulse as brightness so the red on the
+    floor is exactly what catches him, clicks that reach what the current camera acts on, and no silent presses
+    (the mark he already stands on, and presses under the blooper slate, where R now starts the new take).
+  - Every fix was replayed in the editor: the stacking cases, both routes, both failures.
+  - A trial package while the review ran caught what the editor could not show: at 16:9 the cameras' 60 degree
+    lens cropped Julian and the goal mark, and the HUD text was small at 1440p. The three cameras were reframed
+    in the map script and the text scale went up. Route 1 was then played in the packaged game with real mouse
+    clicks and keys, through to the CLEAR stamp.
+  - What went wrong: nothing broke, but the editor window is much wider than a 16:9 screen, so framing checked
+    only in the editor was wrong. Check framing in the package.
+  - The final package for step 1 (17:20): `C:\Jam\Builds\Windows`, zipped to 320 MB. Started from the `.exe`, it
+    opens in the test box, and route 2 (spot on the beam, cart for the guard) was played in it with real clicks
+    to the CLEAR stamp. Three screenshots from the package are in `docs/shots/`.

@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-11-13, about 14:30 Cairo (after rubric round 2; review stopped on the plateau rule). Theme: **Director's Cut**.
+Last updated: 2026-11-13, about 17:30 Cairo (build order step 1 built; waiting for gate 1). Theme: **Director's Cut**.
 
 **Scoring:** any score of this game, by an agent or by Marwan, follows `docs/JUDGING_RUBRIC.md` (the jam's criteria,
 fixed anchors, and when to stop). Design review is closed; the next scores come at gates 1 and 2.
@@ -19,8 +19,11 @@ K's spec is archived in `docs/ideas/k-meanwhile-spec.md`, and nothing in `protot
 `docs/ART_STYLE.md` was written for K: only the parts named under "Look" apply, and where it differs from this file,
 this file wins.
 
-State: the Unreal project `Reel` exists on the PC (Third Person C++ template). Stage 3 proved the pipeline: a Windows
-package in 3.6 min, a 343 MB zip, and a Web build that boots. There is no game code yet. Next: build order step 1.
+State: **step 1, the core loop in a test box, is built** (Nov 13, about 17:30). The C++ is in
+`Reel/Source/Reel/Take/`, the map is `/Game/Take/Lvl_TestBox` (the project starts in it), and
+`tools/build_testbox.py` rebuilds the map from its numbers. In play-in-editor and in the Windows package Julian
+gets past the guard and the beam two ways (banner plus spot, cart plus spot), and a blooper reloads the level.
+Next: **gate 1**, Marwan plays it. Nothing past step 1 is built.
 
 ## The pitch
 
@@ -560,7 +563,7 @@ characters, audio and polish. Every step ends playable, and the Windows package 
 | When (Cairo) | Step | Done when |
 |---|---|---|
 | Fri, by 11:45 | **0. Pipeline** | Done |
-| Fri 17:00-22:00 | **1. Core loop in a test box.** See "Step 1" below | In play-in-editor, Julian gets past the guard and the beam two ways, by a cue plus a device timed to his arrival |
+| Fri 17:00-22:00 | **1. Core loop in a test box.** See "Step 1" below | In play-in-editor, Julian gets past the guard and the beam two ways, by a cue plus a device timed to his arrival. **Built Nov 13, 17:30** |
 | Fri about 22:30 | **Gate 1.** Marwan plays for 5 minutes. If they don't want another go, change a rule (windows, drain, uses), not the art | A yes, or the rule changed |
 | Fri night to Sat morning | **2. The set, its look, Scenes 1 and 2.** See "Step 2" below. Package | Scenes 1-2 play in the package, and screenshots show the film and the making-of |
 | Sat (midterm 12:30) | **3. Scene 3 and the ends.** See "Step 3" below. Package | Title card to blooper reel in the package |
