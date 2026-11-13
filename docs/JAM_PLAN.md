@@ -61,6 +61,9 @@ Setup is automatic after four lines typed at the PC (`README.md`): `go.cmd` star
 
 ## Jam schedule (Cairo)
 
+Replaced on Nov 13 by the build order in docs/STATUS.md (gate 1 moved to Fri night, gate 2 to Sat evening, after
+the midterm). The table below is the original plan.
+
 | When | Goal | Done when |
 |---|---|---|
 | Thu afternoon | Automatic PC setup while the engine downloads (README.md); browser grey boxes of K and L on the Mac | Claude sessions run on the PC; you have played both prototypes |

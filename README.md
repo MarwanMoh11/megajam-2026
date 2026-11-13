@@ -8,7 +8,7 @@ with Claude agents.
 | Path | What |
 |---|---|
 | `CLAUDE.md` | The rules every agent session in this repo follows |
-| `docs/` | Plan and schedule, the two candidate ideas (`STATUS.md`), brainstorm, survey, art style, dev log |
+| `docs/` | Plan, the game's spec and build order (`STATUS.md`), brainstorm, survey, art style, dev log |
 | `setup/` | One runbook per setup stage, written for an agent to carry out |
 | `go.cmd` | Starts the automatic setup on the PC |
 | `prototypes/` | Browser grey boxes of the two ideas and the art board, made on the Mac |
@@ -78,12 +78,11 @@ The stages are also separate runbooks, if one has to be rerun: `setup/win-1-tool
 
 ## The game
 
-The pick between the two ideas is made on the Mac, from the browser grey boxes in `prototypes/`. Once it is made
-and the spec is in `docs/STATUS.md`, start a new session on the PC with the editor open (at claude.ai/code, on
-the `jam-pc` door) and give it:
+The game is K, *Meanwhile...*; its spec and build order are in `docs/STATUS.md`. For each build step, start a new
+session on the PC with the editor open (at claude.ai/code, on the `jam-pc` door) and give it, with the step's number:
 
 ```text
-Read docs/STATUS.md and the NOTES.md of the picked prototype under prototypes/. Build that grey box in Unreal, in its own level, copying the prototype's rules and tuned values: C++ for the logic with the tunable values exposed, basic shapes, no art, audio or menus. Run it in play-in-editor yourself and fix what breaks. Then tell me in two lines how to play it, and what you could not judge. Commit when it runs.
+Read docs/STATUS.md, then prototypes/k-3d/NOTES.md for the tuned values. Do step 1 of the build order in Unreal, and nothing past it: C++ for the logic with the tunable values exposed, basic shapes, no art, audio or menus. Run it in play-in-editor yourself and fix what breaks. Then tell me in two lines how to play it, and what you could not judge. Commit when it runs.
 ```
 
 ## By hand, in a browser

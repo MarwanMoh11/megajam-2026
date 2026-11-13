@@ -93,3 +93,9 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   before the camera moves; the on-screen debug text never showed in captures (the log did); Live Coding patches
   only memory, so the DLL on disk stays stale until the next `Build.bat`; a Windows Firewall prompt for UnrealPak
   popped up during packaging and was left for Marwan. DLSS: no plugin build for 5.9 (8.9.0 stops at 5.8).
+
+- **About 11:50. The spec.** The pick was refined with Marwan into a story-driven cut: one job, three hired guns,
+  and "the story only happens where the camera is" (objectives fill only on camera, three links between threads, a
+  MATCH CUT for catching one land). Written into docs/STATUS.md with the win rules, tick order, event table, final
+  kill list and a build order: core loop first, then the map it needs, then content, look, characters, audio. The
+  Web build was dropped. Two play gates: Fri night (two heroes cutting) and Sat evening (a full run).
