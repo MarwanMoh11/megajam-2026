@@ -12,13 +12,145 @@
 
 FTakeUseTarget ATakeDirector::FindUseTarget(const ATakeCharacter* Who) const
 {
-	// BODY: (u)
-	return FTakeUseTarget();
+	FTakeUseTarget Result;
+	if (!Who || (PC && PC->IsInFlight()) || Who->Id == ETakeCamera::A || Who->IsA(AJulian::StaticClass()))
+	{
+		return Result;
+	}
+
+	// The nearest of Who's devices whose use ring (2D) holds Who's feet.
+	const FVector Feet = Who->GetFeetLocation();
+	ADevice* Best = nullptr;
+	double BestDist = TNumericLimits<double>::Max();
+	for (ADevice* Device : Devices)
+	{
+		if (!IsValid(Device) || Device->FiredFrom != Who->Id)
+		{
+			continue;
+		}
+		const double Dist = FVector::Dist2D(Device->GetUsePoint(), Feet);
+		if (Dist <= Device->UseRadius && Dist < BestDist)
+		{
+			Best = Device;
+			BestDist = Dist;
+		}
+	}
+	if (!Best)
+	{
+		return Result;
+	}
+
+	Result.Device = Best;
+	FString WhyNot;
+	if (!Best->CanFire(WhyNot))
+	{
+		Result.bCanFire = false;
+		Result.Prompt = WhyNot.IsEmpty() ? Best->DeviceName + TEXT(" - can't fire now") : WhyNot;
+		return Result;
+	}
+	Result.bCanFire = true;
+	Result.Prompt = TEXT("[E] ") + Best->UseVerb;
+
+	const AFollowSpot* Spot = Cast<AFollowSpot>(Best);
+	if (!Spot)
+	{
+		return Result;
+	}
+
+	// The follow spot: the watcher nearest the centre of Who's view, by angle, within the aim assist and the spot's range.
+	const FVector AimOrigin = Who->GetAimOrigin();
+	const FVector AimDir = Who->GetAimDirection().GetSafeNormal();
+	const FVector Lamp = Spot->GetActorLocation();
+	const double MaxAngle = FMath::DegreesToRadians(static_cast<double>(FMath::Max(Spot->AimAssistDegrees, 0.f)));
+	AWatcher* Picked = nullptr;
+	double PickedAngle = TNumericLimits<double>::Max();
+	if (!AimDir.IsNearlyZero())
+	{
+		for (AWatcher* W : Watchers)
+		{
+			if (!IsValid(W) || W->DistanceToPoint(Lamp) > Spot->Range)
+			{
+				continue;
+			}
+			const FVector ToW = (W->GetAimPoint() - AimOrigin).GetSafeNormal();
+			if (ToW.IsNearlyZero())
+			{
+				continue;
+			}
+			const double Angle = FMath::Acos(FMath::Clamp(FVector::DotProduct(AimDir, ToW), -1.0, 1.0));
+			if (Angle <= MaxAngle && Angle < PickedAngle)
+			{
+				Picked = W;
+				PickedAngle = Angle;
+			}
+		}
+	}
+
+	if (Picked)
+	{
+		Result.Watcher = Picked;
+		Result.Prompt = TEXT("[E] ") + Best->UseVerb + TEXT(" ") + Picked->GetLabel();
+	}
+	else
+	{
+		Result.Watcher = nullptr;
+		Result.Prompt = TEXT("Look at a watcher");
+		Result.bCanFire = false;
+	}
+	return Result;
 }
 
 void ATakeDirector::StepUse()
 {
-	// BODY: (u)
+	ATakeCharacter* Who = (PC && !PC->IsInFlight()) ? PC->GetCurrentCharacter() : nullptr;
+	const FTakeUseTarget NewUse = FindUseTarget(Who);
+
+	ADevice* OldDevice = CurrentUse.Device;
+	ADevice* NewDevice = NewUse.Device;
+	AWatcher* OldWatcher = CurrentUse.Watcher;
+	AWatcher* NewWatcher = NewUse.Watcher;
+
+	// The highlights move on this frame.
+	if (OldDevice != NewDevice)
+	{
+		if (IsValid(OldDevice))
+		{
+			OldDevice->SetInReach(false);
+		}
+		if (IsValid(NewDevice))
+		{
+			NewDevice->SetInReach(true);
+		}
+	}
+	if (OldWatcher != NewWatcher)
+	{
+		if (IsValid(OldWatcher))
+		{
+			OldWatcher->SetHovered(false);
+		}
+		if (IsValid(NewWatcher))
+		{
+			NewWatcher->SetHovered(true);
+		}
+	}
+
+	if (OldDevice != NewDevice || OldWatcher != NewWatcher)
+	{
+		if (!NewDevice)
+		{
+			TAKE_LOG(TEXT("USE TARGET none"));
+		}
+		else if (NewWatcher)
+		{
+			TAKE_LOG(TEXT("USE TARGET %s %s"), *NewDevice->DeviceName, *NewWatcher->GetLabel());
+		}
+		else
+		{
+			TAKE_LOG(TEXT("USE TARGET %s"), *NewDevice->DeviceName);
+		}
+	}
+
+	CurrentUse = NewUse;
 }
 
 bool ATakeDirector::FireDevice(ADevice* Device)

@@ -11,8 +11,10 @@
 #include "FollowSpot.h"
 #include "Julian.h"
 #include "Mark.h"
+#include "TakeCharacter.h"
 #include "TakeDirector.h"
 #include "TakeGameInstance.h"
+#include "TakePlayerController.h"
 #include "TakeTypes.h"
 #include "Watcher.h"
 
@@ -146,7 +148,70 @@ void ATakeHUD::DrawHUD()
 		}
 	}
 
-	// BODY: (u) the reticle, the use prompt, the crew strip and the flight's "CUT -> MAYA" (see TakeHUD.h)
+	// --- The reticle and the use prompt; in a flight, the big "CUT -> MAYA" instead --------------------------------
+	ATakePlayerController* TakePC = Cast<ATakePlayerController>(GetOwningPlayerController());
+	if (!TakePC)
+	{
+		TakePC = Dir->PC;
+	}
+	const float MidX = ScreenW * 0.5f;
+	const float MidY = ScreenH * 0.5f;
+	if (TakePC && TakePC->IsInFlight())
+	{
+		if (const ATakeCharacter* FlightTarget = TakePC->GetFlightTarget())
+		{
+			DrawTextWithFont(FString::Printf(TEXT("CUT -> %s"), FlightTarget->GetCrewName()), LargeFont, TakeColors::White,
+				MidX, ScreenH * 0.42f, SlateTextScale * Ui * 0.5f, true);
+		}
+	}
+	else
+	{
+		const FTakeUseTarget& Use = Dir->CurrentUse;
+		const FLinearColor ReticleColour = Use.Watcher ? TakeColors::GoldBright
+			: TakeHudA::WithAlpha(TakeColors::White, 0.8f);
+		const float Half = FMath::Max(3.f, ReticleSize * Ui * 0.5f);
+		const float Thick = FMath::Max(1.f, FMath::RoundToFloat(1.5f * Ui));
+		DrawRect(ReticleColour, MidX - Half, MidY - Thick * 0.5f, Half * 2.f, Thick);
+		DrawRect(ReticleColour, MidX - Thick * 0.5f, MidY - Half, Thick, Half * 2.f);
+		if (!Use.Prompt.IsEmpty())
+		{
+			DrawShadowedText(Use.Prompt, Use.bCanFire ? TakeColors::GoldBright : TakeColors::Grey, MidX,
+				MidY + Half + 14.f * Ui, Ui * 1.1f, true);
+		}
+	}
+
+	// --- The crew strip, top centre: "1 JULIAN   2 MAYA   3 VEX", the current one lit ------------------------------
+	{
+		const ETakeCamera Ids[] = { ETakeCamera::A, ETakeCamera::B, ETakeCamera::C };
+		const float Gap = 28.f * Ui;
+		FString Texts[3];
+		float Widths[3] = { 0.f, 0.f, 0.f };
+		float TotalW = 0.f;
+		int32 Shown = 0;
+		for (int32 Index = 0; Index < 3; ++Index)
+		{
+			if (!Dir->GetCharacter(Ids[Index]))
+			{
+				continue;
+			}
+			Texts[Index] = FString::Printf(TEXT("%d %s"), Index + 1, TakeText::CrewName(Ids[Index]));
+			float TextH = 0.f;
+			GetTextSize(Texts[Index], Widths[Index], TextH, SmallFont, Ui);
+			TotalW += Widths[Index] + (Shown > 0 ? Gap : 0.f);
+			++Shown;
+		}
+		float StripX = (ScreenW - TotalW) * 0.5f;
+		for (int32 Index = 0; Index < 3; ++Index)
+		{
+			if (Texts[Index].IsEmpty())
+			{
+				continue;
+			}
+			DrawShadowedText(Texts[Index], Ids[Index] == Cam ? TakeColors::GoldBright : TakeColors::Grey, StripX, Margin,
+				Ui, false);
+			StripX += Widths[Index] + Gap;
+		}
+	}
 
 	// --- Labels on set (B and C only) ------------------------------------------------------------------------------
 	if (!bOnA)

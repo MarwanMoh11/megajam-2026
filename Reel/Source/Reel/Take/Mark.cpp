@@ -33,7 +33,8 @@ void AMark::OnConstruction(const FTransform& Transform)
 void AMark::BeginPlay()
 {
 	Super::BeginPlay();
-	bIsOccupied = false;
+	// No reset of bIsOccupied (false from construction): Julian's BeginPlay may already have claimed this mark, and
+	// actors begin play in no fixed order.
 	ApplyLook();
 }
 

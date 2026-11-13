@@ -175,9 +175,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Flight", meta = (ClampMin = "0", ClampMax = "1"))
 	float FlightPanShare = 0.3f;
 
-	/** Degrees of look per unit of mouse delta. */
+	/** Degrees of look per unit of mouse delta. GetInputMouseDelta is already scaled by the engine (BaseInput.ini:
+	 *  MouseX/MouseY Sensitivity 0.07 per count), so 2.5 is about 0.175 deg per mouse count, the UE template's feel. */
 	UPROPERTY(EditAnywhere, Category = "Take|Look")
-	float LookSensitivity = 0.15f;
+	float LookSensitivity = 2.5f;
 
 	/** Mouse up looks down. */
 	UPROPERTY(EditAnywhere, Category = "Take|Look")
@@ -198,6 +199,24 @@ protected:
 
 	/** E or the left mouse button: QueueUse. */
 	void OnUse();	// BODY: (s)
+
+	/** The left mouse button: QueueUse("mouse") (OnUse is E, "key"). Added by (s). */
+	void OnUseMouse();
+
+	/** FlightCamera, spawned (transient, aspect ratio unconstrained) if it does not exist yet. Added by (s). */
+	ACameraActor* EnsureFlightCamera();
+
+	/** Puts FlightCamera at Location / Rotation with FOV (this frame). Added by (s). */
+	void PlaceFlightCamera(const FVector& Location, const FQuat& Rotation, float FOV);
+
+	/** The flight's last frame: Current = FlightTo, FlightTo = null, SetViewTarget(Current) with no blend,
+	 *  TAKE_LOG("VIEW -> B"). Added by (s). */
+	void LandFlight();
+
+	/** Share of each stepped zoom spent on its quick eased jump (0..1); the rest is the hold before the next.
+	 *  Added by (s). */
+	UPROPERTY(EditAnywhere, Category = "Take|Flight", meta = (ClampMin = "0.05", ClampMax = "1"))
+	float FlightStepJumpShare = 0.4f;
 	void OnKeyR();	// BODY: (s)
 	void OnEscape();	// BODY: (s)
 

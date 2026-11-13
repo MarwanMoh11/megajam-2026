@@ -50,10 +50,80 @@ void ATakeDirector::StepPresses()
 
 void ATakeDirector::HandleCut(ETakeCamera Camera, const FTakePress& Press)
 {
-	// BODY: (s)
+	if (!PC)
+	{
+		return;
+	}
+	const TCHAR* Letter = TakeText::CameraLetter(Camera);
+
+	if (PC->IsInFlight())
+	{
+		Flash(TEXT("Mid-cut"), TakeColors::Grey, 0.8f);
+		TAKE_LOG(TEXT("CUT -> %s (%s) refused: mid-cut"), Letter, *Press.Source);
+		return;
+	}
+
+	ATakeCharacter* To = GetCharacter(Camera);
+	if (!To)
+	{
+		Flash(FString::Printf(TEXT("No camera %s on this set"), Letter), TakeColors::Grey);
+		TAKE_LOG(TEXT("CUT -> %s (%s) refused: no such character"), Letter, *Press.Source);
+		return;
+	}
+	if (To == PC->GetCurrentCharacter())
+	{
+		Flash(FString::Printf(TEXT("Already on %s"), To->GetCrewName()), TakeColors::Grey, 1.f);
+		TAKE_LOG(TEXT("CUT -> %s (%s) refused: already there"), Letter, *Press.Source);
+		return;
+	}
+
+	// The view leaves the old character inside this call.
+	PC->StartFlight(To);
+	TAKE_LOG(TEXT("CUT -> %s (%s)"), Letter, *Press.Source);
 }
 
 void ATakeDirector::HandleUse(const FTakePress& Press)
 {
-	// BODY: (s)
+	if (!PC)
+	{
+		return;
+	}
+	if (PC->IsInFlight())
+	{
+		Flash(TEXT("Mid-cut"), TakeColors::Grey, 0.8f);
+		TAKE_LOG(TEXT("USE (%s) refused: mid-cut"), *Press.Source);
+		return;
+	}
+
+	const ATakeCharacter* Who = PC->GetCurrentCharacter();
+	if (!Who)
+	{
+		TAKE_LOG(TEXT("USE (%s) refused: no current character"), *Press.Source);
+		return;
+	}
+	const TCHAR* WhoName = Who->GetCrewName();
+
+	if (Who == Julian.Get())
+	{
+		Flash(TEXT("[2] MAYA or [3] VEX work the set"), TakeColors::Grey);
+		TAKE_LOG(TEXT("USE %s: refused, the crew work the set"), WhoName);
+		return;
+	}
+
+	ADevice* Device = CurrentUse.Device;
+	if (!Device)
+	{
+		Flash(TEXT("Nothing in reach - stand in a device's ring"), TakeColors::Grey);
+		TAKE_LOG(TEXT("USE %s: refused, nothing in reach"), WhoName);
+		return;
+	}
+	if (!CurrentUse.bCanFire)
+	{
+		Flash(CurrentUse.Prompt, TakeColors::Grey);
+		TAKE_LOG(TEXT("USE %s: %s -> refused %s"), WhoName, *Device->DeviceName, *CurrentUse.Prompt);
+		return;
+	}
+
+	const bool bFired = Cast<AFollowSpot>(Device) ? SpotWatcher(CurrentUse.Watcher) : FireDevice(Device);
+	TAKE_LOG(TEXT("USE %s: %s -> %s"), WhoName, *Device->DeviceName, bFired ? TEXT("fired") : TEXT("refused"));
 }

@@ -32,7 +32,7 @@ ADevice::ADevice()
 void ADevice::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
-	// BODY: (u)
+	LayOutUseRing();
 }
 
 FVector ADevice::GetUsePoint() const
@@ -42,12 +42,45 @@ FVector ADevice::GetUsePoint() const
 
 void ADevice::SetInReach(bool bInReach)
 {
-	// BODY: (u)
+	bIsInReach = bInReach;
+	if (UseRing)
+	{
+		FTakeShapes::SetColour(UseRing, bIsInReach ? TakeColors::GoldBright : TakeColors::Grey);
+	}
 }
 
 void ADevice::LayOutUseRing()
 {
-	// BODY: (u)
+	if (!UseRing)
+	{
+		return;
+	}
+
+	// Flat and level at the use point's own height (it may be on a raised deck), whatever the actor's rotation/scale.
+	UseRing->SetUsingAbsoluteScale(true);
+	UseRing->SetWorldLocationAndRotation(GetUsePoint(), FQuat::Identity);
+	UseRing->SetWorldScale3D(FVector::OneVector);
+
+	UseRing->ClearInstances();
+	const int32 Dots = FMath::Max(UseRingDots, 3);
+	const float Radius = FMath::Max(UseRadius, 10.f);
+	const float StepRad = UE_TWO_PI / static_cast<float>(Dots);
+	const float DashLength = Radius * StepRad * FMath::Clamp(UseRingDashFill, 0.05f, 1.f);
+	const FVector DashScale(DashLength / 100.f, UseRingDashWidth / 100.f, UseRingDashHeight / 100.f);
+
+	TArray<FTransform> Dashes;
+	Dashes.Reserve(Dots);
+	for (int32 Index = 0; Index < Dots; ++Index)
+	{
+		const float Angle = StepRad * static_cast<float>(Index);
+		const FVector Where(Radius * FMath::Cos(Angle), Radius * FMath::Sin(Angle), UseRingDashHeight * 0.5f);
+		// The cube's X runs along the circle's tangent.
+		const FRotator Along(0.f, FMath::RadiansToDegrees(Angle) + 90.f, 0.f);
+		Dashes.Add(FTransform(Along, Where, DashScale));
+	}
+	UseRing->AddInstances(Dashes, false, false, false);
+
+	FTakeShapes::SetColour(UseRing, bIsInReach ? TakeColors::GoldBright : TakeColors::Grey);
 }
 
 void ADevice::BeginPlay()
@@ -59,6 +92,10 @@ void ADevice::BeginPlay()
 	bLanded = false;
 	RunSeconds = 0.f;
 	RefreshBodyLook();
+
+	// OnConstruction does not rerun for placed actors in play or in a package: lay the ring out here too, dim.
+	bIsInReach = false;
+	LayOutUseRing();
 }
 
 void ADevice::SetHovered(bool bInHovered)

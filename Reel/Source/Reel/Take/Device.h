@@ -123,6 +123,18 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Device")
 	int32 UseRingDots = 32;
 
+	/** Width of a use-ring dash across the circle, cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Device")
+	float UseRingDashWidth = 10.f;
+
+	/** Height of a use-ring dash above the floor, cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Device")
+	float UseRingDashHeight = 2.f;
+
+	/** Share of each dash's slot along the circle that is dash (the rest is gap), 0-1. */
+	UPROPERTY(EditAnywhere, Category = "Take|Device")
+	float UseRingDashFill = 0.55f;
+
 	/** Height of the pips label above the actor, cm. */
 	UPROPERTY(EditAnywhere, Category = "Take|Device")
 	float LabelHeight = 200.f;

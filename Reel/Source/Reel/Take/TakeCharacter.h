@@ -175,6 +175,14 @@ protected:
 	 *  No mesh: does nothing. */
 	void ApplyTint();	// BODY: (m)
 
+	/** Boom->SetWorldRotation(FRotator(LookPitch, LookYaw, 0)): the follow camera moves with it this frame. */
+	void ApplyLookToBoom();
+
+	/** Friction while braking (BrakingFriction, with bUseSeparateBrakingFriction on). 0: the stop is WalkBraking
+	 *  alone (250 cm/s stops in about 0.28 s at 900). The engine default (GroundFriction 8 x 2) stops in about 0.1 s. */
+	UPROPERTY(EditAnywhere, Category = "Take|Character")
+	float WalkBrakingFriction = 0.f;
+
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
 	float LookYaw = 0.f;
 

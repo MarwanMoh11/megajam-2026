@@ -43,15 +43,13 @@ void AFollowSpot::BeginPlay()
 
 bool AFollowSpot::CanFire(FString& OutWhyNot) const
 {
+	// Idle: it can fire (which watcher is FindUseTarget's and FireAt's business). Busy: the countdown.
 	if (bRunning)
 	{
 		OutWhyNot = FString::Printf(TEXT("%s - busy %.1f s"), *DeviceName, BusySecondsLeft);
+		return false;
 	}
-	else
-	{
-		OutWhyNot = TEXT("Click a watcher to spot it");
-	}
-	return false;
+	return Super::CanFire(OutWhyNot);
 }
 
 void AFollowSpot::StepDevice(float DeltaSeconds)
@@ -109,7 +107,7 @@ bool AFollowSpot::FireAt(AWatcher* Watcher, FString& OutWhyNot)
 {
 	if (!IsValid(Watcher))
 	{
-		OutWhyNot = TEXT("Click a watcher to spot it");
+		OutWhyNot = TEXT("Look at a watcher");
 		return false;
 	}
 	if (bRunning)

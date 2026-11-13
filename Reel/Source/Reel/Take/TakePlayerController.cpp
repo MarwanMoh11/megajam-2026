@@ -1,12 +1,14 @@
-// Owner: (s). Constructor by the header pass; every "// BODY: (s)" is a stub to fill.
+// Owner: (s). Constructor by the header pass; bodies by builder (s).
 
 #include "TakePlayerController.h"
 
 #include "Camera/CameraActor.h"
+#include "Camera/CameraComponent.h"
 #include "ComposureComponent.h"
 #include "Components/InputComponent.h"
 #include "Device.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "FollowSpot.h"
 #include "InputCoreTypes.h"
 #include "Julian.h"
@@ -17,6 +19,47 @@
 #include "TakeDirector.h"
 #include "UnrealClient.h"
 #include "Watcher.h"
+
+// Unity builds merge .cpp files: file-local helpers live in a uniquely named namespace.
+namespace TakePlayerControllerLocal
+{
+	/**
+	 * One stepped zoom: Steps quick eased jumps, each followed by a hold. A in [0, 1] -> [0, 1].
+	 * stepped(a) = (floor(a * N) + ease(frac(a * N))) / N, where ease does the whole jump in the first JumpShare of
+	 * the step with a sharp ease-out (quartic) and then holds: it reads as jump cuts.
+	 */
+	float SteppedZoom(float A, int32 Steps, float JumpShare)
+	{
+		if (A <= 0.f)
+		{
+			return 0.f;
+		}
+		if (A >= 1.f)
+		{
+			return 1.f;
+		}
+		const int32 N = FMath::Max(1, Steps);
+		const float Scaled = A * N;
+		const float Index = FMath::FloorToFloat(Scaled);
+		const float Frac = Scaled - Index;
+		const float T = FMath::Clamp(Frac / FMath::Max(JumpShare, KINDA_SMALL_NUMBER), 0.f, 1.f);
+		const float Eased = 1.f - FMath::Pow(1.f - T, 4.f);
+		return FMath::Min((Index + Eased) / N, 1.f);
+	}
+
+	/** Smooth ease in-out (smoothstep) on [0, 1]. */
+	float EaseInOut(float A)
+	{
+		const float X = FMath::Clamp(A, 0.f, 1.f);
+		return X * X * (3.f - 2.f * X);
+	}
+
+	/** Looking straight down, with Yaw as the screen's "up". */
+	FQuat LookDown(double Yaw)
+	{
+		return FRotator(-90.0, Yaw, 0.0).Quaternion();
+	}
+}
 
 ATakePlayerController::ATakePlayerController()
 {
@@ -31,7 +74,15 @@ ATakePlayerController::ATakePlayerController()
 void ATakePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
-	// BODY: (s)
+
+	if (IsLocalController())
+	{
+		// Game-only input: the viewport gets focus and captures the mouse, no cursor.
+		FInputModeGameOnly InputMode;
+		SetInputMode(InputMode);
+		SetShowMouseCursor(false);
+	}
+	EnsureFlightCamera();
 }
 
 void ATakePlayerController::SetupInputComponent()
@@ -47,14 +98,66 @@ void ATakePlayerController::SetupInputComponent()
 	InputComponent->BindKey(EKeys::Three, IE_Pressed, this, &ATakePlayerController::OnKeyThree);
 	InputComponent->BindKey(EKeys::R, IE_Pressed, this, &ATakePlayerController::OnKeyR);
 	InputComponent->BindKey(EKeys::Escape, IE_Pressed, this, &ATakePlayerController::OnEscape);
-	// BODY: (s) E and LeftMouseButton -> OnUse
+	InputComponent->BindKey(EKeys::E, IE_Pressed, this, &ATakePlayerController::OnUse);
+	InputComponent->BindKey(EKeys::LeftMouseButton, IE_Pressed, this, &ATakePlayerController::OnUseMouse);
 }
 
 void ATakePlayerController::PlayerTick(float DeltaTime)
 {
 	// Input bindings fire inside Super::PlayerTick (they only queue presses).
 	Super::PlayerTick(DeltaTime);
-	// BODY: (s) walk, look, the test walk
+
+	if (!Current || IsInFlight())
+	{
+		return;
+	}
+
+	// Nothing steps under the blooper slate: no walking or looking either.
+	if (const ATakeDirector* Director = ATakeDirector::Get(this))
+	{
+		if (Director->Phase == ETakePhase::BlooperFreeze)
+		{
+			return;
+		}
+	}
+
+	// Walk: (W - S, D - A). The movement component ticks after this controller, so he moves this frame.
+	const float Forward = (IsInputKeyDown(EKeys::W) ? 1.f : 0.f) - (IsInputKeyDown(EKeys::S) ? 1.f : 0.f);
+	const float Right = (IsInputKeyDown(EKeys::D) ? 1.f : 0.f) - (IsInputKeyDown(EKeys::A) ? 1.f : 0.f);
+	const FVector2D Axes(Forward, Right);
+	if (!Axes.IsZero())
+	{
+		if (bWalkTo)
+		{
+			bWalkTo = false;
+			TAKE_LOG(TEXT("WALKTO cancelled (WASD)"));
+		}
+		Current->Move(Axes);
+	}
+
+	// Look: mouse up looks up (unless inverted).
+	float MouseX = 0.f;
+	float MouseY = 0.f;
+	GetInputMouseDelta(MouseX, MouseY);
+	if (MouseX != 0.f || MouseY != 0.f)
+	{
+		Current->AddLook(MouseX * LookSensitivity, MouseY * LookSensitivity * (bInvertLookY ? -1.f : 1.f));
+	}
+
+	// The test walk (TakeWalkTo).
+	if (bWalkTo)
+	{
+		const FVector Feet = Current->GetFeetLocation();
+		if (FVector::Dist2D(Feet, WalkToPoint) <= WalkToTolerance)
+		{
+			bWalkTo = false;
+			TAKE_LOG(TEXT("WALKTO arrived %.0f %.0f"), Feet.X, Feet.Y);
+		}
+		else
+		{
+			Current->MoveToward(WalkToPoint);
+		}
+	}
 }
 
 void ATakePlayerController::QueuePress(const FTakePress& Press)
@@ -84,23 +187,205 @@ void ATakePlayerController::TakePresses(TArray<FTakePress>& Out)
 
 void ATakePlayerController::SnapTo(ATakeCharacter* To)
 {
-	// BODY: (s)
+	if (!To)
+	{
+		return;
+	}
+
+	if (bWalkTo)
+	{
+		bWalkTo = false;
+		TAKE_LOG(TEXT("WALKTO cancelled (snap)"));
+	}
+	FlightTo = nullptr;
+	FlightElapsed = 0.f;
+	Current = To;
+	SetViewTarget(To);	// default transition params: no blend, the view changes this frame
+	TAKE_LOG(TEXT("VIEW -> %s (snap)"), TakeText::CameraLetter(To->Id));
 }
 
 void ATakePlayerController::StartFlight(ATakeCharacter* To)
 {
-	// BODY: (s)
+	if (!To)
+	{
+		TAKE_LOG(TEXT("FLIGHT refused: no destination"));
+		return;
+	}
+	if (To == Current)
+	{
+		TAKE_LOG(TEXT("FLIGHT refused: already on %s"), TakeText::CameraLetter(To->Id));
+		return;
+	}
+	if (!Current || !EnsureFlightCamera())
+	{
+		// Nothing to fly from (or nothing to fly with): land at once.
+		TAKE_LOG(TEXT("FLIGHT -> %s has no start view: snapping"), TakeText::CameraLetter(To->Id));
+		SnapTo(To);
+		return;
+	}
+
+	if (bWalkTo)
+	{
+		bWalkTo = false;
+		TAKE_LOG(TEXT("WALKTO cancelled (flight)"));
+	}
+	FlightTo = To;
+	FlightElapsed = 0.f;
+	Current->GetFollowView(FlightStartLocation, FlightStartRotation, FlightStartFOV);
+	PlaceFlightCamera(FlightStartLocation, FlightStartRotation.Quaternion(), FlightStartFOV);
+	SetViewTarget(FlightCamera.Get());	// no blend: the flight camera is the view this frame
+	TAKE_LOG(TEXT("FLIGHT %s -> %s"), TakeText::CameraLetter(Current->Id), TakeText::CameraLetter(To->Id));
+
+	// The press frame already shows the start of the first jump outward (every press shows something on its frame).
+	const UWorld* World = GetWorld();
+	StepFlight(World ? World->GetDeltaSeconds() : 0.f);
 }
 
 void ATakePlayerController::StepFlight(float Dt)
 {
-	// BODY: (s)
+	using namespace TakePlayerControllerLocal;
+
+	if (!IsInFlight())
+	{
+		return;
+	}
+	if (!IsValid(FlightTo))
+	{
+		// The destination went away mid-flight: back to the character the player is on.
+		FlightTo = nullptr;
+		FlightElapsed = 0.f;
+		if (Current)
+		{
+			SetViewTarget(Current.Get());
+			TAKE_LOG(TEXT("FLIGHT lost its destination: VIEW -> %s"), TakeText::CameraLetter(Current->Id));
+		}
+		return;
+	}
+	if (!IsValid(Current) || !FlightCamera)
+	{
+		LandFlight();
+		return;
+	}
+
+	FlightElapsed += FMath::Max(Dt, 0.f);
+	if (FlightSeconds <= 0.f || FlightElapsed >= FlightSeconds)
+	{
+		LandFlight();
+		return;
+	}
+
+	const float Alpha = FlightElapsed / FlightSeconds;
+	const float Rise = FMath::Clamp(FlightRiseShare, 0.f, 1.f);
+	const float Pan = FMath::Clamp(FlightPanShare, 0.f, 1.f - Rise);
+	const float Drop = 1.f - Rise - Pan;
+
+	// The destination's follow view, read live every frame (the drop lands exactly on it).
+	FVector EndLocation = FVector::ZeroVector;
+	FRotator EndRotation = FRotator::ZeroRotator;
+	float EndFOV = FlightStartFOV;
+	FlightTo->GetFollowView(EndLocation, EndRotation, EndFOV);
+
+	// The top of the flight: FlightHeight above the higher of the two characters.
+	const FVector OldBody = Current->GetActorLocation();
+	const FVector NewBody = FlightTo->GetActorLocation();
+	const double TopZ = FMath::Max(OldBody.Z, NewBody.Z) + FlightHeight;
+	const FVector AboveOld(OldBody.X, OldBody.Y, TopZ);
+	const FVector AboveNew(NewBody.X, NewBody.Y, TopZ);
+
+	// Straight down, keeping the start view's yaw on the way up and turning to the destination's yaw in the pan,
+	// so neither the rise nor the drop spins.
+	const FQuat DownStart = LookDown(FlightStartRotation.Yaw);
+	const FQuat DownEnd = LookDown(EndRotation.Yaw);
+
+	FVector Location;
+	FQuat Rotation;
+	float FOV;
+	if (Alpha < Rise)
+	{
+		// 1 rise: stepped zooms outward from the start view to straight above the old character.
+		const float S = SteppedZoom(Alpha / Rise, FlightSteps, FlightStepJumpShare);
+		Location = FMath::Lerp(FlightStartLocation, AboveOld, S);
+		Rotation = FQuat::Slerp(FlightStartRotation.Quaternion(), DownStart, S);
+		FOV = FlightStartFOV;
+	}
+	else if (Alpha < Rise + Pan)
+	{
+		// 2 pan: smooth ease in-out across at the top; the FOV moves between the two follow views here.
+		const float E = EaseInOut((Alpha - Rise) / Pan);
+		Location = FMath::Lerp(AboveOld, AboveNew, E);
+		Rotation = FQuat::Slerp(DownStart, DownEnd, E);
+		FOV = FMath::Lerp(FlightStartFOV, EndFOV, E);
+	}
+	else
+	{
+		// 3 drop: stepped zooms down into the destination's follow view.
+		const float A = Drop > KINDA_SMALL_NUMBER ? (Alpha - Rise - Pan) / Drop : 1.f;
+		const float S = SteppedZoom(A, FlightSteps, FlightStepJumpShare);
+		Location = FMath::Lerp(AboveNew, EndLocation, S);
+		Rotation = FQuat::Slerp(DownEnd, EndRotation.Quaternion(), S);
+		FOV = EndFOV;
+	}
+	PlaceFlightCamera(Location, Rotation, FOV);
 }
 
 float ATakePlayerController::GetFlightAlpha() const
 {
-	// BODY: (s)
-	return 0.f;
+	if (!IsInFlight() || FlightSeconds <= 0.f)
+	{
+		return 0.f;
+	}
+	return FMath::Clamp(FlightElapsed / FlightSeconds, 0.f, 1.f);
+}
+
+ACameraActor* ATakePlayerController::EnsureFlightCamera()
+{
+	if (!FlightCamera)
+	{
+		if (UWorld* World = GetWorld())
+		{
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.Owner = this;
+			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			SpawnParams.ObjectFlags |= RF_Transient;
+			FlightCamera = World->SpawnActor<ACameraActor>(ACameraActor::StaticClass(), FTransform::Identity, SpawnParams);
+			if (FlightCamera)
+			{
+				if (UCameraComponent* FlightLens = FlightCamera->GetCameraComponent())
+				{
+					FlightLens->SetConstraintAspectRatio(false);
+				}
+			}
+		}
+	}
+	return FlightCamera;
+}
+
+void ATakePlayerController::PlaceFlightCamera(const FVector& Location, const FQuat& Rotation, float FOV)
+{
+	if (!FlightCamera)
+	{
+		return;
+	}
+	FlightCamera->SetActorLocationAndRotation(Location, Rotation);
+	if (UCameraComponent* FlightLens = FlightCamera->GetCameraComponent())
+	{
+		FlightLens->SetFieldOfView(FOV);
+	}
+}
+
+void ATakePlayerController::LandFlight()
+{
+	ATakeCharacter* To = FlightTo;
+	FlightTo = nullptr;
+	FlightElapsed = 0.f;
+	if (!To)
+	{
+		return;
+	}
+
+	Current = To;
+	SetViewTarget(To);	// no blend: the follow camera is the view this frame
+	TAKE_LOG(TEXT("VIEW -> %s"), TakeText::CameraLetter(To->Id));
 }
 
 void ATakePlayerController::TakeCut(const FString& CameraName)
@@ -131,22 +416,116 @@ void ATakePlayerController::TakeUse()
 
 void ATakePlayerController::TakeAim(const FString& ActorNameOrLabel)
 {
-	// BODY: (s)
+	const FString Wanted = ActorNameOrLabel.TrimStartAndEnd();
+	if (!Current)
+	{
+		TAKE_LOG(TEXT("AIM %s: no current character"), *Wanted);
+		return;
+	}
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		TAKE_LOG(TEXT("AIM %s: no world"), *Wanted);
+		return;
+	}
+
+	// DeviceName, watcher Label, MarkName, object name, editor label: case-insensitive, in that order.
+	AActor* Found = nullptr;
+	for (TActorIterator<ADevice> It(World); It && !Found; ++It)
+	{
+		if (It->DeviceName.Equals(Wanted, ESearchCase::IgnoreCase))
+		{
+			Found = *It;
+		}
+	}
+	for (TActorIterator<AWatcher> It(World); It && !Found; ++It)
+	{
+		if (It->GetLabel().Equals(Wanted, ESearchCase::IgnoreCase))
+		{
+			Found = *It;
+		}
+	}
+	for (TActorIterator<AMark> It(World); It && !Found; ++It)
+	{
+		if (It->MarkName.Equals(Wanted, ESearchCase::IgnoreCase))
+		{
+			Found = *It;
+		}
+	}
+	for (TActorIterator<AActor> It(World); It && !Found; ++It)
+	{
+		if (It->GetName().Equals(Wanted, ESearchCase::IgnoreCase))
+		{
+			Found = *It;
+		}
+	}
+#if WITH_EDITOR
+	for (TActorIterator<AActor> It(World); It && !Found; ++It)
+	{
+		if (It->GetActorLabel(false).Equals(Wanted, ESearchCase::IgnoreCase))
+		{
+			Found = *It;
+		}
+	}
+#endif
+	if (!Found)
+	{
+		TAKE_LOG(TEXT("AIM %s: no such actor (device, watcher, mark, name or label)"), *Wanted);
+		return;
+	}
+
+	FVector Target = FVector::ZeroVector;
+	if (const AWatcher* AimWatcher = Cast<AWatcher>(Found))
+	{
+		Target = AimWatcher->GetAimPoint();
+	}
+	else
+	{
+		FVector BoundsExtent = FVector::ZeroVector;
+		Found->GetActorBounds(false, Target, BoundsExtent);
+	}
+
+	// The boom swings with the look, so the camera (the aim origin) moves: solve again from the new origin.
+	for (int32 Pass = 0; Pass < 3; ++Pass)
+	{
+		const FRotator Aim = (Target - Current->GetAimOrigin()).Rotation();
+		Current->SetLook(Aim.Yaw, Aim.Pitch);
+	}
+	TAKE_LOG(TEXT("AIM %s yaw %.1f pitch %.1f"), *Wanted, Current->GetLookYaw(), Current->GetLookPitch());
 }
 
 void ATakePlayerController::TakeLook(float Yaw, float Pitch)
 {
-	// BODY: (s)
+	if (!Current)
+	{
+		TAKE_LOG(TEXT("LOOK: no current character"));
+		return;
+	}
+	Current->SetLook(Yaw, Pitch);
+	TAKE_LOG(TEXT("LOOK %.1f %.1f"), Current->GetLookYaw(), Current->GetLookPitch());
 }
 
 void ATakePlayerController::TakeWalkTo(float X, float Y)
 {
-	// BODY: (s)
+	if (!Current)
+	{
+		TAKE_LOG(TEXT("WALKTO %.0f %.0f: no current character"), X, Y);
+		return;
+	}
+	if (IsInFlight())
+	{
+		TAKE_LOG(TEXT("WALKTO %.0f %.0f: refused mid-flight"), X, Y);
+		return;
+	}
+	bWalkTo = true;
+	WalkToPoint = FVector(X, Y, 0.f);
+	TAKE_LOG(TEXT("WALKTO %.0f %.0f"), X, Y);
 }
 
 void ATakePlayerController::TakeStop()
 {
-	// BODY: (s)
+	bWalkTo = false;
+	TAKE_LOG(TEXT("WALKTO stopped"));
 }
 
 void ATakePlayerController::TakeNewTake()
@@ -166,10 +545,24 @@ void ATakePlayerController::TakeDump()
 		return;
 	}
 
-	// BODY: (s) the rest of the header's list (current character, flight, every character, use target)
 	FString Line = FString::Printf(TEXT("DUMP phase=%s cam=%s"),
 		TakeText::PhaseName(Director->Phase),
 		TakeText::CameraLetter(Director->CurrentCamera));
+
+	// The character the player is on, and the flight.
+	Line += FString::Printf(TEXT(" on=%s"), Current ? Current->GetCrewName() : TEXT("none"));
+	if (IsInFlight())
+	{
+		Line += FString::Printf(TEXT(" flight=%s@%.2f"), FlightTo->GetCrewName(), GetFlightAlpha());
+	}
+	else
+	{
+		Line += TEXT(" flight=none");
+	}
+	if (bWalkTo)
+	{
+		Line += FString::Printf(TEXT(" walkto=(%.0f,%.0f)"), WalkToPoint.X, WalkToPoint.Y);
+	}
 
 	if (Director->Composure)
 	{
@@ -177,20 +570,47 @@ void ATakePlayerController::TakeDump()
 			Director->Composure->GetComposure(), *Director->Composure->GetLabelText());
 	}
 
-	if (AJulian* DumpJulian = Director->Julian)
+	// Every character: feet, look, standing, speed; Julian's mark.
+	for (ATakeCharacter* DumpCharacter : Director->Characters)
 	{
-		const FVector Feet = DumpJulian->GetFeetLocation();
-		const AMark* Standing = DumpJulian->GetStandingMark();
-		Line += FString::Printf(TEXT(" julian=(%.0f,%.0f,%.0f) mark=%s"),
-			Feet.X, Feet.Y, Feet.Z, Standing ? *Standing->MarkName : TEXT("none"));
+		if (!DumpCharacter)
+		{
+			continue;
+		}
+		const FVector Feet = DumpCharacter->GetFeetLocation();
+		Line += FString::Printf(TEXT(" [%s %s feet=(%.0f,%.0f,%.0f) look=(%.1f,%.1f) %s v=%.0f"),
+			TakeText::CameraLetter(DumpCharacter->Id), DumpCharacter->GetCrewName(),
+			Feet.X, Feet.Y, Feet.Z,
+			DumpCharacter->GetLookYaw(), DumpCharacter->GetLookPitch(),
+			DumpCharacter->IsStanding() ? TEXT("standing") : TEXT("moving"),
+			DumpCharacter->GetVelocity().Size2D());
+		if (const AJulian* DumpJulian = Cast<AJulian>(DumpCharacter))
+		{
+			const AMark* Standing = DumpJulian->GetStandingMark();
+			Line += FString::Printf(TEXT(" mark=%s"), Standing ? *Standing->MarkName : TEXT("none"));
+		}
+		Line += TEXT("]");
 	}
+
+	// The use target and its prompt.
+	const FTakeUseTarget& Use = Director->CurrentUse;
+	Line += FString::Printf(TEXT(" use=[%s watcher=%s fire=%d prompt=\"%s\"]"),
+		Use.Device ? *Use.Device->DeviceName : TEXT("none"),
+		Use.Watcher ? *Use.Watcher->GetLabel() : TEXT("none"),
+		Use.bCanFire ? 1 : 0,
+		*Use.Prompt);
 
 	for (AWatcher* DumpWatcher : Director->Watchers)
 	{
 		if (DumpWatcher)
 		{
-			Line += FString::Printf(TEXT(" [%s %s%s]"), *DumpWatcher->GetLabel(), *DumpWatcher->GetStateText(),
+			Line += FString::Printf(TEXT(" [%s %s%s"), *DumpWatcher->GetLabel(), *DumpWatcher->GetStateText(),
 				DumpWatcher->HasTally() ? TEXT(" TALLY") : TEXT(""));
+			if (DumpWatcher->GetEffectSecondsLeft() > 0.f)
+			{
+				Line += FString::Printf(TEXT(" %.1fs"), DumpWatcher->GetEffectSecondsLeft());
+			}
+			Line += TEXT("]");
 		}
 	}
 
@@ -208,6 +628,7 @@ void ATakePlayerController::TakeDump()
 			{
 				Line += DumpDevice->IsRunning() ? TEXT(" running") : TEXT("");
 			}
+			Line += DumpDevice->IsInReach() ? TEXT(" reach") : TEXT("");
 			Line += TEXT("]");
 		}
 	}
@@ -238,7 +659,12 @@ void ATakePlayerController::OnKeyThree()
 
 void ATakePlayerController::OnUse()
 {
-	// BODY: (s) QueueUse("key") for E, "mouse" for the left button (two handlers or one, the builder's call)
+	QueueUse(TEXT("key"));
+}
+
+void ATakePlayerController::OnUseMouse()
+{
+	QueueUse(TEXT("mouse"));
 }
 
 void ATakePlayerController::OnKeyR()
@@ -266,5 +692,8 @@ void ATakePlayerController::QueueCut(ETakeCamera CutCamera, const TCHAR* PressSo
 
 void ATakePlayerController::QueueUse(const TCHAR* PressSource)
 {
-	// BODY: (s)
+	FTakePress Press;
+	Press.Type = ETakePressType::Use;
+	Press.Source = PressSource;
+	QueuePress(Press);
 }

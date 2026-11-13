@@ -84,39 +84,67 @@ ATakeCharacter::ATakeCharacter()
 void ATakeCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	// BODY: (m)
+
+	// OnConstruction does not rerun for placed actors in play or in a package: apply the tunables again here.
+	ApplyTunables();
+	ApplyTint();
+	SetLook(static_cast<float>(GetActorRotation().Yaw), StartLookPitch);
+	TAKE_LOG(TEXT("%s on set, look %.0f / %.0f"), GetCrewName(), LookYaw, LookPitch);
 }
 
 void ATakeCharacter::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
-	// BODY: (m)
+
+	// The editor shows the tinted mannequin and the boom where the take starts it (behind him).
+	ApplyTunables();
+	ApplyTint();
+	SetLook(static_cast<float>(GetActorRotation().Yaw), StartLookPitch);
 }
 
 void ATakeCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
-	// BODY: (m)
+	ApplyLookToBoom();
 }
 
 void ATakeCharacter::AddLook(float YawDeg, float PitchDeg)
 {
-	// BODY: (m)
+	LookYaw = FMath::UnwindDegrees(LookYaw + YawDeg);
+	LookPitch = FMath::Clamp(LookPitch + PitchDeg, MinPitch, MaxPitch);
+	ApplyLookToBoom();
 }
 
 void ATakeCharacter::SetLook(float Yaw, float Pitch)
 {
-	// BODY: (m)
+	LookYaw = FMath::UnwindDegrees(Yaw);
+	LookPitch = FMath::Clamp(Pitch, MinPitch, MaxPitch);
+	ApplyLookToBoom();
 }
 
 void ATakeCharacter::Move(const FVector2D& Axes)
 {
-	// BODY: (m)
+	if (Axes.IsNearlyZero())
+	{
+		return;	// no input: he brakes at WalkBraking
+	}
+
+	// Relative to the look's yaw only (pitch ignored), so W walks where the camera faces.
+	const FRotationMatrix YawMatrix(FRotator(0.f, LookYaw, 0.f));
+	const FVector Forward = YawMatrix.GetUnitAxis(EAxis::X);
+	const FVector Right = YawMatrix.GetUnitAxis(EAxis::Y);
+	const FVector Input = (Forward * Axes.X + Right * Axes.Y).GetClampedToMaxSize(1.f);
+	AddMovementInput(Input, 1.f);
 }
 
 void ATakeCharacter::MoveToward(const FVector& WorldPoint)
 {
-	// BODY: (m)
+	const FVector Direction = (WorldPoint - GetActorLocation()).GetSafeNormal2D();
+	if (Direction.IsNearlyZero())
+	{
+		return;
+	}
+	AddMovementInput(Direction, 1.f);
 }
 
 bool ATakeCharacter::IsStanding() const
@@ -155,10 +183,63 @@ FVector ATakeCharacter::GetAimDirection() const
 
 void ATakeCharacter::ApplyTunables()
 {
-	// BODY: (m)
+	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+	{
+		MoveComp->bRunPhysicsWithNoController = true;
+		MoveComp->bOrientRotationToMovement = true;
+		MoveComp->MaxWalkSpeed = WalkSpeed;
+		MoveComp->MaxAcceleration = WalkAcceleration;
+		MoveComp->BrakingDecelerationWalking = WalkBraking;
+		// Without this the ground friction (8 x BrakingFrictionFactor 2) stops him dead and WalkBraking does little.
+		MoveComp->bUseSeparateBrakingFriction = true;
+		MoveComp->BrakingFriction = WalkBrakingFriction;
+		MoveComp->RotationRate = FRotator(0.f, TurnRate, 0.f);
+	}
+
+	if (Boom)
+	{
+		Boom->TargetArmLength = BoomLength;
+		Boom->SocketOffset = ShoulderOffset;
+		Boom->bEnableCameraLag = true;
+		Boom->bEnableCameraRotationLag = false;	// the mouse must feel direct
+		Boom->CameraLagSpeed = CameraLagSpeed;
+	}
+
+	if (FollowCamera)
+	{
+		FollowCamera->SetFieldOfView(CameraFOV);
+	}
 }
 
 void ATakeCharacter::ApplyTint()
 {
-	// BODY: (m)
+	USkeletalMeshComponent* MeshComp = GetMesh();
+	if (!MeshComp || !MeshComp->GetSkeletalMeshAsset())
+	{
+		return;
+	}
+
+	// CreateAndSetMaterialInstanceDynamic reuses a slot that already holds a MID, so this creates them once.
+	TintMIDs.Reset();
+	const int32 NumSlots = MeshComp->GetNumMaterials();
+	for (int32 Slot = 0; Slot < NumSlots; ++Slot)
+	{
+		if (!MeshComp->GetMaterial(Slot))
+		{
+			continue;
+		}
+		if (UMaterialInstanceDynamic* MID = MeshComp->CreateAndSetMaterialInstanceDynamic(Slot))
+		{
+			MID->SetVectorParameterValue(TintParameter, Tint);
+			TintMIDs.Add(MID);
+		}
+	}
+}
+
+void ATakeCharacter::ApplyLookToBoom()
+{
+	if (Boom)
+	{
+		Boom->SetWorldRotation(FRotator(LookPitch, LookYaw, 0.f));
+	}
 }

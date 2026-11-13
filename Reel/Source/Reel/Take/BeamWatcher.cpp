@@ -222,6 +222,6 @@ FVector ABeamWatcher::GetEndB() const
 
 FVector ABeamWatcher::GetAimPoint() const
 {
-	// BODY: (d)
-	return Super::GetAimPoint();
+	// The middle of the beam's segment; both ends are already at BeamHeight.
+	return (GetEndA() + GetEndB()) * 0.5;
 }

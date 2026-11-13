@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-11-13, about 18:30 Cairo (gate 1 answered: three rules changed, step 1 is being reworked). Theme:
+Last updated: 2026-11-13, about 19:40 Cairo (gate 1 answered: three rules changed; the rework is built and waits for Marwan to play it). Theme:
 **Director's Cut**.
 
 ## Gate 1 answer, Nov 13 about 18:15: Marwan changed three rules
@@ -15,6 +15,15 @@ wins.** The rest of the spec stands until Marwan has played the rework (gate 1 a
    characters" from the kill list. Still no wheel and no slow motion.
 3. **The set is a large auction building,** not one 30 x 20 m hall: an entrance lobby, the great hall, a catwalk and
    backstage. This lifts "a separate lobby" and "more than one hall" from the kill list. Still one level.
+
+**Second note, Nov 13 about 18:50:** a bigger building with a second floor and fire exits, "like a Hitman level",
+scoped to 15 minutes at most. Read as: a full run of the level takes at most 15 minutes, so it stays one compact
+venue. Built: about 85 x 62 m on two floors. West, a two-storey lobby with an atrium and a grand stair, cloakroom,
+restrooms, an office, the security room, and a fire stair at each end. Centre, the great hall with a second-floor
+gallery, walkway and bridge. North, the preview gallery and stock room under the director's office, projection room
+and archive. South, the backstage corridor, kitchen, prop store and loading dock. East, the vault. Everything west
+of the rope connects and all three characters can walk it; the only way to the dais is the gap and the aisle. The
+new rooms are empty of rules: one encounter (the guard and the beam) is all that is built.
 
 **Filled in by Claude, the smallest that makes those three work (Marwan can overrule any of them):**
 - You move only the character you are on. The other two stand where you left them. The take never stops: watchers,
@@ -51,11 +60,12 @@ K's spec is archived in `docs/ideas/k-meanwhile-spec.md`, and nothing in `protot
 `docs/ART_STYLE.md` was written for K: only the parts named under "Look" apply, and where it differs from this file,
 this file wins.
 
-State: **step 1, the core loop in a test box, is built** (Nov 13, about 17:30). The C++ is in
-`Reel/Source/Reel/Take/`, the map is `/Game/Take/Lvl_TestBox` (the project starts in it), and
-`tools/build_testbox.py` rebuilds the map from its numbers. In play-in-editor and in the Windows package Julian
-gets past the guard and the beam two ways (banner plus spot, cart plus spot), and a blooper reloads the level.
-Next: **gate 1**, Marwan plays it. Nothing past step 1 is built.
+State: **step 1 is rebuilt to the gate 1 answer** (Nov 13, about 19:40). The C++ is in
+`Reel/Source/Reel/Take/`, the map is `/Game/Take/Lvl_Auction` (the project starts in it), and
+`tools/build_auction.py` rebuilds the map from its numbers (`Lvl_TestBox` and `tools/build_testbox.py` are the old
+step 1 and no longer load cleanly). In play-in-editor Julian gets past the guard and the beam two ways (cart plus
+spot, banner plus spot), each with a crew character firing a device and the player walking Julian, and a blooper
+reloads the level. Next: **gate 1 again**, Marwan plays it. Nothing past step 1 is built.
 
 ## The pitch
 

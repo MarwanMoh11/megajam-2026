@@ -236,3 +236,40 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   - The final package for step 1 (17:20): `C:\Jam\Builds\Windows`, zipped to 320 MB. Started from the `.exe`, it
     opens in the test box, and route 2 (spot on the beam, cart for the guard) was played in it with real clicks
     to the CLEAR stamp. Three screenshots from the package are in `docs/shots/`.
+
+- **About 18:15-19:35. Gate 1 answered: the rework (walk, flights, a real building).**
+  - Marwan played step 1 and changed three rules: walk the characters yourself in third person (slow, weighted,
+    Uncharted as the reference) instead of clicking marks; switch between Julian, Maya and Vex with a camera
+    flight (GTA V as the reference) instead of a hard cut; and a massive auction building instead of the test
+    box. All three were on the kill list, and his message lifts them. `docs/STATUS.md` records the change and what
+    Claude filled in.
+  - Same pattern as the afternoon. One Opus agent did the header pass in 12 minutes (a shared `ATakeCharacter`
+    for all three, the flight on the player controller, a "use target" on the director) and it built clean the
+    first time. Three Opus builders then wrote the bodies in parallel on their own files: characters and marks;
+    controller, flight and presses; use targeting, devices and HUD. The orchestrator (Fable) wrote the map
+    script and the play-test scripts meanwhile.
+  - At 18:50 Marwan sent a second note: a bigger building with a second floor and fire exits, "like a Hitman
+    level", scoped to 15 minutes at most. The map script was rewritten: about 85 x 62 m, two floors, 504 actors.
+    A two-storey lobby with an atrium and a grand stair, a cloakroom, restrooms, an office and the security room,
+    a fire stair at each end with exit doors and green signs, a gallery and walkway on the hall's second floor,
+    a north wing (preview gallery, stock room, director's office, projection room, archive), a service wing
+    (backstage corridor, kitchen, prop store, loading dock) and a vault behind the dais. Everything west of the
+    rope connects; the only way to the dais is still the gap and the aisle.
+  - Checked in play-in-editor with scripted runs and the log's frame numbers. Route 2 (cart for the guard, spot on
+    the beam) clears with composure 90. Route 1 (banner on the beam, spot on the guard) clears with composure
+    14. Walking into the live beam is a blooper; crossing the tape under the guard's eye drains composure to 0, a
+    blooper; both reload as the next take. Use on Julian, a cut to the character you are on, presses during a
+    flight and Use out of reach each flash a line. Julian was walked up the grand stair (feet at 450), through
+    the second-floor door onto the hall's gallery, and down the north fire stair to the lobby (450, 225, 0).
+    Screenshots: each character's view and three frames of a flight.
+  - What went wrong:
+    - Sending the second note interrupted the session and stopped two of the three builders; a stopped agent
+      can't be resumed. They had finished everything except the two press handlers and four HUD elements
+      (reticle, use prompt, crew strip, the flight's "CUT -> MAYA"), so the orchestrator wrote those. The build
+      was clean the first time.
+    - Vex's corridor sat in the hall wall's shadow and was nearly black: lamps along it and a stronger skylight.
+    - A "mid-flight" screenshot was taken after the flight had landed. The flight is now captured in slow motion.
+    - Maya started 10 cm out of reach of both her devices, so her first Use press was refused. Moved her.
+    - A test walk timed out because the scripted path ran Julian into a lobby bench: the script's fault.
+    - The flight costs 1.6 s each way and the spec's device times were set for instant cuts, so Route 1 is
+      tight. Left as is: it is a tuning call for Marwan after he has played it.
