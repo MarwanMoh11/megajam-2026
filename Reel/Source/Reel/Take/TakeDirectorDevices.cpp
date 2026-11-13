@@ -18,7 +18,7 @@ FTakeUseTarget ATakeDirector::FindUseTarget(const ATakeCharacter* Who) const
 		return Result;
 	}
 
-	// The nearest of Who's devices whose use ring (2D) holds Who's feet.
+	// The nearest of Who's devices whose use ring holds Who's feet (2D, on the same floor).
 	const FVector Feet = Who->GetFeetLocation();
 	ADevice* Best = nullptr;
 	double BestDist = TNumericLimits<double>::Max();
@@ -28,7 +28,12 @@ FTakeUseTarget ATakeDirector::FindUseTarget(const ATakeCharacter* Who) const
 		{
 			continue;
 		}
-		const double Dist = FVector::Dist2D(Device->GetUsePoint(), Feet);
+		const FVector UsePoint = Device->GetUsePoint();
+		if (FMath::Abs(UsePoint.Z - Feet.Z) > Device->UseHeight)
+		{
+			continue;	// another floor
+		}
+		const double Dist = FVector::Dist2D(UsePoint, Feet);
 		if (Dist <= Device->UseRadius && Dist < BestDist)
 		{
 			Best = Device;

@@ -3,7 +3,9 @@
 #include "TakeDirector.h"
 
 #include "ComposureComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "TakeCharacter.h"
 #include "TakeGameInstance.h"
 
 void ATakeDirector::RequestBlooper(EBlooperReason Reason)
@@ -42,6 +44,15 @@ void ATakeDirector::StepBlooperCheck(float DeltaSeconds)
 	LastBlooperReason = Reason;
 	SetPhase(ETakePhase::BlooperFreeze);
 	FreezeSecondsLeft = BlooperFreezeSeconds;
+	// Everyone stops where they stand: nobody slides on through the beam under the slate (the level reloads next).
+	for (ATakeCharacter* Character : Characters)
+	{
+		if (UCharacterMovementComponent* Move = Character ? Character->GetCharacterMovement() : nullptr)
+		{
+			Move->StopMovementImmediately();
+			Move->DisableMovement();
+		}
+	}
 	if (UTakeGameInstance* GI = GetTakeGameInstance())
 	{
 		GI->NoteBlooper(Reason);

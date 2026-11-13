@@ -111,6 +111,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Device")
 	float UseRadius = 220.f;
 
+	/** ...and within this height of it, cm: the ring can't be worked from the floor below or above. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Device")
+	float UseHeight = 150.f;
+
 	/** The use point, local to the actor (Z on the floor). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Device")
 	FVector UseOffset = FVector::ZeroVector;

@@ -273,3 +273,29 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
     - A test walk timed out because the scripted path ran Julian into a lobby bench: the script's fault.
     - The flight costs 1.6 s each way and the spec's device times were set for instant cuts, so Route 1 is
       tight. Left as is: it is a tuning call for Marwan after he has played it.
+
+- **About 19:35-20:30. The reviewer's four bugs, the package, and a test that fooled itself.**
+  - One fresh Opus reviewer read the rework against the changed rules and the tick order, for bugs only. It
+    confirmed the tick order, the flight (start, landing, a blooper or new take mid-flight), the highlights and
+    the Shipping paths, and found four bugs, none of which breaks a take:
+    - the reach test had no height, so Maya could work the lamp and the winch from the floor under the bridge;
+    - the blooper freeze stopped the rules but not the walkers, so Julian slid on through the beam under the
+      slate;
+    - the use prompt stayed stale for a frame after a fire, and a second Use press in that frame got the wrong
+      refusal;
+    - a Use press on a follow spot fired the level's first spot, not the one in reach (hidden with one spot).
+  - All four were small (40 lines), so the orchestrator fixed them, and each was replayed in the editor: 0.3 s
+    into the freeze Julian is at the beam with speed 0, Maya on the floor under the lamp gets "Nothing in
+    reach", the prompt changes on the fire frame, and Route 2 still clears (composure 93).
+  - The Windows package (95 s) was played from the `.exe` at 16:9 with real key and mouse events: W walks
+    Julian, the mouse turns the view, 2 flies to Maya, E at the lamp asks for a watcher, 3 then E releases Vex's
+    cart and the guard is lured, R starts take 2.
+  - What went wrong: the first packaged runs said the keyboard was dead while the mouse worked. Six runs went
+    into the game's input code and three ways of sending keys before a control run against the afternoon's
+    build, which was known to take keys, failed the same way. The fault was in the test: PowerShell variable
+    names ignore case, so the key table `$K` was hidden by a function parameter `$k` and every key sent was
+    empty. Lesson: when a new test disagrees with code that worked, run the test against a known-good build
+    before reading the code.
+  - The final package for the rework (20:04): `C:\Jam\Builds\Windows`, zipped to 326 MB
+    (`C:\Jam\Builds\TeamName_GameName.zip`). It was played once more from the `.exe` after the fixes, with the
+    same keys. Five screenshots are in `docs/shots/` (`gate1b_*.png`): the building, Julian, a flight, Maya, Vex.

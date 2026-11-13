@@ -605,8 +605,8 @@ characters, audio and polish. Every step ends playable, and the Windows package 
 | When (Cairo) | Step | Done when |
 |---|---|---|
 | Fri, by 11:45 | **0. Pipeline** | Done |
-| Fri 17:00-22:00 | **1. Core loop in a test box.** See "Step 1" below | In play-in-editor, Julian gets past the guard and the beam two ways, by a cue plus a device timed to his arrival. **Built Nov 13, 17:30** |
-| Fri about 22:30 | **Gate 1.** Marwan plays for 5 minutes. If they don't want another go, change a rule (windows, drain, uses), not the art | A yes, or the rule changed |
+| Fri 17:00-22:00 | **1. Core loop in a test box.** See "Step 1" below | In play-in-editor, Julian gets past the guard and the beam two ways, by a cue plus a device timed to his arrival. **Built Nov 13, 17:30. Rebuilt to the gate 1 answer (walk, flights, the two-floor auction building) Nov 13, 19:40** |
+| Fri about 22:30 | **Gate 1.** Marwan plays for 5 minutes. If they don't want another go, change a rule (windows, drain, uses), not the art | A yes, or the rule changed. **First answer Nov 13, 18:15: three rules changed (top of this file). Gate 1 runs again on the rework** |
 | Fri night to Sat morning | **2. The set, its look, Scenes 1 and 2.** See "Step 2" below. Package | Scenes 1-2 play in the package, and screenshots show the film and the making-of |
 | Sat (midterm 12:30) | **3. Scene 3 and the ends.** See "Step 3" below. Package | Title card to blooper reel in the package |
 | Sat evening | **Gate 2.** Marwan plays a full take cold | They want another go |

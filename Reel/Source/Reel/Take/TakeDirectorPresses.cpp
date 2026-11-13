@@ -124,6 +124,21 @@ void ATakeDirector::HandleUse(const FTakePress& Press)
 		return;
 	}
 
-	const bool bFired = Cast<AFollowSpot>(Device) ? SpotWatcher(CurrentUse.Watcher) : FireDevice(Device);
+	bool bFired = false;
+	if (AFollowSpot* Spot = Cast<AFollowSpot>(Device))
+	{
+		FollowSpot = Spot;	// the spot in reach, not just the level's first
+		bFired = SpotWatcher(CurrentUse.Watcher);
+	}
+	else
+	{
+		bFired = FireDevice(Device);
+	}
 	TAKE_LOG(TEXT("USE %s: %s -> %s"), WhoName, *Device->DeviceName, bFired ? TEXT("fired") : TEXT("refused"));
+
+	// The device changed inside this call: the prompt, the highlights and a second Use press this frame must see it.
+	if (bFired)
+	{
+		StepUse();
+	}
 }
