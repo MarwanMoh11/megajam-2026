@@ -40,6 +40,9 @@ public:
 	/** 2D distance from Point to the segment A-B. */
 	virtual float DistanceToPoint(const FVector& Point) const override;	// BODY: (d)
 
+	/** The middle of the beam's segment at beam height (the follow spot aims here). */
+	virtual FVector GetAimPoint() const override;	// BODY: (d)
+
 	virtual bool IsLive() const override;	// BODY: (d)
 
 	virtual FString GetStateText() const override;	// BODY: (d)

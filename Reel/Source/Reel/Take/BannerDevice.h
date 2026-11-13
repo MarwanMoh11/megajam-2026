@@ -1,4 +1,4 @@
-// A banner drop: a matte that masks (rule 7). Owner: (e).
+// A banner drop: a matte that masks (rule 7). Owner: (u).
 
 #pragma once
 
@@ -30,20 +30,20 @@ public:
 	ABannerDevice();
 
 	/** Sizes the matte from MatteSize (editor and runtime). */
-	virtual void OnConstruction(const FTransform& Transform) override;	// BODY: (e)
+	virtual void OnConstruction(const FTransform& Transform) override;	// BODY: (u)
 
-	virtual void BeginPlay() override;	// BODY: (e)
+	virtual void BeginPlay() override;	// BODY: (u)
 
-	virtual bool CanFire(FString& OutWhyNot) const override;	// BODY: (e)
+	virtual bool CanFire(FString& OutWhyNot) const override;	// BODY: (u)
 
 	/** Spends the use, starts the drop (first step this frame). */
-	virtual bool Fire() override;	// BODY: (e)
+	virtual bool Fire() override;	// BODY: (u)
 
 	/** Drop -> lands when down -> holds Duration -> raises -> spent. */
-	virtual void StepDevice(float DeltaSeconds) override;	// BODY: (e)
+	virtual void StepDevice(float DeltaSeconds) override;	// BODY: (u)
 
 	/** Actor transform of EffectOffset. */
-	virtual FVector GetEffectPoint() const override;	// BODY: (e)
+	virtual FVector GetEffectPoint() const override;	// BODY: (u)
 
 	/** The matte's size: width (Y), thickness (X), height (Z), cm. */
 	UPROPERTY(EditAnywhere, Category = "Take|Banner")

@@ -1,10 +1,25 @@
-// ATakeDirector slice (e): firing devices (step 2) and landing their effects (step 3). See TakeDirector.h.
+// ATakeDirector slice (u): the use target and firing devices (step 2), landing their effects (step 3). See
+// TakeDirector.h.
 
 #include "TakeDirector.h"
 
 #include "Device.h"
 #include "FollowSpot.h"
+#include "Julian.h"
+#include "TakeCharacter.h"
+#include "TakePlayerController.h"
 #include "Watcher.h"
+
+FTakeUseTarget ATakeDirector::FindUseTarget(const ATakeCharacter* Who) const
+{
+	// BODY: (u)
+	return FTakeUseTarget();
+}
+
+void ATakeDirector::StepUse()
+{
+	// BODY: (u)
+}
 
 bool ATakeDirector::FireDevice(ADevice* Device)
 {

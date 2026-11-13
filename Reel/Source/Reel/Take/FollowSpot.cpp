@@ -1,4 +1,4 @@
-// Owner: (e). Constructor by the header pass; every "// BODY: (e)" is a stub to fill.
+// Owner: (u). Constructor by the header pass; every "// BODY: (u)" is a stub to fill.
 
 #include "FollowSpot.h"
 
@@ -10,6 +10,7 @@
 AFollowSpot::AFollowSpot()
 {
 	DeviceName = TEXT("SPOT");
+	UseVerb = TEXT("Spot");
 	Effect = EDeviceEffect::Blind;
 	Range = 3500.f;
 	Duration = 4.f;

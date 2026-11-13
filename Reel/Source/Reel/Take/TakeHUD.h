@@ -1,4 +1,4 @@
-// Everything on screen, drawn on the Canvas as text and flat rects (no UMG assets). Owner: (a).
+// Everything on screen, drawn on the Canvas as text and flat rects (no UMG assets). Owner: (u).
 // Reads everything through ATakeDirector's public state and the actors' getters; never changes game state.
 // Add drawing helpers as free functions in a uniquely named namespace in TakeHUD.cpp (no header change needed).
 
@@ -25,19 +25,35 @@ public:
 	 *  - Camera look: on A, black letterbox bars to LetterboxAspect with "A - JULIAN" + timecode (bar.beat) + "TAKE n"
 	 *    top left, a red REC dot top right, the gold composure line and its label (SEEN in red / MARK in gold) in the
 	 *    bottom bar. On B, no bars: "B - MAYA" top left in work-light blue, timecode, take, and the composure line
-	 *    along the bottom. This is the visible change of look on a cut.
+	 *    along the bottom. The look follows Director->CurrentCamera, which changes on a flight's last frame.
 	 *  - A beat dot that flashes with Clock->GetPulse().
-	 *  - At Julian's cued mark (while he walks, every camera): the count "in 6" (beats to arrival, rounded up).
+	 *  - No pointer (the cursor is hidden). A centre reticle: a small cross or ring ReticleSize px across, white;
+	 *    gold while Director->CurrentUse.Watcher is set (the spot has a watcher picked). Hidden during a flight.
+	 *  - The use prompt: Director->CurrentUse.Prompt, centred just below the reticle, gold when bCanFire, grey when
+	 *    not. Empty prompt (nothing in reach, Julian, a flight): nothing drawn.
+	 *  - The crew strip, bottom centre above the hint: "1 JULIAN   2 MAYA   3 VEX", one entry per Id that
+	 *    Director->GetCharacter finds (a missing Vex is drawn dim or left out), the current one
+	 *    (Director->CurrentCamera) lit GoldBright, the others grey.
+	 *  - During a flight (PC->IsInFlight()): a big "CUT -> MAYA" (PC->GetFlightTarget()->GetCrewName()) in LargeFont at
+	 *    SlateTextScale across the middle, from the press frame to the landing frame.
 	 *  - On B and C only (labels only on set): each watcher's label and state over it ("GUARD - LURED"), each
 	 *    device's name and pips over it (ADevice::GetPipsText: the spot shows READY or BUSY 2.1).
 	 *  - The flash lines (Director->Flashes), centred low, newest at the bottom.
-	 *  - One how-to-play line per camera: A "Click a gold mark to cue Julian   [2] Maya", B "Click a device to fire,
-	 *    a watcher to spot him   [1] Julian".
+	 *  - One controls hint line, the same on every character: ControlsHint, grey, bottom centre.
 	 *  - Phase BlooperFreeze: a red slate across the middle, "BLOOPER - AGAIN FROM THE START" (checkpoint name from
 	 *    the game instance), the reason, and "Cut!".
 	 *  - Phase Cleared: a gold "CLEAR" stamp.
+	 * The PC is GetOwningPlayerController() cast to ATakePlayerController (or Director->PC).
 	 */
-	virtual void DrawHUD() override;	// BODY: (a)
+	virtual void DrawHUD() override;	// BODY: (u)
+
+	/** The one controls line at the bottom. */
+	UPROPERTY(EditAnywhere, Category = "Take|HUD")
+	FString ControlsHint = TEXT("WASD walk   Mouse look   E use   1 2 3 switch   R new take");
+
+	/** The centre reticle's size, px. */
+	UPROPERTY(EditAnywhere, Category = "Take|HUD")
+	float ReticleSize = 8.f;
 
 	/** Camera A's letterbox: 2.39:1. */
 	UPROPERTY(EditAnywhere, Category = "Take|HUD")
@@ -55,11 +71,11 @@ public:
 
 protected:
 	/** The director, cached (ATakeDirector::Get). */
-	ATakeDirector* GetDirector();	// BODY: (a)
+	ATakeDirector* GetDirector();	// BODY: (u)
 
 	/** Text with a dark drop shadow, centred on X when bCentre. Returns the drawn size. */
 	FVector2D DrawShadowedText(const FString& Text, const FLinearColor& Colour, float X, float Y, float Scale,
-		bool bCentre);	// BODY: (a)
+		bool bCentre);	// BODY: (u)
 
 	/** DrawShadowedText with a chosen font (the slate and stamp use LargeFont). */
 	FVector2D DrawTextWithFont(const FString& Text, UFont* Font, const FLinearColor& Colour, float X, float Y,

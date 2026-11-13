@@ -1,111 +1,28 @@
-// Owner: (b). Constructor by the header pass; bodies by builder (b).
+// Owner: (s). Constructor by the header pass; every "// BODY: (s)" is a stub to fill.
 
 #include "TakePlayerController.h"
 
-#include "BarClockComponent.h"
-#include "CollisionQueryParams.h"
-#include "Components/InputComponent.h"
+#include "Camera/CameraActor.h"
 #include "ComposureComponent.h"
+#include "Components/InputComponent.h"
 #include "Device.h"
 #include "Engine/World.h"
-#include "EngineUtils.h"
 #include "FollowSpot.h"
-#include "Framework/Application/SlateApplication.h"
 #include "InputCoreTypes.h"
 #include "Julian.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Mark.h"
 #include "Misc/Paths.h"
-#include "TakeCamera.h"
-#include "TakeClickable.h"
+#include "TakeCharacter.h"
 #include "TakeDirector.h"
 #include "UnrealClient.h"
 #include "Watcher.h"
 
-namespace TakeSliceBPC
-{
-	/** How many clickable actors one pointer trace may pass through. */
-	constexpr int32 MaxClickLayers = 8;
-
-	/** The kind a click on this camera acts on: marks on A, devices and watchers on B and C. */
-	bool IsPreferredKind(ETakeClickKind Kind, ETakeCamera ViewCameraId)
-	{
-		if (ViewCameraId == ETakeCamera::A)
-		{
-			return Kind == ETakeClickKind::Mark;
-		}
-		return Kind == ETakeClickKind::Device || Kind == ETakeClickKind::Watcher;
-	}
-
-	/** The name TakeClick matches on each pass: 0 a device's DeviceName, 1 a watcher's Label, 2 a mark's MarkName,
-	 *  3 the object name, 4 the editor label (WITH_EDITOR only). Empty when the pass does not apply. */
-	FString NameForPass(AActor* Candidate, int32 Pass)
-	{
-		switch (Pass)
-		{
-		case 0:
-			if (const ADevice* AsDevice = Cast<ADevice>(Candidate))
-			{
-				return AsDevice->DeviceName;
-			}
-			break;
-		case 1:
-			if (const AWatcher* AsWatcher = Cast<AWatcher>(Candidate))
-			{
-				return AsWatcher->Label;
-			}
-			break;
-		case 2:
-			if (const AMark* AsMark = Cast<AMark>(Candidate))
-			{
-				return AsMark->MarkName;
-			}
-			break;
-		case 3:
-			return Candidate->GetName();
-		default:
-#if WITH_EDITOR
-			return Candidate->GetActorLabel();
-#else
-			break;
-#endif
-		}
-		return FString();
-	}
-
-	/** The first ITakeClickable actor whose name matches Wanted (case-insensitive), by the pass order above. */
-	AActor* FindClickableByName(UWorld* InWorld, const FString& Wanted)
-	{
-		if (!InWorld || Wanted.IsEmpty())
-		{
-			return nullptr;
-		}
-		for (int32 Pass = 0; Pass < 5; ++Pass)
-		{
-			for (TActorIterator<AActor> It(InWorld); It; ++It)
-			{
-				AActor* Candidate = *It;
-				if (!Candidate || !Cast<ITakeClickable>(Candidate))
-				{
-					continue;
-				}
-				const FString CandidateName = NameForPass(Candidate, Pass);
-				if (!CandidateName.IsEmpty() && CandidateName.Equals(Wanted, ESearchCase::IgnoreCase))
-				{
-					return Candidate;
-				}
-			}
-		}
-		return nullptr;
-	}
-}
-
 ATakePlayerController::ATakePlayerController()
 {
-	bShowMouseCursor = true;
+	bShowMouseCursor = false;
 	bEnableClickEvents = false;
 	bEnableMouseOverEvents = false;
-	DefaultMouseCursor = EMouseCursor::Default;
 	bAutoManageActiveCameraTarget = false;
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bTickEvenWhenPaused = false;
@@ -114,24 +31,7 @@ ATakePlayerController::ATakePlayerController()
 void ATakePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
-
-	if (!IsLocalController())
-	{
-		return;
-	}
-
-	// The pointer is always shown and never captured or locked. Game-and-UI uses CaptureDuringMouseDown, so the
-	// first mouse-down reaches the game (no "focus" click is eaten).
-	SetShowMouseCursor(true);
-	FInputModeGameAndUI InputModeData;
-	InputModeData.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-	InputModeData.SetHideCursorDuringCapture(false);
-	SetInputMode(InputModeData);
-
-	if (FSlateApplication::IsInitialized())
-	{
-		FSlateApplication::Get().SetAllUserFocusToGameViewport();
-	}
+	// BODY: (s)
 }
 
 void ATakePlayerController::SetupInputComponent()
@@ -145,38 +45,16 @@ void ATakePlayerController::SetupInputComponent()
 	InputComponent->BindKey(EKeys::One, IE_Pressed, this, &ATakePlayerController::OnKeyOne);
 	InputComponent->BindKey(EKeys::Two, IE_Pressed, this, &ATakePlayerController::OnKeyTwo);
 	InputComponent->BindKey(EKeys::Three, IE_Pressed, this, &ATakePlayerController::OnKeyThree);
-	InputComponent->BindKey(EKeys::LeftMouseButton, IE_Pressed, this, &ATakePlayerController::OnLeftClick);
 	InputComponent->BindKey(EKeys::R, IE_Pressed, this, &ATakePlayerController::OnKeyR);
 	InputComponent->BindKey(EKeys::Escape, IE_Pressed, this, &ATakePlayerController::OnEscape);
+	// BODY: (s) E and LeftMouseButton -> OnUse
 }
 
 void ATakePlayerController::PlayerTick(float DeltaTime)
 {
 	// Input bindings fire inside Super::PlayerTick (they only queue presses).
 	Super::PlayerTick(DeltaTime);
-
-	AActor* NewHover = nullptr;
-	double MouseX = 0.0;
-	double MouseY = 0.0;
-	if (GetMousePosition(MouseX, MouseY))
-	{
-		FHitResult HoverHit;
-		TraceClickable(FVector2D(MouseX, MouseY), NewHover, HoverHit);
-	}
-
-	AActor* OldHover = HoverTarget.Get();
-	if (NewHover != OldHover)
-	{
-		if (ITakeClickable* OldClickable = Cast<ITakeClickable>(OldHover))
-		{
-			OldClickable->SetHovered(false);
-		}
-		if (ITakeClickable* NewClickable = Cast<ITakeClickable>(NewHover))
-		{
-			NewClickable->SetHovered(true);
-		}
-		HoverTarget = NewHover;
-	}
+	// BODY: (s) walk, look, the test walk
 }
 
 void ATakePlayerController::QueuePress(const FTakePress& Press)
@@ -189,13 +67,9 @@ void ATakePlayerController::QueuePress(const FTakePress& Press)
 	case ETakePressType::Cut:
 		TAKE_LOG(TEXT("PRESS cut %s (%s)"), TakeText::CameraLetter(Added.Camera), *Added.Source);
 		break;
-	case ETakePressType::Click:
-	{
-		const AActor* ClickedActor = Added.Target.Get();
-		TAKE_LOG(TEXT("PRESS click %s at %.0f,%.0f (%s)"), ClickedActor ? *ClickedActor->GetName() : TEXT("nothing"),
-			Added.ScreenPos.X, Added.ScreenPos.Y, *Added.Source);
+	case ETakePressType::Use:
+		TAKE_LOG(TEXT("PRESS use (%s)"), *Added.Source);
 		break;
-	}
 	case ETakePressType::NewTake:
 		TAKE_LOG(TEXT("PRESS new take (%s)"), *Added.Source);
 		break;
@@ -208,103 +82,25 @@ void ATakePlayerController::TakePresses(TArray<FTakePress>& Out)
 	PendingPresses.Reset();
 }
 
-void ATakePlayerController::CutTo(ATakeCamera* NewCamera)
+void ATakePlayerController::SnapTo(ATakeCharacter* To)
 {
-	if (!NewCamera)
-	{
-		return;
-	}
-	// Default transition params: blend time 0, so the view target swaps at once (a hard cut).
-	SetViewTarget(NewCamera);
-	TAKE_LOG(TEXT("VIEW -> %s %s"), TakeText::CameraLetter(NewCamera->CameraId),
-		NewCamera->ShotName.IsNone() ? *NewCamera->GetName() : *NewCamera->ShotName.ToString());
+	// BODY: (s)
 }
 
-ATakeCamera* ATakePlayerController::GetViewCamera() const
+void ATakePlayerController::StartFlight(ATakeCharacter* To)
 {
-	return Cast<ATakeCamera>(GetViewTarget());
+	// BODY: (s)
 }
 
-bool ATakePlayerController::TraceClickable(const FVector2D& ScreenPos, AActor*& OutActor, FHitResult& OutHit) const
+void ATakePlayerController::StepFlight(float Dt)
 {
-	OutActor = nullptr;
-	OutHit = FHitResult();
-
-	const UWorld* TraceWorld = GetWorld();
-	if (!TraceWorld)
-	{
-		return false;
-	}
-
-	FVector RayOrigin = FVector::ZeroVector;
-	FVector RayDirection = FVector::ForwardVector;
-	if (!DeprojectScreenPositionToWorld(static_cast<float>(ScreenPos.X), static_cast<float>(ScreenPos.Y), RayOrigin, RayDirection))
-	{
-		return false;
-	}
-
-	// The camera decides which kind wins (rules 3 and 4): marks on A, devices and watchers on B and C.
-	ETakeCamera ViewCameraId = ETakeCamera::A;
-	if (const ATakeDirector* Director = ATakeDirector::Get(this))
-	{
-		ViewCameraId = Director->CurrentCamera;
-	}
-	else if (const ATakeCamera* Viewed = GetViewCamera())
-	{
-		ViewCameraId = Viewed->CameraId;
-	}
-
-	// Click volumes block ECC_Visibility, so a multi-hit trace would stop at the first one: re-trace through each
-	// clickable actor instead, nearest first, until something that is not clickable (a wall, the floor) blocks.
-	FCollisionQueryParams TraceParams(SCENE_QUERY_STAT(TakeClickTrace), false);
-	const FVector RayEnd = RayOrigin + RayDirection * ClickTraceDistance;
-	AActor* FirstClickable = nullptr;
-	FHitResult FirstClickableHit;
-	for (int32 Layer = 0; Layer < TakeSliceBPC::MaxClickLayers; ++Layer)
-	{
-		FHitResult LayerHit;
-		if (!TraceWorld->LineTraceSingleByChannel(LayerHit, RayOrigin, RayEnd, ECC_Visibility, TraceParams))
-		{
-			break;
-		}
-		if (Layer == 0)
-		{
-			OutHit = LayerHit;
-		}
-
-		AActor* HitActor = LayerHit.GetActor();
-		const ITakeClickable* Clickable = Cast<ITakeClickable>(HitActor);
-		if (!Clickable)
-		{
-			break;
-		}
-		if (TakeSliceBPC::IsPreferredKind(Clickable->GetClickKind(), ViewCameraId))
-		{
-			OutActor = HitActor;
-			OutHit = LayerHit;
-			return true;
-		}
-		if (!FirstClickable)
-		{
-			FirstClickable = HitActor;
-			FirstClickableHit = LayerHit;
-		}
-		TraceParams.AddIgnoredActor(HitActor);
-	}
-
-	// Nothing of the camera's own kind under the pointer: the nearest clickable (its "wrong camera" flash shows).
-	if (FirstClickable)
-	{
-		OutActor = FirstClickable;
-		OutHit = FirstClickableHit;
-		return true;
-	}
-	return false;
+	// BODY: (s)
 }
 
-AActor* ATakePlayerController::GetHoverTarget() const
+float ATakePlayerController::GetFlightAlpha() const
 {
-	return HoverTarget.Get();
+	// BODY: (s)
+	return 0.f;
 }
 
 void ATakePlayerController::TakeCut(const FString& CameraName)
@@ -328,32 +124,29 @@ void ATakePlayerController::TakeCut(const FString& CameraName)
 	}
 }
 
-void ATakePlayerController::TakeClick(const FString& ActorNameOrLabel)
+void ATakePlayerController::TakeUse()
 {
-	const FString Wanted = ActorNameOrLabel.TrimStartAndEnd();
-	AActor* Found = TakeSliceBPC::FindClickableByName(GetWorld(), Wanted);
-	if (!Found)
-	{
-		TAKE_LOG(TEXT("TakeClick: nothing clickable named '%s'"), *Wanted);
-		return;
-	}
-
-	FTakePress Press;
-	Press.Type = ETakePressType::Click;
-	Press.Target = Found;
-	Press.HitLocation = Found->GetActorLocation();
-	FVector2D Projected = FVector2D::ZeroVector;
-	if (ProjectWorldLocationToScreen(Found->GetActorLocation(), Projected))
-	{
-		Press.ScreenPos = Projected;
-	}
-	Press.Source = TEXT("exec");
-	QueuePress(Press);
+	QueueUse(TEXT("exec"));
 }
 
-void ATakePlayerController::TakeClickAt(float X, float Y)
+void ATakePlayerController::TakeAim(const FString& ActorNameOrLabel)
 {
-	QueueClickAt(FVector2D(X, Y), TEXT("exec"));
+	// BODY: (s)
+}
+
+void ATakePlayerController::TakeLook(float Yaw, float Pitch)
+{
+	// BODY: (s)
+}
+
+void ATakePlayerController::TakeWalkTo(float X, float Y)
+{
+	// BODY: (s)
+}
+
+void ATakePlayerController::TakeStop()
+{
+	// BODY: (s)
 }
 
 void ATakePlayerController::TakeNewTake()
@@ -373,10 +166,10 @@ void ATakePlayerController::TakeDump()
 		return;
 	}
 
-	FString Line = FString::Printf(TEXT("DUMP phase=%s cam=%s shot=%s"),
+	// BODY: (s) the rest of the header's list (current character, flight, every character, use target)
+	FString Line = FString::Printf(TEXT("DUMP phase=%s cam=%s"),
 		TakeText::PhaseName(Director->Phase),
-		TakeText::CameraLetter(Director->CurrentCamera),
-		Director->CurrentShotA ? *Director->CurrentShotA->ShotName.ToString() : TEXT("NONE"));
+		TakeText::CameraLetter(Director->CurrentCamera));
 
 	if (Director->Composure)
 	{
@@ -387,10 +180,9 @@ void ATakePlayerController::TakeDump()
 	if (AJulian* DumpJulian = Director->Julian)
 	{
 		const FVector Feet = DumpJulian->GetFeetLocation();
-		const AMark* Cued = DumpJulian->GetCuedMark();
-		const float Beats = Director->Clock ? DumpJulian->GetBeatsToArrival(Director->Clock->GetSecondsPerBeat()) : 0.f;
-		Line += FString::Printf(TEXT(" julian=(%.0f,%.0f,%.0f) cued=%s beats=%.1f walking=%d"),
-			Feet.X, Feet.Y, Feet.Z, Cued ? *Cued->MarkName : TEXT("none"), Beats, DumpJulian->IsWalking() ? 1 : 0);
+		const AMark* Standing = DumpJulian->GetStandingMark();
+		Line += FString::Printf(TEXT(" julian=(%.0f,%.0f,%.0f) mark=%s"),
+			Feet.X, Feet.Y, Feet.Z, Standing ? *Standing->MarkName : TEXT("none"));
 	}
 
 	for (AWatcher* DumpWatcher : Director->Watchers)
@@ -444,20 +236,9 @@ void ATakePlayerController::OnKeyThree()
 	QueueCut(ETakeCamera::C, TEXT("key"));
 }
 
-void ATakePlayerController::OnLeftClick()
+void ATakePlayerController::OnUse()
 {
-	double MouseX = 0.0;
-	double MouseY = 0.0;
-	if (GetMousePosition(MouseX, MouseY))
-	{
-		QueueClickAt(FVector2D(MouseX, MouseY), TEXT("mouse"));
-		return;
-	}
-	// No pointer position (outside the viewport): still a press, on nothing, so the director flashes a line.
-	FTakePress Press;
-	Press.Type = ETakePressType::Click;
-	Press.Source = TEXT("mouse");
-	QueuePress(Press);
+	// BODY: (s) QueueUse("key") for E, "mouse" for the left button (two handlers or one, the builder's call)
 }
 
 void ATakePlayerController::OnKeyR()
@@ -483,17 +264,7 @@ void ATakePlayerController::QueueCut(ETakeCamera CutCamera, const TCHAR* PressSo
 	QueuePress(Press);
 }
 
-void ATakePlayerController::QueueClickAt(const FVector2D& ScreenPos, const TCHAR* PressSource)
+void ATakePlayerController::QueueUse(const TCHAR* PressSource)
 {
-	AActor* ClickedActor = nullptr;
-	FHitResult ClickHit;
-	TraceClickable(ScreenPos, ClickedActor, ClickHit);
-
-	FTakePress Press;
-	Press.Type = ETakePressType::Click;
-	Press.Target = ClickedActor;
-	Press.HitLocation = ClickHit.bBlockingHit ? FVector(ClickHit.ImpactPoint) : FVector::ZeroVector;
-	Press.ScreenPos = ScreenPos;
-	Press.Source = PressSource;
-	QueuePress(Press);
+	// BODY: (s)
 }

@@ -1,26 +1,31 @@
 // ATakeDirector: the rules. One per level (ATakeGameMode spawns one if the map has none).
 //
-// Owner of this header and TakeDirector.cpp: header pass (core, complete).
-// The step functions are members of this class defined in the slice files:
-//   (a) TakeDirectorComposure.cpp  IsJulianExposed, StepComposure
-//   (b) TakeDirectorPresses.cpp    StepPresses, HandleCut, HandleClick, StepShotList
-//   (c) TakeDirectorScene.cpp      StepScene
+// Owners (the Nov 13 rework): this header, TakeDirector.cpp and the (d) slices are (d); the other slices:
+//   (d) TakeDirectorComposure.cpp  IsJulianExposed, StepComposure
+//   (s) TakeDirectorPresses.cpp    StepPresses, HandleCut, HandleUse
+//   (d) TakeDirectorScene.cpp      StepScene
 //   (d) TakeDirectorSight.cpp      StepSight
-//   (e) TakeDirectorDevices.cpp    FireDevice, SpotWatcher, StepDevices
-//   (e) TakeDirectorBlooper.cpp    RequestBlooper, StepBlooperCheck, StepFreeze, ReloadLevel, NewTake
+//   (u) TakeDirectorDevices.cpp    FindUseTarget, StepUse, FireDevice, SpotWatcher, StepDevices
+//   (d) TakeDirectorBlooper.cpp    RequestBlooper, StepBlooperCheck, StepFreeze, ReloadLevel, NewTake
 //
-// Tick order (docs/STATUS.md "Tick order"); the director ticks in TG_PrePhysics AFTER the player controller
-// (tick prerequisite), so presses queued during this frame's input handling are consumed this frame:
+// Tick order (docs/STATUS.md "Tick order", as reworked). Input and walking happen BEFORE the director in the same
+// frame: the player controller ticks first (presses queued, WASD -> Move, mouse -> AddLook), then every character
+// and its movement component (they move), then the director (tick prerequisites on the PC and on every character's
+// movement component, set in EnsurePlayerController / BeginPlay):
 //   1 the bar clock           Clock->Advance
-//   2 presses                 StepPresses (cuts first, then clicks)
+//   2 the flight, use, presses PC->StepFlight, CurrentCamera mirrors PC->GetCurrentCharacter(), StepUse (CurrentUse
+//                             and the highlights), then StepPresses (cuts first, then uses, then a new take)
 //   3 devices                 StepDevices
-//   4 Julian's walk           Julian->StepWalk, then StepShotList, then bJulianExposed = IsJulianExposed(),
-//                             then every Watcher->StepWatcher, then StepSight
+//   4 marks and sight         Julian->StepMarks, bJulianExposed = IsJulianExposed(), every Watcher->StepWatcher,
+//                             then StepSight
 //   5 composure               StepComposure
-//   6 the scene               StepScene
+//   6 the scene               StepScene; then JulianFeetBeforeWalk = Julian's feet (for next frame's swept beam test)
 //   7 late tick (TG_PostUpdateWork, a second tick function): StepBlooperCheck
 // While Phase == BlooperFreeze only StepFreeze runs (presses are drained and dropped). Cleared keeps stepping.
-// The camera manager updates after TG_PostPhysics, so a view-target change made in steps 2 or 4 renders this frame.
+// The camera manager updates after TG_PostPhysics, so a view-target change made in step 2 renders this frame.
+//
+// ATakeCamera and AShotZone (the old fixed cameras and camera A's shot list) are no longer used: the director does
+// not gather them.
 //
 // Unity builds merge .cpp files: in slice files, put file-local helpers in a namespace with a unique name
 // (e.g. namespace TakePressesLocal { ... }), never a bare static with a common name.
@@ -39,8 +44,7 @@ class AWatcher;
 class ADevice;
 class AFollowSpot;
 class ARedTapeZone;
-class AShotZone;
-class ATakeCamera;
+class ATakeCharacter;
 class ATakePlayerController;
 class UBarClockComponent;
 class UComposureComponent;
@@ -87,10 +91,11 @@ public:
 	ATakeDirector();
 
 	// ---------------------------------------------------------------------------------------------------------------
-	// Core (TakeDirector.cpp, complete)
+	// Core (TakeDirector.cpp) (d)
 	// ---------------------------------------------------------------------------------------------------------------
 
-	/** Gathers the level's actors, picks camera A's first shot, cuts to it, refills composure, logs ROLLING. */
+	/** Gathers the level's actors, makes this director tick after every character's movement component, refills
+	 *  composure, logs ROLLING. The view starts on Julian (EnsurePlayerController: PC->SnapTo(Julian)). */
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
@@ -107,12 +112,11 @@ public:
 	void LateTick(float DeltaSeconds);
 
 	/** Shows Text on the HUD from this frame for Seconds, in Colour, and logs it (TAKE_LOG "FLASH ..."). At most
-	 *  MaxFlashes lines are kept; the oldest goes first. Use for prompts ("[1] to cue Julian") and refusals. */
+	 *  MaxFlashes lines are kept; the oldest goes first. Use for prompts and refusals. */
 	void Flash(const FString& Text, const FLinearColor& Colour = FLinearColor::White, float Seconds = 2.f);
 
-	/** The camera actor a cut to Id shows: camera A's current shot for A, else the first ATakeCamera with that id.
-	 *  Null if the level has none (a cut then flashes a line instead). */
-	ATakeCamera* FindCamera(ETakeCamera Id) const;
+	/** The level's character with this Id (the first found), null if the set has none (no Vex in the test box). */
+	ATakeCharacter* GetCharacter(ETakeCamera Id) const;
 
 	/** The game instance that survives reloads (take number, bloopers). Null outside a Take game instance. */
 	UTakeGameInstance* GetTakeGameInstance() const;
@@ -120,11 +124,11 @@ public:
 	/** "bar.beat" for TAKE_LOG. */
 	FString MakeLogStamp() const;
 
-	/** Finds every Julian, mark, watcher, device, tape zone, shot zone and take camera in the level (TActorIterator). */
+	/** Finds every character (Julian too), Julian, mark, watcher, device and tape zone in the level (TActorIterator). */
 	void GatherActors();
 
 	// ---------------------------------------------------------------------------------------------------------------
-	// (a) TakeDirectorComposure.cpp
+	// (d) TakeDirectorComposure.cpp
 	// ---------------------------------------------------------------------------------------------------------------
 
 	/** True while Julian stands inside any red tape zone (rule 5; the drone rule is not in step 1). Pure query. */
@@ -136,38 +140,34 @@ public:
 	void StepComposure(float DeltaSeconds);
 
 	// ---------------------------------------------------------------------------------------------------------------
-	// (b) TakeDirectorPresses.cpp
+	// (s) TakeDirectorPresses.cpp
 	// ---------------------------------------------------------------------------------------------------------------
 
-	/** Step 2. Drains PC's press queue (PC->TakePresses). Handles every Cut first (in queue order), then every
-	 *  Click, then NewTake (calls NewTake(), which reloads). Each handler changes what is rendered inside the call. */
-	void StepPresses();
+	/** Step 2, after StepFlight and StepUse. Drains PC's press queue (PC->TakePresses). Handles every Cut first (in
+	 *  queue order), then every Use, then NewTake (calls NewTake(), which reloads). Each handler changes what is
+	 *  rendered inside the call. */
+	void StepPresses();	// BODY: (s)
 
-	/** A cut to Camera: if FindCamera(Camera) is null, Flash("No camera C on this set") and nothing else changes;
-	 *  otherwise CurrentCamera = Camera and PC->CutTo(that camera) (hard cut, view target swapped this frame; the
-	 *  HUD's look changes with CurrentCamera). TAKE_LOG("CUT -> B"). */
-	void HandleCut(ETakeCamera Camera, const FTakePress& Press);
+	/** A cut press to the character with Id Camera, in this order:
+	 *  - PC->IsInFlight(): Flash("Mid-cut"), nothing else;
+	 *  - GetCharacter(Camera) null: Flash("No camera C on this set");
+	 *  - it is already PC->GetCurrentCharacter(): Flash("Already on MAYA");
+	 *  - else PC->StartFlight(it) (the view leaves this frame).
+	 *  TAKE_LOG("CUT -> B (key)") or the refusal. */
+	void HandleCut(ETakeCamera Camera, const FTakePress& Press);	// BODY: (s)
 
-	/** A click, routed by rules 3 and 4 on CurrentCamera:
-	 *  - on A, a Mark: Julian->CueTo(mark) (ring, dotted path, count, Julian turns: all this frame); no path ->
-	 *    Flash("Julian can't get there").
-	 *  - on A, a Device or a Watcher: fires nothing; Flash("[2] to fire it") / Flash("[2] to spot him") naming the
-	 *    camera that can act (the device's FiredFrom; the follow spot's FiredFrom for a watcher).
-	 *  - on B/C, a Device whose FiredFrom == CurrentCamera: FireDevice(device). Another camera's device: Flash("[3] to fire it").
-	 *  - on B/C, a Watcher: if FollowSpot && FollowSpot->FiredFrom == CurrentCamera, SpotWatcher(watcher); else
-	 *    Flash("[2] to spot him").
-	 *  - on B/C, a Mark: Flash("[1] to cue Julian").
-	 *  - nothing clickable: Flash("[1] to cue Julian" on B/C, "Click a gold mark" on A).
-	 *  Logs the press and the outcome with TAKE_LOG. */
-	void HandleClick(const FTakePress& Press);
-
-	/** Step 4, after Julian's walk: the film's own cut. Finds the AShotZone containing Julian's feet (highest
-	 *  Priority wins); if its shot differs from CurrentShotA, CurrentShotA = that shot and, if CurrentCamera == A,
-	 *  PC->CutTo(CurrentShotA) at once. Not the player's cut: no flash. TAKE_LOG("SHOT -> <name>"). */
-	void StepShotList();
+	/** A Use press, on CurrentUse (computed this frame by StepUse, before the presses):
+	 *  - PC->IsInFlight(): Flash("Mid-cut");
+	 *  - no current character: nothing but the log;
+	 *  - the current character is Julian: Flash("[2] MAYA or [3] VEX work the set");
+	 *  - CurrentUse.Device null: Flash("Nothing in reach - stand in a device's ring");
+	 *  - !CurrentUse.bCanFire: Flash(CurrentUse.Prompt) (why not: "CART - used", "Look at a watcher");
+	 *  - the device is FollowSpot: SpotWatcher(CurrentUse.Watcher); else FireDevice(CurrentUse.Device).
+	 *  TAKE_LOG("USE <who>: <device> -> fired / refused <why>"). */
+	void HandleUse(const FTakePress& Press);	// BODY: (s)
 
 	// ---------------------------------------------------------------------------------------------------------------
-	// (c) TakeDirectorScene.cpp
+	// (d) TakeDirectorScene.cpp
 	// ---------------------------------------------------------------------------------------------------------------
 
 	/** Step 6. While Rolling, Julian standing on a bGoal mark: Phase = Cleared, PhaseSeconds = 0 (the HUD shows the
@@ -179,22 +179,44 @@ public:
 	// ---------------------------------------------------------------------------------------------------------------
 
 	/** Step 4, after the watchers stepped. bJulianSeen = false; for each watcher:
-	 *  - IsInstantBlooper() (the beam): if HoldsJulian(Julian) -> RequestBlooper(EBlooperReason::BeamTouched).
+	 *  - IsInstantBlooper() (the beam): if it touches Julian on the segment JulianFeetBeforeWalk -> his feet now ->
+	 *    RequestBlooper(EBlooperReason::BeamTouched).
 	 *  - otherwise (the guard): bTally = HoldsJulian(Julian) && bJulianExposed; W->SetTally(bTally) (frame solid red
 	 *    and tally light on this frame); bJulianSeen |= bTally.
 	 *  Logs tally changes ("GUARD frames Julian" / "GUARD lost him"). */
 	void StepSight(float DeltaSeconds);
 
 	// ---------------------------------------------------------------------------------------------------------------
-	// (e) TakeDirectorDevices.cpp
+	// (u) TakeDirectorDevices.cpp
 	// ---------------------------------------------------------------------------------------------------------------
 
-	/** Step 2 (from HandleClick): fires Device if it can (Device->CanFire), which spends a use and starts its
+	/**
+	 * What a Use press by Who would do right now. Pure query (no highlight, no log). Rules:
+	 *  - Who null, PC->IsInFlight(), or Who is Julian: an empty target (Julian's Use press is HandleUse's flash).
+	 *  - Otherwise the nearest device with FiredFrom == Who->Id whose GetUsePoint() is within its UseRadius (2D) of
+	 *    Who->GetFeetLocation(). None: empty target.
+	 *  - That device: Prompt = "[E] " + UseVerb, bCanFire = true; but if !Device->CanFire(WhyNot) (spent, busy,
+	 *    running): bCanFire = false, Prompt = WhyNot ("CART - used", "SPOT - busy 2.1 s").
+	 *  - If that device is the follow spot (and it can fire): the watcher is picked by angle: among Watchers with
+	 *    DistanceToPoint(lamp location) <= the spot's Range, the one with the smallest angle between
+	 *    Who->GetAimDirection() and (W->GetAimPoint() - Who->GetAimOrigin()), if that angle <= AimAssistDegrees.
+	 *    Picked: Watcher set, Prompt = "[E] " + UseVerb + " " + W->GetLabel() ("[E] Spot GUARD"). None picked:
+	 *    Watcher null, Prompt = "Look at a watcher", bCanFire = false.
+	 */
+	FTakeUseTarget FindUseTarget(const ATakeCharacter* Who) const;	// BODY: (u)
+
+	/** Step 2, after StepFlight, before the presses: NewUse = FindUseTarget(PC current character, or null in a
+	 *  flight). Moves the highlights on this frame when they change: old CurrentUse.Device->SetInReach(false), new
+	 *  one SetInReach(true); old CurrentUse.Watcher->SetHovered(false), new one SetHovered(true). Then
+	 *  CurrentUse = NewUse. Logs a change of device or watcher ("USE TARGET SPOT GUARD" / "USE TARGET none"). */
+	void StepUse();	// BODY: (u)
+
+	/** Step 2 (from HandleUse): fires Device if it can (Device->CanFire), which spends a use and starts its
 	 *  timeline with a visible change this frame (pip out, cart starts rolling, banner starts dropping). If it
-	 *  can't: Flash the reason ("CART - used", "Click a watcher to spot it") and return false. TAKE_LOG either way. */
+	 *  can't: Flash the reason ("CART - used") and return false. TAKE_LOG either way. */
 	bool FireDevice(ADevice* Device);
 
-	/** Step 2 (from HandleClick): the follow spot on Watcher. FollowSpot->FireAt(Watcher, WhyNot); out of range or
+	/** Step 2 (from HandleUse): the follow spot on Watcher. FollowSpot->FireAt(Watcher, WhyNot); out of range or
 	 *  busy -> Flash(WhyNot) the same frame and return false. On success the beam shape shows this frame and the
 	 *  Blind lands in StepDevices this frame. */
 	bool SpotWatcher(AWatcher* Watcher);
@@ -205,7 +227,7 @@ public:
 	void StepDevices(float DeltaSeconds);
 
 	// ---------------------------------------------------------------------------------------------------------------
-	// (e) TakeDirectorBlooper.cpp
+	// (d) TakeDirectorBlooper.cpp
 	// ---------------------------------------------------------------------------------------------------------------
 
 	/** Asks for a blooper at the end of this frame (only while Rolling; the first reason in a frame wins). */
@@ -254,6 +276,10 @@ public:
 	// The level's actors (gathered at BeginPlay)
 	// ---------------------------------------------------------------------------------------------------------------
 
+	/** Every ATakeCharacter in the level, Julian included (A Julian, B Maya, C Vex). */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|Level")
+	TArray<TObjectPtr<ATakeCharacter>> Characters;
+
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|Level")
 	TObjectPtr<AJulian> Julian;
 
@@ -266,18 +292,12 @@ public:
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|Level")
 	TArray<TObjectPtr<ADevice>> Devices;
 
-	/** The first AFollowSpot among Devices: clicking a watcher on its FiredFrom camera spots it. */
+	/** The first AFollowSpot among Devices. */
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|Level")
 	TObjectPtr<AFollowSpot> FollowSpot;
 
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|Level")
 	TArray<TObjectPtr<ARedTapeZone>> TapeZones;
-
-	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|Level")
-	TArray<TObjectPtr<AShotZone>> ShotZones;
-
-	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|Level")
-	TArray<TObjectPtr<ATakeCamera>> Cameras;
 
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|Level")
 	TObjectPtr<ATakePlayerController> PC;
@@ -293,17 +313,14 @@ public:
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
 	float PhaseSeconds = 0.f;
 
-	/** The camera the player is on (written by HandleCut). */
+	/** The Id of the character the player is on (PC->GetCurrentCharacter()), mirrored by Tick right after
+	 *  PC->StepFlight in step 2: it changes on a flight's last frame. The HUD's look reads it. */
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
 	ETakeCamera CurrentCamera = ETakeCamera::A;
 
-	/** Camera A's current shot (written by StepShotList; BeginPlay picks the bInitialShot camera). */
+	/** This frame's use target for the character the player is on (StepUse, step 2). */
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
-	TObjectPtr<ATakeCamera> CurrentShotA;
-
-	/** The shot zone Julian is in (StepShotList). */
-	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
-	TObjectPtr<AShotZone> CurrentShotZone;
+	FTakeUseTarget CurrentUse;
 
 	/** This frame: Julian is inside red tape (set in step 4 from IsJulianExposed). */
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
@@ -313,8 +330,9 @@ public:
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
 	bool bJulianSeen = false;
 
-	/** Julian's feet at the start of this frame's step 4, before StepWalk. StepSight tests the segment from here to
-	 *  his feet now against instant-blooper watchers, so a long frame cannot carry him through a live beam. */
+	/** Julian's feet at the end of the PREVIOUS frame (Tick stores it after step 6; BeginPlay seeds it). His
+	 *  movement component moves him before the director ticks, so StepSight tests the segment from here to his feet
+	 *  now against instant-blooper watchers, and a long frame cannot carry him through a live beam. */
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
 	FVector JulianFeetBeforeWalk = FVector::ZeroVector;
 
@@ -341,8 +359,9 @@ public:
 	void SetPhase(ETakePhase NewPhase);
 
 protected:
-	/** Finds the local ATakePlayerController the first time it exists, adds it as a tick prerequisite (so the
-	 *  director ticks after its input) and cuts to camera A's first shot. Called from BeginPlay and every Tick. */
+	/** Finds the local ATakePlayerController the first time it exists: the director ticks after it, and so does every
+	 *  character and its movement component (AddTickPrerequisiteActor); then PC->SnapTo(Julian), the take's start
+	 *  view. Called from BeginPlay and every Tick. */
 	void EnsurePlayerController();
 
 	/** Fades and removes flash lines (core, every tick, frozen or not). */

@@ -1,5 +1,8 @@
-// A crew device: one of three effects on every watcher in its range (rule 7). Abstract base. Owner: (e).
+// A crew device: one of three effects on every watcher in its range (rule 7). Abstract base. Owner: (u).
 // It does not tick: the director calls Fire (step 2) and StepDevice (step 3), and applies the effect on landing.
+// Since the Nov 13 rework it is fired by Maya or Vex standing in its use ring and pressing Use (E): see
+// ATakeDirector::FindUseTarget. It is no longer clicked (ITakeClickable and ClickVolume stay, unused by the input).
+// Collision: every shape here comes from FTakeShapes (NoCollision): it never blocks a character or the follow camera.
 
 #pragma once
 
@@ -10,6 +13,7 @@
 #include "Device.generated.h"
 
 class UBoxComponent;
+class UInstancedStaticMeshComponent;
 class UStaticMeshComponent;
 class UMaterialInstanceDynamic;
 class AWatcher;
@@ -22,47 +26,61 @@ class REEL_API ADevice : public AActor, public ITakeClickable
 public:
 	ADevice();
 
-	/** UsesLeft = Uses; colours the body. */
-	virtual void BeginPlay() override;	// BODY: (e)
+	/** UsesLeft = Uses; colours the body; LayOutUseRing; ring dim (not in reach). */
+	virtual void BeginPlay() override;	// BODY: (u)
+
+	/** LayOutUseRing in the editor, so the map shows where to stand. Subclasses that override call Super. */
+	virtual void OnConstruction(const FTransform& Transform) override;	// BODY: (u)
 
 	// ITakeClickable
 	virtual ETakeClickKind GetClickKind() const override { return ETakeClickKind::Device; }
 
-	/** Hover highlight (body brightens), this frame. Range rings are out of step 1. */
-	virtual void SetHovered(bool bInHovered) override;	// BODY: (e)
+	/** Body highlight (body brightens), this frame. No longer driven by a pointer; SetInReach is the use highlight. */
+	virtual void SetHovered(bool bInHovered) override;	// BODY: (u)
+
+	// --- use (the Nov 13 rework) ---------------------------------------------------------------------------------
+
+	/** The floor point Maya or Vex stands near to use it: the actor transform applied to UseOffset. */
+	FVector GetUsePoint() const;	// BODY: (u)
+
+	/** Called by ATakeDirector::StepUse when this becomes (true) or stops being (false) the current character's use
+	 *  target: the use ring goes GoldBright (dim Grey when false), this frame. */
+	void SetInReach(bool bInReach);	// BODY: (u)
+
+	bool IsInReach() const { return bIsInReach; }
 
 	// --- director API ----------------------------------------------------------------------------------------------
 
 	/** Can it fire now? False with a short reason for the flash ("CART - used", "BANNER - still down"). */
-	virtual bool CanFire(FString& OutWhyNot) const;	// BODY: (e)
+	virtual bool CanFire(FString& OutWhyNot) const;	// BODY: (u)
 
 	/** Step 2 (ATakeDirector::FireDevice), only after CanFire: spends a use (unless free), starts its timeline, and
 	 *  changes something visible this frame (a pip goes out; the cart moves its first step; the banner starts down).
 	 *  Logs "FIRE <name>". Returns false if it could not fire. */
-	virtual bool Fire();	// BODY: (e)
+	virtual bool Fire();	// BODY: (u)
 
 	/** Step 3: advances the timeline by DeltaSeconds and sets LandedThisFrame on the frame the effect lands. */
-	virtual void StepDevice(float DeltaSeconds);	// BODY: (e)
+	virtual void StepDevice(float DeltaSeconds);	// BODY: (u)
 
 	/** True only on the frame the effect lands (the spot: the frame it is fired; the cart: the crash; the banner:
 	 *  the matte reaching the bottom). */
-	virtual bool LandedThisFrame() const;	// BODY: (e)
+	virtual bool LandedThisFrame() const;	// BODY: (u)
 
 	/** The watchers this landing affects: by default every watcher with DistanceToPoint(GetEffectPoint()) <= Range.
 	 *  The follow spot: only its target. */
-	virtual void GatherTargets(const TArray<TObjectPtr<AWatcher>>& All, TArray<AWatcher*>& Out) const;	// BODY: (e)
+	virtual void GatherTargets(const TArray<TObjectPtr<AWatcher>>& All, TArray<AWatcher*>& Out) const;	// BODY: (u)
 
 	/** The point ranges are measured from and lures walk to (default: the actor location). */
-	virtual FVector GetEffectPoint() const;	// BODY: (e)
+	virtual FVector GetEffectPoint() const;	// BODY: (u)
 
 	/** "CART  o" for one use left, "CART  -" when spent; the spot: "SPOT  READY" / "SPOT  BUSY 2.1". */
-	virtual FString GetPipsText() const;	// BODY: (e)
+	virtual FString GetPipsText() const;	// BODY: (u)
 
 	/** Its timeline is running (fired and not finished). */
 	bool IsRunning() const { return bRunning; }
 
 	/** World point over the device where the HUD draws its pips. */
-	virtual FVector GetLabelPoint() const;	// BODY: (e)
+	virtual FVector GetLabelPoint() const;	// BODY: (u)
 
 	// --- tunables ---------------------------------------------------------------------------------------------------
 
@@ -85,9 +103,25 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Device")
 	int32 Uses = 1;
 
-	/** The camera it is fired from (the test box has no camera C, so its cart is fired from B). */
+	/** Who uses it: B Maya, C Vex (the test box has no Vex, so its cart is Maya's). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Device")
 	ETakeCamera FiredFrom = ETakeCamera::B;
+
+	/** Feet within this 2D distance of the use point can use it, cm. Also the use ring's radius. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Device")
+	float UseRadius = 220.f;
+
+	/** The use point, local to the actor (Z on the floor). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Device")
+	FVector UseOffset = FVector::ZeroVector;
+
+	/** The prompt's verb: "[E] " + UseVerb ("Release the cart"; the spot adds the watcher: "[E] Spot GUARD"). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Device")
+	FString UseVerb = TEXT("Use");
+
+	/** Dashes in the use ring. */
+	UPROPERTY(EditAnywhere, Category = "Take|Device")
+	int32 UseRingDots = 32;
 
 	/** Height of the pips label above the actor, cm. */
 	UPROPERTY(EditAnywhere, Category = "Take|Device")
@@ -112,11 +146,20 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Take")
 	TObjectPtr<UBoxComponent> ClickVolume;
 
+	/** The use ring: flat dashes (a few cm tall) on the floor in a circle of UseRadius around the use point, so the
+	 *  player sees where to stand. Absolute rotation (stays flat whatever the device's rotation). NoCollision. */
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<UInstancedStaticMeshComponent> UseRing;
+
 protected:
+	/** Places UseRing at UseOffset and lays its UseRingDots dashes out at UseRadius; colours it for bIsInReach. */
+	void LayOutUseRing();	// BODY: (u)
+
 	bool bRunning = false;
 	bool bLanded = false;
 	float RunSeconds = 0.f;
 	bool bHovered = false;
+	bool bIsInReach = false;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> BodyMID;

@@ -14,19 +14,18 @@ class UTakeClickable : public UInterface
 };
 
 /**
- * Something the pointer can click. The actor carries a click volume (FTakeShapes::CreateClickVolume) that blocks
- * ECC_Visibility; the player controller's trace under the cursor returns that actor, and Cast<ITakeClickable>
- * tells the director what it is.
+ * Since the Nov 13 rework there is no pointer and nothing is clicked. Devices and watchers keep this interface for
+ * the highlight (SetHovered, driven by ATakeDirector::StepUse) and their click volumes stay (they block only
+ * ECC_Visibility, never Pawn or Camera). Marks no longer implement it.
  */
 class ITakeClickable
 {
 	GENERATED_BODY()
 
 public:
-	/** Mark, Device or Watcher: the press routing in ATakeDirector::HandleClick depends on it. */
+	/** Device or Watcher (Mark is no longer used). */
 	virtual ETakeClickKind GetClickKind() const = 0;
 
-	/** Called by ATakePlayerController::PlayerTick when the pointer starts (true) or stops (false) being over this
-	 *  actor. A highlight only (brighter colour or a slight scale-up), visible on this frame. It never fires anything. */
+	/** A highlight only (brighter colour or a slight scale-up), visible on this frame. It never fires anything. */
 	virtual void SetHovered(bool bHovered) = 0;
 };

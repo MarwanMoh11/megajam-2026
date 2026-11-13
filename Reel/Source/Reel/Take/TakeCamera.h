@@ -1,3 +1,4 @@
+// NO LONGER USED since the Nov 13 rework (follow cameras and flights): left in place, unreferenced.
 // A take camera: one of camera A's shots, or B's / C's fixed view. Owner: (b).
 
 #pragma once

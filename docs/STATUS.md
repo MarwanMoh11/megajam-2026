@@ -1,6 +1,38 @@
 # Status
 
-Last updated: 2026-11-13, about 17:30 Cairo (build order step 1 built; waiting for gate 1). Theme: **Director's Cut**.
+Last updated: 2026-11-13, about 18:30 Cairo (gate 1 answered: three rules changed, step 1 is being reworked). Theme:
+**Director's Cut**.
+
+## Gate 1 answer, Nov 13 about 18:15: Marwan changed three rules
+
+Marwan asked for three changes after the test box. **Where this section differs from the text below, this section
+wins.** The rest of the spec stands until Marwan has played the rework (gate 1 again).
+
+1. **You walk the characters yourself.** Third person, WASD and mouse-look, a slow weighted walk (Uncharted is the
+   reference). No clicking marks to cue. This replaces rule 3 and lifts "WASD and mouse-look" from the kill list.
+2. **Cuts are flights.** 1, 2, 3 switch to Julian, Maya or Vex with a camera flight up, across and down (GTA V's
+   switch is the reference). This replaces rule 1's hard cut and fixed cameras, and lifts "camera flights between
+   characters" from the kill list. Still no wheel and no slow motion.
+3. **The set is a large auction building,** not one 30 x 20 m hall: an entrance lobby, the great hall, a catwalk and
+   backstage. This lifts "a separate lobby" and "more than one hall" from the kill list. Still one level.
+
+**Filled in by Claude, the smallest that makes those three work (Marwan can overrule any of them):**
+- You move only the character you are on. The other two stand where you left them. The take never stops: watchers,
+  devices and the clock keep running during a flight and while you are on someone else.
+- Each character has a follow camera, and that is "their camera": A follows Julian, B Maya, C Vex.
+- **Use (E or left click):** Maya and Vex fire a device by standing within its reach and pressing Use. The follow
+  spot: stand at the lamp, look at a watcher (it highlights), press Use. Julian has nothing to use.
+- **Marks** stay as places. Standing still on one is MARK (+15 a second), and the goal mark clears the test. They
+  are no longer clicked, and there is no path or arrival count.
+- A flight takes under 2 s (a tunable). Presses during a flight are dropped with a flash.
+- Everyone walks at 250 cm/s and nobody runs.
+- Effects, composure, SEEN, the beam, the red tape, bloopers and the bar clock are unchanged.
+- The characters are the engine's template mannequins, which "Look" already names; they come in now because the
+  walk needs their animation.
+
+**Not rethought yet, waiting for the next gate:** good cuts (rule 8), the shot list and the film and making-of split
+(rule 1), the monitor strip, "a crew cut takes about 2 s" (rule 4), The Long Take, the replay "cut where you cut"
+(rule 11), and the 1:45 clean run in a larger building.
 
 **Scoring:** any score of this game, by an agent or by Marwan, follows `docs/JUDGING_RUBRIC.md` (the jam's criteria,
 fixed anchors, and when to stop). Design review is closed; the next scores come at gates 1 and 2.

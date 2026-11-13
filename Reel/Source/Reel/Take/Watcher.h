@@ -1,5 +1,7 @@
 // A watcher: anything that sees with a frame (rule 6). Abstract base. Owner: (d).
 // No rule logic in its own Tick (it does not tick): the director calls StepWatcher, ApplyEffect, HoldsJulian, SetTally.
+// Collision: bodies, frames and tally are FTakeShapes (NoCollision), the click volume blocks only ECC_Visibility: a
+// watcher never blocks a character's walk or pushes the follow camera (subclasses keep it that way).
 
 #pragma once
 
@@ -30,8 +32,13 @@ public:
 	// ITakeClickable
 	virtual ETakeClickKind GetClickKind() const override { return ETakeClickKind::Watcher; }
 
-	/** Hover highlight (the label colour or a slight frame scale-up), this frame. */
+	/** The use highlight (the label colour or a slight frame scale-up), this frame. Since the Nov 13 rework it is
+	 *  called by ATakeDirector::StepUse: true while the follow spot's aim assist has picked this watcher. */
 	virtual void SetHovered(bool bInHovered) override;	// BODY: (d)
+
+	/** The point the follow spot's aim assist measures to (and its beam aims at): the actor location plus AimHeight
+	 *  for the guard; the beam overrides it with the middle of its segment at beam height. */
+	virtual FVector GetAimPoint() const;	// BODY: (d)
 
 	// --- director API ----------------------------------------------------------------------------------------------
 
@@ -84,6 +91,10 @@ public:
 	/** Height of the label point above the actor, cm. */
 	UPROPERTY(EditAnywhere, Category = "Take|Watcher")
 	float LabelHeight = 220.f;
+
+	/** Height of the aim point (GetAimPoint) above the actor, cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Watcher")
+	float AimHeight = 120.f;
 
 	/** Frame and tally colour while it holds an exposed Julian (solid bright red). */
 	UPROPERTY(EditAnywhere, Category = "Take|Watcher")

@@ -1,4 +1,4 @@
-// A red-tape area on the floor: Julian is exposed while inside one (rule 5). Owner: (a).
+// A red-tape area on the floor: Julian is exposed while inside one (rule 5). Owner: (d).
 
 #pragma once
 
@@ -23,9 +23,9 @@ public:
 	ARedTapeZone();
 
 	/** Lays the four strips out along Extent and colours them red (editor and runtime). */
-	virtual void OnConstruction(const FTransform& Transform) override;	// BODY: (a)
+	virtual void OnConstruction(const FTransform& Transform) override;	// BODY: (d)
 
-	virtual void BeginPlay() override;	// BODY: (a) (colour the strips if OnConstruction did not)
+	virtual void BeginPlay() override;	// BODY: (d) (colour the strips if OnConstruction did not)
 
 	/** Half-size of the taped area in cm (X, Y); Z is the height the area counts up to above the floor. */
 	UPROPERTY(EditAnywhere, Category = "Take|Tape")
@@ -37,7 +37,7 @@ public:
 
 	/** True when WorldPoint is inside the area: 2D test in the zone's own frame (yaw honoured), Z within
 	 *  [-50, Extent.Z * 2] of the actor's height. Pure query. */
-	bool Contains(const FVector& WorldPoint) const;	// BODY: (a)
+	bool Contains(const FVector& WorldPoint) const;	// BODY: (d)
 
 	UPROPERTY(VisibleAnywhere, Category = "Take")
 	TObjectPtr<USceneComponent> Root;

@@ -1,4 +1,4 @@
-// Owner: (e). Constructor by the header pass; every "// BODY: (e)" is a stub to fill.
+// Owner: (u). Constructor by the header pass; every "// BODY: (u)" is a stub to fill.
 
 #include "CartDevice.h"
 
@@ -10,6 +10,7 @@
 ACartDevice::ACartDevice()
 {
 	DeviceName = TEXT("CART");
+	UseVerb = TEXT("Release the cart");
 	Effect = EDeviceEffect::Lure;
 	Range = 1200.f;
 	Duration = 6.f;

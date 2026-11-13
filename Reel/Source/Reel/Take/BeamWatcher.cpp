@@ -219,3 +219,9 @@ FVector ABeamWatcher::GetEndB() const
 {
 	return GetActorTransform().TransformPosition(EndB + FVector(0.f, 0.f, BeamHeight));
 }
+
+FVector ABeamWatcher::GetAimPoint() const
+{
+	// BODY: (d)
+	return Super::GetAimPoint();
+}

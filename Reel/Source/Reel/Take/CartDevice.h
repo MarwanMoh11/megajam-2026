@@ -1,4 +1,4 @@
-// A champagne cart: rolls from its service door to a crash point and lures (rule 7). Owner: (e).
+// A champagne cart: rolls from its service door to a crash point and lures (rule 7). Owner: (u).
 
 #pragma once
 
@@ -19,16 +19,16 @@ class REEL_API ACartDevice : public ADevice
 public:
 	ACartDevice();
 
-	virtual void BeginPlay() override;	// BODY: (e)
+	virtual void BeginPlay() override;	// BODY: (u)
 
 	/** Spends the use, starts the roll (first step this frame). */
-	virtual bool Fire() override;	// BODY: (e)
+	virtual bool Fire() override;	// BODY: (u)
 
 	/** Moves the cart; lands on the frame it reaches the crash point (it tips over that frame). */
-	virtual void StepDevice(float DeltaSeconds) override;	// BODY: (e)
+	virtual void StepDevice(float DeltaSeconds) override;	// BODY: (u)
 
 	/** The crash point in world space (actor transform of CrashOffset). */
-	virtual FVector GetEffectPoint() const override;	// BODY: (e)
+	virtual FVector GetEffectPoint() const override;	// BODY: (u)
 
 	/** Crash point relative to the door (the actor), cm. A widget in the editor. */
 	UPROPERTY(EditAnywhere, Category = "Take|Cart", meta = (MakeEditWidget = true))

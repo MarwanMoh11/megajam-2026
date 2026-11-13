@@ -37,7 +37,11 @@ struct FTakeShapes
 	static UMaterialInterface* GetMaterial();
 
 	/** Configures an existing mesh component as a shape: mesh, BasicShapeMaterial, no collision, no overlaps,
-	 *  never affects navigation, shadow casting as asked. Works on UInstancedStaticMeshComponent too. */
+	 *  never affects navigation, shadow casting as asked. Works on UInstancedStaticMeshComponent too.
+	 *  Collision rule (Nov 13 rework): every take prop that is not a wall or the floor (watcher bodies and frames,
+	 *  the beam, tape, marks, rings, device bodies, the cart, the banner matte, the lamp's beam) is built here, so it
+	 *  ignores the Pawn and Camera channels: nothing blocks walking or shoves a follow camera. Keep it NoCollision;
+	 *  walls and floor come from the map script with their own collision. */
 	static void SetupShape(UStaticMeshComponent* Comp, ETakeShape Shape, bool bCastShadow = true);
 
 	/** CONSTRUCTOR ONLY: creates a default-subobject shape attached to Parent with the given relative transform. */

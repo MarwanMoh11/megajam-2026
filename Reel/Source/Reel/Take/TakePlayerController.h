@@ -1,4 +1,4 @@
-// The player is the director: a pointer on every camera, keys 1/2/3 to cut, left click, R, ESC. Owner: (b).
+// The player: on one character at a time (WASD, mouse-look, Use), keys 1/2/3 switch with a flight. Owner: (s).
 
 #pragma once
 
@@ -7,15 +7,24 @@
 #include "TakeTypes.h"
 #include "TakePlayerController.generated.h"
 
-class ATakeCamera;
+class ACameraActor;
+class ATakeCharacter;
 
 /**
- * Input: legacy key bindings made in C++ (UInputComponent::BindKey exists in 5.9 and is processed by
- * UEnhancedPlayerInput through Super::EvaluateInputComponentDelegates), so no input assets are needed:
- *   One/Two/Three -> QueueCut(A/B/C), LeftMouseButton -> QueueClickAt(pointer), R -> NewTake press, Escape -> quit.
+ * No pawn is possessed (ATakeGameMode has no default pawn). The controller feeds the character it is on (Current)
+ * directly: walking and looking every frame in PlayerTick, presses through the queue.
+ *
+ * Input: legacy key bindings made in C++ (UInputComponent::BindKey, processed by UEnhancedPlayerInput through
+ * Super::EvaluateInputComponentDelegates), so no input assets are needed:
+ *   One/Two/Three -> QueueCut(A/B/C); E and LeftMouseButton -> QueueUse; R -> NewTake press; Escape -> quit.
+ *   W/A/S/D are read with IsInputKeyDown and the mouse with GetInputMouseDelta in PlayerTick (not queued: they are
+ *   continuous, not presses).
  * Presses are only queued here (input runs in this controller's tick, TG_PrePhysics); ATakeDirector ticks after
- * this controller and consumes the queue in the same frame. Exec test commands go through the same queue.
- * The mouse pointer is always shown and never captured. No pawn is possessed.
+ * this controller and every character's movement component, and consumes the queue in the same frame. Exec test
+ * commands that are presses (TakeCut, TakeUse, TakeNewTake) go through the same queue.
+ *
+ * The view: the view target is always either Current (its follow camera, found through
+ * bFindCameraComponentWhenViewTarget) or FlightCamera during a flight. bAutoManageActiveCameraTarget = false.
  */
 UCLASS()
 class REEL_API ATakePlayerController : public APlayerController
@@ -25,93 +34,199 @@ class REEL_API ATakePlayerController : public APlayerController
 public:
 	ATakePlayerController();
 
-	/** Cursor shown, input mode game-and-UI with the cursor never hidden or locked. */
-	virtual void BeginPlay() override;	// BODY: (b)
+	/** Local only: input mode game-only (FInputModeGameOnly), cursor hidden (SetShowMouseCursor(false)), focus to the
+	 *  game viewport; spawns FlightCamera (an ACameraActor, bConstrainAspectRatio false). */
+	virtual void BeginPlay() override;	// BODY: (s)
 
-	/** Binds One, Two, Three, LeftMouseButton, R and Escape with InputComponent->BindKey (IE_Pressed). */
-	virtual void SetupInputComponent() override;	// BODY: (b)
+	/** Binds One, Two, Three, E, LeftMouseButton, R and Escape with InputComponent->BindKey (IE_Pressed). */
+	virtual void SetupInputComponent() override;	// BODY: (s)
 
-	/** Every frame: traces under the pointer (TraceClickable) and moves the hover highlight (ITakeClickable::
-	 *  SetHovered false on the old target, true on the new) on this frame. */
-	virtual void PlayerTick(float DeltaTime) override;	// BODY: (b)
+	/**
+	 * Super first (the bindings fire in there and only queue presses). Then, when Current is set and !IsInFlight():
+	 *  - walk: Axes = (W - S, D - A) from IsInputKeyDown; non-zero -> Current->Move(Axes) and cancel any test walk;
+	 *  - look: GetInputMouseDelta(DX, DY) -> Current->AddLook(DX * LookSensitivity, DY * LookSensitivity * (bInvertLookY
+	 *    ? -1 : 1)) (mouse up looks up);
+	 *  - then the test walk, if one is active: within WalkToTolerance (2D, feet) of WalkToPoint -> stop and TAKE_LOG
+	 *    ("WALKTO arrived x y"); else Current->MoveToward(WalkToPoint).
+	 * The movement component ticks after this controller, so the move happens this frame.
+	 */
+	virtual void PlayerTick(float DeltaTime) override;	// BODY: (s)
 
 	// --- the press queue ------------------------------------------------------------------------------------------
 
-	/** Appends a press (stamps Frame = GFrameCounter) and TAKE_LOGs it ("PRESS cut B (key)"). */
-	void QueuePress(const FTakePress& Press);	// BODY: (b)
+	/** Appends a press (stamps Frame = GFrameCounter) and TAKE_LOGs it ("PRESS cut B (key)", "PRESS use (mouse)",
+	 *  "PRESS new take (key)"). */
+	void QueuePress(const FTakePress& Press);	// BODY: (s)
 
 	/** Moves every queued press into Out (oldest first) and empties the queue. Called by the director in step 2. */
-	void TakePresses(TArray<FTakePress>& Out);	// BODY: (b)
+	void TakePresses(TArray<FTakePress>& Out);	// BODY: (s)
 
-	// --- the view -------------------------------------------------------------------------------------------------
+	// --- the character and the view -------------------------------------------------------------------------------
 
-	/** Hard cut: SetViewTarget(Camera) with no blend. The camera manager updates after TG_PostPhysics, so a call from
-	 *  the director's tick renders this frame. Logs "VIEW -> <camera>". Null does nothing. */
-	void CutTo(ATakeCamera* Camera);	// BODY: (b)
+	/** The character the player is on (null before the director's first SnapTo). During a flight it is still the
+	 *  OLD character; it becomes the new one on the flight's last frame. */
+	ATakeCharacter* GetCurrentCharacter() const { return Current; }
 
-	/** The take camera currently viewed (null before the first cut). */
-	ATakeCamera* GetViewCamera() const;	// BODY: (b)
+	/** No flight (the take's start, called by ATakeDirector::EnsurePlayerController with Julian): cancels any flight
+	 *  and test walk, Current = To, SetViewTarget(To) with no blend (this frame), TAKE_LOG("VIEW -> A (snap)").
+	 *  Null does nothing. */
+	void SnapTo(ATakeCharacter* To);	// BODY: (s)
 
-	// --- the pointer ----------------------------------------------------------------------------------------------
+	/**
+	 * The switch (GTA V's is the reference). Called by the director in step 2 on a valid cut press (never during a
+	 * flight, never to Current). On this frame: FlightTo = To, FlightElapsed = 0, the start view = Current's follow
+	 * view (GetFollowView), FlightCamera placed there with its FOV, SetViewTarget(FlightCamera) with no blend, the
+	 * test walk cancelled, TAKE_LOG("FLIGHT A -> B"). WASD and look are ignored until it lands.
+	 */
+	void StartFlight(ATakeCharacter* To);	// BODY: (s)
 
-	/** Traces ECC_Visibility from viewport pixel ScreenPos through every clickable actor under the pointer (up to 8,
-	 *  stopping at a wall or the floor) and picks the one the current camera acts on: on A the nearest mark, on B
-	 *  and C the nearest device or watcher, otherwise the nearest clickable. True with that actor in OutActor;
-	 *  OutHit holds its hit. */
-	bool TraceClickable(const FVector2D& ScreenPos, AActor*& OutActor, FHitResult& OutHit) const;	// BODY: (b)
+	/**
+	 * Called by the director every frame at the very start of step 2 (before the presses), in a flight or not (does
+	 * nothing when not). Advances FlightElapsed by Dt and places FlightCamera on this frame's point of the path:
+	 *  1 rise (the first FlightRiseShare of FlightSeconds): from the start view up to FlightHeight straight above the
+	 *    old character, looking straight down (pitch -90), in FlightSteps stepped zooms (each step a quick ease, then
+	 *    a short hold, like a jump cut outward);
+	 *  2 pan (the next FlightPanShare): at FlightHeight, from above the old character to above the new one, smooth
+	 *    ease in-out, still looking down;
+	 *  3 drop (the rest): FlightSteps stepped zooms down into the new character's follow view (location, rotation
+	 *    and FOV read from FlightTo->GetFollowView each frame).
+	 * On the frame FlightElapsed reaches FlightSeconds: Current = FlightTo, FlightTo = null, SetViewTarget(Current)
+	 * with no blend, TAKE_LOG("VIEW -> B").
+	 */
+	void StepFlight(float Dt);	// BODY: (s)
 
-	/** The clickable actor under the pointer this frame (null if none). */
-	AActor* GetHoverTarget() const;	// BODY: (b)
+	/** A flight is running (FlightTo is set). */
+	bool IsInFlight() const { return FlightTo != nullptr; }
+
+	/** Where the running flight lands (the HUD's "CUT -> MAYA"); null when not in a flight. */
+	ATakeCharacter* GetFlightTarget() const { return FlightTo; }
+
+	/** 0..1 through the running flight (FlightElapsed / FlightSeconds); 0 when not in a flight. */
+	float GetFlightAlpha() const;	// BODY: (s)
 
 	// --- exec test commands (console, or unreal.SystemLibrary.execute_console_command in PIE) ----------------------
 
-	/** "TakeCut A" / "TakeCut 2": queues a cut exactly like the key. */
+	/** "TakeCut B" / "TakeCut 2": queues a cut exactly like the key. */
 	UFUNCTION(Exec)
-	void TakeCut(const FString& Camera);	// BODY: (b)
+	void TakeCut(const FString& Camera);	// BODY: (s)
 
-	/** "TakeClick Mark_Rope": queues a click on the actor whose name or editor label matches (label only WITH_EDITOR),
-	 *  as if the pointer were on it. Unknown name: logs and queues nothing. */
+	/** "TakeUse": queues a Use press exactly like E. */
 	UFUNCTION(Exec)
-	void TakeClick(const FString& ActorNameOrLabel);	// BODY: (b)
+	void TakeUse();	// BODY: (s)
 
-	/** "TakeClickAt 640 360": queues a click at that viewport pixel (traced like the mouse). */
+	/** "TakeAim GUARD": not a press, acts at once. Finds the actor whose DeviceName, watcher Label, MarkName, object
+	 *  name or editor label (WITH_EDITOR) matches (case-insensitive, in that order) and SetLooks Current so the
+	 *  follow camera faces it: yaw and pitch of (target - Current->GetAimOrigin()), the target being a watcher's
+	 *  GetAimPoint(), else the actor's bounds centre (GetActorBounds). The boom swings with the look, so repeat the
+	 *  solve 3 times from the new origin (the boom's lag: set it with the boom snapped, or accept ~1 deg).
+	 *  TAKE_LOG("AIM <name> yaw p").
+	 *  Unknown name or no Current: logs and does nothing. */
 	UFUNCTION(Exec)
-	void TakeClickAt(float X, float Y);	// BODY: (b)
+	void TakeAim(const FString& ActorNameOrLabel);	// BODY: (s)
+
+	/** "TakeLook 90 -10": Current->SetLook(Yaw, Pitch) at once. TAKE_LOG("LOOK yaw pitch"). */
+	UFUNCTION(Exec)
+	void TakeLook(float Yaw, float Pitch);	// BODY: (s)
+
+	/** "TakeWalkTo 120 -340": Current walks straight at (X, Y) with MoveToward every PlayerTick until its feet are
+	 *  within WalkToTolerance (2D). Cancelled by WASD input, a flight (StartFlight / SnapTo) or TakeStop.
+	 *  TAKE_LOG("WALKTO x y"). */
+	UFUNCTION(Exec)
+	void TakeWalkTo(float X, float Y);	// BODY: (s)
+
+	/** "TakeStop": cancels the test walk (TAKE_LOG("WALKTO stopped")). */
+	UFUNCTION(Exec)
+	void TakeStop();	// BODY: (s)
 
 	/** "TakeNewTake": queues R. */
 	UFUNCTION(Exec)
-	void TakeNewTake();	// BODY: (b)
+	void TakeNewTake();	// BODY: (s)
 
-	/** "TakeDump": one TAKE_LOG line: phase, camera, shot, composure and label, Julian's position, cued mark and beats
-	 *  to arrival, each watcher's label/state/tally, each device's uses left / busy time. */
+	/** "TakeDump": one TAKE_LOG line: phase, current character and flight, composure and label, every character's
+	 *  feet / look / standing, Julian's standing mark, the use target and prompt, each watcher's label/state/tally,
+	 *  each device's uses left / busy time / in reach. */
 	UFUNCTION(Exec)
-	void TakeDump();	// BODY: (b)
+	void TakeDump();	// BODY: (s)
 
 	/** "TakeShot name": FScreenshotRequest::RequestScreenshot(name, bShowUI = true, no suffix), so the HUD is in the
 	 *  PNG (Saved/Screenshots/...). Logs the path. */
 	UFUNCTION(Exec)
-	void TakeShot(const FString& Name);	// BODY: (b)
+	void TakeShot(const FString& Name);	// BODY: (s)
 
-	/** How far the pointer trace reaches, cm. */
-	UPROPERTY(EditAnywhere, Category = "Take|Pointer")
-	float ClickTraceDistance = 100000.f;
+	// --- tunables ---------------------------------------------------------------------------------------------------
+
+	/** The whole flight, s (under 2 s: STATUS.md). */
+	UPROPERTY(EditAnywhere, Category = "Take|Flight")
+	float FlightSeconds = 1.6f;
+
+	/** The flight's top height above the higher of the two characters, cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Flight")
+	float FlightHeight = 3500.f;
+
+	/** Stepped zooms on the way up, and again on the way down. */
+	UPROPERTY(EditAnywhere, Category = "Take|Flight")
+	int32 FlightSteps = 3;
+
+	/** Share of FlightSeconds spent rising (0..1). */
+	UPROPERTY(EditAnywhere, Category = "Take|Flight", meta = (ClampMin = "0", ClampMax = "1"))
+	float FlightRiseShare = 0.35f;
+
+	/** Share of FlightSeconds spent panning across at the top (0..1); the drop takes what is left. */
+	UPROPERTY(EditAnywhere, Category = "Take|Flight", meta = (ClampMin = "0", ClampMax = "1"))
+	float FlightPanShare = 0.3f;
+
+	/** Degrees of look per unit of mouse delta. */
+	UPROPERTY(EditAnywhere, Category = "Take|Look")
+	float LookSensitivity = 0.15f;
+
+	/** Mouse up looks down. */
+	UPROPERTY(EditAnywhere, Category = "Take|Look")
+	bool bInvertLookY = false;
+
+	/** TakeWalkTo stops this close to its point (2D, feet), cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Test")
+	float WalkToTolerance = 10.f;
+
+	/** The camera the flight flies (spawned in BeginPlay). */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|Flight")
+	TObjectPtr<ACameraActor> FlightCamera;
 
 protected:
-	void OnKeyOne();	// BODY: (b)
-	void OnKeyTwo();	// BODY: (b)
-	void OnKeyThree();	// BODY: (b)
-	void OnLeftClick();	// BODY: (b)
-	void OnKeyR();	// BODY: (b)
-	void OnEscape();	// BODY: (b)
+	void OnKeyOne();	// BODY: (s)
+	void OnKeyTwo();	// BODY: (s)
+	void OnKeyThree();	// BODY: (s)
+
+	/** E or the left mouse button: QueueUse. */
+	void OnUse();	// BODY: (s)
+	void OnKeyR();	// BODY: (s)
+	void OnEscape();	// BODY: (s)
 
 	/** Builds and queues a Cut press. */
-	void QueueCut(ETakeCamera Camera, const TCHAR* Source);	// BODY: (b)
+	void QueueCut(ETakeCamera Camera, const TCHAR* Source);	// BODY: (s)
 
-	/** Traces at ScreenPos and queues a Click press with the clickable actor (or none). */
-	void QueueClickAt(const FVector2D& ScreenPos, const TCHAR* Source);	// BODY: (b)
+	/** Builds and queues a Use press. */
+	void QueueUse(const TCHAR* Source);	// BODY: (s)
 
 	UPROPERTY(Transient)
 	TArray<FTakePress> PendingPresses;
 
-	TWeakObjectPtr<AActor> HoverTarget;
+	/** The character the player is on. */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	TObjectPtr<ATakeCharacter> Current;
+
+	/** The running flight's destination (null = no flight). */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	TObjectPtr<ATakeCharacter> FlightTo;
+
+	/** Seconds into the running flight. */
+	float FlightElapsed = 0.f;
+
+	/** The view the flight started from (Current's follow view on the StartFlight frame). */
+	FVector FlightStartLocation = FVector::ZeroVector;
+	FRotator FlightStartRotation = FRotator::ZeroRotator;
+	float FlightStartFOV = 90.f;
+
+	/** The test walk (TakeWalkTo). */
+	bool bWalkTo = false;
+	FVector WalkToPoint = FVector::ZeroVector;
 };

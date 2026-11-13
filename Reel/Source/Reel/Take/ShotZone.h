@@ -1,3 +1,4 @@
+// NO LONGER USED since the Nov 13 rework (follow cameras and flights): left in place, unreferenced.
 // A zone that names one camera-A shot: while Julian is inside, that is camera A's current shot (the film's own
 // cut, not the player's). Owner: (b).
 

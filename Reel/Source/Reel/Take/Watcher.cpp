@@ -191,3 +191,9 @@ void AWatcher::ApplyFrameScale()
 		FramePivot->SetRelativeScale3D(FVector::OneVector);
 	}
 }
+
+FVector AWatcher::GetAimPoint() const
+{
+	// BODY: (d) (the beam overrides it)
+	return GetActorLocation() + FVector(0.f, 0.f, AimHeight);
+}

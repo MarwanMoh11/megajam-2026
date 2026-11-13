@@ -1,4 +1,4 @@
-// Owner: (e). Constructor by the header pass; every "// BODY: (e)" is a stub to fill.
+// Owner: (u). Constructor by the header pass; every "// BODY: (u)" is a stub to fill.
 
 #include "BannerDevice.h"
 
@@ -10,6 +10,7 @@
 ABannerDevice::ABannerDevice()
 {
 	DeviceName = TEXT("BANNER");
+	UseVerb = TEXT("Drop the banner");
 	Effect = EDeviceEffect::Mask;
 	Range = 600.f;
 	Duration = 10.f;

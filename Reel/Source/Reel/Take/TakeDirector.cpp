@@ -1,4 +1,4 @@
-// ATakeDirector core: gathering, the tick order, the late tick, flashes. Owner: header pass (complete).
+// ATakeDirector core: gathering, the tick order, the late tick, flashes. Owner: (d) (written by the header passes).
 // The step functions live in the slice files named in TakeDirector.h.
 
 #include "TakeDirector.h"
@@ -8,11 +8,11 @@
 #include "Device.h"
 #include "EngineUtils.h"
 #include "FollowSpot.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Julian.h"
 #include "Mark.h"
 #include "RedTapeZone.h"
-#include "ShotZone.h"
-#include "TakeCamera.h"
+#include "TakeCharacter.h"
 #include "TakeGameInstance.h"
 #include "TakePlayerController.h"
 #include "Watcher.h"
@@ -142,32 +142,24 @@ void ATakeDirector::BeginPlay()
 		LastBlooperReason = GI->LastBlooperReason;
 	}
 
-	// Camera A's first angle: the bInitialShot camera, else the first camera-A shot found.
-	CurrentShotA = nullptr;
-	for (ATakeCamera* Camera : Cameras)
+	// The rules run after every character has moved this frame.
+	for (ATakeCharacter* Character : Characters)
 	{
-		if (!Camera || Camera->CameraId != ETakeCamera::A)
+		if (Character && Character->GetCharacterMovement())
 		{
-			continue;
-		}
-		if (Camera->bInitialShot)
-		{
-			CurrentShotA = Camera;
-			break;
-		}
-		if (!CurrentShotA)
-		{
-			CurrentShotA = Camera;
+			AddTickPrerequisiteComponent(Character->GetCharacterMovement());
 		}
 	}
 	CurrentCamera = ETakeCamera::A;
+	CurrentUse = FTakeUseTarget();
+	JulianFeetBeforeWalk = Julian ? Julian->GetFeetLocation() : FVector::ZeroVector;
 
 	EnsurePlayerController();
 
 	const UTakeGameInstance* GI = GetTakeGameInstance();
-	TAKE_LOG(TEXT("ROLLING take %d: julian=%s marks=%d watchers=%d devices=%d tape=%d shotzones=%d cameras=%d shotA=%s"),
-		GI ? GI->TakeNumber : 1, Julian ? TEXT("yes") : TEXT("NO"), Marks.Num(), Watchers.Num(), Devices.Num(),
-		TapeZones.Num(), ShotZones.Num(), Cameras.Num(), CurrentShotA ? *CurrentShotA->GetName() : TEXT("NONE"));
+	TAKE_LOG(TEXT("ROLLING take %d: julian=%s characters=%d marks=%d watchers=%d devices=%d tape=%d"),
+		GI ? GI->TakeNumber : 1, Julian ? TEXT("yes") : TEXT("NO"), Characters.Num(), Marks.Num(), Watchers.Num(),
+		Devices.Num(), TapeZones.Num());
 
 	Flash(TEXT("ACTION!"), TakeColors::White, 1.5f);
 	if (UTakeGameInstance* MutableGI = GetTakeGameInstance())
@@ -188,19 +180,22 @@ void ATakeDirector::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void ATakeDirector::GatherActors()
 {
 	UWorld* World = GetWorld();
+	Characters.Reset();
 	Julian = nullptr;
 	Marks.Reset();
 	Watchers.Reset();
 	Devices.Reset();
 	FollowSpot = nullptr;
 	TapeZones.Reset();
-	ShotZones.Reset();
-	Cameras.Reset();
 	if (!World)
 	{
 		return;
 	}
 
+	for (TActorIterator<ATakeCharacter> It(World); It; ++It)
+	{
+		Characters.Add(*It);
+	}
 	for (TActorIterator<AJulian> It(World); It; ++It)
 	{
 		if (!Julian)
@@ -228,14 +223,6 @@ void ATakeDirector::GatherActors()
 	{
 		TapeZones.Add(*It);
 	}
-	for (TActorIterator<AShotZone> It(World); It; ++It)
-	{
-		ShotZones.Add(*It);
-	}
-	for (TActorIterator<ATakeCamera> It(World); It; ++It)
-	{
-		Cameras.Add(*It);
-	}
 }
 
 void ATakeDirector::EnsurePlayerController()
@@ -247,20 +234,32 @@ void ATakeDirector::EnsurePlayerController()
 			PC = Cast<ATakePlayerController>(World->GetFirstPlayerController());
 			if (PC)
 			{
+				// Input first, then every character and its movement, then the rules.
 				AddTickPrerequisiteActor(PC);
+				for (ATakeCharacter* Character : Characters)
+				{
+					if (Character)
+					{
+						Character->AddTickPrerequisiteActor(PC);
+						if (UCharacterMovementComponent* Move = Character->GetCharacterMovement())
+						{
+							Move->AddTickPrerequisiteActor(PC);
+						}
+					}
+				}
 			}
 		}
 	}
 	if (PC && !bInitialViewSet)
 	{
 		bInitialViewSet = true;
-		if (ATakeCamera* First = FindCamera(ETakeCamera::A))
+		if (Julian)
 		{
-			PC->CutTo(First);
+			PC->SnapTo(Julian);
 		}
 		else
 		{
-			TAKE_LOG(TEXT("WARNING: no camera A in the level"));
+			TAKE_LOG(TEXT("WARNING: no Julian in the level"));
 		}
 	}
 }
@@ -302,7 +301,16 @@ void ATakeDirector::Tick(float DeltaSeconds)
 		Clock->Advance(DeltaSeconds);
 	}
 
-	// 2. Presses: cuts first, then clicks.
+	// 2. The flight, the use target, then presses: cuts first, then uses.
+	if (PC)
+	{
+		PC->StepFlight(DeltaSeconds);
+		if (const ATakeCharacter* OnCharacter = PC->GetCurrentCharacter())
+		{
+			CurrentCamera = OnCharacter->Id;
+		}
+	}
+	StepUse();
 	StepPresses();
 	if (Phase == ETakePhase::BlooperFreeze || bReloadRequested)
 	{
@@ -312,13 +320,11 @@ void ATakeDirector::Tick(float DeltaSeconds)
 	// 3. Devices.
 	StepDevices(DeltaSeconds);
 
-	// 4. Julian's cued walk, the film's own cut, then the watchers and their sight tests.
+	// 4. Julian's marks (he has already walked this frame), then the watchers and their sight tests.
 	if (Julian)
 	{
-		JulianFeetBeforeWalk = Julian->GetFeetLocation();
-		Julian->StepWalk(DeltaSeconds);
+		Julian->StepMarks();
 	}
-	StepShotList();
 	bJulianExposed = IsJulianExposed();
 	for (AWatcher* Watcher : Watchers)
 	{
@@ -334,6 +340,12 @@ void ATakeDirector::Tick(float DeltaSeconds)
 
 	// 6. The scene.
 	StepScene(DeltaSeconds);
+
+	// For next frame's swept beam test.
+	if (Julian)
+	{
+		JulianFeetBeforeWalk = Julian->GetFeetLocation();
+	}
 }
 
 void ATakeDirector::LateTick(float DeltaSeconds)
@@ -386,17 +398,13 @@ void ATakeDirector::StepFlashes(float DeltaSeconds)
 	}
 }
 
-ATakeCamera* ATakeDirector::FindCamera(ETakeCamera Id) const
+ATakeCharacter* ATakeDirector::GetCharacter(ETakeCamera Id) const
 {
-	if (Id == ETakeCamera::A && CurrentShotA)
+	for (ATakeCharacter* Character : Characters)
 	{
-		return CurrentShotA;
-	}
-	for (ATakeCamera* Camera : Cameras)
-	{
-		if (Camera && Camera->CameraId == Id)
+		if (Character && Character->Id == Id)
 		{
-			return Camera;
+			return Character;
 		}
 	}
 	return nullptr;

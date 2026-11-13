@@ -1,4 +1,4 @@
-// Owner: (a). Constructor by the header pass; bodies by (a).
+// Owner: (u). Constructor by the header pass; bodies by (u).
 
 #include "TakeHUD.h"
 
@@ -146,21 +146,7 @@ void ATakeHUD::DrawHUD()
 		}
 	}
 
-	// --- The count at Julian's cued mark (every camera) ------------------------------------------------------------
-	AJulian* Jul = Dir->Julian;
-	if (Jul && BarClock && Jul->IsWalking())
-	{
-		if (AMark* Cued = Jul->GetCuedMark())
-		{
-			const FVector Proj = Project(Cued->GetStandPoint() + FVector(0.f, 0.f, 40.f));
-			if (Proj.Z > 0.f)
-			{
-				const int32 Beats = FMath::Max(0, FMath::CeilToInt(Jul->GetBeatsToArrival(BarClock->GetSecondsPerBeat())));
-				DrawShadowedText(FString::Printf(TEXT("in %d"), Beats), TakeColors::GoldBright, Proj.X, Proj.Y - LineH,
-					Ui * 1.2f, true);
-			}
-		}
-	}
+	// BODY: (u) the reticle, the use prompt, the crew strip and the flight's "CUT -> MAYA" (see TakeHUD.h)
 
 	// --- Labels on set (B and C only) ------------------------------------------------------------------------------
 	if (!bOnA)
@@ -199,13 +185,8 @@ void ATakeHUD::DrawHUD()
 	}
 
 	// --- How-to-play line (bottom of the bottom band) --------------------------------------------------------------
-	const TCHAR* HowTo = bOnA
-		? TEXT("Click a gold mark to cue Julian   [2] Maya")
-		: (Cam == ETakeCamera::B
-			? TEXT("Click a device to fire, a watcher to spot him   [1] Julian")
-			: TEXT("Click a device to fire   [1] Julian   [2] Maya"));
 	const float HowToY = ScreenH - Margin - LineH;
-	DrawShadowedText(HowTo, TakeColors::Grey, ScreenW * 0.5f, HowToY, Ui * 0.9f, true);
+	DrawShadowedText(ControlsHint, TakeColors::Grey, ScreenW * 0.5f, HowToY, Ui * 0.9f, true);
 
 	// --- Flash lines: centred low, newest at the bottom, just above the bottom band ---------------------------------
 	{

@@ -7,6 +7,8 @@
 #include "TakeTypes.generated.h"
 
 class AActor;
+class ADevice;
+class AWatcher;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTake, Log, All);
 
@@ -75,8 +77,8 @@ enum class ETakeClickKind : uint8
 UENUM(BlueprintType)
 enum class ETakePressType : uint8
 {
-	Cut,		// keys 1/2/3 or TakeCut
-	Click,		// left click, TakeClick or TakeClickAt
+	Cut,		// keys 1/2/3 or TakeCut: switch to Julian / Maya / Vex (a flight)
+	Use,		// E, left mouse button or TakeUse: fire the device in reach (the director's CurrentUse)
 	NewTake		// R or TakeNewTake
 };
 
@@ -102,23 +104,11 @@ struct FTakePress
 	GENERATED_BODY()
 
 	UPROPERTY()
-	ETakePressType Type = ETakePressType::Click;
+	ETakePressType Type = ETakePressType::Cut;
 
-	/** Cut: the camera to cut to. */
+	/** Cut: the character (= camera id) to switch to. */
 	UPROPERTY()
 	ETakeCamera Camera = ETakeCamera::A;
-
-	/** Click: the clickable actor under the pointer when the press happened (null = nothing clickable). */
-	UPROPERTY()
-	TWeakObjectPtr<AActor> Target;
-
-	/** Click: where the trace hit (zero if nothing was hit). */
-	UPROPERTY()
-	FVector HitLocation = FVector::ZeroVector;
-
-	/** Click: the pointer position in viewport pixels. */
-	UPROPERTY()
-	FVector2D ScreenPos = FVector2D::ZeroVector;
 
 	/** "key", "mouse" or "exec": for the log. */
 	UPROPERTY()
@@ -126,6 +116,33 @@ struct FTakePress
 
 	/** GFrameCounter when queued (for the log). */
 	uint64 Frame = 0;
+};
+
+/**
+ * What a Use press would do right now for one character: ATakeDirector::FindUseTarget fills it, the director keeps
+ * this frame's result in CurrentUse (the HUD's prompt line, the device ring and watcher highlights, the Use press).
+ * All empty (Device null, Prompt empty, bCanFire false) = nothing in reach.
+ */
+USTRUCT(BlueprintType)
+struct FTakeUseTarget
+{
+	GENERATED_BODY()
+
+	/** The device in reach (null = none). */
+	UPROPERTY()
+	TObjectPtr<ADevice> Device = nullptr;
+
+	/** The follow spot only: the watcher the aim assist picked (null = none picked). */
+	UPROPERTY()
+	TObjectPtr<AWatcher> Watcher = nullptr;
+
+	/** The HUD's prompt line: "[E] Release the cart", "CART - used", "Look at a watcher". Empty = draw nothing. */
+	UPROPERTY()
+	FString Prompt;
+
+	/** A Use press now would fire (false: the press flashes Prompt instead). */
+	UPROPERTY()
+	bool bCanFire = false;
 };
 
 /** Shared colours (linear). Used for BasicShapeMaterial's "Color" parameter and for the HUD. */

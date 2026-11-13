@@ -1,8 +1,9 @@
-// Owner: (e). Constructor by the header pass; every "// BODY: (e)" is a stub to fill.
+// Owner: (u). Constructor by the header pass; every "// BODY: (u)" is a stub to fill.
 
 #include "Device.h"
 
 #include "Components/BoxComponent.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "CoreGlobals.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -20,6 +21,33 @@ ADevice::ADevice()
 	Body = FTakeShapes::CreateShape(this, TEXT("Body"), ETakeShape::Cube, Root, FVector(0.f, 0.f, 50.f), FVector::OneVector);
 
 	ClickVolume = FTakeShapes::CreateClickVolume(this, TEXT("ClickVolume"), Root, FVector(80.f, 80.f, 100.f), FVector(0.f, 0.f, 100.f));
+
+	// The use ring (dashes laid out by LayOutUseRing). Collision: NoCollision, like every take shape.
+	UseRing = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("UseRing"));
+	UseRing->SetupAttachment(Root);
+	UseRing->SetUsingAbsoluteRotation(true);
+	FTakeShapes::SetupShape(UseRing, ETakeShape::Cube, false);
+}
+
+void ADevice::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+	// BODY: (u)
+}
+
+FVector ADevice::GetUsePoint() const
+{
+	return GetActorTransform().TransformPosition(UseOffset);
+}
+
+void ADevice::SetInReach(bool bInReach)
+{
+	// BODY: (u)
+}
+
+void ADevice::LayOutUseRing()
+{
+	// BODY: (u)
 }
 
 void ADevice::BeginPlay()
