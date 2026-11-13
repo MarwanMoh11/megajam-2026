@@ -27,6 +27,9 @@ public:
 	/** Colours the body white and the path dots gold; snaps him onto the navmesh if he is slightly off it. */
 	virtual void BeginPlay() override;	// BODY: (c)
 
+	/** Same look as BeginPlay, in the editor (OnConstruction does not rerun for placed actors in play). */
+	virtual void OnConstruction(const FTransform& Transform) override;
+
 	/**
 	 * Step 2 (from ATakeDirector::HandleClick, camera A only). Finds the navmesh path from his feet to the mark's
 	 * stand point synchronously (UNavigationSystemV1::FindPathToLocationSynchronously). No path: returns false and
@@ -85,6 +88,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Julian")
 	float ArriveTolerance = 5.f;
 
+	/** Half-size of the box used to project his feet and the mark onto the navmesh, cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Julian")
+	FVector NavProjectExtent = FVector(150.f, 150.f, 300.f);
+
 	UPROPERTY(VisibleAnywhere, Category = "Take")
 	TObjectPtr<UCapsuleComponent> Capsule;
 
@@ -118,4 +125,21 @@ protected:
 
 	UPROPERTY(Transient)
 	TObjectPtr<AMark> StandingMark;
+
+private:
+	/** Colours body, head, nose and path dots (BeginPlay and OnConstruction). */
+	void ApplyLook();
+
+	/** Lays the dots along the whole new path (after a cue): DotTransforms, DotDistances, WalkedDistance = 0. */
+	void LayOutDots();
+
+	/** Every dot of the current cue, world space, and how far along the path each sits, cm. */
+	TArray<FTransform> DotTransforms;
+	TArray<float> DotDistances;
+
+	/** First dot not yet passed; dots before it are trimmed. */
+	int32 FirstDotIndex = 0;
+
+	/** Distance walked since the cue, cm. */
+	float WalkedDistance = 0.f;
 };

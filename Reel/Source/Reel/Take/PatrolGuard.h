@@ -87,4 +87,8 @@ protected:
 	EGuardLurePhase LurePhase = EGuardLurePhase::None;
 	FVector LureStart = FVector::ZeroVector;
 	float LureTime = 0.f;
+
+private:
+	/** Sizes the wedge from FrameRange / FrameHalfAngle and colours the wedge, body and cap (OnConstruction and BeginPlay). */
+	void LayoutGuard();
 };

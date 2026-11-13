@@ -8,10 +8,17 @@ UTakeGameInstance::UTakeGameInstance()
 
 void UTakeGameInstance::NoteBlooper(EBlooperReason Reason)
 {
-	// BODY: (e)
+	++BlooperCount;
+	LastBlooperReason = Reason;
+	bReloadingFromBlooper = true;
+	TAKE_LOG(TEXT("GI BLOOPER %d: %s, take %d, again from %s"), BlooperCount, TakeText::BlooperReasonName(Reason), TakeNumber, *CheckpointName);
 }
 
 void UTakeGameInstance::NoteNewTake()
 {
-	// BODY: (e)
+	++TakeNumber;
+	CheckpointName = TEXT("THE START");
+	CheckpointBar = 1;
+	bReloadingFromBlooper = false;
+	TAKE_LOG(TEXT("GI NEW TAKE %d (bloopers so far %d)"), TakeNumber, BlooperCount);
 }

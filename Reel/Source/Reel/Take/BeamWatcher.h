@@ -84,4 +84,8 @@ public:
 protected:
 	bool bDropped = false;
 	bool bBeforeLive = false;
+
+private:
+	/** Places post B, the line (FramePivot at the beam's midpoint) and the click volume; colours them (OnConstruction and BeginPlay). */
+	void LayoutBeam();
 };

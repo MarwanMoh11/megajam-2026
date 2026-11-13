@@ -8,6 +8,19 @@
 #include "TakeShapes.h"
 #include "TakeTypes.h"
 
+namespace TakeMarkSliceC
+{
+	// The disc's constructor scale (80 cm across, 2 cm thick) and how much it grows on hover.
+	constexpr float DiscScaleXY = 0.8f;
+	constexpr float DiscScaleZ = 0.02f;
+	constexpr float HoverGrow = 1.15f;
+
+	// One ring dot: a 14 x 7 cm dash, 3 cm tall, its top just above the disc.
+	const FVector RingDotScale(0.14f, 0.07f, 0.03f);
+	constexpr float RingDotZ = 2.5f;
+	constexpr int32 MaxRingDots = 256;
+}
+
 AMark::AMark()
 {
 	PrimaryActorTick.bCanEverTick = false;
@@ -34,29 +47,82 @@ AMark::AMark()
 	ClickVolume = FTakeShapes::CreateClickVolume(this, TEXT("ClickVolume"), Root, FVector(70.f, 70.f, 40.f), FVector(0.f, 0.f, 40.f));
 }
 
+void AMark::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+	LayOutRing();
+	ApplyLook();
+}
+
 void AMark::BeginPlay()
 {
 	Super::BeginPlay();
-	// BODY: (c)
+	bIsCued = false;
+	bIsOccupied = false;
+	bIsHovered = false;
+	LayOutRing();
+	ApplyLook();
 }
 
 void AMark::SetHovered(bool bHovered)
 {
-	// BODY: (c)
+	bIsHovered = bHovered;
+	ApplyLook();
 }
 
 void AMark::SetCued(bool bCued)
 {
-	// BODY: (c)
+	bIsCued = bCued;
+	ApplyLook();
 }
 
 void AMark::SetOccupied(bool bOccupied)
 {
-	// BODY: (c)
+	bIsOccupied = bOccupied;
+	ApplyLook();
 }
 
 FVector AMark::GetStandPoint() const
 {
-	// BODY: (c)
 	return GetActorLocation();
+}
+
+void AMark::LayOutRing()
+{
+	if (!Ring || !CrossA || !CrossB)
+	{
+		return;
+	}
+
+	Ring->ClearInstances();
+	const int32 DotCount = FMath::Clamp(RingDots, 0, TakeMarkSliceC::MaxRingDots);
+	for (int32 DotIndex = 0; DotIndex < DotCount; ++DotIndex)
+	{
+		const float AngleDeg = 360.f * static_cast<float>(DotIndex) / static_cast<float>(DotCount);
+		const float AngleRad = FMath::DegreesToRadians(AngleDeg);
+		const FVector DotLocation(FMath::Cos(AngleRad) * RingRadius, FMath::Sin(AngleRad) * RingRadius, TakeMarkSliceC::RingDotZ);
+		// The dash runs along the circle (its X axis on the tangent).
+		const FRotator DotRotation(0.f, AngleDeg + 90.f, 0.f);
+		Ring->AddInstance(FTransform(DotRotation, DotLocation, TakeMarkSliceC::RingDotScale), false);
+	}
+
+	FTakeShapes::SetColour(Ring, TakeColors::GoldBright);
+	FTakeShapes::SetColour(CrossA, TakeColors::GoldBright);
+	FTakeShapes::SetColour(CrossB, TakeColors::GoldBright);
+}
+
+void AMark::ApplyLook()
+{
+	if (!Disc || !Ring || !CrossA || !CrossB)
+	{
+		return;
+	}
+
+	FTakeShapes::SetColour(Disc, (bIsHovered || bIsCued) ? TakeColors::GoldBright : TakeColors::Gold);
+	const float DiscXY = TakeMarkSliceC::DiscScaleXY * (bIsHovered ? TakeMarkSliceC::HoverGrow : 1.f);
+	Disc->SetRelativeScale3D(FVector(DiscXY, DiscXY, TakeMarkSliceC::DiscScaleZ));
+
+	Ring->SetVisibility(bIsCued);
+	CrossA->SetVisibility(bIsOccupied);
+	CrossB->SetVisibility(bIsOccupied);
 }

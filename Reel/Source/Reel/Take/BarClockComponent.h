@@ -97,6 +97,12 @@ private:
 	 *  one-shot USoundWaveProcedural per sound: builder's choice). */
 	void PlayPcm(const TArray<uint8>& Pcm);	// BODY: (a)
 
+	/** The first Advance after BeginPlay or SetStartBar: the beat the take starts on clicks and pulses (no events). */
+	bool bFirstAdvance = true;
+
+	/** SetStartBar ran (BeginPlay then keeps its bar instead of StartBar). */
+	bool bStartBarSet = false;
+
 	double TotalBeats = 0.0;
 	bool bBeatCrossed = false;
 	bool bBarCrossed = false;

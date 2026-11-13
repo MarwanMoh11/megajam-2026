@@ -4,6 +4,7 @@
 
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "CoreGlobals.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "TakeShapes.h"
 #include "Watcher.h"
@@ -24,59 +25,134 @@ ADevice::ADevice()
 void ADevice::BeginPlay()
 {
 	Super::BeginPlay();
-	// BODY: (e)
+
 	UsesLeft = Uses;
+	bRunning = false;
+	bLanded = false;
+	RunSeconds = 0.f;
+	RefreshBodyLook();
 }
 
 void ADevice::SetHovered(bool bInHovered)
 {
-	// BODY: (e)
+	bHovered = bInHovered;
+	RefreshBodyLook();
 }
 
 bool ADevice::CanFire(FString& OutWhyNot) const
 {
-	// BODY: (e)
-	OutWhyNot = DeviceName + TEXT(" - not wired yet");
-	return false;
+	if (Uses > 0 && UsesLeft <= 0)
+	{
+		OutWhyNot = DeviceName + TEXT(" - used");
+		return false;
+	}
+	if (bRunning)
+	{
+		OutWhyNot = DeviceName + TEXT(" - busy");
+		return false;
+	}
+	OutWhyNot.Reset();
+	return true;
 }
 
 bool ADevice::Fire()
 {
-	// BODY: (e)
-	return false;
+	FString WhyNot;
+	if (!CanFire(WhyNot))
+	{
+		return false;
+	}
+
+	if (Uses > 0)
+	{
+		UsesLeft = FMath::Max(UsesLeft - 1, 0);
+	}
+	bRunning = true;
+	bLanded = false;
+	RunSeconds = 0.f;
+	FiredFrame = GFrameCounter;
+
+	TAKE_LOG(TEXT("FIRE %s"), *DeviceName);
+	return true;
 }
 
 void ADevice::StepDevice(float DeltaSeconds)
 {
-	// BODY: (e)
+	// Generic timeline: lands on the first step after the fire (step 3 of the fire frame), runs for Duration.
+	if (!bRunning)
+	{
+		return;
+	}
+	if (!bLanded)
+	{
+		MarkLanded();
+	}
+	RunSeconds += DeltaSeconds;
+	if (RunSeconds >= Duration)
+	{
+		bRunning = false;
+	}
 }
 
 bool ADevice::LandedThisFrame() const
 {
-	// BODY: (e)
-	return false;
+	return bLanded && LandedFrame == GFrameCounter;
 }
 
 void ADevice::GatherTargets(const TArray<TObjectPtr<AWatcher>>& All, TArray<AWatcher*>& Out) const
 {
-	// BODY: (e)
 	Out.Reset();
+	const FVector Point = GetEffectPoint();
+	for (AWatcher* W : All)
+	{
+		if (W && W->DistanceToPoint(Point) <= Range)
+		{
+			Out.Add(W);
+		}
+	}
 }
 
 FVector ADevice::GetEffectPoint() const
 {
-	// BODY: (e)
 	return GetActorLocation();
 }
 
 FString ADevice::GetPipsText() const
 {
-	// BODY: (e)
-	return DeviceName;
+	if (Uses <= 0)
+	{
+		return DeviceName + TEXT("  free");
+	}
+	FString Pips;
+	for (int32 Index = 0; Index < Uses; ++Index)
+	{
+		Pips.AppendChar(Index < UsesLeft ? TEXT('o') : TEXT('-'));
+	}
+	return DeviceName + TEXT("  ") + Pips;
 }
 
 FVector ADevice::GetLabelPoint() const
 {
-	// BODY: (e)
 	return GetActorLocation() + FVector(0.f, 0.f, LabelHeight);
+}
+
+void ADevice::RefreshBodyLook()
+{
+	if (!Body)
+	{
+		return;
+	}
+	const FLinearColor Look = bHovered ? BodyColour + (FLinearColor::White - BodyColour) * 0.4f : BodyColour;
+	BodyMID = FTakeShapes::SetColour(Body, Look);
+}
+
+void ADevice::MarkLanded()
+{
+	bLanded = true;
+	LandedFrame = GFrameCounter;
+}
+
+bool ADevice::FiredThisFrame() const
+{
+	return FiredFrame == GFrameCounter;
 }

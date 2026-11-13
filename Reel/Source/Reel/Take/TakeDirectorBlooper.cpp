@@ -8,25 +8,89 @@
 
 void ATakeDirector::RequestBlooper(EBlooperReason Reason)
 {
-	// BODY: (e)
+	if (Reason == EBlooperReason::None || Phase != ETakePhase::Rolling || bReloadRequested)
+	{
+		return;
+	}
+	// The first reason in a frame wins.
+	if (PendingBlooper == EBlooperReason::None)
+	{
+		PendingBlooper = Reason;
+	}
 }
 
 void ATakeDirector::StepBlooperCheck(float DeltaSeconds)
 {
-	// BODY: (e)
+	if (Phase != ETakePhase::Rolling || bReloadRequested)
+	{
+		PendingBlooper = EBlooperReason::None;
+		return;
+	}
+
+	EBlooperReason Reason = PendingBlooper;
+	PendingBlooper = EBlooperReason::None;
+	if (Reason == EBlooperReason::None && Composure && Composure->IsEmpty())
+	{
+		Reason = EBlooperReason::ComposureZero;
+	}
+	if (Reason == EBlooperReason::None)
+	{
+		return;
+	}
+
+	// The blooper: frozen from this frame, the slate shows (the HUD draws after the late tick).
+	LastBlooperReason = Reason;
+	SetPhase(ETakePhase::BlooperFreeze);
+	FreezeSecondsLeft = BlooperFreezeSeconds;
+	if (UTakeGameInstance* GI = GetTakeGameInstance())
+	{
+		GI->NoteBlooper(Reason);
+	}
+	TAKE_LOG(TEXT("BLOOPER %s"), TakeText::BlooperReasonName(Reason));
 }
 
 void ATakeDirector::StepFreeze(float DeltaSeconds)
 {
-	// BODY: (e)
+	if (bReloadRequested)
+	{
+		return;
+	}
+	FreezeSecondsLeft -= DeltaSeconds;
+	if (FreezeSecondsLeft <= 0.f)
+	{
+		FreezeSecondsLeft = 0.f;
+		ReloadLevel();
+	}
 }
 
 void ATakeDirector::ReloadLevel()
 {
-	// BODY: (e)
+	if (bReloadRequested)
+	{
+		return;
+	}
+	bReloadRequested = true;
+
+	// GetCurrentLevelName strips the play-in-editor prefix; the game instance survives the load, the rest restarts.
+	const FString ReloadName = UGameplayStatics::GetCurrentLevelName(this, true);
+	TAKE_LOG(TEXT("RELOAD %s"), *ReloadName);
+	UGameplayStatics::OpenLevel(this, FName(*ReloadName));
 }
 
 void ATakeDirector::NewTake()
 {
-	// BODY: (e)
+	if (bReloadRequested)
+	{
+		return;
+	}
+
+	int32 NewTakeNumber = 1;
+	if (UTakeGameInstance* GI = GetTakeGameInstance())
+	{
+		GI->NoteNewTake();
+		NewTakeNumber = GI->TakeNumber;
+	}
+	Flash(FString::Printf(TEXT("TAKE %d"), NewTakeNumber), TakeColors::White, 1.5f);
+	TAKE_LOG(TEXT("NEW TAKE %d"), NewTakeNumber);
+	ReloadLevel();
 }

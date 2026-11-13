@@ -23,6 +23,9 @@ public:
 	/** Colours the disc gold, hides the ring and the X, lays out the ring's dots. */
 	virtual void BeginPlay() override;	// BODY: (c)
 
+	/** Same layout and look as BeginPlay, in the editor. */
+	virtual void OnConstruction(const FTransform& Transform) override;
+
 	// ITakeClickable
 	virtual ETakeClickKind GetClickKind() const override { return ETakeClickKind::Mark; }
 
@@ -83,4 +86,11 @@ protected:
 	bool bIsCued = false;
 	bool bIsOccupied = false;
 	bool bIsHovered = false;
+
+private:
+	/** Lays out the ring's dots and colours the ring and the X (BeginPlay and OnConstruction). */
+	void LayOutRing();
+
+	/** Disc colour and scale, ring and X visibility, from the hovered / cued / occupied state. This frame. */
+	void ApplyLook();
 };

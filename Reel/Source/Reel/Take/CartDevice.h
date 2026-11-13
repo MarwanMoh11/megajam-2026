@@ -44,4 +44,14 @@ public:
 
 protected:
 	bool bCrashed = false;
+
+private:
+	/** 0 at the door .. 1 at the crash point, from RunSeconds and RollSeconds. */
+	float GetRollAlpha() const;
+
+	/** Puts the cart Alpha along its roll, facing its way, tipped on its side if bTipped, this frame. */
+	void PlaceCart(float Alpha, bool bTipped);
+
+	/** Body's relative location at the door (BeginPlay). */
+	FVector BodyHome = FVector(0.f, 0.f, 45.f);
 };

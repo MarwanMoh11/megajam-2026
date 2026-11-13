@@ -67,7 +67,18 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Take")
 	TObjectPtr<UStaticMeshComponent> Batten;
 
+	/** The batten's colour. */
+	UPROPERTY(EditAnywhere, Category = "Take|Banner")
+	FLinearColor BattenColour = TakeColors::Grey;
+
 protected:
 	EBannerPhase BannerPhase = EBannerPhase::Up;
 	float PhaseSeconds = 0.f;
+
+private:
+	/** Sizes and colours the batten, the matte and its click volume, matte rolled up. From OnConstruction and BeginPlay. */
+	void LayoutBanner();
+
+	/** Puts the matte (and its click volume) Alpha along its drop (0 up .. 1 down), this frame. */
+	void SetMatteDrop(float Alpha);
 };

@@ -48,9 +48,24 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Take")
 	TObjectPtr<UStaticMeshComponent> BeamShape;
 
+	/** The beam's thickness (cylinder scale across; 1 = 100 cm). */
+	UPROPERTY(EditAnywhere, Category = "Take|Spot")
+	float BeamThickness = 0.3f;
+
+	/** Height above the target's feet the beam aims at, cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Spot")
+	float BeamTargetHeight = 120.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Spot")
+	FLinearColor BeamColour = TakeColors::White;
+
 protected:
 	UPROPERTY(Transient)
 	TObjectPtr<AWatcher> Target;
 
 	float BusySecondsLeft = 0.f;
+
+private:
+	/** Stretches the beam from the lamp to the target and shows it (hides it if there is no target), this frame. */
+	void UpdateBeam();
 };

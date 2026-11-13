@@ -85,6 +85,14 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Watcher")
 	float LabelHeight = 220.f;
 
+	/** Frame and tally colour while it holds an exposed Julian (solid bright red). */
+	UPROPERTY(EditAnywhere, Category = "Take|Watcher")
+	FLinearColor HoldingColour = FLinearColor(1.f, 0.1f, 0.06f);
+
+	/** The frame's scale while the pointer is over the watcher. */
+	UPROPERTY(EditAnywhere, Category = "Take|Watcher")
+	float HoverScale = 1.08f;
+
 	// --- components -------------------------------------------------------------------------------------------------
 
 	UPROPERTY(VisibleAnywhere, Category = "Take")
@@ -133,4 +141,11 @@ protected:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> TallyMID;
+
+private:
+	/** FramePivot scale from the last beat pulse and the hover state, applied this frame. */
+	void ApplyFrameScale();
+
+	/** The clock's pulse at the last StepWatcher (0..1). */
+	float LastPulse = 0.f;
 };

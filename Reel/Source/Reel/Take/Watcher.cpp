@@ -1,4 +1,4 @@
-// Owner: (d). Constructor by the header pass; every "// BODY: (d)" is a stub to fill.
+// Owner: (d). Constructor by the header pass; bodies by (d).
 
 #include "Watcher.h"
 
@@ -31,61 +31,130 @@ AWatcher::AWatcher()
 void AWatcher::BeginPlay()
 {
 	Super::BeginPlay();
-	// BODY: (d)
+
+	HomeLocation = GetActorLocation();
+	HomeYaw = static_cast<float>(GetActorRotation().Yaw);
+
+	State = EWatcherState::Watching;
+	EffectSecondsLeft = 0.f;
+	bTally = false;
+	LastPulse = 0.f;
+
+	FrameMID = FTakeShapes::SetColour(FrameMesh, TakeColors::Red);
+	TallyMID = FTakeShapes::SetColour(Tally, TakeColors::DarkGrey);
+
+	RefreshFrameLook();
+	ApplyFrameScale();
 }
 
 void AWatcher::SetHovered(bool bInHovered)
 {
-	// BODY: (d)
+	bHovered = bInHovered;
+	ApplyFrameScale();
 }
 
 void AWatcher::StepWatcher(float DeltaSeconds, UBarClockComponent* Clock)
 {
-	// BODY: (d)
+	if (EffectSecondsLeft > 0.f)
+	{
+		EffectSecondsLeft -= DeltaSeconds;
+		if (EffectSecondsLeft <= 0.f)
+		{
+			EffectSecondsLeft = 0.f;
+			if (State == EWatcherState::Blinded || State == EWatcherState::Lured || State == EWatcherState::Masked)
+			{
+				State = EWatcherState::Watching;
+				TAKE_LOG(TEXT("%s WATCHING"), *Label);
+			}
+			RefreshFrameLook();
+		}
+	}
+
+	LastPulse = Clock ? Clock->GetPulse() : 0.f;
+	ApplyFrameScale();
 }
 
 bool AWatcher::HoldsJulian(const AJulian* Julian) const
 {
-	// BODY: (d)
+	// The base has no frame shape; subclasses test their own.
 	return false;
 }
 
 bool AWatcher::ApplyEffect(EDeviceEffect Effect, float Duration, const FVector& Point)
 {
-	// BODY: (d)
-	return false;
+	if (Effect != EDeviceEffect::Blind)
+	{
+		return false;
+	}
+
+	State = EWatcherState::Blinded;
+	EffectSecondsLeft = FMath::Max(Duration, UE_KINDA_SMALL_NUMBER);
+	RefreshFrameLook();
+	TAKE_LOG(TEXT("%s BLINDED %.1f s"), *Label, Duration);
+	return true;
 }
 
 void AWatcher::SetTally(bool bHolding)
 {
-	// BODY: (d)
+	if (bHolding == bTally)
+	{
+		return;
+	}
+	bTally = bHolding;
+	TallyMID = FTakeShapes::SetColour(Tally, bTally ? HoldingColour : TakeColors::DarkGrey);
+	RefreshFrameLook();
 }
 
 float AWatcher::DistanceToPoint(const FVector& Point) const
 {
-	// BODY: (d)
-	return FVector::Dist2D(GetActorLocation(), Point);
+	return static_cast<float>(FVector::Dist2D(GetActorLocation(), Point));
 }
 
 bool AWatcher::IsLive() const
 {
-	// BODY: (d)
-	return State == EWatcherState::Watching;
+	// A lured watcher still sees: its frame goes with it.
+	return State == EWatcherState::Watching || State == EWatcherState::Lured;
 }
 
 FString AWatcher::GetStateText() const
 {
-	// BODY: (d)
+	if (State == EWatcherState::Blinded || State == EWatcherState::Lured || State == EWatcherState::Masked)
+	{
+		return FString::Printf(TEXT("%s %.1f"), TakeText::WatcherStateName(State), EffectSecondsLeft);
+	}
 	return TakeText::WatcherStateName(State);
 }
 
 FVector AWatcher::GetLabelPoint() const
 {
-	// BODY: (d)
 	return GetActorLocation() + FVector(0.f, 0.f, LabelHeight);
 }
 
 void AWatcher::RefreshFrameLook()
 {
-	// BODY: (d)
+	if (!FrameMesh)
+	{
+		return;
+	}
+
+	// Off and Dropped (the beam): no frame at all.
+	const bool bShowFrame = State != EWatcherState::Off && State != EWatcherState::Dropped;
+	FrameMesh->SetVisibility(bShowFrame);
+
+	FLinearColor Colour = TakeColors::RedDark;
+	if (IsLive())
+	{
+		Colour = bTally ? HoldingColour : TakeColors::Red;
+	}
+	FrameMID = FTakeShapes::SetColour(FrameMesh, Colour);
+}
+
+void AWatcher::ApplyFrameScale()
+{
+	if (!FramePivot)
+	{
+		return;
+	}
+	const float Scale = (1.f + PulseScale * LastPulse) * (bHovered ? HoverScale : 1.f);
+	FramePivot->SetRelativeScale3D(FVector(Scale, Scale, Scale));
 }

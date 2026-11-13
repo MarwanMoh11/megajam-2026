@@ -26,12 +26,29 @@ void AShotZone::OnConstruction(const FTransform& Transform)
 
 bool AShotZone::Contains(const FVector& WorldPoint) const
 {
-	// BODY: (b)
-	return false;
+	// Into the zone's own frame (location, rotation and scale, like the drawn box), then an axis-aligned test.
+	const FVector LocalPoint = GetActorTransform().InverseTransformPosition(WorldPoint);
+	return FMath::Abs(LocalPoint.X) <= Extent.X
+		&& FMath::Abs(LocalPoint.Y) <= Extent.Y
+		&& FMath::Abs(LocalPoint.Z) <= Extent.Z;
 }
 
 ATakeCamera* AShotZone::ResolveShot(const TArray<TObjectPtr<ATakeCamera>>& Cameras) const
 {
-	// BODY: (b)
-	return Shot;
+	if (Shot)
+	{
+		return Shot;
+	}
+	if (ShotName.IsNone())
+	{
+		return nullptr;
+	}
+	for (ATakeCamera* Candidate : Cameras)
+	{
+		if (Candidate && Candidate->CameraId == ETakeCamera::A && Candidate->ShotName == ShotName)
+		{
+			return Candidate;
+		}
+	}
+	return nullptr;
 }

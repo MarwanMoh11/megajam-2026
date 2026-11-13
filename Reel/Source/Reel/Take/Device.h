@@ -93,6 +93,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Device")
 	float LabelHeight = 200.f;
 
+	/** The body's colour (hover brightens it). */
+	UPROPERTY(EditAnywhere, Category = "Take|Device")
+	FLinearColor BodyColour = TakeColors::WorkBlue;
+
 	UPROPERTY(VisibleInstanceOnly, Transient, BlueprintReadOnly, Category = "Take|State")
 	int32 UsesLeft = 1;
 
@@ -116,4 +120,17 @@ protected:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> BodyMID;
+
+	/** Colours the body for its state (BodyColour, brighter while hovered), this frame. */
+	void RefreshBodyLook();
+
+	/** The effect lands on this frame: LandedThisFrame() is true until the frame ends. */
+	void MarkLanded();
+
+	/** Fire() ran on this frame (so StepDevice does not take the fire frame's step twice). */
+	bool FiredThisFrame() const;
+
+private:
+	uint64 LandedFrame = 0;
+	uint64 FiredFrame = 0;
 };
