@@ -12,7 +12,7 @@ by Sunday.
 - **Round 1** scored Marwan's pitch (`heist-pitch.md`).
 - **Round 2** scored the first refinement.
 
-The second round's notes are folded into `docs/STATUS.md`, which has not been scored again.
+The second round's notes are folded into `docs/STATUS.md`. From round 3 the scoring changes; see "Rounds 3-7" below.
 
 ## Scores (J1 / J2 / J3)
 
@@ -103,3 +103,74 @@ The build order guards each one:
 - the ending is built first;
 - the basic look lands in step 2;
 - a mix pass happens on Sunday.
+
+## Rounds 3-7: the design alone, strict
+
+**Marwan's instruction:** "keep doing this recursive loop until you have a theoretical 5 out of 5, and don't worry
+about the ambition of the execution."
+
+**From round 3 on:**
+- The judges scored only the design, as if built well.
+- A 5 means the top ~1% of 8,570 entries.
+- No points for effort or for having changed.
+
+That stricter scale is why round 3 starts lower than round 2.
+
+| Criterion | R3 | R4 | R5 | R6 | R7 |
+|---|---|---|---|---|---|
+| Ambition | 3 / 4 / 3 | 4 / 5 / 4 | 5 / 5 / 5 | 5 / 5 / 5 | 5 / 5 / 5 |
+| Theme | 4 / 4 / 4 | 5 / 5 / 5 | 5 / 5 / 5 | 5 / 5 / 5 | 5 / 5 / 5 |
+| Fun | 4 / 3 / 4 | 4 / 4 / 4 | 4 / 4 / 4 | 4 / 5 / 5 | 5 / 5 / 5 |
+| Gameplay | 4 / 4 / 3 | 4 / 4 / 4 | 4 / 5 / 4 | 4 / 4 / 5 | 5 / 5 / 5 |
+| Visuals | 3 / 3 / 3 | 4 / 4 / 4 | 4 / 5 / 4 | 5 / 4 / 4 | 5 / 5 / 5 |
+| Level design | 4 / 4 / 4 | 4 / 5 / 4 | 4 / 5 / 4 | 5 / 4 / 5 | 5 / 5 / 5 |
+| Audio | 4 / 4 / 4 | 5 / 4 / 5 | 5 / 5 / 5 | 5 / 5 / 5 | 5 / 5 / 5 |
+| **Mean** | **3.7** | **4.3** | **4.6** | **4.7** | **5.0** |
+
+What each round changed in the spec:
+
+- **After R3 (all three judges asked):**
+  - Julian is **cued** to marks with Q and walks on his own, so you race him.
+  - The finish replays **your take with your cuts**.
+  - The "match cut" was really a cut on action, so it was renamed.
+  - Each device got a **use budget**.
+  - A **band on the floor** became the score and the world's clock.
+  - **Deleted scenes** to restore, and the DIRECTOR'S CUT grade needs all four.
+  - Camera A became **the film** (noir, red and gold), and B and C **the making-of**.
+  - The bluff is answered from what the crew's cameras see, not guessed.
+- **After R4:**
+  - Fixed a finale soft-lock, where the budget could leave no way to blind the guards.
+  - Merged the rope and the lift, so PRINT IT lands at about 2.5 minutes.
+  - Made the clock visible: frames pulse on the beat, and ghosts show the next turn.
+  - Added the arrival count on Julian's path.
+  - Added an **edit suite** to re-cut the replay live.
+  - Noir silhouettes in costume on camera A; stand-ins with tape labels on B and C.
+  - Full colour bleeds in at the alarm.
+  - Tally lights replaced "?" icons.
+  - The drone now catches Julian off a mark anywhere on the floor.
+  - Added a second exit.
+- **After R5:**
+  - Scene 2's watchers arrive one per band break.
+  - The bluff is answered by firing the set.
+  - A replay of your last good cut plays at each checkpoint.
+  - The Bow is only possible at the side exit, which costs saved uses.
+  - Plain words on screen.
+  - Fixed six contradictions.
+- **After R6:**
+  - The drone's rule is taught before it can bite.
+  - Uses are scarcer, and the pyro covers only the stage end.
+  - The side exit glows gold from the first shot.
+  - The crew cameras' light changed from sodium to cold fluorescent, with a full-width view and a monitor strip.
+  - **Camera A became a shot list of composed fixed angles.**
+  - The tutorial mark moved to the floor side of the rope, and Vance never walks.
+- **After R7:**
+  - A single tracking angle for The Long Take.
+  - The exhibit's red tape.
+  - The tutorial spot lands in shot.
+  - Replay trims in 8-bar phrases.
+
+In R7 the three judges each said further design rounds wouldn't move the scores, and that the remaining risk is
+execution.
+
+**Caveat:** the same three judges scored every round, so they are anchored on their own notes. A fresh judge who had
+seen no earlier version scored the final spec as a check; see below.
