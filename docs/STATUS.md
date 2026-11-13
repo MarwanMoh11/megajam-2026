@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-11-13, about 19:40 Cairo (gate 1 answered: three rules changed; the rework is built and waits for Marwan to play it). Theme:
+Last updated: 2026-11-13, about 23:35 Cairo (Marwan played the rework and asked for a street start and props; both are built and wait for him to play again). Theme:
 **Director's Cut**.
 
 ## Gate 1 answer, Nov 13 about 18:15: Marwan changed three rules
@@ -24,6 +24,16 @@ gallery, walkway and bridge. North, the preview gallery and stock room under the
 and archive. South, the backstage corridor, kitchen, prop store and loading dock. East, the vault. Everything west
 of the rope connects and all three characters can walk it; the only way to the dais is the gap and the aisle. The
 new rooms are empty of rules: one encounter (the guard and the beam) is all that is built.
+
+**Third note, Nov 13 about 22:30, after Marwan played the rework:** "shouldnt I start outside of the building not
+inside ? the line is outside", and "add more props placeholders to make the place feel alive". Built:
+- **The take starts on the street.** Julian stands at the foot of a red carpet in front of the open front doors,
+  beside the queue, and walks in through the lobby. A scanner arch stands at the doors as a placeholder for
+  Scene 1; it has no rule yet.
+- **The hall mark is a checkpoint** (rule 9, the smallest form): once Julian comes within 12 m of it, a blooper
+  starts the next take there ("AGAIN FROM THE HALL"). R goes back to the street. The clock still restarts at bar 1.
+- **Placeholder props and people in every room and on the street.** People are a cylinder and a sphere. None is a
+  watcher, none carries a rule, and none blocks a sight line, the aim or a camera.
 
 **Filled in by Claude, the smallest that makes those three work (Marwan can overrule any of them):**
 - You move only the character you are on. The other two stand where you left them. The take never stops: watchers,

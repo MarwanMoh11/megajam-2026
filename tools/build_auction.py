@@ -10,9 +10,13 @@
 #   north   the north wing: the preview gallery and the stock room below; director's office, projection room, archive
 #   south   the service wing: the backstage corridor behind the hatches, then kitchen, prop store and loading dock
 #   east    the vault corridor and the vault, behind the dais wall
+#   street  a pavement and a road along the front (west), the street all round: the take starts out here, on the red
+#           carpet by the queue, and Julian walks in through the front doors
 # X runs from the entrance (-X) to the dais (+X). +Y is north. Everything west of the rope connects; the only way
 # past the rope is the gap and the aisle (the walkway above is railed, the hatches have counters).
+# The props and people at the end are placeholders with no rules: none blocks a sight line or the aim.
 import math
+import random
 
 import unreal
 
@@ -48,8 +52,15 @@ BRIDGE_Y0 = -350.0
 RAIL_H = 100.0
 T = 20.0                          # wall thickness
 
-# --- the route (Julian walks +X along Y = 0) -------------------------------------------------------------------------
-START = (900.0, 0.0)
+# --- the street front ------------------------------------------------------------------------------------------------
+PAVE_X0 = LX0 - 900.0             # the pavement in front of the building, level with its floors
+ROAD_X0 = LX0 - 2300.0            # the road beyond the kerb, and the street's west edge
+FRONT_DOOR_HALF, FRONT_DOOR_H = 300.0, 380.0   # the front doors stand open
+
+# --- the route (Julian walks in from the street, then +X along Y = 0) -------------------------------------------------
+START = (LX0 - 700.0, 0.0)        # on the pavement at the foot of the red carpet, facing the doors
+HALL_MARK = (900.0, 0.0)          # the checkpoint in the hall: a blooper starts the next take here
+HALL_MARK_RADIUS = 1200.0         # how close Julian must come to save it
 MARK_ROPE = (2200.0, 0.0)         # the safe mark before the rope
 ROPE_X = 2400.0
 GAP = 150.0                       # half-width of the gap in the rope: the beam crosses it
@@ -225,16 +236,23 @@ def exit_sign(axis, face, c, inward, z=262.0, half=35.0):
         box("Exit_Sign", lo, hi, c - half, c + half, z, z + 28, m_exit, folder="Set/Exits")
 
 
-def fire_door(axis, face, c, inward):
-    """A closed fire exit on a wall face: the door, its push bar, the sign over it."""
+def fire_door(axis, face, c, inward, side=1):
+    """A closed fire exit on a wall face: the door, its push bar, the sign over it, and a red extinguisher and
+    alarm point on the wall beside it (side picks which side)."""
     lo, hi = sorted((face, face + inward * 8.0))
     blo, bhi = sorted((face + inward * 8.0, face + inward * 14.0))
+    elo, ehi = sorted((face, face + inward * 12.0))
+    e = c + side * 95.0
     if axis == "x":
         box("Fire_Door", c - 60, c + 60, lo, hi, 0, 230, m_door, folder="Set/Exits")
         box("Fire_Door_Bar", c - 50, c + 50, blo, bhi, 100, 108, m_trim, folder="Set/Exits")
+        deco("Extinguisher", e - 7, e + 7, elo, ehi, 60, 104, m_red, folder="Set/Exits")
+        deco("Fire_Alarm", e - 6, e + 6, lo, hi, 135, 147, m_red, folder="Set/Exits")
     else:
         box("Fire_Door", lo, hi, c - 60, c + 60, 0, 230, m_door, folder="Set/Exits")
         box("Fire_Door_Bar", blo, bhi, c - 50, c + 50, 100, 108, m_trim, folder="Set/Exits")
+        deco("Extinguisher", elo, ehi, e - 7, e + 7, 60, 104, m_red, folder="Set/Exits")
+        deco("Fire_Alarm", lo, hi, e - 6, e + 6, 135, 147, m_red, folder="Set/Exits")
     exit_sign(axis, face, c, inward)
 
 
@@ -256,6 +274,182 @@ def use_offset(actor, world_xyz):
     return unreal.MathLibrary.inverse_transform_location(actor.get_actor_transform(), unreal.Vector(*world_xyz))
 
 
+# --- placeholder props and people (no rules: none of them blocks a sight line, the aim or a camera) -------------------
+SPHERE = eal.load_asset("/Engine/BasicShapes/Sphere")
+CYL = eal.load_asset("/Engine/BasicShapes/Cylinder")
+IGNORE = unreal.CollisionResponseType.ECR_IGNORE
+rnd = random.Random(7)             # the same layout on every run
+PICK = [0, 0]                      # running counters: guest colours, picture colours
+
+
+def shape(mesh, label, x, y, z, sx, sy, sz, mat, yaw=0.0, pitch=0.0, folder="Set/Props"):
+    """A basic shape centred on (x, y, z), sx by sy by sz cm (before it is turned)."""
+    N[0] += 1
+    a = spawn(unreal.StaticMeshActor, (x, y, z), yaw=yaw, pitch=pitch, label="%s_%03d" % (label, N[0]),
+              folder=folder)
+    c = a.static_mesh_component
+    c.set_static_mesh(mesh)
+    c.set_material(0, mat)
+    a.set_actor_scale3d(unreal.Vector(sx / 100.0, sy / 100.0, sz / 100.0))
+    return a
+
+
+def soft(a):
+    """Stops a walker; cameras, sight lines and the aim pass through it."""
+    c = a.static_mesh_component
+    c.set_collision_response_to_channel(unreal.CollisionChannel.ECC_CAMERA, IGNORE)
+    c.set_collision_response_to_channel(unreal.CollisionChannel.ECC_VISIBILITY, IGNORE)
+    return a
+
+
+def ghost(a):
+    """Dressing nobody can touch."""
+    a.static_mesh_component.set_collision_profile_name("NoCollision")
+    return a
+
+
+def prop(label, x0, x1, y0, y1, z0, z1, mat, folder="Set/Props"):
+    return soft(box(label, x0, x1, y0, y1, z0, z1, mat, folder=folder))
+
+
+def deco(label, x0, x1, y0, y1, z0, z1, mat, folder="Set/Props"):
+    return ghost(box(label, x0, x1, y0, y1, z0, z1, mat, folder=folder))
+
+
+def flat(label, x0, x1, y0, y1, mat, z=0.0, th=1.2):
+    """A carpet or a painted line on a floor."""
+    a = deco(label, x0, x1, y0, y1, z, z + th, mat)
+    a.static_mesh_component.set_editor_property("cast_shadow", False)
+    return a
+
+
+def guest(x, y, z=0.0, facing=0.0, seated=False, mat=None):
+    """A placeholder person: a body with shoulders and a head. Not a watcher: no frame, no rules."""
+    PICK[0] += 1
+    m = mat or GUEST_MATS[(PICK[0] * 7) % len(GUEST_MATS)]
+    h = 62.0 if seated else 150.0
+    body = shape(CYL, "Guest", x, y, z + h / 2, 26.0, 48.0, h, m, yaw=facing, folder="Set/Guests")
+    ghost(shape(SPHERE, "Guest_Head", x, y, z + h + 12.0, 24.0, 24.0, 26.0, m_head, folder="Set/Guests"))
+    return ghost(body) if seated else soft(body)
+
+
+def table(x, y, w, d, h=75.0, z=0.0, mat=None):
+    prop("Table", x - w / 2, x + w / 2, y - d / 2, y + d / 2, z + h - 6, z + h, mat or m_trim)
+    prop("Table_Foot", x - w / 6, x + w / 6, y - d / 6, y + d / 6, z, z + h - 6, m_case)
+
+
+def round_table(x, y, z=0.0, dia=70.0, h=105.0):
+    soft(shape(CYL, "Cocktail_Table", x, y, z + h - 2, dia, dia, 4.0, m_head))
+    soft(shape(CYL, "Cocktail_Stem", x, y, z + (h - 4) / 2, 8.0, 8.0, h - 4, m_trim))
+    ghost(shape(CYL, "Glass", x + 12, y - 8, z + h + 7, 6.0, 6.0, 14.0, m_gold))
+    ghost(shape(CYL, "Glass", x - 14, y + 10, z + h + 7, 6.0, 6.0, 14.0, m_gold))
+
+
+def mingle(x, y, n=2, z=0.0):
+    """A cocktail table with n guests standing round it."""
+    round_table(x, y, z)
+    a0 = rnd.uniform(0.0, 360.0)
+    for i in range(n):
+        a = a0 + i * 360.0 / n + rnd.uniform(-25.0, 25.0)
+        guest(x + 82 * math.cos(math.radians(a)), y + 82 * math.sin(math.radians(a)), z=z, facing=a + 180.0)
+
+
+def chair(x, y, facing, z=0.0, mat=None):
+    """facing: 0, 90, 180 or 270, the way the sitter looks."""
+    mat = mat or m_trim
+    fx, fy = round(math.cos(math.radians(facing))), round(math.sin(math.radians(facing)))
+    prop("Chair", x - 22, x + 22, y - 22, y + 22, z, z + 45, mat)
+    if fx:
+        prop("Chair_Back", x - fx * 22, x - fx * 16, y - 22, y + 22, z + 45, z + 92, mat)
+    else:
+        prop("Chair_Back", x - 22, x + 22, y - fy * 22, y - fy * 16, z + 45, z + 92, mat)
+
+
+def stool(x, y, z=0.0):
+    soft(shape(CYL, "Stool", x, y, z + 35, 34.0, 34.0, 70.0, m_trim))
+
+
+def sofa(x0, x1, y0, y1, z, back):
+    """back: which side the backrest is on, "W", "E", "N" or "S"."""
+    prop("Sofa", x0, x1, y0, y1, z, z + 42, m_sofa)
+    bx0, bx1, by0, by1 = {"W": (x0, x0 + 18, y0, y1), "E": (x1 - 18, x1, y0, y1),
+                          "S": (x0, x1, y0, y0 + 18), "N": (x0, x1, y1 - 18, y1)}[back]
+    prop("Sofa_Back", bx0, bx1, by0, by1, z + 42, z + 85, m_sofa)
+
+
+def plant(x, y, z=0.0):
+    prop("Planter", x - 22, x + 22, y - 22, y + 22, z, z + 45, m_trim)
+    ghost(shape(SPHERE, "Plant", x, y, z + 88, 78.0, 78.0, 100.0, m_plant))
+
+
+def painting(axis, face, c, inward, z=150.0, w=160.0, h=110.0):
+    """A framed picture on a wall face (face and inward as for exit_sign)."""
+    PICK[1] += 1
+    mat = ART_MATS[PICK[1] % len(ART_MATS)]
+    f0, f1 = sorted((face, face + inward * 3.0))
+    p0, p1 = sorted((face + inward * 3.0, face + inward * 5.0))
+    if axis == "x":
+        deco("Frame", c - w / 2 - 8, c + w / 2 + 8, f0, f1, z - 8, z + h + 8, m_gold)
+        deco("Picture", c - w / 2, c + w / 2, p0, p1, z, z + h, mat)
+    else:
+        deco("Frame", f0, f1, c - w / 2 - 8, c + w / 2 + 8, z - 8, z + h + 8, m_gold)
+        deco("Picture", p0, p1, c - w / 2, c + w / 2, z, z + h, mat)
+
+
+def easel(x, y, z=0.0):
+    """A lot on a stand, its picture facing -X (toward the room's west)."""
+    PICK[1] += 1
+    prop("Easel", x + 3, x + 9, y - 4, y + 4, z, z + 160, m_trim)
+    deco("Easel_Frame", x - 3, x + 3, y - 52, y + 52, z + 62, z + 178, m_gold)
+    deco("Easel_Picture", x - 5, x - 3, y - 45, y + 45, z + 70, z + 170, ART_MATS[PICK[1] % len(ART_MATS)])
+
+
+def rope_line(pts, z=0.0):
+    """Gold stanchions at each point and a rope between neighbours (straight along X or Y)."""
+    for (x, y) in pts:
+        soft(shape(CYL, "Stanchion", x, y, z + 47, 7.0, 7.0, 94.0, m_gold))
+        ghost(shape(CYL, "Stanchion_Foot", x, y, z + 1.5, 28.0, 28.0, 3.0, m_gold))
+    for (ax, ay), (bx, by) in zip(pts, pts[1:]):
+        if ay == by:
+            prop("Rope", min(ax, bx), max(ax, bx), ay - 2, ay + 2, z + 76, z + 82, m_rope)
+        else:
+            prop("Rope", ax - 2, ax + 2, min(ay, by), max(ay, by), z + 76, z + 82, m_rope)
+
+
+def tripod(x, y, z=0.0):
+    soft(shape(CYL, "Tripod", x, y, z + 65, 5.0, 5.0, 130.0, m_trim))
+    deco("Camera", x - 12, x + 12, y - 8, y + 8, z + 130, z + 146, m_floor)
+
+
+def crates(x, y, sizes, z=0.0, mat=None):
+    """Crates stacked on (x, y): one per size, each centred on the one below."""
+    for s in sizes:
+        box("Crate", x - s / 2, x + s / 2, y - s / 2, y + s / 2, z, z + s, mat or m_trim, folder="Set/Props")
+        z += s
+
+
+def car(x, y, length, mat, z=-21.0):
+    """A parked car, lengthways along Y."""
+    box("Car", x - 90, x + 90, y - length / 2, y + length / 2, z + 24, z + 84, mat, folder="Set/Street")
+    box("Car_Cabin", x - 80, x + 80, y - length * 0.27, y + length * 0.2, z + 84, z + 134, m_window,
+        folder="Set/Street")
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            wy = y + sy * (length / 2 - 75)
+            deco("Wheel", x + sx * 78, x + sx * 96, wy - 30, wy + 30, z, z + 60, m_tire, folder="Set/Street")
+
+
+def tree(x, y, z=-21.0):
+    box("Trunk", x - 15, x + 15, y - 15, y + 15, z, z + 260, m_trunk, folder="Set/Street")
+    ghost(shape(SPHERE, "Tree", x, y, z + 390, 340.0, 340.0, 300.0, m_plant, folder="Set/Street"))
+
+
+def street_lamp(x, y, arm=-1):
+    box("Lamp_Post", x - 6, x + 6, y - 6, y + 6, 0, 480, m_trim, folder="Set/Street")
+    deco("Lamp_Arm", x, x + arm * 100, y - 4, y + 4, 470, 478, m_trim, folder="Set/Street")
+    deco("Lamp_Head", x + arm * 60, x + arm * 104, y - 10, y + 10, 458, 470, m_head, folder="Set/Street")
+
+
 # --- the level -------------------------------------------------------------------------------------------------------
 if eal.does_asset_exist(MAP):
     les.load_level(MAP)
@@ -275,9 +469,32 @@ m_gold = make_mi("MI_Box_Gold", (1.0, 0.62, 0.08))
 m_exit = make_mi("MI_Box_Exit", (0.03, 1.0, 0.22))
 m_door = make_mi("MI_Box_Door", (0.07, 0.17, 0.11))
 m_street = make_mi("MI_Box_Street", (0.02, 0.02, 0.022))
+m_pave = make_mi("MI_Box_Pave", (0.10, 0.10, 0.105))
+m_carpet = make_mi("MI_Box_Carpet", (0.33, 0.03, 0.04))
+m_window = make_mi("MI_Box_Window", (0.02, 0.05, 0.09))
+m_plant = make_mi("MI_Box_Plant", (0.05, 0.22, 0.07))
+m_trunk = make_mi("MI_Box_Trunk", (0.10, 0.06, 0.035))
+m_tire = make_mi("MI_Box_Tire", (0.012, 0.012, 0.012))
+m_red = make_mi("MI_Box_Red", (0.75, 0.04, 0.03))
+m_head = make_mi("MI_Box_Head", (0.55, 0.50, 0.45))
+m_glow = make_mi("MI_Box_Glow", (0.15, 0.55, 0.95))
+m_sofa = make_mi("MI_Box_Sofa", (0.16, 0.07, 0.05))
+GUEST_MATS = [make_mi("MI_Guest_%d" % i, c) for i, c in enumerate(
+    ((0.03, 0.04, 0.09), (0.05, 0.05, 0.055), (0.22, 0.04, 0.07), (0.42, 0.38, 0.30), (0.07, 0.16, 0.14)))]
+ART_MATS = [make_mi("MI_Art_%d" % i, c) for i, c in enumerate(
+    ((0.05, 0.25, 0.28), (0.55, 0.33, 0.08), (0.30, 0.06, 0.10), (0.12, 0.16, 0.40)))]
+CAR_MATS = [make_mi("MI_Car_%d" % i, c) for i, c in enumerate(
+    ((0.35, 0.03, 0.03), (0.03, 0.07, 0.22), (0.35, 0.36, 0.38), (0.015, 0.015, 0.018)))]
 
-# Ground floors (they run under the walls, so doorways have a floor), and the street around the building.
-box("Street", LX0 - 1200, EX1 + 1200, SY0 - 1200, NY1 + 1200, -40, -21, m_street)
+# Ground floors (they run under the walls, so doorways have a floor), and the street around the building: a road
+# along the front, 21 cm below the pavement, and unseen walls at the street's edge so nobody walks off it.
+SX0, SX1, SYA, SYB = ROAD_X0, EX1 + 1200, SY0 - 1200, NY1 + 1200
+box("Street", SX0, SX1, SYA, SYB, -40, -21, m_street)
+box("Pavement", PAVE_X0, LX0, HY0 - 400, HY1 + 400, -21, 0, m_pave)
+blocker("Street_Edge", SX0 - 20, SX0, SYA, SYB, -40, 400)
+blocker("Street_Edge", SX1, SX1 + 20, SYA, SYB, -40, 400)
+blocker("Street_Edge", SX0, SX1, SYA - 20, SYA, -40, 400)
+blocker("Street_Edge", SX0, SX1, SYB, SYB + 20, -40, 400)
 box("Floor_Hall", HX0, HX1, HY0, HY1, -20, 0, m_floor)
 box("Floor_Lobby", LX0, LX1, HY0, HY1, -20, 0, m_floor)
 box("Floor_Backstage", HX0, HX1, BY0, HY0, -20, 0, m_deck)
@@ -349,11 +566,13 @@ box("Case_Reel", 4140, 4180, -20, 20, DAIS_H + 90, DAIS_H + 130, m_gold)
 box("Screen", HX1 - 10, HX1, -700, 700, 300, 900, m_floor)
 
 # --- the lobby block (two storeys) -----------------------------------------------------------------------------------
-# The shell: the front with the entrance doors (closed), and the block's north and south faces.
-box("Front", LX0 - T, LX0, HY0 - T, HY1 + T, 0, TOP, m_wall)
+# The shell: the front with the entrance doors standing open, and the block's north and south faces.
+wall("Front", "y", LX0 - T, HY0 - T, HY1 + T, 0, TOP, m_wall, [(0.0, FRONT_DOOR_HALF, 0.0, FRONT_DOOR_H)])
 box("Block_North", LX0, HX0 - T, HY1, HY1 + T, 0, TOP, m_wall)
 box("Block_South", LX0, HX0 - T, HY0 - T, HY0, 0, TOP, m_wall)
-box("Lobby_Doors", LX0, LX0 + 15, -300, 300, 0, 380, m_door)
+for s in (1, -1):   # the two door leaves, swung out
+    box("Front_Door_Leaf", LX0 - T - 290, LX0 - T, s * FRONT_DOOR_HALF, s * (FRONT_DOOR_HALF + 8), 0,
+        FRONT_DOOR_H - 5, m_door, folder="Set/Exits")
 exit_sign("y", LX0, 0.0, 1, z=395.0, half=60.0)
 
 # The lobby's second floor: a balcony all round the atrium, railed, on four pillars.
@@ -399,7 +618,7 @@ for s in (1, -1):
     stairs("Fire_Stair", TURN_X, s * 1855.0, 180, TURN_X - LAND_X, F2 / 2, 290.0, F2 / 2, 15, m_trim)
     lane = ys(LY1 + T, 1690.0)
     rail(LAND_X, lane[0], LAND_X, lane[1])
-    fire_door("x", s * HY1, -1965.0, -s)
+    fire_door("x", s * HY1, -1965.0, -s, side=-1)
     exit_sign("x", s * LY1, -1975.0, -s)
     exit_sign("x", s * LY1, -1975.0, -s, z=F2 + 262.0)
     lamp(-2650.0, s * 1700.0)
@@ -414,7 +633,7 @@ box("Office_Desk", -2900, -2500, 1800, 1900, F2, F2 + 75, m_trim)
 box("Office_Cabinet", -3180, -3120, 1500, 1900, F2, F2 + 180, m_case)
 box("Security_Desk", -3000, -2300, -1960, -1880, F2, F2 + 80, m_trim)
 for mx in (-2900.0, -2650.0, -2400.0):
-    box("Security_Monitor", mx - 60, mx + 60, -1975, -1965, F2 + 90, F2 + 160, m_floor)
+    box("Security_Monitor", mx - 60, mx + 60, -1975, -1965, F2 + 90, F2 + 160, m_glow)
 
 # --- the north wing (two storeys) ------------------------------------------------------------------------------------
 box("North_Outer", HX0 - T, HX1 + T, NY1, NY1 + T, 0, TOP, m_wall)
@@ -476,6 +695,288 @@ for sy in (-700.0, -300.0, 100.0, 500.0):
 box("Vault_Table", 4600, 4760, -100, 100, 0, 90, m_trim)
 fire_door("y", EX1, -1800.0, -1)
 
+# =====================================================================================================================
+# Dressing: placeholder props and people, room by room. No rules anywhere in it.
+# =====================================================================================================================
+FRONT = LX0 - T                    # the facade's outer face
+
+# --- the street front: red carpet, the scanner arch (a placeholder for Scene 1), the queue, the press, cars -----------
+flat("Carpet", START[0] + 100, VOID_X0 + 80, -150, 150, m_carpet)
+SCAN_X = FRONT - 110.0
+for s in (1, -1):
+    prop("Scanner_Post", SCAN_X - 10, SCAN_X + 10, s * 160, s * 180, 0, 240, m_case, folder="Set/Street")
+    prop("Scanner_Wing", SCAN_X - 5, SCAN_X + 5, s * 180, s * 300, 0, 100, m_case, folder="Set/Street")
+deco("Scanner_Lintel", SCAN_X - 10, SCAN_X + 10, -180, 180, 240, 262, m_case, folder="Set/Street")
+deco("Scanner_Eye", SCAN_X - 14, SCAN_X - 10, -12, 12, 244, 258, m_red, folder="Set/Street")
+box("Canopy", FRONT - 520, FRONT, -560, 560, 410, 430, m_trim, folder="Set/Street")
+deco("Canopy_Fascia", FRONT - 530, FRONT - 520, -560, 560, 395, 445, m_gold, folder="Set/Street")
+for s in (1, -1):
+    prop("Canopy_Post", FRONT - 516, FRONT - 504, s * 540, s * 552, 0, 410, m_trim, folder="Set/Street")
+deco("Sign", FRONT - 6, FRONT, -700, 700, 520, 640, m_gold, folder="Set/Street")
+for c in (900.0, 1300.0, 1700.0):
+    for s in (1, -1):
+        for (z0, z1) in ((90.0, 300.0), (F2 + 70.0, F2 + 290.0)):
+            deco("Window", FRONT - 4, FRONT, s * c - 120, s * c + 120, z0, z1, m_window, folder="Set/Street")
+        prop("Planter", FRONT - 70, FRONT - 10, s * c - 110, s * c + 110, 0, 50, m_trim, folder="Set/Street")
+        deco("Hedge", FRONT - 66, FRONT - 14, s * c - 104, s * c + 104, 50, 95, m_plant, folder="Set/Street")
+# The queue north of the carpet, behind ropes; the doorman at its head; the press behind a rope to the south.
+QX = (PAVE_X0 + 60.0, -3880.0, -3710.0, -3540.0)
+for qy in (200.0, 440.0, -200.0):
+    rope_line([(qx, qy) for qx in QX])
+for qx in (-3990.0, -3890.0, -3790.0, -3690.0, -3600.0):
+    guest(qx, 320.0 + rnd.uniform(-25, 25), facing=rnd.uniform(-15, 15))
+guest(-3450.0, 235.0, facing=180.0, mat=GUEST_MATS[1])
+for px in (-3950.0, -3800.0, -3650.0):
+    guest(px, -300.0, facing=90.0 + rnd.uniform(-20, 20))
+    tripod(px + 45, -245.0)
+for ly in (-1900.0, -700.0, 700.0, 1900.0):
+    street_lamp(PAVE_X0 + 40, ly)
+for by in range(-2100, 2101, 350):
+    if abs(by) > 300:
+        prop("Bollard", PAVE_X0 + 8, PAVE_X0 + 22, by - 7, by + 7, 0, 80, m_trim, folder="Set/Street")
+car(PAVE_X0 - 130, 0.0, 760.0, CAR_MATS[3])            # the limousine at the foot of the carpet
+car(PAVE_X0 - 130, -1500.0, 440.0, CAR_MATS[0])
+car(PAVE_X0 - 130, -850.0, 440.0, CAR_MATS[2])
+car(PAVE_X0 - 130, 1000.0, 440.0, CAR_MATS[1])
+car(PAVE_X0 - 130, 1700.0, 440.0, CAR_MATS[2])
+car(ROAD_X0 + 200, -400.0, 440.0, CAR_MATS[1])
+car(ROAD_X0 + 200, 600.0, 440.0, CAR_MATS[0])
+# The other three sides: trees, staff cars, a lorry at the dock shutter, bins by the kitchen.
+for tx in (-2600.0, -1100.0, 400.0, 1900.0, 3400.0, 4900.0):
+    tree(tx, NY1 + 600)
+for tx in (-2600.0, -1100.0, 400.0, 1900.0):
+    tree(tx, SY0 - 700)
+car(EX1 + 450, -700.0, 440.0, CAR_MATS[2])
+car(EX1 + 450, 100.0, 440.0, CAR_MATS[0])
+car(EX1 + 800, -300.0, 440.0, CAR_MATS[1])
+box("Lorry_Trailer", 3400, 3900, SY0 - 660, SY0 - 45, 70, 360, m_trim, folder="Set/Street")
+box("Lorry_Cab", 3440, 3860, SY0 - 940, SY0 - 680, 40, 290, CAR_MATS[1], folder="Set/Street")
+for wx in (3420.0, 3880.0):
+    for wy in (SY0 - 810, SY0 - 550, SY0 - 200):
+        deco("Wheel", wx - 12, wx + 12, wy - 45, wy + 45, -21, 69, m_tire, folder="Set/Street")
+for dx in (-700.0, -400.0):
+    box("Bin", dx, dx + 240, SY0 - 160, SY0 - 45, -21, 110, m_door, folder="Set/Street")
+
+# --- the lobby --------------------------------------------------------------------------------------------------------
+deco("Desk_Screen", -2180, -2170, 1060, 1140, 110, 150, m_glow)
+guest(-2050.0, 1100.0, facing=180.0)                    # the receptionist
+guest(-2370.0, 1050.0, facing=0.0)
+for (px, py) in ((-3140, 1330), (-3140, -1330), (-1090, 1330), (-1090, -1330), (-1090, 430), (-1090, -430)):
+    plant(px, py)
+    if abs(py) > 1000:
+        plant(px, py, F2)                               # and one above it on the balcony
+for cx in (-2950.0, -2320.0, -1500.0):                  # pictures on both side walls, both floors
+    for z in (150.0, F2 + 130.0):
+        painting("x", LY1, cx, -1, z=z)
+        painting("x", LY0, cx, 1, z=z)
+mingle(-2900.0, 950.0, 2)
+mingle(-1300.0, -1000.0, 3)
+mingle(-2950.0, -1000.0, 2)
+# The balcony: sofas along the front, guests at the rail looking down into the atrium.
+for s in (1, -1):
+    sofa(-3180, -3100, s * 600 - 150, s * 600 + 150, F2, "W")
+table(-3020.0, 0.0, 60, 120, h=40, z=F2)
+guest(-2300.0, 865.0, z=F2, facing=270.0)
+guest(-2180.0, 870.0, z=F2, facing=255.0)
+guest(-1900.0, -865.0, z=F2, facing=90.0)
+
+# --- the side strips: cloakroom and restrooms below, the office and the security room above ----------------------------
+guest(-2650.0, 1640.0, facing=270.0)                    # the cloakroom attendant
+for rx in (-3100.0, -2800.0, -2500.0):
+    for i in range(3):
+        deco("Coat", rx + 20 + i * 60, rx + 55 + i * 60, 1860, 1880, 70, 165, GUEST_MATS[(i + int(rx)) % 5])
+prop("Cloak_Bench", -3180, -3140, 1500, 1800, 0, 45, m_trim)
+prop("Sink_Counter", -3180, -3120, -1900, -1500, 0, 85, m_head)
+deco("Mirror", -3199, -3195, -1880, -1520, 110, 190, m_window)
+for tx in (-3050.0, -2750.0, -2450.0, -2200.0):
+    prop("Toilet", tx - 20, tx + 20, -1975, -1920, 0, 40, m_head)
+chair(-2700.0, 1950.0, 270, z=F2)
+guest(-2700.0, 1950.0, z=F2 + 45, facing=270.0, seated=True)
+chair(-2800.0, 1730.0, 90, z=F2)
+chair(-2600.0, 1730.0, 90, z=F2)
+deco("Office_Screen", -2740, -2660, 1840, 1848, F2 + 75, F2 + 115, m_glow)
+plant(-2160.0, 1940.0, F2)
+painting("x", HY1, -2300.0, -1, z=F2 + 130.0)
+chair(-2850.0, -1830.0, 270, z=F2)
+guest(-2850.0, -1830.0, z=F2 + 45, facing=270.0, seated=True, mat=GUEST_MATS[1])
+chair(-2500.0, -1830.0, 270, z=F2)
+box("Lockers", -3180, -3130, -1800, -1500, F2, F2 + 190, m_case, folder="Set/Props")
+box("Server_Rack", -2190, -2130, -1960, -1860, F2, F2 + 200, m_floor, folder="Set/Props")
+deco("Server_Lights", -2192, -2190, -1950, -1870, F2 + 60, F2 + 160, m_glow)
+
+# --- the great hall: the audience, the bar, the phone bids, the dais --------------------------------------------------
+for bx in (-400.0, -200.0, 0.0, 200.0, 400.0, 600.0):  # bidders on the benches, facing the dais
+    for s in (1, -1):
+        for slot in rnd.sample(range(6), 3):
+            gy = s * (320.0 + slot * 115.0)
+            guest(bx, gy, z=60.0, facing=0.0, seated=True)
+            if rnd.random() < 0.25:
+                deco("Paddle", bx + 14, bx + 18, gy + 24, gy + 38, 150, 172, m_head)
+for (mx, my, n) in ((-750, -1300, 3), (-750, 1250, 2), (150, 1200, 3), (1100, 1150, 2), (1900, 1100, 3),
+                    (150, -1300, 2), (-800, -560, 2), (-800, 560, 2)):
+    mingle(float(mx), float(my), n)
+for i in range(8):                                      # the champagne bar
+    ghost(shape(CYL, "Bottle", 860.0 + i * 95, -1525.0 + (i % 2) * 22, 124.0, 9.0, 9.0, 28.0,
+                (m_plant, m_gold, m_rope)[i % 3]))
+prop("Bar_Shelf", 900, 1500, -1995, -1955, 0, 200, m_case)
+deco("Bar_Bottles", 920, 1480, -1955, -1947, 120, 146, m_gold)
+deco("Bar_Bottles", 920, 1480, -1955, -1947, 165, 191, m_plant)
+guest(1200.0, -1700.0, facing=90.0, mat=GUEST_MATS[1])  # the bartender
+for i, sx in enumerate((900.0, 1050.0, 1200.0, 1350.0, 1500.0)):
+    stool(sx, -1420.0)
+    if i in (0, 3):
+        guest(sx, -1420.0, z=70.0, facing=270.0, seated=True)
+guest(1130.0, -1330.0, facing=250.0)
+for px in (1880.0, 2000.0, 2120.0):                     # the phone bids
+    deco("Phone", px - 12, px + 12, -1535, -1515, 100, 108, m_glow)
+    chair(px, -1640.0, 90)
+    guest(px, -1640.0, z=45.0, facing=90.0, seated=True)
+for cx in (-650.0, 1000.0, 2900.0, 3800.0):             # pictures under the walkway, on the south and west walls
+    painting("x", HY1, cx, -1, z=160.0, w=240.0, h=150.0)
+for cx in (-750.0, 1900.0, 2700.0, 4100.0):
+    painting("x", HY0, cx, 1, z=160.0, w=240.0, h=150.0)
+for cy in (-1500.0, -900.0, 900.0, 1500.0):
+    painting("y", HX0, cy, 1, z=160.0, w=200.0, h=130.0)
+for cx in (-500.0, 400.0, 1300.0, 2200.0, 3100.0, 4000.0):   # a banner on every column, facing the aisle
+    for s in (1, -1):
+        deco("Column_Banner", cx - 45, cx + 45, s * 1232, s * 1238, 600, 1150, m_carpet)
+        deco("Column_Banner_Hem", cx - 45, cx + 45, s * 1231, s * 1239, 588, 600, m_gold)
+guest(3885.0, -480.0, z=DAIS_H, facing=180.0, mat=GUEST_MATS[1])   # the auctioneer at the podium
+for s in (1, -1):
+    plant(4330.0, s * 1100.0, DAIS_H)
+    easel(4230.0, s * 480.0, DAIS_H)
+# The second floor of the hall: benches, onlookers and a film camera on the west gallery; cases on the walkway.
+for s in (1, -1):
+    prop("Gallery_Bench", -990, -940, s * 400, s * 900, F2, F2 + 45, m_trim)
+guest(-660.0, 500.0, z=F2, facing=0.0)
+guest(-665.0, 575.0, z=F2, facing=-12.0)
+guest(-660.0, -700.0, z=F2, facing=0.0)
+tripod(-660.0, -1000.0, F2)
+plant(-950.0, 1550.0, F2)
+plant(-950.0, -1900.0, F2)
+for (x0, x1, h) in ((1000, 1110, 60), (2200, 2330, 85), (3500, 3620, 60)):
+    prop("Flight_Case", x0, x1, 1950, 1995, F2, F2 + h, m_floor)
+
+# --- the north wing ---------------------------------------------------------------------------------------------------
+for cx in (-900.0, -300.0, 300.0, 900.0, 1500.0, 2100.0):   # the preview gallery
+    painting("x", NY1, cx, -1, z=170.0, w=180.0, h=120.0)
+for cx in (-600.0, 700.0, 1300.0):
+    painting("x", HY1 + T, cx, 1, z=160.0)
+rope_line([(-800.0, 2640.0), (-300.0, 2640.0), (300.0, 2640.0), (900.0, 2640.0), (1500.0, 2640.0), (2000.0, 2640.0)])
+guest(0.0, 2570.0, facing=90.0)
+guest(640.0, 2560.0, facing=80.0)
+guest(1150.0, 2550.0, facing=100.0)
+guest(1700.0, 2250.0, facing=40.0)
+guest(1770.0, 2320.0, facing=220.0)
+plant(-940.0, 2840.0)
+plant(2240.0, 2840.0)
+box("Stock_Shelf", 2500, 3900, 2025, 2085, 0, 220, m_case, folder="Set/Props")   # the stock room
+for (cx, cy, sz) in ((2700, 2750, 90), (3100, 2750, 70), (3480, 2760, 110)):
+    box("Stock_Crate_Top", cx - sz / 2, cx + sz / 2, cy - sz / 2, cy + sz / 2, 160, 160 + sz, m_case,
+        folder="Set/Props")
+crates(3950.0, 2740.0, (120, 90))
+crates(4200.0, 2200.0, (100,))
+for i in range(3):
+    prop("Wrapped_Canvas", 2325 + i * 9, 2331 + i * 9, 2580 + i * 40, 2800 + i * 30, 0, 150 - i * 15, m_head)
+table(3650.0, 2330.0, 110, 60, h=30)
+flat("Rug", -500, 300, 2450, 2850, m_carpet, z=F2)       # the director's office
+chair(-100.0, 2815.0, 270, z=F2, mat=m_sofa)
+chair(-250.0, 2570.0, 90, z=F2)
+chair(50.0, 2570.0, 90, z=F2)
+sofa(-970, -890, 2200, 2600, F2, "W")
+table(-780.0, 2400.0, 60, 120, h=40, z=F2)
+box("Bookshelf", 350, 750, 2850, 2895, F2, F2 + 220, m_case, folder="Set/Props")
+for cy in (2300.0, 2650.0):
+    painting("y", HX0, cy, 1, z=F2 + 130.0, w=120.0, h=170.0)   # film posters
+ghost(shape(SPHERE, "Award", 150.0, 2700.0, F2 + 78 + 13, 22.0, 22.0, 26.0, m_gold))
+deco("Desk_Screen", -180, -100, 2700, 2708, F2 + 78, F2 + 118, m_glow)
+plant(-940.0, 2080.0, F2)
+plant(750.0, 2090.0, F2)
+for (cx, cy, n) in ((1250.0, 2120.0, 4), (1310.0, 2190.0, 3), (2050.0, 2110.0, 5)):   # the projection room
+    for i in range(n):
+        ghost(shape(CYL, "Film_Can", cx, cy, F2 + 5 + i * 10, 42.0, 42.0, 9.0, m_gold if i == n - 1 else m_trim))
+box("Reel_Shelf", 1000, 2400, 2850, 2895, F2, F2 + 200, m_case, folder="Set/Props")
+for i in range(7):
+    ghost(shape(CYL, "Reel", 1100.0 + i * 200, 2846.0, F2 + 120, 60.0, 60.0, 6.0, m_trim, yaw=90.0, pitch=90.0))
+table(2250.0, 2350.0, 180, 80, z=F2)
+deco("Edit_Screen", 2200, 2300, 2378, 2386, F2 + 75, F2 + 125, m_glow)
+chair(2250.0, 2270.0, 90, z=F2)
+guest(1700.0, 2270.0, z=F2, facing=270.0)               # the projectionist
+table(2760.0, 2150.0, 120, 70, z=F2)                    # the archive
+for i in range(3):
+    deco("Archive_Box", 2715 + i * 34, 2745 + i * 34, 2130, 2170, F2 + 75, F2 + 100, m_head)
+box("Filing_Cabinets", 4340, 4395, 2100, 2800, F2, F2 + 130, m_trim, folder="Set/Props")
+guest(3500.0, 2180.0, z=F2, facing=0.0)
+
+# --- the service wing -------------------------------------------------------------------------------------------------
+prop("Costume_Rail", 300, 900, -2572, -2566, 165, 170, m_trim)      # backstage
+for rx in (300.0, 900.0):
+    prop("Costume_Rail_Post", rx - 4, rx + 4, -2573, -2565, 0, 165, m_trim)
+for i in range(8):
+    deco("Costume", 325 + i * 70, 370 + i * 70, -2580, -2558, 55, 163, (GUEST_MATS + ART_MATS)[i % 9])
+table(-650.0, -2060.0, 400, 60)
+deco("Makeup_Mirror", -820, -480, HY0 - T - 4, HY0 - T, 90, 170, m_window)
+deco("Makeup_Lights", -830, -470, HY0 - T - 5, HY0 - T, 172, 180, m_gold)
+chair(-650.0, -2140.0, 90)
+prop("Flight_Case", 1900, 2050, -2580, -2500, 0, 70, m_floor)
+prop("Flight_Case", 2100, 2200, -2580, -2500, 0, 110, m_floor)
+soft(shape(CYL, "Cable_Drum", 2350.0, -2540.0, 25.0, 80.0, 80.0, 50.0, m_trim))
+table(1150.0, -2060.0, 300, 60, h=80)
+ghost(shape(SPHERE, "Prop_Orb", 1080.0, -2060.0, 93.0, 24.0, 24.0, 24.0, m_gold))
+deco("Prop_Box", 1180, 1230, -2080, -2040, 80, 105, m_rope)
+guest(1150.0, -2170.0, facing=90.0)
+guest(2300.0, -2400.0, facing=180.0)
+box("Fridge", 620, 780, SY0 + 20, SY0 + 120, 0, 200, m_head, folder="Set/Props")   # the kitchen
+deco("Range_Hood", -600, 0, SY0 + 10, SY0 + 90, 190, 230, m_trim)
+for (px, m) in ((-500.0, m_trim), (-300.0, m_floor), (-100.0, m_trim)):
+    ghost(shape(CYL, "Pot", px, SY0 + 60.0, 95.0 + 11, 30.0, 30.0, 22.0, m))
+for tx in (-350.0, 100.0):
+    deco("Tray", tx - 30, tx + 30, -2970, -2930, 95, 97, m_trim)
+    for i in range(3):
+        ghost(shape(CYL, "Glass", tx - 18 + i * 18, -2950.0, 104.0, 6.0, 6.0, 14.0, m_gold))
+ghost(shape(CYL, "Plates", -150.0, -2950.0, 101.0, 24.0, 24.0, 12.0, m_head))
+guest(-300.0, -3130.0, facing=270.0, mat=GUEST_MATS[3])
+guest(100.0, -2840.0, facing=270.0, mat=GUEST_MATS[3])
+table(-380.0, -2730.0, 90, 60, h=80)
+box("Kitchen_Shelf", -990, -940, -3200, -2800, 0, 200, m_case, folder="Set/Props")
+for i, m in enumerate((m_trim, m_rope, m_case)):       # the prop store: scenery flats, a bust, a column, lamps
+    box("Scenery_Flat", 830 + i * 14, 842 + i * 14, -3250 + i * 50, -2900 + i * 50, 0, 300 - i * 30, m,
+        folder="Set/Props")
+box("Chair_Stack", 1230, 1275, -2770, -2725, 0, 140, m_trim, folder="Set/Props")
+prop("Lamp_Shelf", 1950, 2400, -2700, -2640, 0, 60, m_case)
+for lx in (2000.0, 2150.0, 2300.0):
+    deco("Spare_Lamp", lx - 20, lx + 20, -2690, -2650, 60, 110, m_floor)
+box("Bust_Plinth", 1845, 1895, -3175, -3125, 0, 100, m_trim, folder="Set/Props")
+ghost(shape(SPHERE, "Bust", 1870.0, -3150.0, 124.0, 44.0, 44.0, 50.0, m_head))
+shape(CYL, "Fake_Column", 1750.0, -3200.0, 125.0, 60.0, 60.0, 250.0, m_head)
+for (cx, cy) in ((3450.0, -3050.0), (3700.0, -2850.0)):  # the loading dock: pallets, drums, a hazard line
+    box("Pallet", cx - 60, cx + 60, cy - 60, cy + 60, 0, 12, m_trunk, folder="Set/Props")
+    crates(cx, cy, (100, 80), z=12.0)
+box("Hand_Truck", 3180, 3230, SY0 + 30, SY0 + 40, 0, 120, m_trim, folder="Set/Props")
+for (dx, dy) in ((4250.0, -2700.0), (4320.0, -2730.0), (4270.0, -2780.0)):
+    shape(CYL, "Drum", dx, dy, 44.0, 58.0, 58.0, 88.0, CAR_MATS[1])
+flat("Hazard_Line", 3300, 4000, SY0 + 60, SY0 + 80, m_gold)
+guest(3550.0, -2750.0, facing=250.0)
+guest(3950.0, -3100.0, facing=180.0)
+
+# --- the east wing ----------------------------------------------------------------------------------------------------
+box("Vault_Desk", 4520, 4600, -1700, -1400, 0, 100, m_trim, folder="Set/Props")    # the vault corridor
+deco("Vault_Desk_Screen", 4540, 4548, -1590, -1510, 100, 140, m_glow)
+chair(4470.0, -1550.0, 0)
+guest(4470.0, -1550.0, z=45.0, facing=0.0, seated=True, mat=GUEST_MATS[1])
+deco("Keypad", 4712, 4728, VAULT_Y0 - 6, VAULT_Y0, 120, 150, m_glow)
+table(5100.0, -2200.0, 120, 70, h=80)
+crates(5180.0, -1300.0, (90, 60))
+for (y0, y1) in ((-900, -200), (200, 900)):             # the vault
+    box("Deposit_Boxes", HX1 + T + 5, HX1 + T + 50, y0, y1, 0, 220, m_case, folder="Set/Props")
+for i in range(3):
+    deco("Gold_Bar", 4660 + (i % 2) * 8, 4700 + (i % 2) * 8, -12 + i * 4, 6 + i * 4, 90 + i * 7, 97 + i * 7, m_gold)
+box("Safe", 4700, 4900, 850, 990, 0, 200, m_trim, folder="Set/Props")
+deco("Safe_Handle", 4790, 4810, 844, 850, 95, 115, m_gold)
+crates(5080.0, -520.0, (120,))
+box("Statue_Plinth", 4825, 4875, 475, 525, 0, 100, m_trim, folder="Set/Props")
+ghost(shape(SPHERE, "Statue", 4850.0, 500.0, 130.0, 55.0, 55.0, 60.0, m_gold))
+
 # Light: a high sun, a sky and a skylight, all movable (nothing to bake).
 sun = spawn(unreal.DirectionalLight, (0, 0, 2000), yaw=-35.0, pitch=-72.0, label="Sun", folder="Light")
 sun_c = sun.get_component_by_class(unreal.DirectionalLightComponent)
@@ -505,9 +1006,12 @@ setp(maya, id=unreal.TakeCameraId.B, tint=unreal.LinearColor(0.10, 0.35, 0.80, 1
 vex = spawn(unreal.TakeCharacter, (VEX[0], VEX[1], CAPSULE), yaw=90.0, label="Vex", folder="Take")
 setp(vex, id=unreal.TakeCameraId.C, tint=unreal.LinearColor(0.10, 0.55, 0.30, 1.0))
 
-# Julian's marks.
+# Julian's marks: where the take starts on the street, and the checkpoint in the hall.
 m = spawn(unreal.Mark, (START[0], START[1], 0), label="Mark_Start", folder="Take")
 setp(m, mark_name="START")
+m = spawn(unreal.Mark, (HALL_MARK[0], HALL_MARK[1], 0), label="Mark_Hall", folder="Take")
+setp(m, mark_name="THE HALL", checkpoint_radius=HALL_MARK_RADIUS)
+m.set_editor_property("bCheckpoint", True)
 m = spawn(unreal.Mark, (MARK_ROPE[0], MARK_ROPE[1], 0), label="Mark_Rope", folder="Take")
 setp(m, mark_name="ROPE")
 m = spawn(unreal.Mark, (GOAL[0], GOAL[1], DAIS_H), label="Mark_Goal", folder="Take")

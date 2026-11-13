@@ -85,6 +85,10 @@ public:
 	/** The follow camera's world location, rotation and FOV right now (the flight starts from and lands on this). */
 	void GetFollowView(FVector& OutLocation, FRotator& OutRotation, float& OutFOV) const;	// BODY: (m)
 
+	/** Puts the boom and the follow camera on the character at once, with no lag (after he is moved to a checkpoint:
+	 *  otherwise the lagging boom would sweep across the map from where he was placed). */
+	void SnapFollowCamera();
+
 	/** The follow camera's world location (the Use aim assist measures from here). */
 	FVector GetAimOrigin() const;	// BODY: (m)
 

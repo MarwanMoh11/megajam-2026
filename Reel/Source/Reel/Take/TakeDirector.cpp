@@ -150,6 +150,27 @@ void ATakeDirector::BeginPlay()
 			AddTickPrerequisiteComponent(Character->GetCharacterMovement());
 		}
 	}
+	// A blooper's reload starts at the last checkpoint Julian reached; a new take (R) starts where he was placed.
+	const UTakeGameInstance* CheckpointGI = GetTakeGameInstance();
+	if (CheckpointGI && Julian && !CheckpointGI->CheckpointMark.IsEmpty())
+	{
+		for (const TObjectPtr<AMark>& MarkPtr : Marks)
+		{
+			const AMark* const EachMark = MarkPtr.Get();
+			if (EachMark && EachMark->bCheckpoint && EachMark->MarkName == CheckpointGI->CheckpointMark)
+			{
+				const FVector FeetToCentre = Julian->GetActorLocation() - Julian->GetFeetLocation();
+				const float MarkYaw = EachMark->GetActorRotation().Yaw;
+				Julian->SetActorLocationAndRotation(EachMark->GetStandPoint() + FeetToCentre, FRotator(0.f, MarkYaw, 0.f),
+					false, nullptr, ETeleportType::TeleportPhysics);
+				Julian->SetLook(MarkYaw, Julian->StartLookPitch);
+				Julian->SnapFollowCamera();
+				TAKE_LOG(TEXT("CHECKPOINT start at %s"), *EachMark->MarkName);
+				break;
+			}
+		}
+	}
+
 	CurrentCamera = ETakeCamera::A;
 	CurrentUse = FTakeUseTarget();
 	JulianFeetBeforeWalk = Julian ? Julian->GetFeetLocation() : FVector::ZeroVector;

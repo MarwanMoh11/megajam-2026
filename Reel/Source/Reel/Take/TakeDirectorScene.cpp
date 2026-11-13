@@ -4,6 +4,7 @@
 
 #include "Julian.h"
 #include "Mark.h"
+#include "TakeGameInstance.h"
 
 void ATakeDirector::StepScene(float /*DeltaSeconds*/)
 {
@@ -25,6 +26,30 @@ void ATakeDirector::StepScene(float /*DeltaSeconds*/)
 		if (EachMark->IsOccupied() != bShouldBeOccupied)
 		{
 			EachMark->SetOccupied(bShouldBeOccupied);
+		}
+	}
+
+	// A checkpoint mark Julian has come within reach of (walking counts): the next blooper starts there.
+	UTakeGameInstance* const GI = GetTakeGameInstance();
+	if (Phase == ETakePhase::Rolling && GI)
+	{
+		const FVector Feet = Julian->GetFeetLocation();
+		for (const TObjectPtr<AMark>& MarkPtr : Marks)
+		{
+			const AMark* const EachMark = MarkPtr.Get();
+			if (!EachMark || !EachMark->bCheckpoint || GI->CheckpointMark == EachMark->MarkName)
+			{
+				continue;
+			}
+			const FVector Point = EachMark->GetStandPoint();
+			if (FMath::Abs(Point.Z - Feet.Z) <= EachMark->CheckpointHeight
+				&& FVector::Dist2D(Point, Feet) <= EachMark->CheckpointRadius)
+			{
+				GI->CheckpointMark = EachMark->MarkName;
+				GI->CheckpointName = EachMark->MarkName.ToUpper();
+				Flash(FString::Printf(TEXT("CHECKPOINT - %s"), *GI->CheckpointName), TakeColors::GoldBright, 2.f);
+				TAKE_LOG(TEXT("CHECKPOINT saved at %s"), *EachMark->MarkName);
+			}
 		}
 	}
 

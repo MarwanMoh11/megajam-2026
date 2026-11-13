@@ -35,6 +35,10 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Take")
 	FString CheckpointName = TEXT("THE START");
 
+	/** MarkName of the checkpoint mark the next blooper restarts at. Empty: where Julian was placed in the map. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Take")
+	FString CheckpointMark;
+
 	/** The bar the checkpoint restores the clock to (1 = the opening). */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Take")
 	int32 CheckpointBar = 1;

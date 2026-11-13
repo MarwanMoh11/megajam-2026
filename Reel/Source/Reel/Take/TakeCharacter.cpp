@@ -122,6 +122,20 @@ void ATakeCharacter::SetLook(float Yaw, float Pitch)
 	ApplyLookToBoom();
 }
 
+void ATakeCharacter::SnapFollowCamera()
+{
+	if (!Boom || !Boom->IsRegistered())
+	{
+		return;
+	}
+	// The boom lags from where it last was. With the lag off, one zero-length tick puts it on the character.
+	const bool bLagWasOn = Boom->bEnableCameraLag;
+	Boom->bEnableCameraLag = false;
+	ApplyLookToBoom();
+	static_cast<UActorComponent*>(Boom.Get())->TickComponent(0.f, LEVELTICK_All, nullptr);
+	Boom->bEnableCameraLag = bLagWasOn;
+}
+
 void ATakeCharacter::Move(const FVector2D& Axes)
 {
 	if (Axes.IsNearlyZero())

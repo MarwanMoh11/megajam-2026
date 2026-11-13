@@ -299,3 +299,34 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   - The final package for the rework (20:04): `C:\Jam\Builds\Windows`, zipped to 326 MB
     (`C:\Jam\Builds\TeamName_GameName.zip`). It was played once more from the `.exe` after the fixes, with the
     same keys. Five screenshots are in `docs/shots/` (`gate1b_*.png`): the building, Julian, a flight, Maya, Vex.
+- **About 22:30-23:35. Marwan played the rework: start on the street, and dress the place.**
+  - Marwan played the packaged rework and sent two notes: "shouldnt I start outside of the building not inside ?
+    the line is outside", then "also add more props placeholders to make the place feel alive". The spec's queue
+    was at one end of the hall; with a whole building it belongs at the front door.
+  - The orchestrator did this round itself (one map script, 40 lines of C++), with no subagents.
+  - **The start is on the street.** `tools/build_auction.py` now builds a pavement and a road along the front, opens
+    the front doors, and puts Julian at the foot of a red carpet. Out there: the queue behind ropes, a doorman, the
+    press with tripods, a canopy and a sign, a scanner arch as a placeholder for Scene 1 (no rule yet), windows,
+    planters, street lamps, a limousine and parked cars. Round the other sides: trees, staff cars, a lorry at the
+    dock shutter, bins. Unseen walls at the street's edge keep everyone on it.
+  - **The checkpoint (rule 9) had to come with it.** From the street Julian walks about 22 s to reach the rope, and a
+    blooper reloaded the level from his placed start, so every retry would have cost that walk. A mark can now be
+    a checkpoint (`bCheckpoint`, `CheckpointRadius`): once Julian comes within 12 m of the hall mark, the game
+    instance remembers it and a blooper starts the next take there, with the slate reading "AGAIN FROM THE HALL".
+    R (a new take) goes back to the street. The follow camera is snapped to him after the move, or its lag would
+    sweep it across the map.
+  - **Props and people in every room**, about 830 new pieces (1,336 actors in the map): 36 bidders on the hall
+    benches, cocktail tables with guests, a bartender and stools, phone bidders, an auctioneer at the podium,
+    banners on the columns, pictures on the walls, sofas and plants on the lobby balcony, film cans and reels in
+    the projection room, kitchen, prop store, loading dock and vault dressing, a red extinguisher and alarm point
+    by every fire exit. People are a cylinder and a sphere: they are not watchers and carry no rule.
+  - A rule for the dressing, so the routes play as before: small props and standing people stop a walker but
+    ignore the camera and visibility channels (sight lines, the aim and the follow camera pass through), seated
+    people and wall dressing have no collision at all, and nothing new stands east of the rope except the
+    auctioneer and two easels on the dais.
+  - Checked in play-in-editor from a street start: the walk-in takes 21.7 s, "CHECKPOINT - THE HALL" flashes as
+    Julian passes the benches, a beam blooper restarts him on the hall mark, R puts him back on the street. Route
+    2 and Route 1 both clear after walking in (composure 100 and 24 at the goal).
+  - What went wrong: nothing broke. One false alarm: the editor printed "Video memory has been exhausted" during
+    the tests, because Marwan's packaged game was still open beside it; with the game closed the warning is gone.
+  - Four screenshots in `docs/shots/` (`gate1c_*.png`): the front from the road, Julian's start, the lobby, the hall.

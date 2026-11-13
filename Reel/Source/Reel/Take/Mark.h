@@ -40,6 +40,19 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Mark")
 	bool bGoal = false;
 
+	/** A checkpoint (rule 9): once Julian's feet come within CheckpointRadius of it on its floor, walking or standing,
+	 *  a blooper starts the next take here instead of where he was placed. R (a new take) goes back to the start. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Mark")
+	bool bCheckpoint = false;
+
+	/** How close Julian's feet must come to save the checkpoint, cm (2D). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Mark")
+	float CheckpointRadius = 1200.f;
+
+	/** ...and within this height of it, cm: the floor above or below doesn't count. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Mark")
+	float CheckpointHeight = 150.f;
+
 	/** Julian's feet within this 2D distance of the stand point, standing still, counts as on the mark, cm. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Mark")
 	float StandRadius = 60.f;
