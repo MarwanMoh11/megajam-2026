@@ -71,3 +71,10 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
 - **About 22:10. Editor up.** `UnrealEditor.exe Reel.uproject` opened straight on `Lvl_ThirdPerson` with no dialogs
   and no load errors; the MCP server answered on port 8000 after 1.2 minutes (server `unreal-mcp`
   5.9.0-60351404, 106 toolsets listed). Ready for the stage 3 session.
+
+## Day 2, Fri Nov 13
+
+- **About 11:30. K wins.** Marwan tried both browser prototypes (the 3D third-person K with the studio's script,
+  and L's six-scene Tight Edit) and picked K, Meanwhile..., to be refined before the spec is written. Moonlight on
+  the Mac was paired from the command line (`moonlight pair <address> --pin`), set to windowed, and streams the PC.
+  The PC had restarted overnight: the editor and the `jam-pc` door were down and stage 3 had not run.

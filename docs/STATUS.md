@@ -1,6 +1,10 @@
 # Status
 
-Last updated: 2026-11-11, pre-jam. Theme: **Director's Cut**. Nothing is built.
+Last updated: 2026-11-13. Theme: **Director's Cut**.
+
+**Picked: K, Meanwhile...** (Marwan, Fri Nov 13, about 11:30 Cairo, after trying the 3D prototype
+`prototypes/k-3d/` and L's `prototypes/l-final-cut/`). The idea gets refined with Marwan before the spec below is
+written; L is no longer a candidate. The Unreal project `Reel` exists on the PC; no game code yet.
 
 ## Locked for now: two candidates
 
