@@ -36,4 +36,5 @@ Recorded 2026-11-12 by the setup session (`setup/auto.md`).
 | Installers and the Launcher's folder step need UAC; prompts cancel themselves after about 2 minutes | Raise them only while Marwan watches through Moonlight. |
 | GPU driver from 2026-09 | Current enough. |
 | NVIDIA RTX card | RTX award possible (DLSS). |
+| DLSS plugin for 5.9 (checked 2026-11-13, stage 3) | **No 5.9 build.** The newest, DLSS 4.5 plugin 8.9.0 (files dated 2026-10-16), ships for UE 5.5-5.8 only: [NVIDIA DLSS get started](https://developer.nvidia.com/rtx/dlss/get-started), [plugin archive](https://forums.developer.nvidia.com/t/nvidia-dlss-unreal-engine-plugin-archive/377564). Plugins are tied to an engine version. The only route is rebuilding the 5.8 plugin against 5.9, untested: a Saturday decision, likely drop. |
 | RAM 32 GB | No limit noted; still close the editor while packaging if memory runs short. |

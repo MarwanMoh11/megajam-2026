@@ -27,6 +27,10 @@ Call `list_toolsets` on the `unreal-mcp` server. If this session has no such too
 - failing those, ask Marwan to click Generate Client Config (Edit > Editor Preferences > Agentic Workflows > Model
   Context Protocol, Client = Claude Code) and compare the generated `Reel\.mcp.json` with the one at the repo root.
 
+What the first run (2026-11-13) met: the PC had rebooted, so no editor and nothing on port 8000. Starting the editor
+fixes the server, but the session can't re-dial a project MCP server itself (only Marwan, with `/mcp` > Reconnect).
+`tools/ue_mcp.py` talks to the server over HTTP and needs neither: see `docs/UNREAL_MCP.md`.
+
 ## 1. Learn the tools, and write them down
 
 List the toolsets and read the descriptions of the ones a small game needs: levels and actors, Blueprints, assets
@@ -62,7 +66,9 @@ afterwards. Run in the background, with the log at `C:\Jam\Builds\package-win.lo
 "<UE>\Engine\Build\BatchFiles\RunUAT.bat" BuildCookRun -project="<repo>\Reel\Reel.uproject" -platform=Win64 -clientconfig=Shipping -build -cook -stage -pak -prereqs -archive -archivedirectory="C:\Jam\Builds" -nop4 -utf8output
 ```
 
-- `-prereqs` bundles the Visual C++ runtime installer, so the game starts on a judge's PC that lacks it.
+- `-prereqs` bundles the Visual C++ runtime installer, so the game starts on a judge's PC that lacks it. In 5.9 it
+  stages `Engine\Extras\Redist\en-us\vc_redist.x64.exe`. Run the `.bat` from PowerShell (Git Bash mangles the quotes).
+- The archive holds a 249 MB `.pdb`: leave it out of the zip with `"-xr!*.pdb"`.
 - Don't add `-NoCleanStage`: in this Preview it can ship stale content.
 - Start the packaged `.exe` windowed and check the process is still alive after 20 seconds. Marwan may not be
   watching: take a screenshot of the desktop if you can and describe it, close the game, and put "did the level show
@@ -74,6 +80,11 @@ afterwards. Run in the background, with the log at `C:\Jam\Builds\package-win.lo
 A browser build is a bonus that gets an entry more plays. It is experimental in this Preview. Start a 30-minute
 clock at the first command; when it runs out, write down how far it got and stop.
 
+- First, from Epic's own guide (`<UE>\Engine\Platforms\Wasm\Docs\GettingStarted.md` and
+  `Skills\web-deploy\SKILL.md`): it needs **emscripten 6.0.10 exactly** (emsdk, with `WASM_EMSDK_ROOT` pointing at
+  it), which no runbook installs; and the AllToolsets/ToolsetRegistry/AIAssistant plugins crash a Wasm cook unless
+  the `.uproject` gives them `"PlatformDenyList": ["Wasm"]`. Its command adds `-iostore -package -unattended` and
+  `-AdditionalCookerOptions="-unattended -nopause -nosplash -nullrhi"`, then `check_stage.py <out>\Wasm`.
 - Use the platform name stage 2 wrote in `docs/MACHINE.md`. Same command as above with that platform, Shipping, its
   own log. If the command line won't take it, ask Marwan to run it from the editor: Platforms > Web (or Wasm) >
   Shipping > Package Project.

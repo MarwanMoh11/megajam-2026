@@ -56,10 +56,15 @@ in `docs/JAM_PLAN.md`. Setup is `README.md` plus the runbooks in `setup/`.
 - To restart the editor: `ExitEditor` in `EditorToolset.EditorAppToolset`, start it again, reconnect.
 
 ## C++ changes
-- Function bodies: compile with Live Coding, Unreal's in-editor fast reload (its tool, or Ctrl+Alt+F11 in the
-  editor). The editor stays open.
-- New classes, new `UPROPERTY`/`UFUNCTION`, or changed headers: exit the editor, build, start it again, reconnect.
-  Stage 3 timed both routes and wrote the steps into `docs/UNREAL_MCP.md`.
+- Function bodies: compile with Live Coding, Unreal's in-editor fast reload (`LiveCodingToolset.CompileLiveCoding`,
+  or Ctrl+Alt+F11 in the editor). The editor stays open. **18-24 s** on this PC.
+- New classes, new `UPROPERTY`/`UFUNCTION`, or changed headers: `ExitEditor`, `Build.bat` from PowerShell, start the
+  editor, reconnect. **About 100 s** for a one-file change (build 11 s; clean build 4.3 min). Steps and examples are in
+  `docs/UNREAL_MCP.md`.
+- Live Coding patches memory only: the next editor start loads the DLL from the last `Build.bat`. Rebuild (editor
+  closed) before restarting on Live-Coded changes.
+- After an editor restart this session's `unreal-mcp` tools stay dead: Marwan can reconnect them with `/mcp`, or use
+  `tools/ue_mcp.py` over HTTP, which always works.
 - Live Coding does not reliably re-apply changed constructor defaults to Blueprint children that already exist. Put
   tunable values in `UPROPERTY(EditAnywhere)` fields and change them in the editor instead.
 
@@ -69,18 +74,24 @@ in `docs/JAM_PLAN.md`. Setup is `README.md` plus the runbooks in `setup/`.
 - Web builds: Shipping only, under 500 MB total and 200 MB per file, under 2 GB of memory, no Bink video, and leave
   the Wasm SIMD and allocator settings at their defaults. Open a Web build with its `Play_*.bat`, never `index.html`.
 
-## Commands (stage 2 fills in `UE`; stage 3 replaces these with the ones that worked)
+## Commands (worked on this PC in stage 3, 2026-11-13)
+Engine `C:\Epic Games\UE_5.9` (5.9.0-60351404; the Launcher doesn't list it in LauncherInstalled.dat). Run the `.bat`
+files from **PowerShell**: Git Bash's `cmd //c` mangles the quoted paths. Times are for the untouched template.
+```powershell
+# build the editor target (editor closed): 11 s for one changed .cpp, 4.3 min clean
+& "C:\Epic Games\UE_5.9\Engine\Build\BatchFiles\Build.bat" ReelEditor Win64 Development "-Project=C:\Jam\megajam\Reel\Reel.uproject" -WaitMutex > C:\Jam\Builds\build-editor.log
+
+# start the editor, detached: MCP answers on port 8000 about 30 s later (59 s on the first start after a reboot)
+Start-Process "C:\Epic Games\UE_5.9\Engine\Binaries\Win64\UnrealEditor.exe" '"C:\Jam\megajam\Reel\Reel.uproject"'
+
+# package for Windows, in the background: 3.6 min (build 80 s, cook 95 s); output in C:\Jam\Builds\Windows
+& "C:\Epic Games\UE_5.9\Engine\Build\BatchFiles\RunUAT.bat" BuildCookRun "-project=C:\Jam\megajam\Reel\Reel.uproject" -platform=Win64 -clientconfig=Shipping -build -cook -stage -pak -prereqs -archive "-archivedirectory=C:\Jam\Builds" -nop4 -utf8output > C:\Jam\Builds\package-win.log
+
+# zip without the 249 MB .pdb: 14 s, 343 MB
+& "C:\Program Files\7-Zip\7z.exe" a -tzip C:\Jam\Builds\TeamName_GameName.zip C:\Jam\Builds\Windows "-xr!*.pdb"
 ```
-UE   = C:\Epic Games\UE_5.9   (5.9.0-60351404; the Launcher no longer lists it in LauncherInstalled.dat)
-PROJ = C:\Jam\megajam\Reel\Reel.uproject
+- Close the editor before packaging, so Live Coding can't block the build and the editor DLL on disk is fresh.
+- `-prereqs` stages `Engine\Extras\Redist\en-us\vc_redist.x64.exe` (5.9 has no `UEPrereqSetup`). Shipping writes no log.
+- Driving the editor from a shell: `"/c/Epic Games/UE_5.9/Engine/Binaries/ThirdParty/Python3/Win64/python.exe" -I tools/ue_mcp.py tool <Toolset.Tool> '<json>'`.
 
-:: build the editor target (editor closed)
-"<UE>\Engine\Build\BatchFiles\Build.bat" ReelEditor Win64 Development -Project="<PROJ>" -WaitMutex
-
-:: start the editor, detached
-start "" "<UE>\Engine\Binaries\Win64\UnrealEditor.exe" "<PROJ>"
-
-:: package the Windows build (background; read C:\Jam\Builds\package-win.log)
-"<UE>\Engine\Build\BatchFiles\RunUAT.bat" BuildCookRun -project="<PROJ>" -platform=Win64 -clientconfig=Shipping -build -cook -stage -pak -prereqs -archive -archivedirectory="C:\Jam\Builds" -nop4 -utf8output
-```
 The submission zip is `TeamName_GameName.zip`, under 1 GB, made with 7-Zip from the packaged folder.

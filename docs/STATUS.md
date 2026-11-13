@@ -49,5 +49,8 @@ Reasoning and the full tier list: docs/BRAINSTORM.md, section 7.
 ## Not decided yet
 - Game name and team name (the zip must be `TeamName_GameName.zip`).
 - Solo or team.
-- Whether the Web build ships (decided Friday, after the first Web package).
+- Whether the Web build ships (decided Friday, after the first Web package). Stage 3 (Nov 13) didn't package it:
+  it needs emscripten 6.0.10 (emsdk, about 0.5-1 GB, not on any install list: waiting for Marwan's OK), and the
+  AllToolsets plugins need `"PlatformDenyList": ["Wasm"]` in `Reel.uproject` or the cook crashes (Epic's
+  `web-deploy` skill). Windows ships either way.
 - Student category: the Official Rules are still unread.

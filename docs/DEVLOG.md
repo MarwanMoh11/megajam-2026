@@ -78,3 +78,18 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   and L's six-scene Tight Edit) and picked K, Meanwhile..., to be refined before the spec is written. Moonlight on
   the Mac was paired from the command line (`moonlight pair <address> --pin`), set to windowed, and streams the PC.
   The PC had restarted overnight: the editor and the `jam-pc` door were down and stage 3 had not run.
+- **11:11-11:45 (the PC clock shows 2 h less). Stage 3: the pipeline, proven on the untouched template.** The
+  PC had rebooted overnight, so the editor wasn't running and the new session started without its `unreal-mcp` tools. Claude started the editor
+  (MCP up 59 s after launch), found it can't re-dial a project MCP server itself, and wrote `tools/ue_mcp.py`, a small
+  client that talks to the editor's MCP server over HTTP. That route worked for everything that followed. Through it:
+  five coloured cubes spawned with the editor's Python tool, seen in a viewport capture, then deleted with nothing
+  saved; PIE started, `BP_ThirdPersonCharacter` possessed at the player start, seen in a PIE capture. The C++ loop:
+  jump input routed through `DoJumpStart` with a log line, Live Coding compiled it in **24 s** (18 s for the revert),
+  and the input tool pressed Jump in PIE: the log line appeared and the character left the ground. The slow route
+  (exit, `Build.bat`, restart, check in PIE) took **102 s**: exit 6 s, build 11 s for one file, editor start to MCP
+  29 s. Windows package, Shipping with prerequisites: **3 min 35 s** (build 80 s, cook 95 s, pak 4 s), 737 MB on
+  disk; the `.exe` ran windowed and was alive at 20 s. `Test_Reel.zip` without the symbols file: **343 MB**, 14 s.
+  What fought back: `cmd //c` from Git Bash mangles the quoted `.bat` path (PowerShell works); `FocusOnActors` returns
+  before the camera moves; the on-screen debug text never showed in captures (the log did); Live Coding patches
+  only memory, so the DLL on disk stays stale until the next `Build.bat`; a Windows Firewall prompt for UnrealPak
+  popped up during packaging and was left for Marwan. DLSS: no plugin build for 5.9 (8.9.0 stops at 5.8).
