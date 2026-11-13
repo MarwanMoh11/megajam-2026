@@ -61,6 +61,10 @@ protected:
 	FVector2D DrawShadowedText(const FString& Text, const FLinearColor& Colour, float X, float Y, float Scale,
 		bool bCentre);	// BODY: (a)
 
+	/** DrawShadowedText with a chosen font (the slate and stamp use LargeFont). */
+	FVector2D DrawTextWithFont(const FString& Text, UFont* Font, const FLinearColor& Colour, float X, float Y,
+		float Scale, bool bCentre);
+
 	UPROPERTY(Transient)
 	TObjectPtr<UFont> SmallFont;
 

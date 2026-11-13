@@ -56,4 +56,8 @@ public:
 
 	UPROPERTY(VisibleAnywhere, Category = "Take")
 	TObjectPtr<UStaticMeshComponent> TapeWest;
+
+private:
+	/** Sizes the Area outline and the four strips to Extent and colours the strips red. From OnConstruction and BeginPlay. */
+	void LayoutTape();
 };

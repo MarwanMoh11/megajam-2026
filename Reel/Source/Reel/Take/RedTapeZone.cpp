@@ -1,4 +1,4 @@
-// Owner: (a). Constructor by the header pass; every "// BODY: (a)" is a stub to fill.
+// Owner: (a). Constructor by the header pass; bodies by (a).
 
 #include "RedTapeZone.h"
 
@@ -29,17 +29,66 @@ ARedTapeZone::ARedTapeZone()
 void ARedTapeZone::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
-	// BODY: (a)
+	LayoutTape();
 }
 
 void ARedTapeZone::BeginPlay()
 {
 	Super::BeginPlay();
-	// BODY: (a)
+	LayoutTape();
+}
+
+void ARedTapeZone::LayoutTape()
+{
+	const float HalfX = FMath::Max(1.f, Extent.X);
+	const float HalfY = FMath::Max(1.f, Extent.Y);
+	const float Height = FMath::Max(1.f, Extent.Z);
+	const float Width = FMath::Max(1.f, TapeWidth);
+
+	// The outline covers the counted volume: floor up to 2 * Extent.Z.
+	if (Area)
+	{
+		Area->SetRelativeLocation(FVector(0.f, 0.f, Height));
+		Area->SetBoxExtent(FVector(HalfX, HalfY, Height));
+	}
+
+	// Cube mesh is 100 cm: scale = size / 100. North/South run along Y at +-X; East/West along X at +-Y.
+	// The N/S strips are a tape width longer so the corners close.
+	const float Thick = 0.01f;
+	const FVector AlongY(Width / 100.f, (2.f * HalfY + Width) / 100.f, Thick);
+	const FVector AlongX((2.f * HalfX) / 100.f, Width / 100.f, Thick);
+
+	struct FStrip
+	{
+		UStaticMeshComponent* Comp;
+		FVector Location;
+		FVector Scale;
+	};
+	const FStrip Strips[] = {
+		{ TapeNorth, FVector(HalfX, 0.f, 1.f), AlongY },
+		{ TapeSouth, FVector(-HalfX, 0.f, 1.f), AlongY },
+		{ TapeEast, FVector(0.f, HalfY, 1.f), AlongX },
+		{ TapeWest, FVector(0.f, -HalfY, 1.f), AlongX },
+	};
+	for (const FStrip& Strip : Strips)
+	{
+		if (!Strip.Comp)
+		{
+			continue;
+		}
+		Strip.Comp->SetRelativeLocation(Strip.Location);
+		Strip.Comp->SetRelativeScale3D(Strip.Scale);
+		FTakeShapes::SetColour(Strip.Comp, TakeColors::Red);
+	}
 }
 
 bool ARedTapeZone::Contains(const FVector& WorldPoint) const
 {
-	// BODY: (a)
-	return false;
+	// The zone's own frame, yaw only (actor scale ignored: Extent is in cm).
+	const FVector Delta = WorldPoint - GetActorLocation();
+	const FVector Local = FRotator(0.f, GetActorRotation().Yaw, 0.f).UnrotateVector(Delta);
+	return FMath::Abs(Local.X) <= Extent.X
+		&& FMath::Abs(Local.Y) <= Extent.Y
+		&& Delta.Z >= -50.f
+		&& Delta.Z <= Extent.Z * 2.f;
 }

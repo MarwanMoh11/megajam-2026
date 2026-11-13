@@ -177,3 +177,41 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
     expected; `tools/ue_mcp.py` took over.
   - Smallest fixes, logged in STATUS.md: no camera C in the test box, the spot is fired by clicking a watcher, and
     the goal mark sits outside the tape.
+
+- **About 15:25-16:10. Five builders write the bodies in parallel; the test box is built at the same time.**
+  - Five Opus agents each took one slice of the stubs and their own `.cpp` files: (a) clock, composure, red tape
+    and HUD; (b) cameras, the cut and the pointer; (c) Julian, marks and the walk; (d) the guard, the beam and being
+    seen; (e) the devices and the blooper. None of them could compile: one build at the end, by the orchestrator.
+  - While they wrote, Fable built the test box through the editor's Python from one script,
+    `tools/build_testbox.py`: floor, three walls, a rope with a gap, three marks, the red tape, the beam, the guard
+    and his two patrol points, the cart, the banner, the spot, the film's two angles with their zones, and Maya's
+    camera. Re-running the script rebuilds the map from its numbers.
+  - Four slices came back in 8 to 9 minutes each and compiled clean on the first build, with no warnings. In
+    play-in-editor, driven by console commands that go through the same queue as the keys: the cue found a 25.5 m
+    path (10.2 s, 20.4 beats), the cart rolled for a second and lured the guard, the spot blinded him and refused a
+    second target while busy, the film cut to its second angle as Julian passed the zone, and the beam touch froze
+    the take for a second and reloaded the level with every device restored.
+  - What went wrong: the first layout had Julian walking right to left on screen, because a camera looking along +Y
+    has +X on its left, so the map was mirrored. Auto exposure washed the dark floor out to grey, so the map got a
+    fixed exposure. The guard's frame at 12 m covered half the room and was cut to 9 m. Builder (a) thought for 22
+    minutes without writing a file while the others had finished, and needed a nudge to write plain code first.
+
+- **About 16:10-17:00. All five slices compile; both routes and both failures pass in play-in-editor.**
+  - Builder (a)'s clock, composure, tape and HUD arrived last. The full build was clean on the first try again, so
+    no compile error ever went back to a builder.
+  - Fable played the box through console commands on a game-time schedule and read the log, where every line
+    carries its frame number:
+    - **Route 1, banner plus spot:** cue Julian to the goal, drop the banner over the beam, spot the guard as
+      Julian enters the red tape. CLEAR with composure 100.
+    - **Route 2, cart plus spot:** cue, spot the beam before he crosses it, crash the cart so the guard walks off
+      to look. CLEAR with composure 100.
+    - **Failure 1:** no device at all, he touches the beam: blooper on that frame, a 1 s freeze under the red
+      slate, reload, devices and composure restored.
+    - **Failure 2:** banner only, the guard holds him in the tape: SEEN, composure 100 to 0 in under 4 s, blooper,
+      reload.
+  - Real keys and real mouse clicks were sent to the play window from PowerShell. Each press and its reaction
+    carry the same frame number (press 2, view to B, cut: all frame 5550), and the first click is not eaten.
+  - What went wrong: a screenshot in the middle of a run froze the game for seconds and squeezed the schedule, so
+    the runs now wait on game time. The film's first angle did not have Julian in it, so the camera moved back and
+    the west wall came out. A guard who walks between two points was not dangerous enough (a blind crossing left
+    Julian alive), so he now stands and turns on bar lines: three bars watching, one bar away.

@@ -17,15 +17,15 @@ TAPE_X0, TAPE_X1 = 850.0, 1950.0 # red tape past the rope: 11 m = 4.4 s at 250 c
 START = (-300.0, 0.0)
 MARK_ROPE = (600.0, 0.0)
 GOAL = (2250.0, 0.0)
-GUARD_A = (1250.0, -650.0)       # patrol point 1 (he looks across the path, yaw +90)
-GUARD_B = (1550.0, -650.0)        # patrol point 2
-GUARD_RANGE, GUARD_HALF_ANGLE = 900.0, 40.0
+GUARD_A = (1400.0, -650.0)       # patrol point 1: he looks across Julian's path (yaw +90) for 3 bars
+GUARD_B = (1400.0, -650.0)       # patrol point 2: same spot, back turned (yaw -90) for 1 bar        # patrol point 2
+GUARD_RANGE, GUARD_HALF_ANGLE = 760.0, 45.0
 CART_DOOR = (2450.0, -700.0)      # the cart rolls -X from here
 CART_ROLL = 400.0                # door to crash, cm
 BATTEN = (760.0, 420.0, 550.0)   # the banner hangs here and drops in front of the beam's second post
 SPOT = (300.0, 700.0, 0.0)
 CAM_B = ((1000.0, 1700.0, 1400.0), (1000.0, -50.0, 0.0))      # (position, look-at): Maya's catwalk
-CAM_A_DOOR = ((-560.0, 300.0, 420.0), (1200.0, 0.0, 0.0))    # the film's first angle: down the lane
+CAM_A_DOOR = ((-1150.0, 420.0, 400.0), (900.0, -60.0, 40.0))    # the film's first angle: down the lane
 CAM_A_ROPE = ((1500.0, 1100.0, 380.0), (1500.0, -100.0, 50.0))# the film's second angle: side-on over the tape
 ZONE_SPLIT_X = 500.0             # Julian past this X: the film cuts to the second angle
 EXPOSURE_EV = 0.5                # fixed exposure (EV100), so dark floors stay dark
@@ -99,9 +99,8 @@ m_floor = make_mi("MI_Box_Floor", (0.045, 0.045, 0.05))
 m_wall = make_mi("MI_Box_Wall", (0.16, 0.16, 0.18))
 m_rope = make_mi("MI_Box_Rope", (0.30, 0.05, 0.05))
 
-# Floor, three walls (the north side is open), and the rope: a low wall with a gap.
+# Floor, two walls (the north and west sides are open to the cameras), and the rope: a low wall with a gap.
 box("Floor", X0, X1, Y0, Y1, -20, 0, m_floor)
-box("Wall_West", X0 - 20, X0, Y0, Y1, 0, 300, m_wall)
 box("Wall_East", X1, X1 + 20, Y0, Y1, 0, 300, m_wall)
 box("Wall_South", X0 - 20, X1 + 20, Y0 - 20, Y0, 0, 300, m_wall)
 box("Rope_South", ROPE_X - 10, ROPE_X + 10, Y0, -GAP, 0, 110, m_rope)
@@ -151,11 +150,11 @@ setp(tape, extent=unreal.Vector((TAPE_X1 - TAPE_X0) / 2, (Y1 - Y0) / 2 - 10, 200
 beam = spawn(unreal.BeamWatcher, (ROPE_X, -GAP, 0), label="Beam")
 setp(beam, label="BEAM", end_b=unreal.Vector(0, 2 * GAP, 0), live_from_bar=1, drop_every_bars=4, drop_beat_in_bar=4)
 
-# The patrol guard: two points on the far side of the tape, both looking across Julian's path.
+# The patrol guard: he stands on the far side of the tape and turns on bar lines.
 p1 = spawn(unreal.PatrolPoint, (GUARD_A[0], GUARD_A[1], 0), yaw=90.0, label="Patrol_1")
-setp(p1, bars=2)
-p2 = spawn(unreal.PatrolPoint, (GUARD_B[0], GUARD_B[1], 0), yaw=90.0, label="Patrol_2")
-setp(p2, bars=2)
+setp(p1, bars=3)
+p2 = spawn(unreal.PatrolPoint, (GUARD_B[0], GUARD_B[1], 0), yaw=-90.0, label="Patrol_2")
+setp(p2, bars=1)
 guard = spawn(unreal.PatrolGuard, (GUARD_A[0], GUARD_A[1], 0), yaw=90.0, label="Guard")
 setp(guard, label="GUARD", frame_range=GUARD_RANGE, frame_half_angle=GUARD_HALF_ANGLE, patrol_points=[p1, p2])
 
