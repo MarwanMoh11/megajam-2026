@@ -330,3 +330,6 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   - What went wrong: nothing broke. One false alarm: the editor printed "Video memory has been exhausted" during
     the tests, because Marwan's packaged game was still open beside it; with the game closed the warning is gone.
   - Four screenshots in `docs/shots/` (`gate1c_*.png`): the front from the road, Julian's start, the lobby, the hall.
+  - Packaged at 23:40 (65 s; zip 326 MB, `C:\Jam\Builds\TeamName_GameName.zip`) and played from the `.exe` with
+    real key and mouse events: W walks Julian up the carpet, through the scanner arch to the open doors with the
+    lobby and the grand stair ahead; 2 flies from the street to Maya; E, 3 and R behave as before.
