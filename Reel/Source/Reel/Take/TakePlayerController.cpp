@@ -5,11 +5,13 @@
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
 #include "ComposureComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
 #include "Device.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "FollowSpot.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "InputCoreTypes.h"
 #include "Julian.h"
 #include "Kismet/KismetSystemLibrary.h"
@@ -17,6 +19,7 @@
 #include "Misc/Paths.h"
 #include "TakeCharacter.h"
 #include "TakeDirector.h"
+#include "TakeGameInstance.h"
 #include "UnrealClient.h"
 #include "Watcher.h"
 
@@ -549,6 +552,35 @@ void ATakePlayerController::TakeDump()
 		TakeText::PhaseName(Director->Phase),
 		TakeText::CameraLetter(Director->CurrentCamera));
 
+	// Step 2: the scene, the objective, the fired triggers (with their bars) and the game instance's checkpoint.
+	Line += FString::Printf(TEXT(" scene=%d objective=\"%s\""), Director->Scene, *Director->Objective);
+	{
+		FString Fired;
+		for (const TPair<FName, int32>& Fire : Director->FiredTriggers)
+		{
+			Fired += FString::Printf(TEXT("%s%s@%d"), Fired.IsEmpty() ? TEXT("") : TEXT(","), *Fire.Key.ToString(), Fire.Value);
+		}
+		Line += FString::Printf(TEXT(" triggers=[%s]"), *Fired);
+	}
+	if (const UTakeGameInstance* DumpGI = Director->GetTakeGameInstance())
+	{
+		Line += FString::Printf(TEXT(" checkpoint=[%s mark=%s bar=%d scene=%d bloopers=%d]"), *DumpGI->CheckpointName,
+			DumpGI->CheckpointMark.IsEmpty() ? TEXT("none") : *DumpGI->CheckpointMark, DumpGI->CheckpointBar,
+			DumpGI->CheckpointScene, DumpGI->BloopersAtCheckpoint);
+	}
+	else
+	{
+		Line += TEXT(" checkpoint=none");
+	}
+	for (const AMark* DumpMark : Director->Marks)
+	{
+		if (DumpMark && DumpMark->IsActionMark())
+		{
+			Line += FString::Printf(TEXT(" [action %s %s %.2f%s]"), *DumpMark->MarkName, *DumpMark->ActionTrigger.ToString(),
+				DumpMark->GetActionAlpha(), DumpMark->IsActionDone() ? TEXT(" done") : TEXT(""));
+		}
+	}
+
 	// The character the player is on, and the flight.
 	Line += FString::Printf(TEXT(" on=%s"), Current ? Current->GetCrewName() : TEXT("none"));
 	if (IsInFlight())
@@ -610,6 +642,8 @@ void ATakePlayerController::TakeDump()
 			{
 				Line += FString::Printf(TEXT(" %.1fs"), DumpWatcher->GetEffectSecondsLeft());
 			}
+			Line += FString::Printf(TEXT(" arrived=%d arrive=%d"), DumpWatcher->HasArrived() ? 1 : 0,
+				DumpWatcher->GetArriveBar());
 			Line += TEXT("]");
 		}
 	}
@@ -696,4 +730,63 @@ void ATakePlayerController::QueueUse(const TCHAR* PressSource)
 	Press.Type = ETakePressType::Use;
 	Press.Source = PressSource;
 	QueuePress(Press);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Step 2 (header pass stubs; BODY: D)
+// ---------------------------------------------------------------------------------------------------------------------
+
+void ATakePlayerController::TakeWarp(float X, float Y, float Z)
+{
+	if (!Current)
+	{
+		TAKE_LOG(TEXT("WARP %.0f %.0f %.0f: no current character"), X, Y, Z);
+		return;
+	}
+
+	// The feet go to (X, Y, Z): the actor sits half a capsule above them.
+	const UCapsuleComponent* WarpCapsule = Current->GetCapsuleComponent();
+	const float HalfHeight = WarpCapsule ? WarpCapsule->GetScaledCapsuleHalfHeight() : 0.f;
+	bWalkTo = false;
+	Current->SetActorLocation(FVector(X, Y, Z + HalfHeight), false, nullptr, ETeleportType::TeleportPhysics);
+	if (UCharacterMovementComponent* WarpMove = Current->GetCharacterMovement())
+	{
+		WarpMove->StopMovementImmediately();
+	}
+	Current->SnapFollowCamera();
+
+	const FVector Feet = Current->GetFeetLocation();
+	TAKE_LOG(TEXT("WARP %s %.0f %.0f %.0f"), Current->GetCrewName(), Feet.X, Feet.Y, Feet.Z);
+}
+
+void ATakePlayerController::TakeTrigger(const FString& Name)
+{
+	ATakeDirector* Director = ATakeDirector::Get(this);
+	if (!Director || Name.IsEmpty())
+	{
+		TAKE_LOG(TEXT("TAKETRIGGER %s: %s"), *Name, Director ? TEXT("no name") : TEXT("no director"));
+		return;
+	}
+	const FName TriggerName(*Name);
+	if (Director->HasFired(TriggerName))
+	{
+		TAKE_LOG(TEXT("TAKETRIGGER %s: already fired"), *Name);
+	}
+	else
+	{
+		TAKE_LOG(TEXT("TAKETRIGGER %s (exec)"), *Name);
+	}
+	Director->FireTrigger(TriggerName);
+}
+
+void ATakePlayerController::TakeBlooper()
+{
+	ATakeDirector* Director = ATakeDirector::Get(this);
+	if (!Director)
+	{
+		TAKE_LOG(TEXT("TAKEBLOOPER: no director"));
+		return;
+	}
+	TAKE_LOG(TEXT("TAKEBLOOPER (exec)"));
+	Director->RequestBlooper(EBlooperReason::ComposureZero);
 }

@@ -153,6 +153,22 @@ public:
 	UFUNCTION(Exec)
 	void TakeShot(const FString& Name);	// BODY: (s)
 
+	// --- step 2 test commands (BODY: D) -------------------------------------------------------------------------------
+
+	/** "TakeWarp 900 0 0": test only. Puts the feet of the character the player is on at (X, Y, Z) at once (teleport,
+	 *  velocity zeroed, follow camera snapped, the test walk cancelled). TAKE_LOG("WARP <who> x y z"). */
+	UFUNCTION(Exec)
+	void TakeWarp(float X, float Y, float Z);	// BODY: D
+
+	/** "TakeTrigger Scene2": test only. ATakeDirector::FireTrigger(Name) at once. */
+	UFUNCTION(Exec)
+	void TakeTrigger(const FString& Name);	// BODY: D
+
+	/** "TakeBlooper": test only. ATakeDirector::RequestBlooper(ComposureZero): the blooper fires at the end of this
+	 *  frame, so a checkpoint restore can be tested without dying. */
+	UFUNCTION(Exec)
+	void TakeBlooper();	// BODY: D
+
 	// --- tunables ---------------------------------------------------------------------------------------------------
 
 	/** The whole flight, s (under 2 s: STATUS.md). */

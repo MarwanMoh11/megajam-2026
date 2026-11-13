@@ -5,6 +5,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "TakeTypes.h"
 #include "BarClockComponent.generated.h"
 
 class UAudioComponent;
@@ -89,7 +90,51 @@ public:
 	/** Plays one metronome click at once (bDownbeat: higher pitch). Advance calls it; exposed for tests. */
 	void PlayClick(bool bDownbeat);	// BODY: (a)
 
+	// --- step 2 (BODY: D) --------------------------------------------------------------------------------------------
+
+	/** Plays this instrument's warning at once: a short phrase of its own pitch, clearly different from the clicks
+	 *  and from each other (rule 2; stand-ins until the audio step). Bass: two low plucks (about 80 and 100 Hz).
+	 *  Trumpet: two mid notes (about 520 and 660 Hz) with a brighter tone. DrumRoll: about 8 fast noise taps rising
+	 *  in level. HiHat: PlayAccent. None: nothing. Each phrase lasts under one beat. Played whether or not the
+	 *  metronome is muted. TAKE_LOG("WARNING <instrument>") is the caller's. */
+	void PlayWarning(EWatcherInstrument Instrument);	// BODY: D
+
+	/** The sound desk's feedback: a rising squeal, about 0.6 s. */
+	void PlayFeedback();	// BODY: D
+
+	/** A short bright two-note chime: the keycard, a checkpoint, an arrival's downbeat. */
+	void PlayChime();	// BODY: D
+
+	/** The metronome is silent for the next Bars bars from now (the feedback's drop-out; an arriving watcher's solo
+	 *  bar). The clock, the beat events and the pulse carry on. A longer mute already running is kept. */
+	void MuteMetronome(float Bars);	// BODY: D
+
+	/** The band's one-bar break (rule 2): true for bars that are multiples of BreakEveryBars (8, 16, 24...). The
+	 *  metronome does not click during a break bar. */
+	bool IsBreakBar(int32 Bar) const;	// BODY: D
+
+	/** The clicks are silent right now (a break bar, or MuteMetronome is running). The HUD shows "BAND BREAK". */
+	bool IsMetronomeMuted() const;	// BODY: D
+
+	/** The band takes a one-bar break every this many bars (0 = never). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Clock")
+	int32 BreakEveryBars = 8;
+
+	/** Level of the warning phrases against the clicks. */
+	UPROPERTY(EditAnywhere, Category = "Take|Clock", meta = (ClampMin = "0", ClampMax = "1"))
+	float WarningVolume = 0.8f;
+
 private:
+	/** MuteMetronome: silent until TotalBeats reaches this. */
+	double MutedUntilBeats = 0.0;
+
+	/** The warning phrases and effects, built in BuildPcm. */
+	TArray<uint8> PcmBass;
+	TArray<uint8> PcmTrumpet;
+	TArray<uint8> PcmDrumRoll;
+	TArray<uint8> PcmFeedback;
+	TArray<uint8> PcmChime;
+
 	/** Fills the PCM buffers below (16-bit mono at SampleRate): short decaying sine clicks and a noise burst. */
 	void BuildPcm();	// BODY: (a)
 

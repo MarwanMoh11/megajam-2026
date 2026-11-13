@@ -92,6 +92,10 @@ void ABeamWatcher::BeginPlay()
 void ABeamWatcher::SyncState()
 {
 	Super::SyncState();
+	if (!HasArrived())
+	{
+		return;	// not arrived: Off first (the base), whatever the clock says
+	}
 	if (DarkSecondsLeft <= 0.f)
 	{
 		if (bBeforeLive)

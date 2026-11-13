@@ -53,6 +53,7 @@ void ATakeDirector::StepBlooperCheck(float DeltaSeconds)
 			Move->DisableMovement();
 		}
 	}
+	SaveCrewPlaces();
 	if (UTakeGameInstance* GI = GetTakeGameInstance())
 	{
 		GI->NoteBlooper(Reason);

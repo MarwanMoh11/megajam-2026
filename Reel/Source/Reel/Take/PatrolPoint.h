@@ -21,6 +21,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Patrol", meta = (ClampMin = "1"))
 	int32 Bars = 2;
 
+	/** The guard's label state while he holds this point ("SPEAKING" on Vance's crowd point). Empty: "WATCHING". */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Patrol")
+	FString StateText;
+
+	/** Flashed on the frame the guard starts holding this point, once he has arrived ("VANCE: Ladies and
+	 *  gentlemen, lot forty-one."). Empty: none. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Patrol")
+	FString ArriveLine;
+
 	UPROPERTY(VisibleAnywhere, Category = "Take")
 	TObjectPtr<USceneComponent> Root;
 

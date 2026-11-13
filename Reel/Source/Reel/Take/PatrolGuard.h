@@ -48,8 +48,36 @@ public:
 
 	virtual FString GetStateText() const override;	// BODY: (d)
 
-	/** Pure function of the clock: where the patrol puts him and which way he faces at Clock's current time. */
+	/** Pure function of the clock: where the patrol puts him and which way he faces at Clock's current time.
+	 *  Step 2: the patrol's time is the bars since bar 1 PLUS PatrolOffsetBars. */
 	void EvaluatePatrol(const UBarClockComponent* Clock, FVector& OutLocation, float& OutYaw) const;	// BODY: (d)
+
+	// --- step 2 (BODY: W) --------------------------------------------------------------------------------------------
+
+	/** The index in PatrolPoints of the point the patrol holds at the START of Bar (1-based bar, PatrolOffsetBars
+	 *  applied; -1 with no points). Pure. */
+	int32 GetPatrolIndexAtBar(int32 Bar) const;	// BODY: W
+
+	/** The patrol moves on to another point on the bar line that starts Bar (GetPatrolIndexAtBar(Bar) differs from
+	 *  GetPatrolIndexAtBar(Bar - 1)). False with fewer than two points, before he has arrived, or while lured. */
+	virtual bool ChangesAtBar(int32 Bar, const UBarClockComponent* Clock) const override;	// BODY: W
+
+	/** The four far corners of the wedge in FramePivot's space: at FrameRange along +X, at +-FrameHalfAngle, on the
+	 *  floor and at FrameLineHeight. */
+	virtual void GetFrameFarCorners(TArray<FVector>& OutLocal) const override;	// BODY: W
+
+	/** Bars added to the patrol's clock: Vance's cycle (crowd 4 bars, lift 4 bars) with offset 1 puts the start of
+	 *  each speech on a band break (bars 8, 16, 24...). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Guard")
+	int32 PatrolOffsetBars = 0;
+
+	/** Vance: a Lure only turns him to the point for its duration, he does not walk (rule 6). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Guard")
+	bool bTurnsOnly = false;
+
+	/** Height of the frame lines' upper far corners, cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Guard")
+	float FrameLineHeight = 200.f;
 
 	/** The patrol, in order; it loops. Empty: he holds his placed pose. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Guard")
@@ -93,6 +121,9 @@ protected:
 
 	/** Dark first (base), else LURED while the lure's timer runs. */
 	virtual void SyncState() override;
+
+	/** The patrol point held at the last StepWatcher (-1 = none yet): a change flashes the new point's ArriveLine. */
+	int32 LastPatrolIndex = -1;
 
 private:
 	/** Sizes the wedge from FrameRange / FrameHalfAngle and colours the wedge, body and cap (OnConstruction and BeginPlay). */

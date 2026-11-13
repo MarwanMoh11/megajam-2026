@@ -6,10 +6,14 @@
 #include "Components/StaticMeshComponent.h"
 #include "Julian.h"
 #include "PatrolPoint.h"
+#include "TakeDirector.h"
 #include "TakeShapes.h"
 
 namespace TakeSliceDGuard
 {
+	/** A held point's ArriveLine flash. */
+	constexpr float ArriveLineSeconds = 3.f;
+
 	/** The wedge's thickness (cone scale on its local X, which the pitch turns to world Z): 2 cm. */
 	constexpr float WedgeThicknessScale = 0.02f;
 
@@ -72,9 +76,11 @@ void APatrolGuard::BeginPlay()
 {
 	Super::BeginPlay();
 	LayoutGuard();
+	BuildFrameLines();
 	LurePhase = EGuardLurePhase::None;
 	LureTime = 0.f;
 	LureSecondsLeft = 0.f;
+	LastPatrolIndex = -1;
 	SyncState();
 	RefreshFrameLook();
 }
@@ -82,6 +88,10 @@ void APatrolGuard::BeginPlay()
 void APatrolGuard::SyncState()
 {
 	Super::SyncState();
+	if (!HasArrived())
+	{
+		return;	// not arrived: Off first (the base)
+	}
 	if (DarkSecondsLeft <= 0.f && LureSecondsLeft > 0.f)
 	{
 		State = EWatcherState::Lured;
@@ -123,8 +133,38 @@ void APatrolGuard::StepWatcher(float DeltaSeconds, UBarClockComponent* Clock)
 		}
 	}
 
-	// The base counts the dark timer down, derives the state (dark first, then LURED) and pulses the frame.
+	// The base steps the arrival, counts the dark timer down, derives the state (off, dark, then LURED) and pulses
+	// the frame.
 	Super::StepWatcher(DeltaSeconds, Clock);
+
+	// Not arrived yet: he stays where he was placed, Off.
+	if (!HasArrived())
+	{
+		return;
+	}
+
+	// The held point (once arrived): a change flashes the new point's ArriveLine this frame.
+	if (Clock)
+	{
+		const int32 HeldIndex = GetPatrolIndexAtBar(Clock->GetBar());
+		if (HeldIndex != LastPatrolIndex)
+		{
+			LastPatrolIndex = HeldIndex;
+			const APatrolPoint* Held = PatrolPoints.IsValidIndex(HeldIndex) ? PatrolPoints[HeldIndex].Get() : nullptr;
+			if (Held)
+			{
+				TAKE_LOG(TEXT("%s holds point %d (%s)"), *Label, HeldIndex,
+					Held->StateText.IsEmpty() ? TEXT("WATCHING") : *Held->StateText);
+				if (!Held->ArriveLine.IsEmpty())
+				{
+					if (ATakeDirector* Director = ATakeDirector::Get(this))
+					{
+						Director->Flash(Held->ArriveLine, TakeColors::White, TakeSliceDGuard::ArriveLineSeconds);
+					}
+				}
+			}
+		}
+	}
 
 	FVector PatrolLocation = FVector::ZeroVector;
 	float PatrolYaw = 0.f;
@@ -226,23 +266,29 @@ bool APatrolGuard::HoldsJulian(const AJulian* Julian) const
 	{
 		return false;
 	}
-	return FMath::Abs(Side) <= Ahead * FMath::Tan(FMath::DegreesToRadians(HalfAngle));
+	if (FMath::Abs(Side) > Ahead * FMath::Tan(FMath::DegreesToRadians(HalfAngle)))
+	{
+		return false;
+	}
+	// Step 2: walls, floors and a dropped banner hide him (rule 6).
+	return HasLineOfSight(Julian);
 }
 
 bool APatrolGuard::ApplyEffect(EDeviceEffect Effect, float Duration, const FVector& Point)
 {
-	if (Effect == EDeviceEffect::Mask)
+	if (Effect == EDeviceEffect::Mask || !HasArrived())
 	{
-		return false;	// step 1: the guard ignores a matte
+		return false;	// the guard ignores a matte; nothing lands on a guard who has not arrived
 	}
 
 	if (Effect == EDeviceEffect::Lure)
 	{
 		// Stacks with a blind: the walk starts now; the frame stays dark until the blind's own time ends.
+		// bTurnsOnly (Vance): he only turns to face the point for the duration, then back to the patrol's yaw.
 		LureSecondsLeft = FMath::Max(Duration, UE_KINDA_SMALL_NUMBER);
 		LurePoint = Point;
 		LureStart = GetActorLocation();
-		LurePhase = EGuardLurePhase::Going;
+		LurePhase = bTurnsOnly ? EGuardLurePhase::Looking : EGuardLurePhase::Going;
 		LureTime = 0.f;
 
 		// He turns to the point on this frame; StepWatcher (step 4, same frame) starts the walk.
@@ -266,6 +312,15 @@ FString APatrolGuard::GetStateText() const
 	if (State == EWatcherState::Watching && LurePhase == EGuardLurePhase::Returning)
 	{
 		return TEXT("RETURNING");
+	}
+	// Plainly watching on a point with its own state text ("SPEAKING").
+	if (State == EWatcherState::Watching && LurePhase == EGuardLurePhase::None && PatrolPoints.IsValidIndex(LastPatrolIndex))
+	{
+		const APatrolPoint* Held = PatrolPoints[LastPatrolIndex].Get();
+		if (Held && !Held->StateText.IsEmpty())
+		{
+			return Held->StateText;
+		}
 	}
 	return Super::GetStateText();
 }
@@ -294,7 +349,8 @@ void APatrolGuard::EvaluatePatrol(const UBarClockComponent* Clock, FVector& OutL
 	// bar line: he walks in from the previous point (from his placed pose on the very first slot), turns to the
 	// point's yaw, and holds it until the slot ends.
 	const double SecondsPerBar = FMath::Max(static_cast<double>(Clock->GetSecondsPerBar()), 0.001);
-	const double BarsElapsed = FMath::Max(0.0, Clock->GetTotalBeats() / static_cast<double>(FMath::Max(1, Clock->BeatsPerBar)));
+	const double BarsElapsed = FMath::Max(0.0, Clock->GetTotalBeats() / static_cast<double>(FMath::Max(1, Clock->BeatsPerBar))
+		+ static_cast<double>(PatrolOffsetBars));
 	const int64 Cycle = static_cast<int64>(BarsElapsed / static_cast<double>(CycleBars));
 	const double CyclePhase = BarsElapsed - static_cast<double>(Cycle) * static_cast<double>(CycleBars);
 
@@ -349,4 +405,79 @@ void APatrolGuard::EvaluatePatrol(const UBarClockComponent* Clock, FVector& OutL
 		const float StartYaw = WalkSeconds > 0.0 ? WalkYaw : FromYaw;
 		OutYaw = TakeSliceDGuard::TurnOver(StartYaw, ToYaw, static_cast<float>(IntoSlot - WalkSeconds), TurnSeconds);
 	}
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Step 2 (W)
+// ---------------------------------------------------------------------------------------------------------------------
+
+int32 APatrolGuard::GetPatrolIndexAtBar(int32 Bar) const
+{
+	// The same slots as EvaluatePatrol (null points skipped), read at the start of Bar.
+	TArray<int32, TInlineAllocator<16>> Indices;
+	int32 CycleBars = 0;
+	for (int32 i = 0; i < PatrolPoints.Num(); ++i)
+	{
+		if (const APatrolPoint* PatrolPoint = PatrolPoints[i].Get())
+		{
+			Indices.Add(i);
+			CycleBars += FMath::Max(1, PatrolPoint->Bars);
+		}
+	}
+	if (Indices.Num() == 0 || CycleBars <= 0)
+	{
+		return -1;
+	}
+
+	const int32 BarsElapsed = FMath::Max(0, Bar - 1 + PatrolOffsetBars);
+	const int32 CyclePhase = BarsElapsed % CycleBars;
+	int32 SlotStart = 0;
+	for (int32 k = 0; k < Indices.Num(); ++k)
+	{
+		const int32 SlotBars = FMath::Max(1, PatrolPoints[Indices[k]]->Bars);
+		if (CyclePhase < SlotStart + SlotBars || k == Indices.Num() - 1)
+		{
+			return Indices[k];
+		}
+		SlotStart += SlotBars;
+	}
+	return Indices.Last();
+}
+
+bool APatrolGuard::ChangesAtBar(int32 Bar, const UBarClockComponent* Clock) const
+{
+	if (Bar < 2 || !HasArrived() || LureSecondsLeft > 0.f)
+	{
+		return false;
+	}
+
+	int32 NumPoints = 0;
+	for (const TObjectPtr<APatrolPoint>& PointPtr : PatrolPoints)
+	{
+		if (PointPtr.Get())
+		{
+			++NumPoints;
+		}
+	}
+	if (NumPoints < 2)
+	{
+		return false;
+	}
+	return GetPatrolIndexAtBar(Bar) != GetPatrolIndexAtBar(Bar - 1);
+}
+
+void APatrolGuard::GetFrameFarCorners(TArray<FVector>& OutLocal) const
+{
+	// The far edge of the drawn wedge (FramePivot's space: +X ahead, +Y right), on the floor and at FrameLineHeight.
+	const float Range = FMath::Max(FrameRange, 1.f);
+	const float HalfAngle = FMath::Clamp(FrameHalfAngle, 1.f, 85.f);
+	const float HalfWidth = Range * FMath::Tan(FMath::DegreesToRadians(HalfAngle));
+	const float PivotZ = FramePivot ? static_cast<float>(FramePivot->GetRelativeLocation().Z) : 0.f;
+	const float TopZ = FrameLineHeight - PivotZ;
+
+	OutLocal.Reset();
+	OutLocal.Add(FVector(Range, -HalfWidth, 0.f));	// floor-left
+	OutLocal.Add(FVector(Range, HalfWidth, 0.f));	// floor-right
+	OutLocal.Add(FVector(Range, HalfWidth, TopZ));	// top-right
+	OutLocal.Add(FVector(Range, -HalfWidth, TopZ));	// top-left
 }

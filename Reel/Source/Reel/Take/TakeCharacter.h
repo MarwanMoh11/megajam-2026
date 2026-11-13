@@ -104,6 +104,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Character")
 	ETakeCamera Id = ETakeCamera::A;
 
+	/** The cover story, one line, flashed the first time the player is on this character in a session ("MAYA:
+	 *  gaffer on the film crew Aurelia hired. Crew pass: nobody watches her."). Empty: none. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Character")
+	FString IntroLine;
+
 	/** The mannequin's colour (the material's TintParameter). */
 	UPROPERTY(EditAnywhere, Category = "Take|Character")
 	FLinearColor Tint = FLinearColor::White;

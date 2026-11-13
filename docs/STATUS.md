@@ -1,7 +1,8 @@
 # Status
 
-Last updated: 2026-11-13, about 23:35 Cairo (Marwan played the rework and asked for a street start and props; both are built and wait for him to play again). Theme:
-**Director's Cut**.
+Last updated: 2026-11-14, about 00:10 Cairo. **Gate 1 is passed:** Marwan played the rework and the street-start
+build on Nov 13 and said to start step 2. Step 2 is being built now, without the parts written for fixed cameras
+and hard cuts (see "Step 2 as built" below). Theme: **Director's Cut**.
 
 ## Gate 1 answer, Nov 13 about 18:15: Marwan changed three rules
 
@@ -52,6 +53,70 @@ inside ? the line is outside", and "add more props placeholders to make the plac
 **Not rethought yet, waiting for the next gate:** good cuts (rule 8), the shot list and the film and making-of split
 (rule 1), the monitor strip, "a crew cut takes about 2 s" (rule 4), The Long Take, the replay "cut where you cut"
 (rule 11), and the 1:45 clean run in a larger building.
+
+## Step 2 as built, Nov 14 (Scenes 1 and 2 for the walking game)
+
+Marwan said to start step 2 with everything written for fixed cameras and hard cuts left out until gate 2: the shot
+list, fronts and backs, the film and making-of split, the monitor strip, good cuts and their replay, stills, the
+recorder, and three deleted scenes (The Cold Open, The Long Take, The Insert). What is built is the rest of the
+step 2 list. **Everything in this section that the spec did not settle was filled in by Claude with the smallest
+thing that works; Marwan can overrule any of it.**
+
+**Scene 1, The Door.**
+- The scanner arch at the front doors is a watcher with a gate. While the scanner is live the gate is shut and a red
+  bar crosses it, and its frame (red tape on the ground in front of it) sees Julian. Blinded, the gate opens and the
+  bar turns gold. *Filled in:* in the click-to-cue spec Julian waited on the scanner mark by himself; now the player
+  walks him, so a gate is what makes him wait. The gold mark sits 90 cm outside the tape, so standing on it is safe.
+- *Filled in, the open point about Maya:* Maya starts Scene 1 on the street, just behind Julian at the foot of the
+  carpet, with a second follow spot on a stand. When Julian walks onto the hall floor she moves to her Scene 2 post
+  on the bridge ("Maya and Vex move to a new post between scenes" was already the rule). Julian only walks while
+  the player is on him, so she moves while the player is looking at Julian.
+- The loop it teaches, one line at a time in a goal line at the top of the screen: walk Julian to the gold mark,
+  [2] cut to Maya, look at the scanner and press [E], [1] cut back, walk through. That goal line stays for the whole
+  game and always names the next thing to do.
+
+**Scene 2, The Floor.**
+- Walking onto the hall floor starts the scene (a title, a checkpoint).
+- **The drone** arrives on the next 4-bar line and flies down the centre aisle and back every 8 bars. Inside its red
+  circle Julian is exposed unless he stands on a gold mark (rule 5). Four marks run down the aisle, and the bridge's
+  deck hides him from it. It turns back short of the rope, so the rope encounter plays as before.
+- **The guard and the beam** at the rope are live from the start of the take, not on arrival lines: they are 34 m
+  from the hall's door, and after a checkpoint restart an arrival line would have let Julian slip past before they
+  came on. Both old routes work (banner plus spot, cart plus spot).
+- **Past the rope:** stepping into the aisle brings on **the bodyguard** and **Vance** (the next 4-bar line; the
+  walk from there to the end of a lift takes longer than that). Vance's frame sits on the lift mark behind him and
+  turns to the crowd while he speaks: 4 bars from every band break (bars 8, 16, 24...). The bodyguard's frame
+  covers the lift mark and its near approach.
+- **The lift:** stand still on the mark behind Vance, unseen, for 1 s. It clears the take for now ("Scene 3
+  comes next"). Free: wait at the edge of the bodyguard's frame, spot him while Vance speaks, step in. Paid: Vex's
+  **sound desk** (everything in the hall blind for 4 s, the band out for 2 bars) or the **dais cart** (Vance and the
+  bodyguard lured for 6 s, an x2 stamp, +25 composure). *Filled in:* the spec's lift takes 1.5 s. With a 1.6 s
+  flight back from Maya, 2.4 s of the spot's 4 s are left, and 1.5 s missed by a quarter second in the scripted
+  run, so the mark is set to 1 s. If Marwan picks a 6 s blind or a 1 s flight for route 1, the lift can go back to
+  1.5 s. Being seen on the mark starts the lift over.
+- Vex's three devices are along the backstage corridor: the mid-floor cart (moved one hatch west so it reaches the
+  guard only), the sound desk, the dais cart at a new third hatch.
+
+**Watchers.** Every frame ends in a line trace: walls, floors and a dropped banner block it; the placeholder props
+and people do not. Each frame has thin lines from its eye to its far corners, a tally light, and a label with its
+state. *Filled in:* labels show on all three characters' cameras (dimmer on Julian's), because the film and
+making-of split that hides them on camera A waits for gate 2.
+
+**Checkpoints (rule 9).** The street start, the hall floor (Scene 2's start), the rope mark, and the mark past the
+rope on the dais. *Filled in:* the rope mark is a fourth checkpoint, so a blooper at the rope does not cost the
+walk across the floor again. A blooper puts Julian back on the checkpoint's mark with the clock at the bar saved
+there, the device uses saved there, and the same watchers arrived or still to come. After two bloopers at one
+checkpoint Maya or Vex gives a hint. R still starts a new take from the street. The band-break checkpoints of
+rule 9 are not built.
+
+**Warnings (rule 2).** One bar before a watcher changes, a click pitch plays: a low pluck for the guard, two mid
+notes for the drone, a roll for Vance. An arriving watcher gets its pitch solo the bar before, with the metronome
+out. The metronome also rests on every 8th bar (the band's break). These stand in until the audio step.
+
+**The look (lighting only).** Night: a cool moon, a dim sky fill, haze, warm key spots down the centre aisle and on
+the scanner, the stair and the podium, cool rim lights from the dais end, red at the scanner and the rope, gold on
+the reel's case, cyan-white work light backstage and on the catwalk. The follow spot is a real light while it
+burns. Lumen is off for the level. Exposure is fixed. The dressing pass is step 4.
 
 **Scoring:** any score of this game, by an agent or by Marwan, follows `docs/JUDGING_RUBRIC.md` (the jam's criteria,
 fixed anchors, and when to stop). Design review is closed; the next scores come at gates 1 and 2.
@@ -616,7 +681,7 @@ characters, audio and polish. Every step ends playable, and the Windows package 
 |---|---|---|
 | Fri, by 11:45 | **0. Pipeline** | Done |
 | Fri 17:00-22:00 | **1. Core loop in a test box.** See "Step 1" below | In play-in-editor, Julian gets past the guard and the beam two ways, by a cue plus a device timed to his arrival. **Built Nov 13, 17:30. Rebuilt to the gate 1 answer (walk, flights, the two-floor auction building) Nov 13, 19:40** |
-| Fri about 22:30 | **Gate 1.** Marwan plays for 5 minutes. If they don't want another go, change a rule (windows, drain, uses), not the art | A yes, or the rule changed. **First answer Nov 13, 18:15: three rules changed (top of this file). Gate 1 runs again on the rework** |
+| Fri about 22:30 | **Gate 1.** Marwan plays for 5 minutes. If they don't want another go, change a rule (windows, drain, uses), not the art | A yes, or the rule changed. **First answer Nov 13, 18:15: three rules changed (top of this file). Passed Nov 13, about 23:45: Marwan played the rework and the street-start build and said to start step 2** |
 | Fri night to Sat morning | **2. The set, its look, Scenes 1 and 2.** See "Step 2" below. Package | Scenes 1-2 play in the package, and screenshots show the film and the making-of |
 | Sat (midterm 12:30) | **3. Scene 3 and the ends.** See "Step 3" below. Package | Title card to blooper reel in the package |
 | Sat evening | **Gate 2.** Marwan plays a full take cold | They want another go |

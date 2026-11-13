@@ -11,6 +11,7 @@ void UTakeGameInstance::NoteBlooper(EBlooperReason Reason)
 	++BlooperCount;
 	LastBlooperReason = Reason;
 	bReloadingFromBlooper = true;
+	++BloopersAtCheckpoint;
 	TAKE_LOG(TEXT("GI BLOOPER %d: %s, take %d, again from %s"), BlooperCount, TakeText::BlooperReasonName(Reason), TakeNumber, *CheckpointName);
 }
 
@@ -20,6 +21,11 @@ void UTakeGameInstance::NoteNewTake()
 	CheckpointName = TEXT("THE START");
 	CheckpointMark.Reset();
 	CheckpointBar = 1;
+	CheckpointScene = 1;
+	CheckpointUses.Reset();
+	CheckpointTriggers.Reset();
+	CrewPlaces.Reset();
+	BloopersAtCheckpoint = 0;
 	bReloadingFromBlooper = false;
 	TAKE_LOG(TEXT("GI NEW TAKE %d (bloopers so far %d)"), TakeNumber, BlooperCount);
 }

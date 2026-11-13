@@ -11,7 +11,8 @@
 #   south   the service wing: the backstage corridor behind the hatches, then kitchen, prop store and loading dock
 #   east    the vault corridor and the vault, behind the dais wall
 #   street  a pavement and a road along the front (west), the street all round: the take starts out here, on the red
-#           carpet by the queue, and Julian walks in through the front doors
+#           carpet by the queue, and Julian walks in through the scanner at the front doors (Scene 1)
+# The last section places the rules: the watchers, the devices, the marks, the scene triggers and the crew posts.
 # X runs from the entrance (-X) to the dais (+X). +Y is north. Everything west of the rope connects; the only way
 # past the rope is the gap and the aisle (the walkway above is railed, the hatches have counters).
 # The props and people at the end are placeholders with no rules: none blocks a sight line or the aim.
@@ -44,7 +45,7 @@ SY0 = -3300.0                     # service rooms: from here to the corridor
 NY1 = 2900.0                      # north wing: from the hall's north wall to here
 EX1 = 5300.0                      # east wing: from the hall's east wall to here
 VAULT_Y0, VAULT_Y1 = -1000.0, 1000.0
-HATCHES = (600.0, 3500.0)         # service hatches in the south wall (X centres): a counter Vex looks over
+HATCHES = (600.0, 3000.0, 4150.0) # service hatches in the south wall (X centres): a counter Vex looks over
 HATCH_HALF, HATCH_Z0, HATCH_Z1 = 150.0, 110.0, 320.0
 WALK_Y0 = 1650.0                  # the long walkway runs along the north wall from here to HY1
 BRIDGE_X0, BRIDGE_X1 = 1400.0, 1700.0   # the bridge crosses from the walkway out over the floor
@@ -59,31 +60,62 @@ FRONT_DOOR_HALF, FRONT_DOOR_H = 300.0, 380.0   # the front doors stand open
 
 # --- the route (Julian walks in from the street, then +X along Y = 0) -------------------------------------------------
 START = (LX0 - 700.0, 0.0)        # on the pavement at the foot of the red carpet, facing the doors
-HALL_MARK = (900.0, 0.0)          # the checkpoint in the hall: a blooper starts the next take here
-HALL_MARK_RADIUS = 1200.0         # how close Julian must come to save it
-MARK_ROPE = (2200.0, 0.0)         # the safe mark before the rope
+SCAN_X = LX0 - T - 110.0          # Scene 1: the scanner's gate, just outside the front doors
+SCAN_DEPTH = 180.0                # its frame (and its red tape) reaches this far out in front of the gate
+MARK_SCANNER = (SCAN_X - 270.0, 0.0)   # the gold mark at the scanner, 90 cm outside the tape
+MARK_FLOOR = (-700.0, 0.0)        # Scene 2 starts here: the checkpoint just inside the hall
+MARK_AISLE = (100.0, 0.0)         # marks down the centre aisle: on one, the drone does not see him
+HALL_MARK = (900.0, 0.0)
+MARK_ROPE = (2200.0, 0.0)         # the safe mark before the rope, and a checkpoint
 ROPE_X = 2400.0
 GAP = 150.0                       # half-width of the gap in the rope: the beam crosses it
 AISLE_X1 = 3550.0                 # display cases wall the aisle from the rope to here: the only way to the dais
 TAPE_X0, TAPE_X1 = 2450.0, 3550.0 # red tape inside the aisle: 11 m = 4.4 s at 250 cm/s
 DAIS_X0, DAIS_H = 3600.0, 20.0
-GOAL = (3900.0, 0.0)
+MARK_DAIS = (3700.0, 0.0)         # the mark past the rope: a checkpoint no frame covers
 GUARD = (3000.0, -600.0)          # he looks across the aisle (yaw +90) for 3 bars, then away (yaw -90) for 1
 GUARD_RANGE, GUARD_HALF_ANGLE = 900.0, 45.0   # covers the aisle's full width for its whole length
+DRONE_PATH = ((-600.0, 0.0), (1750.0, 0.0))   # the drone's loop over the floor: there in 4 bars, back in 4
+DRONE_RADIUS = 300.0              # its red circle; it turns back 1.5 m short of the rope mark
+# The dais: Vance at the podium, the lift mark behind him, the bodyguard beside the podium.
+VANCE = (3890.0, -480.0)
+VANCE_RANGE, VANCE_HALF_ANGLE = 240.0, 30.0   # his frame covers the lift mark's disc and little else
+MARK_LIFT = (4010.0, -480.0)
+BODYGUARD = (3830.0, -330.0)
+BODYGUARD_YAW, BODYGUARD_RANGE, BODYGUARD_HALF_ANGLE = -44.6, 330.0, 22.0   # its north edge passes 75 cm from the mark
+DAIS_TAPE = (3620.0, 4380.0, -1150.0, -150.0)  # red tape on the dais's south half (x0, x1, y0, y1)
 
 # --- the crew --------------------------------------------------------------------------------------------------------
-MAYA = (1640.0, -100.0)           # on the bridge's end, facing the rope, within reach of the lamp
+MAYA_DOOR = (START[0] - 100.0, -110.0)   # Scene 1: Maya stands behind Julian at the foot of the carpet
+SPOT_DOOR = (START[0] - 140.0, -150.0, 150.0)   # her lamp there, on a stand
+MAYA = (1640.0, -100.0)           # Scene 2: on the bridge's end, facing the rope, within reach of the lamp
 SPOT = (1675.0, -230.0)           # the lamp, on the deck by the rail
 SPOT_USE = (1620.0, -230.0)       # where Maya stands to work it
 BATTEN = (ROPE_X - 40.0, 0.0, 560.0)   # the banner hangs over the gap
 BANNER_USE = (1620.0, 230.0)      # its winch, on the bridge
-VEX = (3500.0, -2230.0)           # backstage, at the second hatch, facing the hall
-CART = (3500.0, -1900.0)          # the cart, in the hall just inside that hatch; it rolls +Y
-CART_ROLL = 350.0
-CART_USE = (3500.0, -2080.0)      # its release, on Vex's side of the counter
-EXPOSURE_EV = 0.5                 # fixed exposure (EV100)
-SKY_FILL = 1.8                    # skylight strength: the fill in every shadow
-LAMP_CD = 30.0                    # ceiling lamps under the second floor (candelas)
+VEX = (3000.0, -2230.0)           # backstage, at the second hatch, facing the hall
+CART = (3000.0, -1900.0)          # the mid-floor cart, in the hall just inside that hatch; it rolls +Y
+CART_ROLL = 350.0                 # ...and crashes 9.5 m from the guard, out of reach of Vance and the bodyguard
+CART_USE = (3000.0, -2080.0)      # its release, on Vex's side of the counter
+CART2 = (4150.0, -1900.0)         # the dais cart, inside the third hatch
+CART2_ROLL = 700.0                # it crashes into the dais's south edge: Vance and the bodyguard are in reach
+CART2_USE = (4150.0, -2080.0)
+DESK = (3550.0, -2460.0)          # the sound desk, against the corridor's back wall between the two hatches
+DESK_USE = (3550.0, -2340.0)
+
+# --- the look (lighting only: the dressing pass is step 4) -------------------------------------------------------------
+EXPOSURE_EV = 0.3                 # fixed exposure (EV100): a night interior
+SKY_FILL = 14.0                   # skylight strength: the fill in every shadow (the night sky is dim)
+MOON_LUX = 0.35                   # the directional light: cool, from behind the dais
+LAMP_CD = 26.0                    # ceiling lamps under the second floor (candelas)
+FOG_DENSITY = 0.03                # haze: the spots and the follow spot draw shafts in it
+KEY_CD = 2400.0                   # the hall's key spots down the centre aisle
+RIM_CD = 2200.0                   # the cool rim lights from the dais end
+WARM = (1.0, 0.82, 0.60)
+COOL = (0.55, 0.70, 1.0)
+WORK = (0.70, 0.92, 1.0)          # backstage and catwalk work light
+REDL = (1.0, 0.10, 0.06)
+GOLDL = (1.0, 0.70, 0.20)
 
 les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
 eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
@@ -256,8 +288,12 @@ def fire_door(axis, face, c, inward, side=1):
     exit_sign(axis, face, c, inward)
 
 
-def lamp(x, y, z=F2 - SLAB - 30.0, cd=LAMP_CD, radius=1200.0):
-    """A ceiling lamp for a room under the second floor (the sun can't reach it). No shadows: cheap."""
+def tint(rgb):
+    return unreal.Color(r=int(rgb[0] * 255), g=int(rgb[1] * 255), b=int(rgb[2] * 255), a=255)
+
+
+def lamp(x, y, z=F2 - SLAB - 30.0, cd=LAMP_CD, radius=1200.0, rgb=None):
+    """A ceiling lamp for a room under the second floor (the moon can't reach it). No shadows: cheap."""
     N[0] += 1
     a = spawn(unreal.PointLight, (x, y, z), label="Lamp_%03d" % N[0], folder="Light/Lamps")
     c = a.get_component_by_class(unreal.PointLightComponent)
@@ -266,7 +302,24 @@ def lamp(x, y, z=F2 - SLAB - 30.0, cd=LAMP_CD, radius=1200.0):
         c.set_editor_property("intensity_units", unreal.LightUnits.CANDELAS)
     except Exception as e:
         unreal.log_warning("lamp units: %s" % e)
-    setp(c, intensity=cd, attenuation_radius=radius, cast_shadows=False)
+    setp(c, intensity=cd, attenuation_radius=radius, cast_shadows=False, light_color=tint(rgb or WARM))
+    return a
+
+
+def spot(label, x, y, z, yaw, pitch, cd, cone, radius, rgb, shadows=False, haze=1.0):
+    """A movable spot light: the keys, the rims and the accents of the look (docs/STATUS.md, "Look")."""
+    N[0] += 1
+    a = spawn(unreal.SpotLight, (x, y, z), yaw=yaw, pitch=pitch, label="%s_%03d" % (label, N[0]),
+              folder="Light/Spots")
+    c = a.get_component_by_class(unreal.SpotLightComponent)
+    c.set_mobility(unreal.ComponentMobility.MOVABLE)
+    try:
+        c.set_editor_property("intensity_units", unreal.LightUnits.CANDELAS)
+    except Exception as e:
+        unreal.log_warning("spot units: %s" % e)
+    setp(c, intensity=cd, attenuation_radius=radius, outer_cone_angle=cone, inner_cone_angle=cone * 0.6,
+         cast_shadows=shadows, volumetric_scattering_intensity=haze, light_color=tint(rgb))
+    return a
 
 
 def use_offset(actor, world_xyz):
@@ -672,7 +725,7 @@ for dx in (800.0, 2600.0):
 for cx in (0.0, 1500.0, 2600.0):
     box("Back_Crate", cx, cx + 120, BY0 + 20, BY0 + 140, 0, 120, m_trim)
 for lx in (-600.0, 400.0, 1400.0, 2400.0, 3400.0, 4200.0):   # the hall wall shades the corridor
-    lamp(lx, -2330.0, z=400.0)
+    lamp(lx, -2330.0, z=400.0, rgb=WORK)
 box("Kitchen_Counter", -900, 600, SY0 + 20, SY0 + 100, 0, 95, m_trim)
 box("Kitchen_Island", -500, 300, -3000, -2900, 0, 95, m_trim)
 for cx in (1000.0, 1400.0, 2100.0):
@@ -702,12 +755,10 @@ FRONT = LX0 - T                    # the facade's outer face
 
 # --- the street front: red carpet, the scanner arch (a placeholder for Scene 1), the queue, the press, cars -----------
 flat("Carpet", START[0] + 100, VOID_X0 + 80, -150, 150, m_carpet)
-SCAN_X = FRONT - 110.0
 for s in (1, -1):
     prop("Scanner_Post", SCAN_X - 10, SCAN_X + 10, s * 160, s * 180, 0, 240, m_case, folder="Set/Street")
     prop("Scanner_Wing", SCAN_X - 5, SCAN_X + 5, s * 180, s * 300, 0, 100, m_case, folder="Set/Street")
 deco("Scanner_Lintel", SCAN_X - 10, SCAN_X + 10, -180, 180, 240, 262, m_case, folder="Set/Street")
-deco("Scanner_Eye", SCAN_X - 14, SCAN_X - 10, -12, 12, 244, 258, m_red, folder="Set/Street")
 box("Canopy", FRONT - 520, FRONT, -560, 560, 410, 430, m_trim, folder="Set/Street")
 deco("Canopy_Fascia", FRONT - 530, FRONT - 520, -560, 560, 395, 445, m_gold, folder="Set/Street")
 for s in (1, -1):
@@ -841,7 +892,6 @@ for cx in (-500.0, 400.0, 1300.0, 2200.0, 3100.0, 4000.0):   # a banner on every
     for s in (1, -1):
         deco("Column_Banner", cx - 45, cx + 45, s * 1232, s * 1238, 600, 1150, m_carpet)
         deco("Column_Banner_Hem", cx - 45, cx + 45, s * 1231, s * 1239, 588, 600, m_gold)
-guest(3885.0, -480.0, z=DAIS_H, facing=180.0, mat=GUEST_MATS[1])   # the auctioneer at the podium
 for s in (1, -1):
     plant(4330.0, s * 1100.0, DAIS_H)
     easel(4230.0, s * 480.0, DAIS_H)
@@ -977,54 +1027,170 @@ crates(5080.0, -520.0, (120,))
 box("Statue_Plinth", 4825, 4875, 475, 525, 0, 100, m_trim, folder="Set/Props")
 ghost(shape(SPHERE, "Statue", 4850.0, 500.0, 130.0, 55.0, 55.0, 60.0, m_gold))
 
-# Light: a high sun, a sky and a skylight, all movable (nothing to bake).
-sun = spawn(unreal.DirectionalLight, (0, 0, 2000), yaw=-35.0, pitch=-72.0, label="Sun", folder="Light")
-sun_c = sun.get_component_by_class(unreal.DirectionalLightComponent)
-sun_c.set_mobility(unreal.ComponentMobility.MOVABLE)
-sun_c.set_editor_property("intensity", 5.0)
+# =====================================================================================================================
+# The look (lighting only): a night gala. A cool moon, a dim sky fill and haze; warm keys down Julian's path, cool
+# rims from the dais end, red at the watchers and gold at the reel. Everything is movable: nothing is baked.
+# No Lumen (docs/STATUS.md, "Look"): the post-process volume turns it off for this level.
+# =====================================================================================================================
+def try_set(obj, **props):
+    for k, v in props.items():
+        try:
+            obj.set_editor_property(k, v)
+        except Exception as e:
+            unreal.log_warning("look: %s.%s: %s" % (obj.get_class().get_name(), k, e))
+
+
+moon = spawn(unreal.DirectionalLight, (0, 0, 2000), yaw=158.0, pitch=-40.0, label="Moon", folder="Light")
+moon_c = moon.get_component_by_class(unreal.DirectionalLightComponent)
+moon_c.set_mobility(unreal.ComponentMobility.MOVABLE)
+try_set(moon_c, intensity=MOON_LUX, light_color=tint(COOL), volumetric_scattering_intensity=0.4)
 spawn(unreal.SkyAtmosphere, (0, 0, 0), label="Sky", folder="Light")
 sky = spawn(unreal.SkyLight, (0, 0, 1800), label="SkyLight", folder="Light")
 sky_c = sky.get_component_by_class(unreal.SkyLightComponent)
 sky_c.set_mobility(unreal.ComponentMobility.MOVABLE)
-sky_c.set_editor_property("real_time_capture", True)
-sky_c.set_editor_property("intensity", SKY_FILL)
+try_set(sky_c, real_time_capture=True, intensity=SKY_FILL, light_color=tint((0.75, 0.82, 1.0)))
+fog = spawn(unreal.ExponentialHeightFog, (0, 0, 0), label="Haze", folder="Light")
+fog_c = fog.get_component_by_class(unreal.ExponentialHeightFogComponent)
+try_set(fog_c, fog_density=FOG_DENSITY, fog_height_falloff=0.02, enable_volumetric_fog=True,
+        volumetric_fog_scattering_distribution=0.55, volumetric_fog_extinction_scale=1.0,
+        volumetric_fog_distance=9000.0)
 ppv = spawn(unreal.PostProcessVolume, (0, 0, 0), label="Exposure", folder="Light")
 ppv.set_editor_property("bUnbound", True)
 pps = ppv.get_editor_property("settings")
-setp(pps, override_auto_exposure_min_brightness=True, auto_exposure_min_brightness=EXPOSURE_EV,
-     override_auto_exposure_max_brightness=True, auto_exposure_max_brightness=EXPOSURE_EV)
+try_set(pps, override_auto_exposure_min_brightness=True, auto_exposure_min_brightness=EXPOSURE_EV,
+        override_auto_exposure_max_brightness=True, auto_exposure_max_brightness=EXPOSURE_EV,
+        override_vignette_intensity=True, vignette_intensity=0.55,
+        override_bloom_intensity=True, bloom_intensity=0.5,
+        override_dynamic_global_illumination_method=True,
+        dynamic_global_illumination_method=unreal.DynamicGlobalIlluminationMethod.NONE,
+        override_reflection_method=True, reflection_method=unreal.ReflectionMethod.NONE,
+        override_motion_blur_amount=True, motion_blur_amount=0.0)
 ppv.set_editor_property("settings", pps)
 
-# The rules.
+# The street: lamp heads, the canopy, a warm key on the carpet at the scanner, red at the scanner's eye.
+for ly in (-1900.0, -700.0, 700.0, 1900.0):
+    lamp(PAVE_X0 - 30.0, ly, z=450.0, cd=57.0, radius=1700.0)
+for cy in (-380.0, 380.0):
+    lamp(FRONT - 260.0, cy, z=395.0, cd=15.0, radius=900.0)
+spot("Key_Scanner", SCAN_X - 330.0, 0.0, 400.0, 0.0, -62.0, 330.0, 30.0, 1100.0, WARM, shadows=True)
+lamp(SCAN_X - 30.0, 0.0, z=235.0, cd=2.2, radius=320.0, rgb=REDL)
+# The lobby: a chandelier's worth over the atrium, a key down the grand stair.
+lamp((VOID_X0 + VOID_X1) / 2, 0.0, z=820.0, cd=420.0, radius=2600.0)
+spot("Key_Stair", VOID_X0 - 200.0, 0.0, 860.0, 0.0, -55.0, 450.0, 26.0, 2400.0, WARM, shadows=True)
+# The hall: warm keys straight down the centre aisle (Julian's path), the last two casting shadows.
+for kx in (-500.0, 400.0, 1300.0):
+    spot("Key_Aisle", kx, 0.0, HALL_H - 60.0, 0.0, -90.0, KEY_CD, 22.0, 1700.0, WARM, haze=2.0)
+spot("Key_Rope", MARK_ROPE[0], 0.0, HALL_H - 60.0, 0.0, -90.0, KEY_CD, 22.0, 1700.0, WARM, shadows=True, haze=2.0)
+spot("Key_Tape", (TAPE_X0 + TAPE_X1) / 2, 0.0, HALL_H - 60.0, 0.0, -90.0, KEY_CD, 22.0, 1700.0, WARM, haze=2.0)
+# The dais: a key on Vance at the podium, gold on the reel's case.
+spot("Key_Podium", 3560.0, VANCE[1], 900.0, 0.0, -68.0, 720.0, 17.0, 1500.0, WARM, shadows=True, haze=1.2)
+spot("Fill_Dais", 4000.0, -350.0, 1250.0, 0.0, -90.0, 700.0, 48.0, 1900.0, WARM, haze=0.4)
+spot("Key_Reel", 4160.0, 0.0, 1000.0, 0.0, -90.0, 660.0, 9.0, 1300.0, GOLDL, shadows=True, haze=2.0)
+# Rims: cool back light from the dais end, so everyone between Julian and the dais reads as a silhouette.
+for ry in (-750.0, 750.0):
+    spot("Rim_Hall", HX1 - 80.0, ry, 1180.0, 180.0, -24.0, RIM_CD, 36.0, 6500.0, COOL, haze=2.5)
+# Red at the rope, on both sides of the gap. Work light on the bridge and the walkway (the making-of).
+for ry in (-GAP - 60.0, GAP + 60.0):
+    lamp(ROPE_X, ry, z=150.0, cd=12.0, radius=420.0, rgb=REDL)
+lamp((BRIDGE_X0 + BRIDGE_X1) / 2, -100.0, z=F2 + 300.0, cd=45.0, radius=900.0, rgb=WORK)
+for wx in (300.0, 2400.0, 3700.0):
+    lamp(wx, (WALK_Y0 + HY1) / 2, z=F2 + 300.0, cd=45.0, radius=1100.0, rgb=WORK)
+
+# =====================================================================================================================
+# The rules: the director, the characters, marks, watchers, devices, the scene triggers and the crew posts.
+# =====================================================================================================================
+A, B, C = unreal.TakeCameraId.A, unreal.TakeCameraId.B, unreal.TakeCameraId.C
 spawn(unreal.TakeDirector, (HX0 + 100, HY0 + 100, 0), label="TakeDirector", folder="Take")
 
-# The three characters. Z is the capsule's centre.
+# The three characters. Z is the capsule's centre. Maya starts on the street for Scene 1; her post for Scene 2 is the
+# bridge (the director moves her when Julian walks onto the hall floor). Vex has one post, backstage.
 CAPSULE = 98.0
 julian = spawn(unreal.Julian, (START[0], START[1], CAPSULE), label="Julian", folder="Take")
-maya = spawn(unreal.TakeCharacter, (MAYA[0], MAYA[1], F2 + CAPSULE), label="Maya", folder="Take")
-setp(maya, id=unreal.TakeCameraId.B, tint=unreal.LinearColor(0.10, 0.35, 0.80, 1.0))
+maya = spawn(unreal.TakeCharacter, (MAYA_DOOR[0], MAYA_DOOR[1], CAPSULE), label="Maya", folder="Take")
+setp(maya, id=B, tint=unreal.LinearColor(0.10, 0.35, 0.80, 1.0))
 vex = spawn(unreal.TakeCharacter, (VEX[0], VEX[1], CAPSULE), yaw=90.0, label="Vex", folder="Take")
-setp(vex, id=unreal.TakeCameraId.C, tint=unreal.LinearColor(0.10, 0.55, 0.30, 1.0))
+setp(vex, id=C, tint=unreal.LinearColor(0.10, 0.55, 0.30, 1.0))
+post = spawn(unreal.CrewPost, (MAYA[0], MAYA[1], F2), label="Post_Maya_Scene2", folder="Take")
+setp(post, who=B, scene=2)
 
-# Julian's marks: where the take starts on the street, and the checkpoint in the hall.
-m = spawn(unreal.Mark, (START[0], START[1], 0), label="Mark_Start", folder="Take")
-setp(m, mark_name="START")
-m = spawn(unreal.Mark, (HALL_MARK[0], HALL_MARK[1], 0), label="Mark_Hall", folder="Take")
-setp(m, mark_name="THE HALL", checkpoint_radius=HALL_MARK_RADIUS)
-m.set_editor_property("bCheckpoint", True)
-m = spawn(unreal.Mark, (MARK_ROPE[0], MARK_ROPE[1], 0), label="Mark_Rope", folder="Take")
-setp(m, mark_name="ROPE")
-m = spawn(unreal.Mark, (GOAL[0], GOAL[1], DAIS_H), label="Mark_Goal", folder="Take")
-setp(m, mark_name="GOAL")
-m.set_editor_property("bGoal", True)
 
-# The red tape fills the aisle.
-tape = spawn(unreal.RedTapeZone, ((TAPE_X0 + TAPE_X1) / 2, 0, 0), label="RedTape_Aisle", folder="Take")
-setp(tape, extent=unreal.Vector((TAPE_X1 - TAPE_X0) / 2, GAP - 10, 200))
+def mark(label, name, xy, z=0.0):
+    a = spawn(unreal.Mark, (xy[0], xy[1], z), label=label, folder="Take")
+    setp(a, mark_name=name)
+    return a
+
+
+def trigger(label, name, x0, x1, y0, y1, z=0.0, scene=0, title="", checkpoint=None, checkpoint_name=""):
+    """A scene trigger box: fires once when Julian walks in; may start a scene and may save a checkpoint."""
+    a = spawn(unreal.SceneTrigger, ((x0 + x1) / 2, (y0 + y1) / 2, z), label=label, folder="Take")
+    setp(a, trigger_name=name, extent=unreal.Vector((x1 - x0) / 2, (y1 - y0) / 2, 200.0), scene=scene, title=title,
+         checkpoint_name=checkpoint_name)
+    if checkpoint is not None:
+        setp(a, checkpoint_mark=checkpoint)
+    return a
+
+
+def tape(label, x0, x1, y0, y1, z=0.0):
+    a = spawn(unreal.RedTapeZone, ((x0 + x1) / 2, (y0 + y1) / 2, z), label=label, folder="Take")
+    setp(a, extent=unreal.Vector((x1 - x0) / 2, (y1 - y0) / 2, 200.0))
+    return a
+
+
+# --- Scene 1, The Door ------------------------------------------------------------------------------------------------
+mark("Mark_Start", "START", START)
+mark("Mark_Scanner", "SCANNER", MARK_SCANNER)
+scanner = spawn(unreal.ScannerWatcher, (SCAN_X, 0, 0), label="Scanner", folder="Take")
+setp(scanner, label="SCANNER", gate_half_width=160.0, frame_depth=SCAN_DEPTH,
+     seen_line='CHIEF: "No match. Hold there, sir."', blinded_line='CHIEF: "Who turned that on?!"')
+tape("RedTape_Scanner", SCAN_X - SCAN_DEPTH, SCAN_X, -160.0, 160.0)
+spot_door = spawn(unreal.FollowSpot, SPOT_DOOR, label="Spot_Door", folder="Take")
+# A wide aim assist and a short range: from where Maya lands, the scanner is picked at once, and nothing else can be.
+setp(spot_door, device_name="SPOT", effect=unreal.DeviceEffect.BLIND, range=1500.0, duration=4.0, uses=0,
+     fired_from=B, use_verb="SPOT", aim_assist_degrees=25.0)
+setp(spot_door, use_offset=use_offset(spot_door, (MAYA_DOOR[0], MAYA_DOOR[1], 0.0)))
+ghost(shape(CYL, "Spot_Stand", SPOT_DOOR[0], SPOT_DOOR[1], SPOT_DOOR[2] / 2, 8.0, 8.0, SPOT_DOOR[2], m_trim,
+            folder="Set/Street"))
+trigger("Trigger_Door", "Door", LX0 + 20.0, LX0 + 240.0, -FRONT_DOOR_HALF, FRONT_DOOR_HALF)
+
+# --- Scene 2, The Floor -----------------------------------------------------------------------------------------------
+m_floor_mark = mark("Mark_Floor", "THE FLOOR", MARK_FLOOR)
+mark("Mark_Aisle", "AISLE", MARK_AISLE)
+mark("Mark_Hall", "THE HALL", HALL_MARK)
+m_rope_mark = mark("Mark_Rope", "ROPE", MARK_ROPE)
+m_dais_mark = mark("Mark_Dais", "THE DAIS", MARK_DAIS, DAIS_H)
+m_lift = mark("Mark_Lift", "LIFT", MARK_LIFT, DAIS_H)
+# The spec says 1.5 s. A flight back from Maya costs 1.6 s of the spot's 4 s, so 1.0 s is what fits (STATUS.md).
+setp(m_lift, action_seconds=1.0, action_trigger="Keycard", action_verb="LIFTING THE KEYCARD")
+
+# Walking onto the hall floor starts Scene 2 (a checkpoint); the rope mark and the dais are checkpoints too. Stepping
+# into the aisle brings Vance and the bodyguard on: 8.5 s of walking from there to the end of a lift, and they
+# arrive within 8.
+trigger("Trigger_Scene2", "Scene2", HX0 + 20.0, ROPE_X - 30.0, HY0 + 10.0, HY1 - 10.0, scene=2,
+        title="SCENE 2 - THE FLOOR", checkpoint=m_floor_mark, checkpoint_name="THE FLOOR")
+trigger("Trigger_Rope", "Rope", MARK_ROPE[0] - 180.0, ROPE_X - 20.0, -400.0, 400.0,
+        checkpoint=m_rope_mark, checkpoint_name="THE ROPE")
+trigger("Trigger_PastRope", "PastRope", ROPE_X + 20.0, ROPE_X + 300.0, -GAP + 10.0, GAP - 10.0)
+trigger("Trigger_Dais", "Dais", MARK_DAIS[0] - 140.0, MARK_DAIS[0] + 140.0, -150.0, 150.0,
+        checkpoint=m_dais_mark, checkpoint_name="THE DAIS")
+
+# The red tape: the aisle, and the dais's south half (the podium and the lift mark).
+tape("RedTape_Aisle", TAPE_X0, TAPE_X1, -GAP + 10.0, GAP - 10.0)
+tape("RedTape_Dais", DAIS_TAPE[0], DAIS_TAPE[1], DAIS_TAPE[2], DAIS_TAPE[3], DAIS_H)
+
+# The drone: a loop down the centre aisle and back, 8 bars; it arrives on the 4-bar line after Scene 2 starts. It
+# flies above the bridge's rail, and the bridge's deck hides Julian from it.
+d1 = spawn(unreal.PatrolPoint, (DRONE_PATH[0][0], DRONE_PATH[0][1], 0), label="Drone_Path_1", folder="Take")
+setp(d1, bars=4)
+d2 = spawn(unreal.PatrolPoint, (DRONE_PATH[1][0], DRONE_PATH[1][1], 0), label="Drone_Path_2", folder="Take")
+setp(d2, bars=4)
+drone = spawn(unreal.DroneWatcher, (DRONE_PATH[0][0], DRONE_PATH[0][1], 0), label="Drone", folder="Take")
+setp(drone, label="DRONE", path_points=[d1, d2], cone_radius=DRONE_RADIUS, fly_height=720.0, arrive_on="Scene2",
+     instrument=unreal.WatcherInstrument.TRUMPET)
 
 # The beam across the gap in the rope.
 beam = spawn(unreal.BeamWatcher, (ROPE_X, -GAP, 0), label="Beam", folder="Take")
-setp(beam, label="BEAM", end_b=unreal.Vector(0, 2 * GAP, 0), live_from_bar=1, drop_every_bars=4, drop_beat_in_bar=4)
+setp(beam, label="BEAM", end_b=unreal.Vector(0, 2 * GAP, 0), live_from_bar=1, drop_every_bars=4, drop_beat_in_bar=4,
+     instrument=unreal.WatcherInstrument.HI_HAT)
 
 # The guard stands beside the aisle and turns on bar lines.
 p1 = spawn(unreal.PatrolPoint, (GUARD[0], GUARD[1], 0), yaw=90.0, label="Patrol_1", folder="Take")
@@ -1032,25 +1198,53 @@ setp(p1, bars=3)
 p2 = spawn(unreal.PatrolPoint, (GUARD[0], GUARD[1], 0), yaw=-90.0, label="Patrol_2", folder="Take")
 setp(p2, bars=1)
 guard = spawn(unreal.PatrolGuard, (GUARD[0], GUARD[1], 0), yaw=90.0, label="Guard", folder="Take")
-setp(guard, label="GUARD", frame_range=GUARD_RANGE, frame_half_angle=GUARD_HALF_ANGLE, patrol_points=[p1, p2])
+setp(guard, label="GUARD", frame_range=GUARD_RANGE, frame_half_angle=GUARD_HALF_ANGLE, patrol_points=[p1, p2],
+     instrument=unreal.WatcherInstrument.BASS)
 
-# Maya's devices, both worked from the bridge: the follow spot and the banner over the rope.
-spot = spawn(unreal.FollowSpot, (SPOT[0], SPOT[1], F2), label="Spot", folder="Take")
-setp(spot, device_name="SPOT", effect=unreal.DeviceEffect.BLIND, range=3500.0, duration=4.0, uses=0,
-     fired_from=unreal.TakeCameraId.B, use_verb="SPOT")
-setp(spot, use_offset=use_offset(spot, (SPOT_USE[0], SPOT_USE[1], F2)))
+# Vance at the podium: his frame is on the lift mark behind him, except while he speaks (4 bars from every band
+# break: bars 8, 16, 24...), when it turns to the crowd. A Lure only turns his head.
+v1 = spawn(unreal.PatrolPoint, (VANCE[0], VANCE[1], DAIS_H), yaw=180.0, label="Vance_Speaks", folder="Take")
+setp(v1, bars=4, state_text="SPEAKING", arrive_line='VANCE: "Ladies and gentlemen: the Director\'s Cut."')
+v2 = spawn(unreal.PatrolPoint, (VANCE[0], VANCE[1], DAIS_H), yaw=0.0, label="Vance_Watches", folder="Take")
+setp(v2, bars=4)
+vance = spawn(unreal.PatrolGuard, (VANCE[0], VANCE[1], DAIS_H), yaw=180.0, label="Vance", folder="Take")
+setp(vance, label="VANCE", frame_range=VANCE_RANGE, frame_half_angle=VANCE_HALF_ANGLE, patrol_points=[v1, v2],
+     patrol_offset_bars=1, arrive_on="PastRope", instrument=unreal.WatcherInstrument.DRUM_ROLL,
+     seen_line='VANCE: "Security!"')
+vance.set_editor_property("bTurnsOnly", True)
+# The bodyguard beside the podium, facing out at an angle: his frame covers the lift mark and its near approach.
+bodyguard = spawn(unreal.PatrolGuard, (BODYGUARD[0], BODYGUARD[1], DAIS_H), yaw=BODYGUARD_YAW, label="Bodyguard",
+                  folder="Take")
+setp(bodyguard, label="BODYGUARD", frame_range=BODYGUARD_RANGE, frame_half_angle=BODYGUARD_HALF_ANGLE,
+     arrive_on="PastRope")
+
+# Maya's devices on the bridge: the follow spot and the banner over the rope.
+spot_dev = spawn(unreal.FollowSpot, (SPOT[0], SPOT[1], F2), label="Spot", folder="Take")
+setp(spot_dev, device_name="SPOT", effect=unreal.DeviceEffect.BLIND, range=3500.0, duration=4.0, uses=0,
+     fired_from=B, use_verb="SPOT")
+setp(spot_dev, use_offset=use_offset(spot_dev, (SPOT_USE[0], SPOT_USE[1], F2)))
 banner = spawn(unreal.BannerDevice, BATTEN, label="Banner", folder="Take")
 setp(banner, device_name="BANNER", effect=unreal.DeviceEffect.MASK, range=600.0, duration=10.0, uses=1,
-     fired_from=unreal.TakeCameraId.B, drop_distance=300.0, use_verb="DROP THE BANNER",
+     fired_from=B, drop_distance=300.0, use_verb="DROP THE BANNER",
      effect_offset=unreal.Vector(ROPE_X - BATTEN[0], 0.0, 20.0 - BATTEN[2]))
 setp(banner, use_offset=use_offset(banner, (BANNER_USE[0], BANNER_USE[1], F2)))
 
-# Vex's device: the champagne cart, released from his side of the hatch.
+# Vex's devices, along the backstage corridor: the mid-floor cart (the guard), the sound desk (everything in the
+# hall, 4 s), the dais cart (Vance and the bodyguard: x2).
 cart = spawn(unreal.CartDevice, (CART[0], CART[1], 0), yaw=90.0, label="Cart", folder="Take")
 setp(cart, device_name="CART", effect=unreal.DeviceEffect.LURE, range=1200.0, duration=6.0, uses=1,
-     fired_from=unreal.TakeCameraId.C, crash_offset=unreal.Vector(CART_ROLL, 0, 0), roll_seconds=1.0,
-     use_verb="RELEASE THE CART")
+     fired_from=C, crash_offset=unreal.Vector(CART_ROLL, 0, 0), roll_seconds=1.0, use_verb="RELEASE THE CART")
 setp(cart, use_offset=use_offset(cart, (CART_USE[0], CART_USE[1], 0)))
+cart2 = spawn(unreal.CartDevice, (CART2[0], CART2[1], 0), yaw=90.0, label="Cart_Dais", folder="Take")
+setp(cart2, device_name="DAIS CART", effect=unreal.DeviceEffect.LURE, range=1200.0, duration=6.0, uses=1,
+     fired_from=C, crash_offset=unreal.Vector(CART2_ROLL, 0, 0), roll_seconds=1.6,
+     use_verb="RELEASE THE DAIS CART")
+setp(cart2, use_offset=use_offset(cart2, (CART2_USE[0], CART2_USE[1], 0)))
+desk = spawn(unreal.SoundDesk, (DESK[0], DESK[1], 0), yaw=90.0, label="Sound_Desk", folder="Take")
+# Its range covers the hall's far corner (64 m) and stops short of the scanner on the street (73 m).
+setp(desk, device_name="DESK", effect=unreal.DeviceEffect.BLIND, range=6500.0, duration=4.0, uses=1,
+     fired_from=C, use_verb="FEEDBACK")
+setp(desk, use_offset=use_offset(desk, (DESK_USE[0], DESK_USE[1], 0)))
 
 # The level's game mode.
 world = ues.get_editor_world()

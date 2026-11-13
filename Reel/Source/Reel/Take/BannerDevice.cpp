@@ -166,3 +166,52 @@ void ABannerDevice::SetMatteDrop(float Alpha)
 		ClickVolume->SetRelativeLocation(MatteLocation);
 	}
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Step 2 (header pass stubs; BODY: D)
+// ---------------------------------------------------------------------------------------------------------------------
+
+bool ABannerDevice::BlocksSight(const FVector& From, const FVector& To) const
+{
+	if (!Body)
+	{
+		return false;
+	}
+	if (BannerPhase != EBannerPhase::Dropping && BannerPhase != EBannerPhase::Down && BannerPhase != EBannerPhase::Raising)
+	{
+		return false;
+	}
+
+	// The matte where it hangs right now: test the segment in the cube mesh's own space (the basic cube is 100 cm
+	// across, pivot at the centre), so a rotated banner is tested as the thin slab it is, not its world bounds.
+	const FTransform& MatteTransform = Body->GetComponentTransform();
+	const FVector LocalFrom = MatteTransform.InverseTransformPosition(From);
+	const FVector LocalTo = MatteTransform.InverseTransformPosition(To);
+	const FBox MatteBox(FVector(-50.0), FVector(50.0));
+	if (MatteBox.IsInside(LocalFrom) || MatteBox.IsInside(LocalTo))
+	{
+		return true;
+	}
+	const FVector Span = LocalTo - LocalFrom;
+	if (Span.IsNearlyZero())
+	{
+		return false;
+	}
+	return FMath::LineBoxIntersection(MatteBox, LocalFrom, LocalTo, Span);
+}
+
+void ABannerDevice::RestoreUses(int32 InUsesLeft)
+{
+	Super::RestoreUses(InUsesLeft);
+	if (Uses <= 0)
+	{
+		return;
+	}
+
+	// The restore runs after BeginPlay, so the banner is Up and still: a spent one is rolled up for good.
+	bRunning = false;
+	PhaseSeconds = 0.f;
+	RunSeconds = 0.f;
+	BannerPhase = UsesLeft <= 0 ? EBannerPhase::Spent : EBannerPhase::Up;
+	SetMatteDrop(0.f);
+}

@@ -3,6 +3,7 @@
 
 #include "TakeDirector.h"
 
+#include "ComposureComponent.h"
 #include "Device.h"
 #include "FollowSpot.h"
 #include "Julian.h"
@@ -73,7 +74,8 @@ FTakeUseTarget ATakeDirector::FindUseTarget(const ATakeCharacter* Who) const
 	{
 		for (AWatcher* W : Watchers)
 		{
-			if (!IsValid(W) || W->DistanceToPoint(Lamp) > Spot->Range)
+			// A watcher that has not arrived yet (step 2: "DRONE - OFF") is not there to be spotted.
+			if (!IsValid(W) || !W->HasArrived() || W->DistanceToPoint(Lamp) > Spot->Range)
 			{
 				continue;
 			}
@@ -246,5 +248,18 @@ void ATakeDirector::StepDevices(float DeltaSeconds)
 
 		const FString EffectWord = FString(TakeText::EffectName(Device->Effect)).ToLower();
 		TAKE_LOG(TEXT("%s LANDED: %s %.1f s, caught %d (%s)"), *Device->DeviceName, *EffectWord, Device->Duration, Caught, *CaughtNames);
+
+		// Rule 5 and rule 7's stamps: one firing that catches two or more watchers refills composure.
+		LastStampCount = Caught;
+		if (Caught >= 2)
+		{
+			const float Refill = ExtraWatcherRefill * static_cast<float>(Caught - 1);
+			Flash(FString::Printf(TEXT("x%d"), Caught), TakeColors::GoldBright, 2.f);
+			if (Composure)
+			{
+				Composure->Add(Refill);
+			}
+			TAKE_LOG(TEXT("STAMP x%d (%s): composure +%.0f"), Caught, *Device->DeviceName, Refill);
+		}
 	}
 }

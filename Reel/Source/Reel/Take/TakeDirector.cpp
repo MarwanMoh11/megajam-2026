@@ -5,6 +5,7 @@
 
 #include "BarClockComponent.h"
 #include "ComposureComponent.h"
+#include "CrewPost.h"
 #include "Device.h"
 #include "EngineUtils.h"
 #include "FollowSpot.h"
@@ -12,6 +13,7 @@
 #include "Julian.h"
 #include "Mark.h"
 #include "RedTapeZone.h"
+#include "SceneTrigger.h"
 #include "TakeCharacter.h"
 #include "TakeGameInstance.h"
 #include "TakePlayerController.h"
@@ -150,25 +152,23 @@ void ATakeDirector::BeginPlay()
 			AddTickPrerequisiteComponent(Character->GetCharacterMovement());
 		}
 	}
-	// A blooper's reload starts at the last checkpoint Julian reached; a new take (R) starts where he was placed.
-	const UTakeGameInstance* CheckpointGI = GetTakeGameInstance();
-	if (CheckpointGI && Julian && !CheckpointGI->CheckpointMark.IsEmpty())
+	// A blooper's reload starts at the last checkpoint Julian reached: RestoreCheckpoint, at the start of the first
+	// Tick (every actor has begun play by then). A new take (R) starts where the map placed him.
+	bCheckpointRestored = false;
+
+	// The scene script starts at Scene 1 with nothing fired; the restore refills it from the game instance.
+	Scene = 1;
+	FiredTriggers.Reset();
+	Objective.Reset();
+	LastLoggedObjective.Reset();
+	Title.Reset();
+	TitleSecondsLeft = 0.f;
+	TitleSeconds = 0.f;
+	if (SceneHints.Num() == 0)
 	{
-		for (const TObjectPtr<AMark>& MarkPtr : Marks)
-		{
-			const AMark* const EachMark = MarkPtr.Get();
-			if (EachMark && EachMark->bCheckpoint && EachMark->MarkName == CheckpointGI->CheckpointMark)
-			{
-				const FVector FeetToCentre = Julian->GetActorLocation() - Julian->GetFeetLocation();
-				const float MarkYaw = EachMark->GetActorRotation().Yaw;
-				Julian->SetActorLocationAndRotation(EachMark->GetStandPoint() + FeetToCentre, FRotator(0.f, MarkYaw, 0.f),
-					false, nullptr, ETeleportType::TeleportPhysics);
-				Julian->SetLook(MarkYaw, Julian->StartLookPitch);
-				Julian->SnapFollowCamera();
-				TAKE_LOG(TEXT("CHECKPOINT start at %s"), *EachMark->MarkName);
-				break;
-			}
-		}
+		SceneHints.Add(TEXT("MAYA: \"Cut to me with 2. My searchlight blinds the scanner.\""));
+		SceneHints.Add(TEXT("MAYA: \"Banner on the beam, my spot on the guard. Or Vex's cart pulls him away.\""));
+		SceneHints.Add(TEXT("VEX: \"My desk blinds the whole room for two bars. Then lift it.\""));
 	}
 
 	CurrentCamera = ETakeCamera::A;
@@ -178,9 +178,9 @@ void ATakeDirector::BeginPlay()
 	EnsurePlayerController();
 
 	const UTakeGameInstance* GI = GetTakeGameInstance();
-	TAKE_LOG(TEXT("ROLLING take %d: julian=%s characters=%d marks=%d watchers=%d devices=%d tape=%d"),
+	TAKE_LOG(TEXT("ROLLING take %d: julian=%s characters=%d marks=%d watchers=%d devices=%d tape=%d triggers=%d posts=%d"),
 		GI ? GI->TakeNumber : 1, Julian ? TEXT("yes") : TEXT("NO"), Characters.Num(), Marks.Num(), Watchers.Num(),
-		Devices.Num(), TapeZones.Num());
+		Devices.Num(), TapeZones.Num(), SceneTriggers.Num(), CrewPosts.Num());
 
 	Flash(TEXT("ACTION!"), TakeColors::White, 1.5f);
 	if (UTakeGameInstance* MutableGI = GetTakeGameInstance())
@@ -208,6 +208,9 @@ void ATakeDirector::GatherActors()
 	Devices.Reset();
 	FollowSpot = nullptr;
 	TapeZones.Reset();
+	SceneTriggers.Reset();
+	CrewPosts.Reset();
+	SightIgnore.Reset();
 	if (!World)
 	{
 		return;
@@ -243,6 +246,58 @@ void ATakeDirector::GatherActors()
 	for (TActorIterator<ARedTapeZone> It(World); It; ++It)
 	{
 		TapeZones.Add(*It);
+	}
+	for (TActorIterator<ASceneTrigger> It(World); It; ++It)
+	{
+		SceneTriggers.Add(*It);
+	}
+	for (TActorIterator<ACrewPost> It(World); It; ++It)
+	{
+		CrewPosts.Add(*It);
+	}
+
+	// Every take actor a sight trace ignores (IsSightBlocked).
+	for (ATakeCharacter* Character : Characters)
+	{
+		if (Character)
+		{
+			SightIgnore.Add(Character);
+		}
+	}
+	for (AWatcher* EachWatcher : Watchers)
+	{
+		if (EachWatcher)
+		{
+			SightIgnore.Add(EachWatcher);
+		}
+	}
+	for (ADevice* EachDevice : Devices)
+	{
+		if (EachDevice)
+		{
+			SightIgnore.Add(EachDevice);
+		}
+	}
+	for (AMark* EachMark : Marks)
+	{
+		if (EachMark)
+		{
+			SightIgnore.Add(EachMark);
+		}
+	}
+	for (ARedTapeZone* EachZone : TapeZones)
+	{
+		if (EachZone)
+		{
+			SightIgnore.Add(EachZone);
+		}
+	}
+	for (ASceneTrigger* EachTrigger : SceneTriggers)
+	{
+		if (EachTrigger)
+		{
+			SightIgnore.Add(EachTrigger);
+		}
 	}
 }
 
@@ -291,13 +346,45 @@ void ATakeDirector::Tick(float DeltaSeconds)
 
 	EnsurePlayerController();
 	PhaseSeconds += DeltaSeconds;
+	TitleSecondsLeft = FMath::Max(0.f, TitleSecondsLeft - DeltaSeconds);
 	StepFlashes(DeltaSeconds);
+
+	// The first tick, before anything steps: every actor has begun play, so the checkpoint restore sticks.
+	if (!bCheckpointRestored)
+	{
+		bCheckpointRestored = true;
+		const UTakeGameInstance* GI = GetTakeGameInstance();
+		if (GI && GI->CheckpointMark.IsEmpty() && GI->BloopersAtCheckpoint == 0)
+		{
+			// A fresh take (the first, or R): the opening slate.
+			ShowTitle(VenueLine, 4.f);
+			Flash(FString::Printf(TEXT("%s   TAKE %d"), *Scene1Title, GI->TakeNumber), TakeColors::GoldBright, 4.f);
+		}
+		if (GI && !GI->CheckpointMark.IsEmpty())
+		{
+			RestoreCheckpoint();
+		}
+		else if (GI && GI->BloopersAtCheckpoint >= HintAfterBloopers && SceneHints.IsValidIndex(0)
+			&& !SceneHints[0].IsEmpty())
+		{
+			// No checkpoint yet (Scene 1 from the start): the crew hint still comes after the bloopers here.
+			Flash(SceneHints[0], TakeColors::White, 6.f);
+		}
+		// After a blooper the crew are where the player had walked them (nobody watches the crew).
+		RestoreCrewPlaces();
+		if (Julian)
+		{
+			JulianFeetBeforeWalk = Julian->GetFeetLocation();
+		}
+	}
 
 	if (Phase == ETakePhase::BlooperFreeze)
 	{
 		if (PC)
 		{
 			// No press is silent, even under the slate: R starts the new take at once, anything else says why not.
+			const UTakeGameInstance* FreezeGI = GetTakeGameInstance();
+			const FString AgainFrom = FreezeGI ? FreezeGI->CheckpointName : FString(TEXT("THE START"));
 			TArray<FTakePress> Dropped;
 			PC->TakePresses(Dropped);
 			for (const FTakePress& Press : Dropped)
@@ -309,18 +396,19 @@ void ATakeDirector::Tick(float DeltaSeconds)
 					return;
 				}
 				TAKE_LOG(TEXT("PRESS during the freeze: dropped"));
-				Flash(TEXT("Cut! Resetting to the start"), TakeColors::White, 1.0f);
+				Flash(FString::Printf(TEXT("Cut! Again from %s"), *AgainFrom), TakeColors::White, 1.0f);
 			}
 		}
 		StepFreeze(DeltaSeconds);
 		return;
 	}
 
-	// 1. The bar clock.
+	// 1. The bar clock, then the warnings one bar ahead (only on a bar line).
 	if (Clock)
 	{
 		Clock->Advance(DeltaSeconds);
 	}
+	StepWarnings();
 
 	// 2. The flight, the use target, then presses: cuts first, then uses.
 	if (PC)
@@ -331,6 +419,7 @@ void ATakeDirector::Tick(float DeltaSeconds)
 			CurrentCamera = OnCharacter->Id;
 		}
 	}
+	StepIntroLines();
 	StepUse();
 	StepPresses();
 	if (Phase == ETakePhase::BlooperFreeze || bReloadRequested)
@@ -341,12 +430,12 @@ void ATakeDirector::Tick(float DeltaSeconds)
 	// 3. Devices.
 	StepDevices(DeltaSeconds);
 
-	// 4. Julian's marks (he has already walked this frame), then the watchers and their sight tests.
+	// 4. Julian's marks (he has already walked this frame), the watchers (so a moving frame is tested where it is
+	// drawn), the exposure test, then the sight tests.
 	if (Julian)
 	{
 		Julian->StepMarks();
 	}
-	bJulianExposed = IsJulianExposed();
 	for (AWatcher* Watcher : Watchers)
 	{
 		if (Watcher)
@@ -354,13 +443,17 @@ void ATakeDirector::Tick(float DeltaSeconds)
 			Watcher->StepWatcher(DeltaSeconds, Clock);
 		}
 	}
+	bJulianExposed = IsJulianExposed();
 	StepSight(DeltaSeconds);
 
 	// 5. Composure.
 	StepComposure(DeltaSeconds);
 
-	// 6. The scene.
+	// 6. The scene: triggers, action marks, the goal mark, the objective line.
+	StepTriggers();
+	StepMarkActions(DeltaSeconds);
 	StepScene(DeltaSeconds);
+	UpdateObjective();
 
 	// For next frame's swept beam test.
 	if (Julian)

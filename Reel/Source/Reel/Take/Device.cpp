@@ -207,7 +207,12 @@ void ADevice::RefreshBodyLook()
 	{
 		return;
 	}
-	const FLinearColor Look = bHovered ? BodyColour + (FLinearColor::White - BodyColour) * 0.4f : BodyColour;
+	FLinearColor Look = bHovered ? BodyColour + (FLinearColor::White - BodyColour) * 0.4f : BodyColour;
+	if (Uses > 0 && UsesLeft <= 0)
+	{
+		// Spent: the body is dimmed (a restored spent device reads as spent at once).
+		Look = FLinearColor(Look.R * 0.35f, Look.G * 0.35f, Look.B * 0.35f, Look.A);
+	}
 	BodyMID = FTakeShapes::SetColour(Body, Look);
 }
 
@@ -220,4 +225,20 @@ void ADevice::MarkLanded()
 bool ADevice::FiredThisFrame() const
 {
 	return FiredFrame == GFrameCounter;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Step 2 (header pass stubs; BODY: D)
+// ---------------------------------------------------------------------------------------------------------------------
+
+void ADevice::RestoreUses(int32 InUsesLeft)
+{
+	// Free devices (Uses 0) have nothing to restore.
+	if (Uses <= 0)
+	{
+		return;
+	}
+	UsesLeft = FMath::Clamp(InUsesLeft, 0, Uses);
+	RefreshBodyLook();	// the pips read UsesLeft; the body dims when spent
+	TAKE_LOG(TEXT("RESTORE %s uses=%d"), *DeviceName, UsesLeft);
 }

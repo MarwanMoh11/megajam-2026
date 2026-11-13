@@ -45,6 +45,9 @@ public:
 	/** Back to MaxComposure, label None, grace timer reset (a reload or a checkpoint). */
 	void Refill();	// BODY: (a)
 
+	/** Step 2: adds Amount at once (the x2 / x3 stamp's refill), clamped to 0..MaxComposure. */
+	void Add(float Amount);
+
 	float GetComposure() const;	// BODY: (a)
 
 	/** 0..1 */

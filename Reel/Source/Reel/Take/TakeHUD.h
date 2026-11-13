@@ -69,6 +69,40 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|HUD")
 	float ComposureLineHeight = 6.f;
 
+	// --- step 2 (BODY: D; the layers are listed in the orchestrator's brief to D) ------------------------------------
+
+	/** The objective line's text scale (top centre, under the bar). */
+	UPROPERTY(EditAnywhere, Category = "Take|HUD")
+	float ObjectiveScale = 1.6f;
+
+	/** The scene title's text scale (LargeFont). */
+	UPROPERTY(EditAnywhere, Category = "Take|HUD")
+	float TitleScale = 2.2f;
+
+	/** Watcher labels also show on Julian's camera (dimmer), not only on Maya's and Vex's. */
+	UPROPERTY(EditAnywhere, Category = "Take|HUD")
+	bool bLabelsOnJulian = true;
+
+	/** Labels and pips farther than this from the camera are not drawn, cm (Maya's and Vex's cameras). */
+	UPROPERTY(EditAnywhere, Category = "Take|HUD")
+	float LabelMaxDistance = 4000.f;
+
+	/** ...and on Julian's camera, where they are only a reminder, cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|HUD")
+	float JulianLabelMaxDistance = 2200.f;
+
+	/** A watcher that has not arrived yet shows its "OFF" label only this close, cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|HUD")
+	float OffLabelMaxDistance = 1500.f;
+
+	/** Two labels closer than this on screen (px on a 900 px tall screen: across, down) are stacked, not overlapped. */
+	UPROPERTY(EditAnywhere, Category = "Take|HUD")
+	FVector2D LabelStackSize = FVector2D(170.f, 20.f);
+
+	/** The action bar's size (the lift), px. */
+	UPROPERTY(EditAnywhere, Category = "Take|HUD")
+	FVector2D ActionBarSize = FVector2D(260.f, 10.f);
+
 protected:
 	/** The director, cached (ATakeDirector::Get). */
 	ATakeDirector* GetDirector();	// BODY: (u)

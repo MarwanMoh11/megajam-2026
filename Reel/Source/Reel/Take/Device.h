@@ -82,6 +82,17 @@ public:
 	/** World point over the device where the HUD draws its pips. */
 	virtual FVector GetLabelPoint() const;	// BODY: (u)
 
+	// --- step 2 (BODY: D) --------------------------------------------------------------------------------------------
+
+	/** Does this device's matte block a watcher's line of sight from From to To right now (rule 7, Mask: "solid
+	 *  geometry that blocks frames")? Base: false. The banner: true while its matte is down (or dropping past the
+	 *  line) and the segment crosses the matte's box. ATakeDirector::IsSightBlocked asks every device. */
+	virtual bool BlocksSight(const FVector& From, const FVector& To) const { return false; }
+
+	/** The checkpoint restore (ATakeDirector::RestoreCheckpoint, after every BeginPlay): UsesLeft = InUsesLeft
+	 *  (clamped to 0..Uses), and the device looks spent if it is (pips, body). Free devices (Uses 0) ignore it. */
+	virtual void RestoreUses(int32 InUsesLeft);	// BODY: D
+
 	// --- tunables ---------------------------------------------------------------------------------------------------
 
 	/** HUD and log name ("SPOT", "CART", "BANNER"). */

@@ -333,3 +333,45 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   - Packaged at 23:40 (65 s; zip 326 MB, `C:\Jam\Builds\TeamName_GameName.zip`) and played from the `.exe` with
     real key and mouse events: W walks Julian up the carpet, through the scanner arch to the open doors with the
     lobby and the grand stair ahead; 2 flies from the street to Maya; E, 3 and R behave as before.
+
+## Day 3, Sat Nov 14
+
+- **About 23:50-01:10. Step 2 starts: Scenes 1 and 2 for the walking game, built by three Opus builders at once.**
+  - Marwan played the street-start build and said to start step 2, leaving out everything written for fixed
+    cameras and hard cuts until gate 2 (the shot list, the film and making-of split, the monitor strip, good cuts,
+    stills, the recorder, three deleted scenes). He chose Opus at its highest effort for every builder and for the
+    reviewer. `docs/STATUS.md` has a new section, "Step 2 as built", with what was built and every gap Claude
+    filled.
+  - Same pattern as step 1, and it held again. The orchestrator (Fable) wrote the header pass itself in about 35
+    minutes: five new classes (the scanner with its gate, the drone, a scene trigger box, a crew post, the sound
+    desk) and about 40 new functions on the director, the watchers, the devices, the clock and the HUD, each with
+    a comment saying exactly what it must do, and a stub body so it built clean. Then three builders wrote the
+    bodies in parallel on files nobody else touched: W, watchers and sight (9.5 min); S, scenes, triggers and
+    checkpoints (6 min); D, devices, the clock's sounds, the HUD and the test commands (10.5 min). None of them
+    could compile. The one build at the end was clean on the first try, with no warnings.
+  - While they wrote, the orchestrator rewrote the map script: the scanner arch at the front doors becomes a
+    watcher with a gate, Maya starts on the street with a second follow spot, the drone gets a path down the
+    centre aisle with gold marks under it, the dais gets Vance, the bodyguard and the lift mark, Vex gets a third
+    hatch with a second cart and a sound desk, five trigger boxes start the scenes and save the checkpoints, and
+    the sun is replaced by a night look (a cool moon, haze, warm keys, cool rims, red and gold accents; Lumen off).
+  - Checked in play-in-editor with scripted runs, reading the log's frame numbers. From the street: the goal line
+    teaches walk, [2], [E], [1], walk through; the spot opens the gate; walking onto the hall floor starts Scene 2,
+    saves a checkpoint and moves Maya to the bridge; Julian crosses the floor from mark to mark under the drone,
+    passes the rope by route 2 (cart and spot), reaches the dais and lifts the keycard with the spot on the
+    bodyguard while Vance speaks. CLEARED on bar 42, about 84 s. Also passed: route 1 (banner and spot), the sound
+    desk, the dais cart (x2), a walk into the live scanner (the gate holds him, a blooper back to the street), and
+    a blooper at the rope after spending the cart (Julian back on the rope mark, the clock back at the saved bar,
+    the cart back).
+  - What went wrong:
+    - The first lighting pass was washed out, and its "warm pool" on the hall floor turned out to be the drone's
+      untextured disc, so two rounds of tuning chased the wrong thing. The night sky gives a skylight almost
+      nothing to capture, so the fill needed 14 times the daytime number.
+    - The lift's 1.5 s missed the follow spot's window by a quarter of a second: a flight back from Maya costs
+      1.6 s of the 4 s. The mark is now 1 s, and the spec's number is noted in STATUS.md with the reason.
+    - A turning guard's frame swept across Julian for one frame on every bar line and made Vance shout
+      "Security!" at nothing. The line now waits for the grace time to run out.
+    - The guard's bass warning played on the street, 60 m from the guard. Turn warnings now need the watcher
+      within 30 m of Julian.
+    - A test that was meant to end in a blooper did not: with the banner down, Julian walked the aisle on the
+      guard's away bar and came out with 20 composure. That is the free route the spec allows, not a bug, but it
+      meant the next test started from the wrong checkpoint and had to be rewritten.

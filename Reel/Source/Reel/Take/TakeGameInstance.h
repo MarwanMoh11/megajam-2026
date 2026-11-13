@@ -7,6 +7,27 @@
 #include "TakeTypes.h"
 #include "TakeGameInstance.generated.h"
 
+/** Where a crew character stood when a blooper fired (the reload puts them back: nobody watches the crew, so the
+ *  walk the player gave them is not part of what a blooper costs). */
+USTRUCT()
+struct FTakeCrewPlace
+{
+	GENERATED_BODY()
+
+	/** The actor location (the capsule's centre). */
+	UPROPERTY()
+	FVector Location = FVector::ZeroVector;
+
+	UPROPERTY()
+	float Yaw = 0.f;
+
+	UPROPERTY()
+	float LookYaw = 0.f;
+
+	UPROPERTY()
+	float LookPitch = 0.f;
+};
+
 UCLASS()
 class REEL_API UTakeGameInstance : public UGameInstance
 {
@@ -42,6 +63,37 @@ public:
 	/** The bar the checkpoint restores the clock to (1 = the opening). */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Take")
 	int32 CheckpointBar = 1;
+
+	// --- step 2: the rest of what a checkpoint keeps (rule 9). Written by ATakeDirector::SaveCheckpoint, read by
+	// ATakeDirector::RestoreCheckpoint, cleared by NoteNewTake. BODY: S ---------------------------------------------
+
+	/** The scene the checkpoint is in (1 The Door, 2 The Floor). */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Take")
+	int32 CheckpointScene = 1;
+
+	/** Uses left on every device when the checkpoint was saved, by the device's object name (GetName()). A device
+	 *  not in the map keeps its full uses. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Take")
+	TMap<FString, int32> CheckpointUses;
+
+	/** The triggers that had fired when the checkpoint was saved, each with the bar it fired on (arrival bars are
+	 *  worked out from it again). */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Take")
+	TMap<FName, int32> CheckpointTriggers;
+
+	/** Maya's and Vex's places at the last blooper (ATakeDirector::SaveCrewPlaces), put back on the reload's first
+	 *  tick (RestoreCrewPlaces). A new take clears it: they start where the map put them. */
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TMap<ETakeCamera, FTakeCrewPlace> CrewPlaces;
+
+	/** One bit per character (1 << ETakeCamera): its cover-story line has been shown this session. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Take")
+	uint8 IntroShownMask = 0;
+
+	/** Bloopers at the current checkpoint (reset when a new one is saved and by a new take): two or more and the
+	 *  crew hint (rule 9). */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Take")
+	int32 BloopersAtCheckpoint = 0;
 
 	/** True from a blooper until the reloaded level has started (so it can say "Action!"). */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Take")

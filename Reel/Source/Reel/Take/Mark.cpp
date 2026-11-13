@@ -56,9 +56,72 @@ void AMark::ApplyLook()
 		return;
 	}
 
-	FTakeShapes::SetColour(Disc, TakeColors::Gold);
+	// An action running: the disc pulses brighter (two pulses a second, from its progress); done: bright gold.
+	FLinearColor DiscColour = TakeColors::Gold;
+	if (IsActionMark() && bActionDone)
+	{
+		DiscColour = TakeColors::GoldBright;
+	}
+	else if (IsActionMark() && ActionProgress > 0.f)
+	{
+		const float Pulse = 0.5f + 0.5f * FMath::Cos(ActionProgress * 2.f * UE_PI * 2.f);
+		DiscColour = FMath::Lerp(TakeColors::GoldBright, TakeColors::White, 0.2f + 0.5f * Pulse);
+	}
+	FTakeShapes::SetColour(Disc, DiscColour);
 	FTakeShapes::SetColour(CrossA, TakeColors::GoldBright);
 	FTakeShapes::SetColour(CrossB, TakeColors::GoldBright);
 	CrossA->SetVisibility(bIsOccupied);
 	CrossB->SetVisibility(bIsOccupied);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Step 2 (header pass stubs; BODY: S)
+// ---------------------------------------------------------------------------------------------------------------------
+
+bool AMark::StepAction(float DeltaSeconds, bool bRunning)
+{
+	if (!IsActionMark() || bActionDone)
+	{
+		return false;
+	}
+
+	if (!bRunning)
+	{
+		// Off the mark or seen: it starts over (the disc back to plain gold this frame).
+		if (ActionProgress > 0.f)
+		{
+			ActionProgress = 0.f;
+			TAKE_LOG(TEXT("ACTION %s broken off"), *MarkName);
+			ApplyLook();
+		}
+		return false;
+	}
+
+	if (ActionProgress <= 0.f)
+	{
+		TAKE_LOG(TEXT("ACTION %s started (%s, %.1f s)"), *MarkName, *ActionVerb, ActionSeconds);
+	}
+	ActionProgress += FMath::Max(0.f, DeltaSeconds);
+	if (ActionProgress >= ActionSeconds)
+	{
+		ActionProgress = ActionSeconds;
+		bActionDone = true;
+		ApplyLook();
+		return true;
+	}
+	ApplyLook();
+	return false;
+}
+
+float AMark::GetActionAlpha() const
+{
+	if (!IsActionMark())
+	{
+		return 0.f;
+	}
+	if (bActionDone)
+	{
+		return 1.f;
+	}
+	return FMath::Clamp(ActionProgress / ActionSeconds, 0.f, 1.f);
 }

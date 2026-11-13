@@ -40,18 +40,37 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Mark")
 	bool bGoal = false;
 
-	/** A checkpoint (rule 9): once Julian's feet come within CheckpointRadius of it on its floor, walking or standing,
-	 *  a blooper starts the next take here instead of where he was placed. R (a new take) goes back to the start. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Mark")
-	bool bCheckpoint = false;
+	// Step 2: checkpoints are no longer a mark's own business. An ASceneTrigger box saves one and names the mark
+	// Julian restarts on (ASceneTrigger::CheckpointMark).
 
-	/** How close Julian's feet must come to save the checkpoint, cm (2D). */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Mark")
-	float CheckpointRadius = 1200.f;
+	// --- step 2: an action mark (rule 3, "the mark behind Vance lifts the keycard"). BODY: S ------------------------
 
-	/** ...and within this height of it, cm: the floor above or below doesn't count. */
+	/** > 0: this is an action mark. Julian standing still on it, not SEEN, for this long does the action. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Mark")
-	float CheckpointHeight = 150.f;
+	float ActionSeconds = 0.f;
+
+	/** The trigger the finished action fires (ATakeDirector::FireTrigger), e.g. "Keycard". */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Mark")
+	FName ActionTrigger;
+
+	/** The HUD's word over the progress bar while it runs ("LIFTING THE KEYCARD"). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Mark")
+	FString ActionVerb = TEXT("LIFTING");
+
+	/** ATakeDirector::StepMarkActions calls this every frame for every action mark: bRunning is "Julian stands on
+	 *  this mark and is not SEEN this frame". Running: ActionProgress += Dt; not running: ActionProgress = 0 (it
+	 *  starts over). Returns true on the one frame ActionProgress reaches ActionSeconds (bActionDone becomes true and
+	 *  stays). Once done it does nothing more. The disc pulses brighter while it runs (ApplyLook). */
+	bool StepAction(float DeltaSeconds, bool bRunning);	// BODY: S
+
+	/** 0..1 through the action (0 when not running or not an action mark, 1 when done). The HUD's bar. */
+	float GetActionAlpha() const;	// BODY: S
+
+	bool IsActionMark() const { return ActionSeconds > 0.f; }
+	bool IsActionDone() const { return bActionDone; }
+
+	/** The checkpoint restore: an action whose trigger had already fired is done (no second lift). */
+	void SetActionDone() { bActionDone = true; ActionProgress = ActionSeconds; }
 
 	/** Julian's feet within this 2D distance of the stand point, standing still, counts as on the mark, cm. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Mark")
@@ -73,6 +92,12 @@ public:
 
 protected:
 	bool bIsOccupied = false;
+
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	float ActionProgress = 0.f;
+
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	bool bActionDone = false;
 
 private:
 	/** Disc and X colours, X visibility from the occupied state. This frame. */

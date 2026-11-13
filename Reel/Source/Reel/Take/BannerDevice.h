@@ -45,6 +45,13 @@ public:
 	/** Actor transform of EffectOffset. */
 	virtual FVector GetEffectPoint() const override;	// BODY: (u)
 
+	/** Step 2: true while the matte is Dropping, Down or Raising and the segment From -> To crosses the matte's
+	 *  box where it hangs right now (Body's world bounds; FMath::LineBoxIntersection or a slab test). */
+	virtual bool BlocksSight(const FVector& From, const FVector& To) const override;	// BODY: D
+
+	/** Step 2: a restored spent banner starts Spent (rolled up, no drop left). */
+	virtual void RestoreUses(int32 InUsesLeft) override;	// BODY: D
+
 	/** The matte's size: width (Y), thickness (X), height (Z), cm. */
 	UPROPERTY(EditAnywhere, Category = "Take|Banner")
 	FVector MatteSize = FVector(10.f, 400.f, 250.f);

@@ -94,6 +94,28 @@ enum class EWatcherState : uint8
 	Masked
 };
 
+/** The click-track pitch that warns one bar before a watcher turns, passes or speaks (rule 2; the band's
+ *  instruments replace these in the audio step). None = no warning. */
+UENUM(BlueprintType)
+enum class EWatcherInstrument : uint8
+{
+	None,
+	Bass,		// the guard: a low pluck
+	Trumpet,	// the drone: two mid notes
+	DrumRoll,	// Vance's speech: a short roll
+	HiHat		// the beam (its drop already splashes on the drop beat itself)
+};
+
+/** Trigger names the C++ scene script knows (step 2). The map's ASceneTrigger boxes and marks fire them by name;
+ *  watchers arrive on them (AWatcher::ArriveOn). Make an FName at the point of use: FName(TakeTriggers::Scene2). */
+namespace TakeTriggers
+{
+	inline const TCHAR* const Door = TEXT("Door");			// Julian is through the scanner and inside the front doors
+	inline const TCHAR* const Scene2 = TEXT("Scene2");		// he is on the hall floor: Scene 2 starts
+	inline const TCHAR* const PastRope = TEXT("PastRope");	// he is past the rope, on the dais
+	inline const TCHAR* const Keycard = TEXT("Keycard");	// he lifted Vance's keycard: step 2's end
+}
+
 /**
  * One press, queued by ATakePlayerController during input handling (TG_PrePhysics) and consumed by
  * ATakeDirector::StepPresses in the same frame. Exec test commands go through the same queue.
@@ -214,6 +236,18 @@ namespace TakeText
 		case EWatcherState::Blinded: return TEXT("BLINDED");
 		case EWatcherState::Lured: return TEXT("LURED");
 		default: return TEXT("MASKED");
+		}
+	}
+
+	inline const TCHAR* InstrumentName(EWatcherInstrument I)
+	{
+		switch (I)
+		{
+		case EWatcherInstrument::Bass: return TEXT("BASS");
+		case EWatcherInstrument::Trumpet: return TEXT("TRUMPET");
+		case EWatcherInstrument::DrumRoll: return TEXT("DRUM ROLL");
+		case EWatcherInstrument::HiHat: return TEXT("HI-HAT");
+		default: return TEXT("NONE");
 		}
 	}
 

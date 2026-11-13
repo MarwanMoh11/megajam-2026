@@ -43,6 +43,11 @@ void UComposureComponent::Refill()
 	Label = EComposureLabel::None;
 }
 
+void UComposureComponent::Add(float Amount)
+{
+	Value = FMath::Clamp(Value + Amount, 0.f, MaxComposure);
+}
+
 float UComposureComponent::GetComposure() const
 {
 	return Value;

@@ -3,8 +3,18 @@
 #include "TakeDirector.h"
 
 #include "BeamWatcher.h"
+#include "CollisionQueryParams.h"
+#include "Device.h"
+#include "Engine/World.h"
 #include "Julian.h"
+#include "TakeCharacter.h"
 #include "Watcher.h"
+
+namespace TakeSightW
+{
+	/** A watcher's SeenLine flash. */
+	constexpr float SeenLineSeconds = 2.5f;
+}
 
 void ATakeDirector::StepSight(float DeltaSeconds)
 {
@@ -66,4 +76,54 @@ void ATakeDirector::StepSight(float DeltaSeconds)
 			bJulianSeen = true;
 		}
 	}
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Step 2 (W)
+// ---------------------------------------------------------------------------------------------------------------------
+
+bool ATakeDirector::IsSightBlocked(const FVector& From, const FVector& To) const
+{
+	// A dropped banner (or any device that blocks sight) first: no trace needed.
+	for (const TObjectPtr<ADevice>& DevicePtr : Devices)
+	{
+		const ADevice* Device = DevicePtr.Get();
+		if (Device && Device->BlocksSight(From, To))
+		{
+			return true;
+		}
+	}
+
+	const UWorld* World = GetWorld();
+	if (!World)
+	{
+		return false;
+	}
+
+	// Walls and floors: anything on the Visibility channel that is not a take actor.
+	FCollisionQueryParams Params(FName(TEXT("TakeSight")), false, this);
+	for (const TObjectPtr<AActor>& IgnorePtr : SightIgnore)
+	{
+		if (const AActor* Ignored = IgnorePtr.Get())
+		{
+			Params.AddIgnoredActor(Ignored);
+		}
+	}
+	// The characters (Julian is the trace's target) and the watchers (their click volumes block Visibility) are in
+	// SightIgnore already; added again so a short SightIgnore can never hide Julian behind himself.
+	for (const TObjectPtr<ATakeCharacter>& CharacterPtr : Characters)
+	{
+		if (const ATakeCharacter* Who = CharacterPtr.Get())
+		{
+			Params.AddIgnoredActor(Who);
+		}
+	}
+	for (const TObjectPtr<AWatcher>& WatcherPtr : Watchers)
+	{
+		if (const AWatcher* Other = WatcherPtr.Get())
+		{
+			Params.AddIgnoredActor(Other);
+		}
+	}
+	return World->LineTraceTestByChannel(From, To, ECC_Visibility, Params);
 }

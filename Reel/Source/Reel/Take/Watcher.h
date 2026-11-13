@@ -78,7 +78,88 @@ public:
 	/** World point over the watcher where the HUD draws its label. */
 	virtual FVector GetLabelPoint() const;	// BODY: (d)
 
+	// --- step 2: arrivals, warnings, line of sight, frame lines (BODY: W) -----------------------------------------
+
+	/** There from the start (ArriveOn is None), or its arrival bar has come. A watcher that has not arrived is Off:
+	 *  its frame, frame lines and tally are hidden, IsLive and HoldsJulian are false, the label reads "DRONE - OFF".
+	 *  Its body stays where it was placed (the drone hovers at its first path point). */
+	bool HasArrived() const { return ArriveOn.IsNone() || bArrived; }
+
+	/** The director (FireTrigger, and the checkpoint restore): this watcher arrives on the bar line that starts Bar.
+	 *  Logs "<LABEL> arrives on bar N". */
+	void ScheduleArrival(int32 Bar);	// BODY: W
+
+	/** 0 = not scheduled yet. */
+	int32 GetArriveBar() const { return ArriveBar; }
+
+	/** Its tally blinks (the arrival, ArrivalBlinkBars long): the HUD and RefreshFrameLook read it. */
+	bool IsArrivalBlinking() const { return ArrivalBlinkSecondsLeft > 0.f; }
+
+	/** True if this watcher turns, starts a pass, or starts or ends a speech on the bar line that STARTS Bar. The
+	 *  director plays Instrument one bar before (ATakeDirector::StepWarnings). Base: false. */
+	virtual bool ChangesAtBar(int32 Bar, const UBarClockComponent* Clock) const { return false; }
+
+	/** True for a watcher whose frame exposes Julian by itself while he is off a mark (the drone's cone, rule 5).
+	 *  The red tape rule is the director's (IsJulianExposed). */
+	virtual bool ExposesOffMark() const { return false; }
+
+	/** The frame's eye, world: line traces start here and the frame lines meet here. Base: actor location plus
+	 *  EyeHeight. The scanner: the red eye on its lintel. The drone: its body. */
+	virtual FVector GetEyePoint() const;	// BODY: W
+
+	/** Line of sight from the eye to Julian: true if a trace to his chest (feet + 120) or to his head (feet + 170)
+	 *  is clear (ATakeDirector::IsSightBlocked: walls, floors, a dropped banner). Every subclass's HoldsJulian ends
+	 *  with this. Always true when bUseLineOfSight is false or there is no director. */
+	bool HasLineOfSight(const AJulian* Julian) const;	// BODY: W
+
+	/** The frame's far corners, in FramePivot's space (base: none, so no lines). The guard: the four corners of the
+	 *  far rectangle of his wedge (floor and head height, at FrameRange, at +-FrameHalfAngle). */
+	virtual void GetFrameFarCorners(TArray<FVector>& OutLocal) const {}
+
+	/** BeginPlay, and again whenever a subclass's frame changes shape: (re)builds the thin frame lines of rule 6:
+	 *  one from the eye to each far corner and one between neighbouring far corners (FTakeShapes::AddShapeAtRuntime
+	 *  cubes on FramePivot, FrameLineThickness thick, no shadow, NoCollision). RefreshFrameLook colours and hides
+	 *  them with the frame. No far corners: no lines. */
+	void BuildFrameLines();	// BODY: W
+
 	// --- tunables ---------------------------------------------------------------------------------------------------
+
+	/** The trigger this watcher arrives on (ATakeDirector::FireTrigger). None: it is there from the take's start. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Arrival")
+	FName ArriveOn;
+
+	/** Bars after the trigger's arrival line (the next 4-bar line) that it arrives. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Arrival", meta = (ClampMin = "0"))
+	int32 ArriveExtraBars = 0;
+
+	/** Its tally blinks for this many bars when it arrives. */
+	UPROPERTY(EditAnywhere, Category = "Take|Arrival", meta = (ClampMin = "0"))
+	int32 ArrivalBlinkBars = 1;
+
+	/** The click pitch that warns one bar before it changes (ChangesAtBar), and plays solo the bar before it
+	 *  arrives. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Watcher")
+	EWatcherInstrument Instrument = EWatcherInstrument::None;
+
+	/** Flashed on the frame it starts holding an exposed Julian ("CHIEF: No match. Hold there, sir."). Empty: none. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Watcher")
+	FString SeenLine;
+
+	/** Flashed on the frame a Blind lands on it ("CHIEF: Who turned that on?!"). Empty: none. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Watcher")
+	FString BlindedLine;
+
+	/** Height of the eye above the actor, cm (GetEyePoint). */
+	UPROPERTY(EditAnywhere, Category = "Take|Watcher")
+	float EyeHeight = 160.f;
+
+	/** Walls and a dropped banner block the frame (rule 6). Off: the frame sees through everything. */
+	UPROPERTY(EditAnywhere, Category = "Take|Watcher")
+	bool bUseLineOfSight = true;
+
+	/** Thickness of the frame lines, cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Watcher")
+	float FrameLineThickness = 3.f;
 
 	/** Tape label on set ("GUARD", "BEAM"). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Watcher")
@@ -172,8 +253,27 @@ protected:
 	 *  existing MASKED. Syncs the state and the frame look this frame. */
 	void AddDark(EWatcherState Kind, float Duration);
 
-	/** Derives State and EffectSecondsLeft from the timers: dark first, else the subclass's own state. */
+	/** Derives State and EffectSecondsLeft from the timers: not arrived -> Off first, then dark, else the subclass's
+	 *  own state. */
 	virtual void SyncState();
+
+	/** StepWatcher (base) calls this first, every frame: bArrived = ArriveOn is None, or ArriveBar > 0 and the
+	 *  clock's bar >= ArriveBar. On the frame it becomes true: ArrivalBlinkSecondsLeft = ArrivalBlinkBars bars, the
+	 *  frame and lines show, TAKE_LOG("<LABEL> ARRIVES"). Counts the blink down. */
+	void StepArrival(float DeltaSeconds, const UBarClockComponent* Clock);	// BODY: W
+
+	/** False until the arrival bar (only meaningful when ArriveOn is set). */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	bool bArrived = false;
+
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	int32 ArriveBar = 0;
+
+	float ArrivalBlinkSecondsLeft = 0.f;
+
+	/** The frame lines BuildFrameLines made. */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UStaticMeshComponent>> FrameLines;
 
 private:
 	/** FramePivot scale from the last beat pulse and the hover state, applied this frame. */

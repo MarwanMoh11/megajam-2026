@@ -66,6 +66,24 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Spot")
 	float AimAssistDegrees = 10.f;
 
+	/** Step 2, the look: a real spot light at the lamp, movable, casting shadows, on only while the spot is busy and
+	 *  aimed at the target every frame (UpdateBeam), so the beam cuts through the haze. Off and invisible when idle.
+	 *  BODY: D (the constructor makes it; UpdateBeam drives it from the three tunables below). */
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<class USpotLightComponent> Light;
+
+	/** The light's intensity while busy, candelas. */
+	UPROPERTY(EditAnywhere, Category = "Take|Spot")
+	float LightCandelas = 4000.f;
+
+	/** The light's outer cone half-angle, degrees. */
+	UPROPERTY(EditAnywhere, Category = "Take|Spot")
+	float LightConeDegrees = 7.f;
+
+	/** The light's reach, cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Spot")
+	float LightRadius = 4500.f;
+
 protected:
 	UPROPERTY(Transient)
 	TObjectPtr<AWatcher> Target;

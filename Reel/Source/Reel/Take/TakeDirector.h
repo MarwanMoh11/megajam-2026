@@ -8,18 +8,22 @@
 //   (u) TakeDirectorDevices.cpp    FindUseTarget, StepUse, FireDevice, SpotWatcher, StepDevices
 //   (d) TakeDirectorBlooper.cpp    RequestBlooper, StepBlooperCheck, StepFreeze, ReloadLevel, NewTake
 //
-// Tick order (docs/STATUS.md "Tick order", as reworked). Input and walking happen BEFORE the director in the same
-// frame: the player controller ticks first (presses queued, WASD -> Move, mouse -> AddLook), then every character
-// and its movement component (they move), then the director (tick prerequisites on the PC and on every character's
-// movement component, set in EnsurePlayerController / BeginPlay):
-//   1 the bar clock           Clock->Advance
+// Step 2 owners (Nov 14): S = TakeDirector.cpp, TakeDirectorScene.cpp, TakeDirectorBlooper.cpp;
+//   W = TakeDirectorSight.cpp, TakeDirectorComposure.cpp; D = TakeDirectorDevices.cpp, TakeDirectorPresses.cpp.
+//
+// Tick order (docs/STATUS.md "Tick order", as reworked; step 2 additions are marked +). Input and walking happen
+// BEFORE the director in the same frame: the player controller ticks first (presses queued, WASD -> Move, mouse ->
+// AddLook), then every character and its movement component (they move), then the director (tick prerequisites on
+// the PC and on every character's movement component, set in EnsurePlayerController / BeginPlay):
+//   1 the bar clock           Clock->Advance, + StepWarnings (only does anything on a bar line)
 //   2 the flight, use, presses PC->StepFlight, CurrentCamera mirrors PC->GetCurrentCharacter(), StepUse (CurrentUse
 //                             and the highlights), then StepPresses (cuts first, then uses, then a new take)
 //   3 devices                 StepDevices
-//   4 marks and sight         Julian->StepMarks, bJulianExposed = IsJulianExposed(), every Watcher->StepWatcher,
-//                             then StepSight
+//   4 marks and sight         Julian->StepMarks, every Watcher->StepWatcher (+ now BEFORE the exposure test, so the
+//                             drone's cone is tested where it is drawn), bJulianExposed = IsJulianExposed(), StepSight
 //   5 composure               StepComposure
-//   6 the scene               StepScene; then JulianFeetBeforeWalk = Julian's feet (for next frame's swept beam test)
+//   6 the scene               + StepTriggers, + StepMarkActions, StepScene, + UpdateObjective; then
+//                             JulianFeetBeforeWalk = Julian's feet (for next frame's swept beam test)
 //   7 late tick (TG_PostUpdateWork, a second tick function): StepBlooperCheck
 // While Phase == BlooperFreeze only StepFreeze runs (presses are drained and dropped). Cleared keeps stepping.
 // The camera manager updates after TG_PostPhysics, so a view-target change made in step 2 renders this frame.
@@ -44,6 +48,8 @@ class AWatcher;
 class ADevice;
 class AFollowSpot;
 class ARedTapeZone;
+class ASceneTrigger;
+class ACrewPost;
 class ATakeCharacter;
 class ATakePlayerController;
 class UBarClockComponent;
@@ -250,6 +256,95 @@ public:
 	void NewTake();
 
 	// ---------------------------------------------------------------------------------------------------------------
+	// Step 2: scenes, triggers, checkpoints, the lift, the objective (S: TakeDirectorScene.cpp unless said)
+	// ---------------------------------------------------------------------------------------------------------------
+
+	/** Fires a named trigger, once per take (a second call with the same name does nothing). On this frame:
+	 *  FiredTriggers[Name] = the clock's bar; every watcher whose ArriveOn == Name gets
+	 *  ScheduleArrival(GetArrivalLine(bar) + its ArriveExtraBars) and a red Flash("<LABEL> - arrives on bar N");
+	 *  TAKE_LOG("TRIGGER <name> bar N"). The scene script's own reaction lives here too:
+	 *   - Keycard: Flash("KEYCARD LIFTED", gold), Clock->PlayChime(), and the take is CLEARED: SetPhase(Cleared),
+	 *     ShowTitle("SCENE 2 CLEARED"), TAKE_LOG("CLEARED keycard"). */
+	void FireTrigger(FName Name);	// BODY: S
+
+	/** The trigger has fired this take (or before the checkpoint this take restarted from). */
+	bool HasFired(FName Name) const;	// BODY: S
+
+	/** The arrival line for something triggered during Bar: the first bar AFTER Bar that starts a group of
+	 *  ArrivalLineBars (with 4: bars 1, 5, 9, 13...). Bar 5 gives 9; bar 6 gives 9; bar 8 gives 9. */
+	int32 GetArrivalLine(int32 Bar) const;	// BODY: S
+
+	/** Step 1b, right after Clock->Advance. Only on a frame a bar line was crossed (Clock->BarCrossedThisFrame()),
+	 *  with B = the bar that just started:
+	 *   - a watcher with GetArriveBar() == B + 1 (it arrives on the next bar line): Clock->PlayWarning(its
+	 *     Instrument), Clock->MuteMetronome(1) (its solo bar), Flash("<LABEL> arrives on the next bar"), TAKE_LOG.
+	 *   - a watcher with GetArriveBar() == B: Clock->PlayChime() (the downbeat it arrives on).
+	 *   - an arrived watcher with ChangesAtBar(B + 1, Clock): Clock->PlayWarning(its Instrument),
+	 *     TAKE_LOG("WARNING <LABEL> <instrument>: changes on bar N"). At most one PlayWarning per instrument per
+	 *     bar line. */
+	void StepWarnings();	// BODY: S
+
+	/** Step 6a, only while Rolling. Every ASceneTrigger whose TriggerName has not fired and that Contains Julian's
+	 *  feet: FireTrigger(its name); if its Scene > 0 and differs from Scene: Scene = that, PlaceCrewForScene(Scene),
+	 *  ShowTitle(its Title); if it has a CheckpointMark: SaveCheckpoint(that mark, its CheckpointName). In that
+	 *  order, so the saved checkpoint already holds the trigger and the new scene. */
+	void StepTriggers();	// BODY: S
+
+	/** Step 6b, only while Rolling. Every action mark (AMark::IsActionMark) not yet done:
+	 *  StepAction(Dt, Julian->GetStandingMark() == it && !bJulianSeen). On the frame one returns true:
+	 *  FireTrigger(its ActionTrigger). */
+	void StepMarkActions(float DeltaSeconds);	// BODY: S
+
+	/** Step 6d: sets Objective, the HUD's one goal line, from the state right now (so it is right after a restore
+	 *  with no script state saved). The table of lines is in the orchestrator's brief to S. Scene 1 teaches walk ->
+	 *  [2] -> [E] spot -> [1] -> walk through; Scene 2 names the next thing to do. TAKE_LOG("OBJECTIVE <text>")
+	 *  when it changes. */
+	void UpdateObjective();	// BODY: S
+
+	/** The big scene title across the upper middle ("SCENE 2 - THE FLOOR"), from this frame, for Seconds. Logs. */
+	void ShowTitle(const FString& Text, float Seconds = 3.f);	// BODY: S
+
+	/** Saves the checkpoint in the game instance (rule 9): CheckpointMark = Mark's MarkName, CheckpointName = Name,
+	 *  CheckpointBar = the clock's bar now, CheckpointScene = Scene, CheckpointUses = every device's UsesLeft by
+	 *  object name (GetName()), CheckpointTriggers = FiredTriggers, BloopersAtCheckpoint = 0.
+	 *  Flash("CHECKPOINT - <Name>", gold), Clock->PlayChime(), TAKE_LOG("CHECKPOINT saved <Name> bar N scene N").
+	 *  No game instance or no mark: nothing. */
+	void SaveCheckpoint(AMark* Mark, const FString& Name);	// BODY: S
+
+	/** BeginPlay, after GatherActors and Clock->SetStartBar(CheckpointBar), when the game instance holds a
+	 *  checkpoint (CheckpointMark not empty): Scene = CheckpointScene; FiredTriggers = CheckpointTriggers, and every
+	 *  watcher whose ArriveOn is in it gets ScheduleArrival(GetArrivalLine(that bar) + ArriveExtraBars) again;
+	 *  every device RestoreUses(CheckpointUses[its name]) when listed; every action mark whose ActionTrigger had
+	 *  fired SetActionDone(); Julian is put on the checkpoint mark facing its yaw (teleport, SetLook,
+	 *  SnapFollowCamera, as BeginPlay does today); PlaceCrewForScene(Scene, true).
+	 *  TAKE_LOG("CHECKPOINT restore <mark> bar N scene N"). With BloopersAtCheckpoint >= HintAfterBloopers and a
+	 *  hint for this scene in SceneHints: Flash it (white, 6 s). */
+	void RestoreCheckpoint();	// BODY: S
+
+	/** Moves Maya and Vex to their posts for InScene: for each crew character, the ACrewPost with its Id and the
+	 *  highest Scene <= InScene (none: it stays where it is). Teleport (feet on the post, facing its yaw),
+	 *  SetLook(yaw, StartLookPitch), SnapFollowCamera, velocity zeroed. Skips a character the player is on or
+	 *  flying to, unless bEvenIfCurrent (the restore). TAKE_LOG("POST MAYA -> scene 2 (x, y, z)"). */
+	void PlaceCrewForScene(int32 InScene, bool bEvenIfCurrent = false);	// BODY: S
+
+	/** The blooper (StepBlooperCheck): remembers where Maya and Vex stand and look, in the game instance. */
+	void SaveCrewPlaces();
+
+	/** The first tick after a blooper's reload: puts Maya and Vex back where SaveCrewPlaces found them (teleport,
+	 *  look, follow camera snapped). Nothing saved (a first take, a new take): they stay where the map put them. */
+	void RestoreCrewPlaces();
+
+	/** Step 2, after CurrentCamera is mirrored: the first time in a session the player is on a character, its
+	 *  IntroLine is flashed (white, IntroLineSeconds). Never during a flight. */
+	void StepIntroLines();
+
+	/** W (TakeDirectorSight.cpp). Is the straight line From -> To blocked for a watcher's frame (rule 6)? True if
+	 *  a line trace on ECC_Visibility hits anything that is not a take actor (SightIgnore: every ATakeCharacter,
+	 *  AWatcher, ADevice, AMark, ARedTapeZone and ASceneTrigger is ignored), or if any device's
+	 *  BlocksSight(From, To) is true (a dropped banner). The map's dressing ignores ECC_Visibility already. Pure. */
+	bool IsSightBlocked(const FVector& From, const FVector& To) const;	// BODY: W
+
+	// ---------------------------------------------------------------------------------------------------------------
 	// Components and tunables
 	// ---------------------------------------------------------------------------------------------------------------
 
@@ -271,6 +366,44 @@ public:
 	/** How many flash lines the HUD keeps. */
 	UPROPERTY(EditAnywhere, Category = "Take|HUD")
 	int32 MaxFlashes = 4;
+
+	/** Watchers arrive on the next line of this many bars after their trigger (rule: "the next 4-bar line"). */
+	UPROPERTY(EditAnywhere, Category = "Take|Scene", meta = (ClampMin = "1"))
+	int32 ArrivalLineBars = 4;
+
+	/** Composure refilled for each extra watcher one firing catches (rule 5: x2, x3). */
+	UPROPERTY(EditAnywhere, Category = "Take|Scene")
+	float ExtraWatcherRefill = 25.f;
+
+	/** The crew hint over the earpiece comes after this many bloopers at one checkpoint (rule 9). */
+	UPROPERTY(EditAnywhere, Category = "Take|Scene")
+	int32 HintAfterBloopers = 2;
+
+	/** The hint for each scene (index 0 = Scene 1). */
+	UPROPERTY(EditAnywhere, Category = "Take|Scene")
+	TArray<FString> SceneHints;
+
+	/** A watcher's turn warning plays only while it is within this distance of Julian (2D, cm): the guard in the
+	 *  hall is not heard from the street. 0: always. An arriving watcher's solo always plays. */
+	UPROPERTY(EditAnywhere, Category = "Take|Scene")
+	float WarningEarshot = 3000.f;
+
+	/** The opening slate, as the big title on a fresh take (a first take or R; not after a blooper). */
+	UPROPERTY(EditAnywhere, Category = "Take|Scene")
+	FString VenueLine = TEXT("AURELIA AUCTION HOUSE  -  LOT 41: THE DIRECTOR'S CUT");
+
+	/** Flashed with the take number under the opening slate. */
+	UPROPERTY(EditAnywhere, Category = "Take|Scene")
+	FString Scene1Title = TEXT("SCENE 1 - THE DOOR");
+
+	/** How long a character's cover-story line shows, s. */
+	UPROPERTY(EditAnywhere, Category = "Take|Scene")
+	float IntroLineSeconds = 7.f;
+
+	/** Scene 1's objective turns to "[2] MAYA" once Julian's feet are this close to the scanner's gate, cm, whether
+	 *  or not he stands on the mark. */
+	UPROPERTY(EditAnywhere, Category = "Take|Scene")
+	float DoorPromptDistance = 450.f;
 
 	// ---------------------------------------------------------------------------------------------------------------
 	// The level's actors (gathered at BeginPlay)
@@ -298,6 +431,18 @@ public:
 
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|Level")
 	TArray<TObjectPtr<ARedTapeZone>> TapeZones;
+
+	/** Step 2: gathered in GatherActors (S). */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|Level")
+	TArray<TObjectPtr<ASceneTrigger>> SceneTriggers;
+
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|Level")
+	TArray<TObjectPtr<ACrewPost>> CrewPosts;
+
+	/** Every take actor a sight trace ignores (IsSightBlocked): characters, watchers, devices, marks, tape zones,
+	 *  scene triggers. Built at the end of GatherActors (S). */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|Level")
+	TArray<TObjectPtr<AActor>> SightIgnore;
 
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|Level")
 	TObjectPtr<ATakePlayerController> PC;
@@ -351,6 +496,33 @@ public:
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
 	bool bReloadRequested = false;
 
+	/** The scene Julian is in: 1 The Door, 2 The Floor (StepTriggers, RestoreCheckpoint). */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	int32 Scene = 1;
+
+	/** The HUD's goal line (UpdateObjective, every frame). */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	FString Objective;
+
+	/** The big scene title and how long it still shows (ShowTitle; Tick counts it down, frozen or not). */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	FString Title;
+
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	float TitleSecondsLeft = 0.f;
+
+	/** Seconds the title was shown for (the HUD fades it over the last part). */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	float TitleSeconds = 0.f;
+
+	/** Every trigger fired this take, with the bar it fired on (FireTrigger; RestoreCheckpoint refills it). */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	TMap<FName, int32> FiredTriggers;
+
+	/** How many watchers the last device landing caught (StepDevices sets it; 2 or more flashes "x2", "x3"). */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	int32 LastStampCount = 0;
+
 	/** The HUD's flash lines, oldest first. */
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
 	TArray<FTakeFlash> Flashes;
@@ -370,4 +542,12 @@ protected:
 	FTakeDirectorLateTick LateTickFunction;
 
 	bool bInitialViewSet = false;
+
+	/** RestoreCheckpoint has run. It runs at the start of the director's FIRST Tick, not in BeginPlay: actors begin
+	 *  play in no fixed order, and a device's or watcher's own BeginPlay would undo a restore made before it. The
+	 *  first tick comes before the first rendered frame. */
+	bool bCheckpointRestored = false;
+
+	/** The last Objective logged (UpdateObjective logs changes only). */
+	FString LastLoggedObjective;
 };
