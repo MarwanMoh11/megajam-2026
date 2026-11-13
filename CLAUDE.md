@@ -6,7 +6,8 @@ Marwan's first Unreal project: explain Unreal-specific terms in a few words the 
 **Hard deadline: Mon Nov 16, 03:59 Cairo. Upload target: Sun Nov 15, 22:00.** Late entries are disqualified.
 
 Read `docs/STATUS.md` first (what the game is, the kill list, what's open). Rules, schedule and prize targets are
-in `docs/JAM_PLAN.md`. Setup is `README.md` plus the runbooks in `setup/`.
+in `docs/JAM_PLAN.md`. Scoring the game (judge agents, ratings, design reviews) follows
+`docs/JUDGING_RUBRIC.md` only, including its stop rule. Setup is `README.md` plus the runbooks in `setup/`.
 
 ## Machines and layout
 - **PC, Windows: everything Unreal happens here.** Repo at `C:\Jam\megajam`; the Unreal project is `Reel\`

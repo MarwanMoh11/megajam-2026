@@ -2,6 +2,9 @@
 
 Last updated: 2026-11-13, about 17:30 Cairo. Theme: **Director's Cut**.
 
+**Scoring:** any score of this game, by an agent or by Marwan, follows `docs/JUDGING_RUBRIC.md` (the jam's criteria,
+fixed anchors, and when to stop). Design review is closed; the next scores come at gates 1 and 2.
+
 **The game: a heist shot in one take** (working title *Print It*). Marwan wrote the pitch on Fri Nov 13; it is kept
 word for word in `docs/ideas/heist-pitch.md` and replaces K. Judge agents scored the design round by round
 (`docs/ideas/heist-judging.md`). From round 3, at Marwan's request, they scored the design alone, with execution set

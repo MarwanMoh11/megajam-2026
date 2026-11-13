@@ -226,3 +226,6 @@ those two the judges now ask for opposite things:
 
 That is a taste plateau, so the loop stopped there. What decides Fun and Gameplay from here is gate 1: Marwan playing
 the core loop.
+
+**From Nov 13, 17:45** every round follows `docs/JUDGING_RUBRIC.md`: fresh judges only, fixed anchors, and a stop
+rule. By that rule design review ended here (conflict and plateau); the next scores come from the build.
