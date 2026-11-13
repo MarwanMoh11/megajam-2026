@@ -94,7 +94,7 @@ Do these while the engine downloads. They need your accounts.
 - [ ] Find the Nov 10 partner email (university inbox, then spam). It holds most of the codes below.
   Checked Nov 13: not in the personal Gmail, spam included. The codes went to people who had joined by Nov 10, and
   itch.io was first linked on Nov 12, so ask the organisers for late-joiner codes. Tripo's page said "codes are
-  temporarily unavailable" on Nov 13 (try again). WeLoveIndies sign-up started with the personal Gmail.
+  temporarily unavailable" on Nov 13 (try again). WeLoveIndies account made with the personal Gmail (free licence, non-commercial).
 - [ ] Claim the perks:
 
   | Perk | Where | Claim by |
