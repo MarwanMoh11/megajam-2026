@@ -8,6 +8,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/CollisionProfile.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "Mark.h"
 #include "NavigationData.h"
 #include "NavigationPath.h"
@@ -77,6 +78,17 @@ void AJulian::BeginPlay()
 {
 	Super::BeginPlay();
 	ApplyLook();
+
+	// He starts the take standing on a mark if one is under his feet (so MARK shows from the first frame).
+	StandingMark = nullptr;
+	for (TActorIterator<AMark> It(GetWorld()); It; ++It)
+	{
+		if (FVector::Dist2D(It->GetStandPoint(), GetFeetLocation()) <= StartMarkTolerance)
+		{
+			StandingMark = *It;
+			break;
+		}
+	}
 
 	PathPoints.Empty();
 	NextPointIndex = 0;

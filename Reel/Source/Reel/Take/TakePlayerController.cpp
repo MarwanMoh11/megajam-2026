@@ -24,6 +24,19 @@
 
 namespace TakeSliceBPC
 {
+	/** How many clickable actors one pointer trace may pass through. */
+	constexpr int32 MaxClickLayers = 8;
+
+	/** The kind a click on this camera acts on: marks on A, devices and watchers on B and C. */
+	bool IsPreferredKind(ETakeClickKind Kind, ETakeCamera ViewCameraId)
+	{
+		if (ViewCameraId == ETakeCamera::A)
+		{
+			return Kind == ETakeClickKind::Mark;
+		}
+		return Kind == ETakeClickKind::Device || Kind == ETakeClickKind::Watcher;
+	}
+
 	/** The name TakeClick matches on each pass: 0 a device's DeviceName, 1 a watcher's Label, 2 a mark's MarkName,
 	 *  3 the object name, 4 the editor label (WITH_EDITOR only). Empty when the pass does not apply. */
 	FString NameForPass(AActor* Candidate, int32 Pass)
@@ -230,17 +243,60 @@ bool ATakePlayerController::TraceClickable(const FVector2D& ScreenPos, AActor*& 
 		return false;
 	}
 
-	FCollisionQueryParams TraceParams(SCENE_QUERY_STAT(TakeClickTrace), false);
-	const FVector RayEnd = RayOrigin + RayDirection * ClickTraceDistance;
-	if (!TraceWorld->LineTraceSingleByChannel(OutHit, RayOrigin, RayEnd, ECC_Visibility, TraceParams))
+	// The camera decides which kind wins (rules 3 and 4): marks on A, devices and watchers on B and C.
+	ETakeCamera ViewCameraId = ETakeCamera::A;
+	if (const ATakeDirector* Director = ATakeDirector::Get(this))
 	{
-		return false;
+		ViewCameraId = Director->CurrentCamera;
+	}
+	else if (const ATakeCamera* Viewed = GetViewCamera())
+	{
+		ViewCameraId = Viewed->CameraId;
 	}
 
-	AActor* HitActor = OutHit.GetActor();
-	if (HitActor && Cast<ITakeClickable>(HitActor))
+	// Click volumes block ECC_Visibility, so a multi-hit trace would stop at the first one: re-trace through each
+	// clickable actor instead, nearest first, until something that is not clickable (a wall, the floor) blocks.
+	FCollisionQueryParams TraceParams(SCENE_QUERY_STAT(TakeClickTrace), false);
+	const FVector RayEnd = RayOrigin + RayDirection * ClickTraceDistance;
+	AActor* FirstClickable = nullptr;
+	FHitResult FirstClickableHit;
+	for (int32 Layer = 0; Layer < TakeSliceBPC::MaxClickLayers; ++Layer)
 	{
-		OutActor = HitActor;
+		FHitResult LayerHit;
+		if (!TraceWorld->LineTraceSingleByChannel(LayerHit, RayOrigin, RayEnd, ECC_Visibility, TraceParams))
+		{
+			break;
+		}
+		if (Layer == 0)
+		{
+			OutHit = LayerHit;
+		}
+
+		AActor* HitActor = LayerHit.GetActor();
+		const ITakeClickable* Clickable = Cast<ITakeClickable>(HitActor);
+		if (!Clickable)
+		{
+			break;
+		}
+		if (TakeSliceBPC::IsPreferredKind(Clickable->GetClickKind(), ViewCameraId))
+		{
+			OutActor = HitActor;
+			OutHit = LayerHit;
+			return true;
+		}
+		if (!FirstClickable)
+		{
+			FirstClickable = HitActor;
+			FirstClickableHit = LayerHit;
+		}
+		TraceParams.AddIgnoredActor(HitActor);
+	}
+
+	// Nothing of the camera's own kind under the pointer: the nearest clickable (its "wrong camera" flash shows).
+	if (FirstClickable)
+	{
+		OutActor = FirstClickable;
+		OutHit = FirstClickableHit;
 		return true;
 	}
 	return false;

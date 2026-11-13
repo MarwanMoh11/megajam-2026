@@ -47,6 +47,10 @@ public:
 	/** Live, and the 2D distance from Julian's feet to the segment is within his capsule radius. */
 	bool TouchesJulian(const AJulian* Julian) const;	// BODY: (d)
 
+	/** Live, and the 2D distance between the segment PrevFeet -> his feet now and the beam's segment A-B is within
+	 *  his capsule radius (no tunnelling on a long frame). PrevFeet == his feet reduces to TouchesJulian. */
+	bool TouchesJulianSwept(const AJulian* Julian, const FVector& PrevFeet) const;
+
 	/** World ends of the beam at BeamHeight. */
 	FVector GetEndA() const;	// BODY: (d)
 	FVector GetEndB() const;	// BODY: (d)
@@ -84,6 +88,9 @@ public:
 protected:
 	bool bDropped = false;
 	bool bBeforeLive = false;
+
+	/** Dark first (base), else OFF before LiveFromBar, DROPPED on the drop beat, else WATCHING. */
+	virtual void SyncState() override;
 
 private:
 	/** Places post B, the line (FramePivot at the beam's midpoint) and the click volume; colours them (OnConstruction and BeginPlay). */

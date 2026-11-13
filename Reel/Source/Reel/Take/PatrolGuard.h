@@ -88,6 +88,12 @@ protected:
 	FVector LureStart = FVector::ZeroVector;
 	float LureTime = 0.f;
 
+	/** The lure's own timer (stacks with a Blind's dark timer): Going/Looking until it ends, then Returning. */
+	float LureSecondsLeft = 0.f;
+
+	/** Dark first (base), else LURED while the lure's timer runs. */
+	virtual void SyncState() override;
+
 private:
 	/** Sizes the wedge from FrameRange / FrameHalfAngle and colours the wedge, body and cap (OnConstruction and BeginPlay). */
 	void LayoutGuard();

@@ -313,6 +313,11 @@ public:
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
 	bool bJulianSeen = false;
 
+	/** Julian's feet at the start of this frame's step 4, before StepWalk. StepSight tests the segment from here to
+	 *  his feet now against instant-blooper watchers, so a long frame cannot carry him through a live beam. */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	FVector JulianFeetBeforeWalk = FVector::ZeroVector;
+
 	/** Set by RequestBlooper, consumed by StepBlooperCheck. */
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
 	EBlooperReason PendingBlooper = EBlooperReason::None;

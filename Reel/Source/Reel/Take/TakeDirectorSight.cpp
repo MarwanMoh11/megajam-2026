@@ -2,6 +2,7 @@
 
 #include "TakeDirector.h"
 
+#include "BeamWatcher.h"
 #include "Julian.h"
 #include "Watcher.h"
 
@@ -18,12 +19,24 @@ void ATakeDirector::StepSight(float DeltaSeconds)
 		}
 
 		const AJulian* JulianActor = Julian.Get();
-		const bool bHolds = JulianActor != nullptr && W->HoldsJulian(JulianActor);
 
 		if (W->IsInstantBlooper())
 		{
-			// The beam: touching it while live is a blooper at once (the end-of-frame check fires it).
-			if (bHolds)
+			// The beam: touching it while live is a blooper at once (the end-of-frame check fires it). Swept from
+			// where his feet were before this frame's walk, so a long frame cannot carry him through.
+			bool bTouches = false;
+			if (JulianActor)
+			{
+				if (const ABeamWatcher* BeamActor = Cast<ABeamWatcher>(W))
+				{
+					bTouches = BeamActor->TouchesJulianSwept(JulianActor, JulianFeetBeforeWalk);
+				}
+				else
+				{
+					bTouches = W->HoldsJulian(JulianActor);
+				}
+			}
+			if (bTouches)
 			{
 				if (Phase == ETakePhase::Rolling && PendingBlooper == EBlooperReason::None)
 				{
@@ -31,11 +44,12 @@ void ATakeDirector::StepSight(float DeltaSeconds)
 				}
 				RequestBlooper(EBlooperReason::BeamTouched);
 			}
-			W->SetTally(bHolds);
+			W->SetTally(bTouches);
 			continue;
 		}
 
 		// The guard: his frame holding an exposed Julian is SEEN.
+		const bool bHolds = JulianActor != nullptr && W->HoldsJulian(JulianActor);
 		const bool bNowTally = bHolds && bJulianExposed;
 		const bool bWasTally = W->HasTally();
 		W->SetTally(bNowTally);

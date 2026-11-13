@@ -44,7 +44,7 @@ public:
 	float LetterboxAspect = 2.39f;
 
 	UPROPERTY(EditAnywhere, Category = "Take|HUD")
-	float TextScale = 1.0f;
+	float TextScale = 1.4f;
 
 	UPROPERTY(EditAnywhere, Category = "Take|HUD")
 	float SlateTextScale = 2.5f;

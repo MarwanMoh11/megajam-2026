@@ -92,6 +92,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Julian")
 	FVector NavProjectExtent = FVector(150.f, 150.f, 300.f);
 
+	/** At the start of a take, a mark this close to his feet counts as the one he stands on, cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Julian")
+	float StartMarkTolerance = 40.f;
+
 	UPROPERTY(VisibleAnywhere, Category = "Take")
 	TObjectPtr<UCapsuleComponent> Capsule;
 

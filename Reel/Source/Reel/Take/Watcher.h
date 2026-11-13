@@ -93,6 +93,14 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Watcher")
 	float HoverScale = 1.08f;
 
+	/** On the beat a live frame's colour moves this far toward white, decaying with the clock's pulse (0..1). */
+	UPROPERTY(EditAnywhere, Category = "Take|Watcher", meta = (ClampMin = "0", ClampMax = "1"))
+	float PulseBrightness = 0.35f;
+
+	/** While hovered the frame's colour moves this far toward white (0..1). The footprint never scales. */
+	UPROPERTY(EditAnywhere, Category = "Take|Watcher", meta = (ClampMin = "0", ClampMax = "1"))
+	float HoverBrightness = 0.3f;
+
 	// --- components -------------------------------------------------------------------------------------------------
 
 	UPROPERTY(VisibleAnywhere, Category = "Take")
@@ -141,6 +149,20 @@ protected:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> TallyMID;
+
+	/** Effects stack: the dark timer (Blind / Mask) runs on its own; subclasses keep their own (the guard's lure).
+	 *  While it runs the frame is dark and not live, whatever else is happening. */
+	float DarkSecondsLeft = 0.f;
+
+	/** Which dark effect is reported while DarkSecondsLeft runs: Blinded or Masked. */
+	EWatcherState DarkKind = EWatcherState::Blinded;
+
+	/** Starts or extends the dark timer: max(time left, Duration). A Mask reports MASKED; a Blind keeps an
+	 *  existing MASKED. Syncs the state and the frame look this frame. */
+	void AddDark(EWatcherState Kind, float Duration);
+
+	/** Derives State and EffectSecondsLeft from the timers: dark first, else the subclass's own state. */
+	virtual void SyncState();
 
 private:
 	/** FramePivot scale from the last beat pulse and the hover state, applied this frame. */

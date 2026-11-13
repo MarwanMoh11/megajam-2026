@@ -124,7 +124,13 @@ void ATakeDirector::HandleClick(const FTakePress& Press)
 		case ETakeClickKind::Mark:
 		{
 			AMark* ClickedMark = Cast<AMark>(ClickedActor);
-			if (Julian && ClickedMark && Julian->CueTo(ClickedMark))
+			if (Julian && ClickedMark && !Julian->IsWalking() && Julian->GetStandingMark() == ClickedMark)
+			{
+				// Already standing on it: no cue, but the press still shows something this frame.
+				TAKE_LOG(TEXT("ALREADY ON %s"), *ClickedMark->MarkName);
+				Flash(TEXT("He's on that mark"));
+			}
+			else if (Julian && ClickedMark && Julian->CueTo(ClickedMark))
 			{
 				TAKE_LOG(TEXT("CUE -> %s"), *ClickedMark->MarkName);
 			}

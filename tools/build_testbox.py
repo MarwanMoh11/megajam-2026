@@ -24,9 +24,11 @@ CART_DOOR = (2450.0, -700.0)      # the cart rolls -X from here
 CART_ROLL = 400.0                # door to crash, cm
 BATTEN = (760.0, 420.0, 550.0)   # the banner hangs here and drops in front of the beam's second post
 SPOT = (300.0, 700.0, 0.0)
-CAM_B = ((1000.0, 1700.0, 1400.0), (1000.0, -50.0, 0.0))      # (position, look-at): Maya's catwalk
-CAM_A_DOOR = ((-1150.0, 420.0, 400.0), (900.0, -60.0, 40.0))    # the film's first angle: down the lane
-CAM_A_ROPE = ((1500.0, 1100.0, 380.0), (1500.0, -100.0, 50.0))# the film's second angle: side-on over the tape
+# Cameras are framed for a 16:9 screen (the lens angle is across the width; a wider window only shows more).
+CAM_B = ((1000.0, 1900.0, 1600.0), (1000.0, -100.0, 0.0))    # (position, look-at): Maya's catwalk
+CAM_B_FOV = 75.0
+CAM_A_DOOR = ((-1150.0, 420.0, 400.0), (900.0, -60.0, -110.0)) # the film's first angle: down the lane (60 deg lens)
+CAM_A_ROPE = ((1500.0, 1500.0, 450.0), (1500.0, -100.0, 30.0)) # the film's second angle: side-on over the tape
 ZONE_SPLIT_X = 500.0             # Julian past this X: the film cuts to the second angle
 EXPOSURE_EV = 0.5                # fixed exposure (EV100), so dark floors stay dark
 
@@ -78,12 +80,14 @@ def box(label, x0, x1, y0, y1, z0, z1, mat):
     return a
 
 
-def camera(label, cam_id, shot_name, pos_look, initial=False):
+def camera(label, cam_id, shot_name, pos_look, initial=False, fov=None):
     pos, look = pos_look
     rot = unreal.MathLibrary.find_look_at_rotation(unreal.Vector(*pos), unreal.Vector(*look))
     a = spawn(unreal.TakeCamera, pos, yaw=rot.yaw, pitch=rot.pitch, label=label)
     setp(a, camera_id=cam_id, shot_name=shot_name)
     a.set_editor_property("bInitialShot", initial)
+    if fov:
+        a.camera_component.set_editor_property("field_of_view", fov)
     return a
 
 
@@ -173,7 +177,7 @@ setp(banner, device_name="BANNER", effect=unreal.DeviceEffect.MASK, range=600.0,
 # Cameras: the film's two angles and Maya's catwalk.
 cam_door = camera("CamA_Door", unreal.TakeCameraId.A, "A_DOOR", CAM_A_DOOR, initial=True)
 cam_rope = camera("CamA_Rope", unreal.TakeCameraId.A, "A_ROPE", CAM_A_ROPE)
-camera("CamB_Catwalk", unreal.TakeCameraId.B, "B_CATWALK", CAM_B)
+camera("CamB_Catwalk", unreal.TakeCameraId.B, "B_CATWALK", CAM_B, fov=CAM_B_FOV)
 
 # The film's zone trigger: which angle camera A shows depends on where Julian is.
 z = spawn(unreal.ShotZone, ((X0 + ZONE_SPLIT_X) / 2, 0, 150), label="ShotZone_Door")

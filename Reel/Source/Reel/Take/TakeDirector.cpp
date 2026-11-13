@@ -277,8 +277,20 @@ void ATakeDirector::Tick(float DeltaSeconds)
 	{
 		if (PC)
 		{
+			// No press is silent, even under the slate: R starts the new take at once, anything else says why not.
 			TArray<FTakePress> Dropped;
 			PC->TakePresses(Dropped);
+			for (const FTakePress& Press : Dropped)
+			{
+				if (Press.Type == ETakePressType::NewTake)
+				{
+					TAKE_LOG(TEXT("PRESS during the freeze: new take"));
+					NewTake();
+					return;
+				}
+				TAKE_LOG(TEXT("PRESS during the freeze: dropped"));
+				Flash(TEXT("Cut! Resetting to the start"), TakeColors::White, 1.0f);
+			}
 		}
 		StepFreeze(DeltaSeconds);
 		return;
@@ -303,6 +315,7 @@ void ATakeDirector::Tick(float DeltaSeconds)
 	// 4. Julian's cued walk, the film's own cut, then the watchers and their sight tests.
 	if (Julian)
 	{
+		JulianFeetBeforeWalk = Julian->GetFeetLocation();
 		Julian->StepWalk(DeltaSeconds);
 	}
 	StepShotList();

@@ -74,7 +74,19 @@ void APatrolGuard::BeginPlay()
 	LayoutGuard();
 	LurePhase = EGuardLurePhase::None;
 	LureTime = 0.f;
+	LureSecondsLeft = 0.f;
+	SyncState();
 	RefreshFrameLook();
+}
+
+void APatrolGuard::SyncState()
+{
+	Super::SyncState();
+	if (DarkSecondsLeft <= 0.f && LureSecondsLeft > 0.f)
+	{
+		State = EWatcherState::Lured;
+		EffectSecondsLeft = LureSecondsLeft;
+	}
 }
 
 void APatrolGuard::LayoutGuard()
@@ -100,14 +112,19 @@ void APatrolGuard::LayoutGuard()
 
 void APatrolGuard::StepWatcher(float DeltaSeconds, UBarClockComponent* Clock)
 {
-	// The base counts the effect down (a lure ending sets Watching) and pulses the frame.
-	const bool bWasLured = State == EWatcherState::Lured;
-	Super::StepWatcher(DeltaSeconds, Clock);
-	if (bWasLured && State != EWatcherState::Lured
-		&& (LurePhase == EGuardLurePhase::Going || LurePhase == EGuardLurePhase::Looking))
+	// The lure's own timer (a blind's dark timer runs alongside it in the base): at 0 he walks back.
+	if (LureSecondsLeft > 0.f)
 	{
-		LurePhase = EGuardLurePhase::Returning;
+		LureSecondsLeft = FMath::Max(LureSecondsLeft - DeltaSeconds, 0.f);
+		if (LureSecondsLeft <= 0.f
+			&& (LurePhase == EGuardLurePhase::Going || LurePhase == EGuardLurePhase::Looking))
+		{
+			LurePhase = EGuardLurePhase::Returning;
+		}
 	}
+
+	// The base counts the dark timer down, derives the state (dark first, then LURED) and pulses the frame.
+	Super::StepWatcher(DeltaSeconds, Clock);
 
 	FVector PatrolLocation = FVector::ZeroVector;
 	float PatrolYaw = 0.f;
@@ -221,8 +238,8 @@ bool APatrolGuard::ApplyEffect(EDeviceEffect Effect, float Duration, const FVect
 
 	if (Effect == EDeviceEffect::Lure)
 	{
-		State = EWatcherState::Lured;
-		EffectSecondsLeft = FMath::Max(Duration, UE_KINDA_SMALL_NUMBER);
+		// Stacks with a blind: the walk starts now; the frame stays dark until the blind's own time ends.
+		LureSecondsLeft = FMath::Max(Duration, UE_KINDA_SMALL_NUMBER);
 		LurePoint = Point;
 		LureStart = GetActorLocation();
 		LurePhase = EGuardLurePhase::Going;
@@ -234,18 +251,14 @@ bool APatrolGuard::ApplyEffect(EDeviceEffect Effect, float Duration, const FVect
 		{
 			SetActorRotation(FRotator(0.f, Look.Rotation().Yaw, 0.f));
 		}
+		SyncState();
 		RefreshFrameLook();
 		TAKE_LOG(TEXT("%s LURED %.1f s -> (%.0f,%.0f)"), *Label, Duration, Point.X, Point.Y);
 		return true;
 	}
 
-	// Blind: the base darkens the frame. A blind ends a lure: he walks back to his patrol.
-	const bool bCaught = Super::ApplyEffect(Effect, Duration, Point);
-	if (bCaught && (LurePhase == EGuardLurePhase::Going || LurePhase == EGuardLurePhase::Looking))
-	{
-		LurePhase = EGuardLurePhase::Returning;
-	}
-	return bCaught;
+	// Blind: the base darkens the frame (max of the dark time left and Duration). A lure in progress carries on.
+	return Super::ApplyEffect(Effect, Duration, Point);
 }
 
 FString APatrolGuard::GetStateText() const

@@ -24,6 +24,30 @@ namespace TakeSliceDBeam
 		}
 		return FVector2D::Distance(P2, A2 + AB * Along);
 	}
+
+	/** 2D cross product of (A - O) and (B - O). */
+	double Cross2D(const FVector& O, const FVector& A, const FVector& B)
+	{
+		return (A.X - O.X) * (B.Y - O.Y) - (A.Y - O.Y) * (B.X - O.X);
+	}
+
+	/** 2D distance between the segments P0-P1 and Q0-Q1 (0 when they cross). P0 == P1 gives the point test. */
+	double SegSegDist2D(const FVector& P0, const FVector& P1, const FVector& Q0, const FVector& Q1)
+	{
+		const double D1 = Cross2D(Q0, Q1, P0);
+		const double D2 = Cross2D(Q0, Q1, P1);
+		const double D3 = Cross2D(P0, P1, Q0);
+		const double D4 = Cross2D(P0, P1, Q1);
+		const bool bPStraddles = (D1 > 0.0 && D2 < 0.0) || (D1 < 0.0 && D2 > 0.0);
+		const bool bQStraddles = (D3 > 0.0 && D4 < 0.0) || (D3 < 0.0 && D4 > 0.0);
+		if (bPStraddles && bQStraddles)
+		{
+			return 0.0;
+		}
+		const double ToQ = FMath::Min(DistToSegment2D(P0, Q0, Q1), DistToSegment2D(P1, Q0, Q1));
+		const double ToP = FMath::Min(DistToSegment2D(Q0, P0, P1), DistToSegment2D(Q1, P0, P1));
+		return FMath::Min(ToQ, ToP);
+	}
 }
 
 ABeamWatcher::ABeamWatcher()
@@ -61,8 +85,24 @@ void ABeamWatcher::BeginPlay()
 	// The first StepWatcher reads the clock and corrects this on the first frame.
 	bDropped = false;
 	bBeforeLive = LiveFromBar > 1;
-	State = bBeforeLive ? EWatcherState::Off : EWatcherState::Watching;
+	SyncState();
 	RefreshFrameLook();
+}
+
+void ABeamWatcher::SyncState()
+{
+	Super::SyncState();
+	if (DarkSecondsLeft <= 0.f)
+	{
+		if (bBeforeLive)
+		{
+			State = EWatcherState::Off;
+		}
+		else if (bDropped)
+		{
+			State = EWatcherState::Dropped;
+		}
+	}
 }
 
 void ABeamWatcher::LayoutBeam()
@@ -91,52 +131,25 @@ void ABeamWatcher::LayoutBeam()
 
 void ABeamWatcher::StepWatcher(float DeltaSeconds, UBarClockComponent* Clock)
 {
-	// Effect countdown (Blinded / Masked back to Watching at 0) and the beat pulse.
+	if (Clock)
+	{
+		const int32 CurBar = Clock->GetBar();
+		const int32 CurBeat = Clock->GetBeatInBar();
+		const bool bNowBeforeLive = CurBar < LiveFromBar;
+		const bool bNowDropped = !bNowBeforeLive && (CurBar % FMath::Max(1, DropEveryBars)) == 0 && CurBeat == DropBeatInBar;
+
+		// The hi-hat marks the drop beat whether or not a Blind / Mask has the beam off already.
+		if (bNowDropped && !bDropped)
+		{
+			Clock->PlayAccent();
+		}
+		bDropped = bNowDropped;
+		bBeforeLive = bNowBeforeLive;
+	}
+
+	// Dark countdown, then the state (dark first, else OFF / DROPPED / WATCHING via SyncState), the state-change
+	// log ("BEAM DROPPED", "BEAM LIVE"), the frame look (hidden / dark / red) and the beat pulse, this frame.
 	Super::StepWatcher(DeltaSeconds, Clock);
-	if (!Clock)
-	{
-		return;
-	}
-
-	const int32 CurBar = Clock->GetBar();
-	const int32 CurBeat = Clock->GetBeatInBar();
-	const bool bNowBeforeLive = CurBar < LiveFromBar;
-	const bool bNowDropped = !bNowBeforeLive && (CurBar % FMath::Max(1, DropEveryBars)) == 0 && CurBeat == DropBeatInBar;
-	const bool bEffect = State == EWatcherState::Blinded || State == EWatcherState::Masked;
-
-	// The hi-hat marks the drop beat whether or not an effect has the beam off already.
-	if (bNowDropped && !bDropped)
-	{
-		Clock->PlayAccent();
-		if (!bEffect)
-		{
-			TAKE_LOG(TEXT("%s DROPPED"), *Label);
-		}
-	}
-	else if (!bEffect && !bNowBeforeLive && !bNowDropped && (bDropped || bBeforeLive))
-	{
-		TAKE_LOG(TEXT("%s LIVE"), *Label);
-	}
-	bDropped = bNowDropped;
-	bBeforeLive = bNowBeforeLive;
-
-	if (!bEffect)
-	{
-		EWatcherState NewState = EWatcherState::Watching;
-		if (bNowBeforeLive)
-		{
-			NewState = EWatcherState::Off;
-		}
-		else if (bNowDropped)
-		{
-			NewState = EWatcherState::Dropped;
-		}
-		if (NewState != State)
-		{
-			State = NewState;
-			RefreshFrameLook();
-		}
-	}
 }
 
 bool ABeamWatcher::HoldsJulian(const AJulian* Julian) const
@@ -152,10 +165,9 @@ bool ABeamWatcher::ApplyEffect(EDeviceEffect Effect, float Duration, const FVect
 	}
 	if (Effect == EDeviceEffect::Mask)
 	{
-		State = EWatcherState::Masked;
-		EffectSecondsLeft = FMath::Max(Duration, UE_KINDA_SMALL_NUMBER);
-		RefreshFrameLook();
-		TAKE_LOG(TEXT("%s MASKED %.1f s"), *Label, Duration);
+		// Stacks with a blind: max(dark time left, Duration), reported MASKED.
+		AddDark(EWatcherState::Masked, Duration);
+		TAKE_LOG(TEXT("%s MASKED %.1f s"), *Label, DarkSecondsLeft);
 		return true;
 	}
 	return false;	// a lure means nothing to a beam
@@ -168,7 +180,16 @@ float ABeamWatcher::DistanceToPoint(const FVector& Point) const
 
 bool ABeamWatcher::IsLive() const
 {
-	return State == EWatcherState::Watching;
+	return DarkSecondsLeft <= 0.f && State == EWatcherState::Watching;
+}
+
+bool ABeamWatcher::TouchesJulianSwept(const AJulian* Julian, const FVector& PrevFeet) const
+{
+	if (!Julian || !IsLive())
+	{
+		return false;
+	}
+	return TakeSliceDBeam::SegSegDist2D(PrevFeet, Julian->GetFeetLocation(), GetEndA(), GetEndB()) <= Julian->GetCapsuleRadius();
 }
 
 FString ABeamWatcher::GetStateText() const

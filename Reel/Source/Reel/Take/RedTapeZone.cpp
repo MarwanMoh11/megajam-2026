@@ -84,11 +84,13 @@ void ARedTapeZone::LayoutTape()
 
 bool ARedTapeZone::Contains(const FVector& WorldPoint) const
 {
-	// The zone's own frame, yaw only (actor scale ignored: Extent is in cm).
+	// The zone's own frame, yaw only. Extent is in cm before the actor's scale, and the strips scale with the actor,
+	// so the tested area scales with it too.
 	const FVector Delta = WorldPoint - GetActorLocation();
 	const FVector Local = FRotator(0.f, GetActorRotation().Yaw, 0.f).UnrotateVector(Delta);
-	return FMath::Abs(Local.X) <= Extent.X
-		&& FMath::Abs(Local.Y) <= Extent.Y
+	const FVector Scaled = Extent * GetActorScale3D().GetAbs();
+	return FMath::Abs(Local.X) <= Scaled.X
+		&& FMath::Abs(Local.Y) <= Scaled.Y
 		&& Delta.Z >= -50.f
-		&& Delta.Z <= Extent.Z * 2.f;
+		&& Delta.Z <= Scaled.Z * 2.f;
 }

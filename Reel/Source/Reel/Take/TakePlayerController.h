@@ -54,8 +54,10 @@ public:
 
 	// --- the pointer ----------------------------------------------------------------------------------------------
 
-	/** Traces ECC_Visibility from viewport pixel ScreenPos. Returns true if the first blocking hit's actor implements
-	 *  ITakeClickable, with that actor in OutActor; OutHit holds the hit either way. */
+	/** Traces ECC_Visibility from viewport pixel ScreenPos through every clickable actor under the pointer (up to 8,
+	 *  stopping at a wall or the floor) and picks the one the current camera acts on: on A the nearest mark, on B
+	 *  and C the nearest device or watcher, otherwise the nearest clickable. True with that actor in OutActor;
+	 *  OutHit holds its hit. */
 	bool TraceClickable(const FVector2D& ScreenPos, AActor*& OutActor, FHitResult& OutHit) const;	// BODY: (b)
 
 	/** The clickable actor under the pointer this frame (null if none). */
