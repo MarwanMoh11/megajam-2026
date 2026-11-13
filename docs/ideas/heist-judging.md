@@ -174,3 +174,55 @@ execution.
 
 **Caveat:** the same three judges scored every round, so they are anchored on their own notes. A fresh judge who had
 seen no earlier version scored the final spec as a check; see below.
+
+## Fresh judges: the check on the panel
+
+The panel's 5.0 came from three judges who had seen, and shaped, every version. To check it, three new Opus judges each
+read only the spec, with the same strict rules: design only, a 5 means the top ~1%. Each new judge had a different
+persona:
+
+| Judge | Persona |
+|---|---|
+| F1 | A general jam judge |
+| F2 | A judge with a film background |
+| F3 | A hard-to-impress indie designer |
+
+| Judge | Spec version | Am | Th | Fun | Gp | Vis | Lvl | Aud | Mean |
+|---|---|---|---|---|---|---|---|---|---|
+| F1, first read | R7 (the panel's 5.0) | 5 | 5 | 3 | 3 | 4 | 3 | 4 | **3.9** |
+| F1, second read | The subtraction pass | 5 | 5 | 4 | 4 | 4 | 4 | 5 | **4.4** |
+| F2, first read | The subtraction pass | 5 | 4 | 3 | 3 | 4 | 4 | 5 | **4.0** |
+| F1, third read | One job per camera | 5 | 5 | 4 | 4 | 4 | 4 | 5 | **4.4** |
+| F2, second read | One job per camera | 5 | 5 | 4 | 4 | 5 | 4 | 5 | **4.6** |
+| F3, first read | One job per camera | 5 | 4 | 3 | 3 | 4 | 4 | 4 | **3.9** |
+
+**What changed between versions:**
+- **The subtraction pass** came after F1's first read:
+  - point-and-click on every camera;
+  - three effects;
+  - one meter;
+  - the bluff, the reversal, the breakers, the fuses, OFF MARK and WASD cut;
+  - a clean run of about 1:45;
+  - instrument warnings.
+- **One job per camera** came after F2's first read: cue only on A, fire only on B and C, one bodyguard, crew views
+  per scene, a real 20 s oner.
+- **The final edits,** after the last reads, take only the fixes no judge disputed. The spec has not been scored since
+  them:
+  - path previews that turn red where Julian would be caught;
+  - arrivals tied to Julian's progress;
+  - checkpoints on the band's breaks;
+  - finale prompts;
+  - two visible exposure rules;
+  - costume shells;
+  - instruments taught solo;
+  - slates for the deleted scenes;
+  - the fixed contradictions.
+
+**Conclusion.** Every judge who reads the spec cold lands near 4 (3.9, 4.0, 3.9). Judges who see their own notes
+applied rise to 4.4-4.6. Ambition is 5 from everyone. Theme is 5 from most. Fun and Gameplay stick at 3-4, and on
+those two the judges now ask for opposite things:
+- F2 wants cueing on camera A only; F3 wants it on B too.
+- F2 suggested that a GOOD CUT recharge the spot; F3 says that flattens the loop.
+
+That is a taste plateau, so the loop stopped there. What decides Fun and Gameplay from here is gate 1: Marwan playing
+the core loop.

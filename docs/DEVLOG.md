@@ -134,3 +134,19 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
     is archived there.
   - **Audio:** ElevenLabs (Marwan's subscription) will voice about 60 lines and make the sound effects, generated
     outside the editor in a parallel session.
+- **About 13:15-17:30. Judging the design until it scored 5 (Marwan's request, design only).**
+  - **The panel.** The same three Opus judges went from round 3 to round 7 at 3.7, 4.3, 4.6, 4.7 and then **5.0**.
+    Each round folded their notes into `docs/STATUS.md`:
+    - blocking Julian to marks;
+    - a jazz band as the clock and score;
+    - the film against the making-of;
+    - deleted scenes;
+    - the replay and its edit suite;
+    - a shot list for camera A;
+    - fixes for soft-locks and contradictions.
+  - **Fresh judges.** As a check, new judges who had seen no earlier version read the 5.0 spec and scored it **3.9**:
+    too many rules for 3 minutes cold. A subtraction pass followed (point-and-click, three effects, one meter, a clean
+    run of about 1:45), then one job per camera (cue on A, fire on B and C). New judges then scored 4.0 and 3.9;
+    judges re-reading their own fixes scored 4.4 and 4.6.
+  - **Stopped at a taste plateau.** The judges began asking for opposite things, so the loop ended there.
+  - **What we learned:** a panel that sees every round anchors on its own notes. Only fresh readers catch bloat.

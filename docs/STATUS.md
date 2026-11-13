@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-11-13, about 16:45 Cairo. Theme: **Director's Cut**.
+Last updated: 2026-11-13, about 17:30 Cairo. Theme: **Director's Cut**.
 
 **The game: a heist shot in one take** (working title *Print It*). Marwan wrote the pitch on Fri Nov 13; it is kept
 word for word in `docs/ideas/heist-pitch.md` and replaces K. Judge agents scored the design round by round
@@ -67,7 +67,7 @@ track, and never steered by the player. The mouse is a pointer on every one.
 
 **Camera A, "the film":** a **shot list** of composed fixed angles, one or two per zone:
 - a low angle on the scanner;
-- a slow tracking shot on a long lens, down the floor from the last floor mark to the rope;
+- a slow tracking shot on a long lens, from the exhibit down the floor to the rope: one angle for that whole stretch;
 - a two-shot on the podium;
 - a high angle on the hatch.
 
@@ -114,7 +114,8 @@ A jazz quintet on the floor plays at a fixed 120 BPM, so 1 bar is 2 s. They take
   | The bodyguard | The piano |
   | Vance's speech | A drum roll |
 
-  You can hear a threat coming before you see it.
+  You can hear a threat coming before you see it. Each instrument is taught on its own: the first time its watcher
+  arrives, it plays the phrase solo while that watcher's tally light blinks.
 - **On screen:** every watcher's frame pulses on the beat and shows a ghost of its next turn a bar ahead. Julian's
   path shows his arrival count, e.g. "on his mark in 6".
 - **It never stops.** The feedback knocks the band out for its 2 bars, and they come back in on the next bar line. The
@@ -142,6 +143,7 @@ A jazz quintet on the floor plays at a fixed 120 BPM, so 1 bar is 2 s. They take
 - **The posts.** Maya and Vex stand still at their post for the scene. Every device they can fire is in their
   camera's view. Devices fire only from B and C.
 - **Hover:** shows the device's range ring, a marker over every watcher it would catch, and its pips.
+- **Clicking a mark** on B or C flashes "[1] to cue Julian".
 - **Click a device:** it fires.
 - **Click a watcher on Maya's camera:** the follow spot blinds it.
 
@@ -153,16 +155,16 @@ A click on B or C always means "fire".
 The only meter: a gold line in camera A's bottom letterbox bar, and under the strip's film feed.
 
 **Julian is exposed while:**
-- he is past the **red tape** (taped around the exhibit, past the rope, on the dais);
-- he holds the keycard or the reel;
-- he walks the open floor while the drone is overhead.
+- he is inside the **red tape** (taped around the exhibit, past the rope, on the dais);
+- he is inside the **drone's cone**, which is drawn on the floor as a red ellipse.
+
+Those are the only two rules, and both are visible on the floor.
 
 | Case | Change | Label |
 |---|---|---|
 | A watcher's frame holds an exposed Julian | 0.5 s grace, then -30 a second | **SEEN** |
 | He stands on a mark and isn't exposed | +15 a second | **MARK** |
-| A GOOD CUT | +10 | |
-| One firing catches two or three watchers (x2, x3) | +25 or +50 | |
+| Style: a GOOD CUT, or one firing catching extra watchers | +15 for a GOOD CUT; +25 for each extra watcher (x2, x3) | |
 | He touches a live infrared beam | Blooper at once | |
 | Composure reaches 0 | Blooper | |
 
@@ -181,7 +183,7 @@ live when it frames an exposed Julian. On B and C its tape label also shows its 
 | The broadcast drone | A spline loop, one pass per zone every 8 bars |
 | The infrared beam | A line-shaped frame across the rope. It drops for one beat in every 4 bars, on a hi-hat splash. Blind or Mask turns it off |
 | The bodyguard | Posted beside the podium, facing outward at an angle |
-| Vance, the host | Watches only his belt. He misses a lift while he is **speaking, lured or blinded**. He never leaves the podium: a Lure turns his head |
+| Vance, the host | Watches only his belt. He misses a lift while he is **speaking, lured or blinded**. If he sees a lift: "Security!", a blooper. He never leaves the podium: a Lure turns his head |
 
 ### 7. Devices: three effects
 
@@ -195,14 +197,14 @@ Every device does exactly one of three things to every watcher in its range:
 
 | Device | Who | Effect | Range, duration | Uses |
 |---|---|---|---|---|
-| Follow spot: click a watcher on Maya's camera | Maya | Blind one watcher | 35 m, 4 s | **Free**, recharges in 4 bars, or at once on a GOOD CUT |
+| Follow spot: click a watcher on Maya's camera | Maya | Blind one watcher | 35 m, 4 s | **Free**, recharges in 4 bars |
 | Banner drops, two | Maya | Mask | 10 s, then they winch back up | 1 each |
 | Pyro (locked until the alarm) | Maya | Blind everything at the stage end, with sparks and smoke | 6 s | 1, guaranteed |
 | Champagne carts at two service doors (mid-floor, and by the dais) | Vex | Lure everything within 12 m to the crash | 6 s | 1 each |
 | Sound desk: feedback through the band's PA | Vex | Blind everything in the hall | 4 s (2 bars) | 1 |
 | Counterweight winch (finale only) | Vex | Mask: the curtain drops for good and the hatch opens | Permanent | 1, guaranteed |
 
-- **Stamps:** when one firing catches two watchers it stamps **x2**; three or more stamp **x3**. Either refills composure (rule 5).
+- **Stamps:** when one firing catches two watchers it stamps **x2**, three stamps **x3**, and each extra watcher refills 25 composure (rule 5).
 - **The budget:** the follow spot is the free answer in every scene. The one-use devices are the budget, and the
   budget buys only the side exit, The Bow and the top grade. It never decides whether the ending is reachable.
 - **Side exit:** it glows gold on camera A from the first shot.
@@ -213,8 +215,8 @@ Every device does exactly one of three things to every watcher in its range:
 
 **GOOD CUT:** you cut to camera A within 2 s (one bar) of a crew device landing, while the effect is inside camera A's
 current shot.
-- It recharges the follow spot at once and gives +10 composure. Cutting back to watch the payoff is also the fastest
-  way to play.
+- It gives +15 composure, so cutting back to watch the payoff also keeps Julian steady.
+- A cut that lands on a downbeat plays a brass stab, so a clean take sounds composed. It isn't scored.
 - The next still gets a gold frame.
 - At each checkpoint, your last GOOD CUT replays for 4 s in a gold frame at the right of the top letterbox bar. Play
   doesn't pause.
@@ -230,7 +232,8 @@ runs out.
 3. A red slate reads **"BLOOPER - AGAIN FROM THE ROPE"**, naming whichever checkpoint, and the director says "Cut!"
 4. A rewind whirr plays while the level reloads at the checkpoint, and then the director says "Action!"
 
-**Checkpoints** are the start of each scene, and the rope once Julian is past it.
+**Checkpoints:** the start of each scene, the rope once Julian is past it, and every band break on which Julian stands
+on a mark, unexposed, with at least 50 composure. A failed attempt replays 16 s at most.
 
 **What carries across the reload:** the GameInstance (Unreal's object that survives a level load) keeps:
 - the checkpoint and its bar;
@@ -240,11 +243,12 @@ runs out.
 
 **Hints:** after two bloopers at one checkpoint, Maya or Vex hints at an answer over the earpiece.
 
-**A new take:** **R** starts one from the opening, with the slate "TAKE 2".
+**A new take:** **R** starts one from the opening, and the slate counts up: "TAKE 2", "TAKE 3".
 
 ### 10. Deleted scenes
 
-There are four, each a harder optional flourish built from the same three actions. Restoring one stamps "DELETED
+There are four, each a harder optional flourish built from the same three actions. Each is announced by a small
+slate at its scene's start ("DELETED SCENE: THE LONG TAKE. Cross without cutting."). Restoring one stamps "DELETED
 SCENE RESTORED", grabs its own still, and the director says "Keep that in!"
 
 | Scene | Deleted scene | How |
@@ -259,11 +263,12 @@ SCENE RESTORED", grabs its own still, and the director says "Keep that in!"
 1. A snap to black, the clapper, the **PRINT IT** slate, and the sting.
 2. **YOUR DIRECTOR'S CUT** (about 60 s; Space skips). Your take with every blooper spliced out, cut where you cut,
    tightened by dropping dead holds in whole 8-bar phrases (the band's cycle) so the music never jumps.
-   - It plays in the film look throughout, with costumes, B's and C's angles re-rendered as the film, and the real
-     score (the band, then the heist cue).
+   - It is the film throughout: camera A's shots, in costume. Where you cut to B or C, the replay covers that moment
+     with the drone's broadcast angle, which faces the dressed fronts. The real score runs under it (the band, then
+     the heist cue).
    - Restored deleted scenes carry a "RESTORED" tag.
    - The recording holds every moving actor's transform at 20 Hz, plus device events, cues and the cut list.
-3. **The edit suite.** While the replay plays, 1, 2, 3 and 4 (the drone's broadcast angle) take over the cut live.
+3. **The edit suite.** While the replay plays, 1 (camera A) and 4 (the drone's broadcast angle) take over the cut live.
    Your live cut replaces the automatic one from that moment.
 4. **The contact sheet.** Up to 12 stills grabbed at your cuts. Each is a SceneCapture2D set to Final Color (LDR),
    rendering into one of 12 render targets at 256x144.
@@ -287,7 +292,7 @@ the reel sits on the dais, and the gold side exit glows at the far end, both in 
 
 ### Scene 1. The Door (about 15 s): teaches the whole loop
 
-1. On camera A: "Click the mark at the scanner." Julian walks there, and his path shows "at the scanner in 12".
+1. On camera A: "Click the mark at the scanner." Julian walks there, and his path shows "at the scanner in 12". Counts are always in beats, half a second each.
 2. "[2] MAYA" flashes. Her view frames the scanner: "Click the scanner as Julian arrives." The 4 s Blind covers him if
    it lands within the last 8 beats before he arrives.
 3. The moment the spot lands, the Chief yells "Who turned that on?!" and "[1] JULIAN" flashes. Cutting back within the
@@ -307,9 +312,9 @@ the reel sits on the dais, and the gold side exit glows at the far end, both in 
 | When (from the scene's start) | Arrives | Its warning |
 |---|---|---|
 | At once | The marks, and the patrol guard | The bass |
-| First break, about 16 s | The drone. Before it can catch anyone, the marks on its path pulse gold and "On the open floor, the drone wants him on a mark" shows | The trumpet |
-| Second break, about 32 s | The rope's beam goes live | |
-| Third break, about 48 s | The bodyguard takes his post, and Vance starts speaking on every break | The piano, then the drum roll |
+| The first break after the guided win | The drone. Before it can catch anyone, the marks on its path pulse gold and "On the open floor, the drone wants him on a mark" shows | The trumpet |
+| The first break after Julian reaches the floor's middle mark | The rope's beam goes live | |
+| The first break after Julian crosses the rope | The bodyguard takes his post, and Vance starts speaking on every break | The piano, then the drum roll |
 
 **The guided win** (first 15 s): "Click the mark by the exhibit". It is inside the exhibit's red tape, so the guard
 can catch Julian there, and camera A's angle on it frames the guard's approach. Then "[2] spot the guard as his frame
@@ -332,7 +337,8 @@ swings onto Julian", and a GOOD CUT.
 
 ### Scene 3. The Getaway (16 s: the last 8 bars)
 
-Cue Julian to the case mark and he takes the reel. The alarm stops the band dead, the shutters fall, four guards walk in from both
+On the first take, the prompts return: "[3] VEX: the winch" and "[2] MAYA: the pyro". Cue Julian to the case mark
+and he takes the reel. The alarm stops the band dead, the shutters fall, four guards walk in from both
 sides, and the drone locks on. Camera A bleeds to full colour for the last 8 bars: the alarm's red, the pyro's gold,
 every colour at once.
 
@@ -359,8 +365,9 @@ every colour at once.
 ## Camera and HUD
 
 - **Cameras:**
-  - **Camera A** is the shot list: fixed CineCameraActors (Unreal cameras with real-lens settings), switched by zone
-    triggers.
+  - **Camera A** is the shot list: CineCameraActors (Unreal cameras with real-lens settings), fixed or on a set track,
+    switched by zone triggers. Every angle frames the next marks Julian can be cued to.
+  - **Hovering a mark on A** draws his path, red wherever a frame or the drone's cone will catch him on the way.
   - **B and C** have one fixed camera per scene.
   - **A cut** swaps the player controller's view target on the same frame: no camera flight, no slow motion.
   - **Exposure** is manual on every camera.
@@ -390,7 +397,7 @@ The hall has three layers, each in view of the others:
    - The gold side exit past the band.
 2. **The catwalk (camera B)**
    - About 6 m up, along one long side and across the stage end.
-   - Its wide view looks down on every frame and every mark, so this is where you plan Julian's cues.
+   - Each scene's view looks down on Maya's devices and the watchers they can reach.
    - Maya's devices are in view: the follow spot, both banner lines and the pyro switch.
 3. **Backstage (camera C)**
    - A corridor behind the long wall and the stage.
@@ -403,7 +410,7 @@ The broadcast drone flies its spline loop over the floor with its tally light on
 
 The film and the making-of, cut against each other (rule 1).
 
-**Camera A:** noir monochrome in composed fixed angles. Julian is key-lit; everyone else is rim- and back-lit into
+**Camera A:** noir monochrome in composed angles, fixed or tracking. Julian is key-lit; everyone else is rim- and back-lit into
 silhouettes. Hard spotlights shine through haze, inside the letterbox, with grain.
 - **Colour that survives:** only red and gold keep their colour. Those objects are marked with the custom-depth
   stencil (a per-object tag the post-process reads):
@@ -427,8 +434,9 @@ Rule 3's location tones are replaced by the film and making-of split.
 **Lighting:** movable spot lights with volumetric fog (these work without Lumen), at most about 4 shadow-casting spots
 on screen, and a dim skylight for the missing bounce light.
 
-**Characters:** template mannequins tinted by role. On camera A they wear simple costume props: top hats, gown shells,
-caps, bow ties, instruments. Generated models are for props only.
+**Characters:** template mannequins tinted by role. On camera A they wear full-body costume shells (a tuxedo, gowns,
+guard uniforms, the band's suits) with top hats, caps, bow ties and instruments, so the stock mannequin never shows in
+the film. Generated models are for props only.
 
 ## Audio
 
@@ -489,7 +497,7 @@ The rules live in one director actor, `ATakeDirector`, which ticks after the pla
 | Hover a device | Range ring, markers on the watchers it would catch, pips |
 | Device fires | The crew's line, its sound, the effect starting in the hall, a pip goes out |
 | Two or more caught | x2 or x3, and the composure refill |
-| GOOD CUT | Stamp, the spot recharges, +10 composure, a gold frame on the next still |
+| GOOD CUT | Stamp, +15 composure, a gold frame on the next still |
 | Checkpoint | Your last GOOD CUT replays for 4 s in the top letterbox bar |
 | A watcher frames an exposed Julian | Tally light live, the frame solid red, the heartbeat starts |
 | Composure drains | The gold line flashes red with SEEN, the film burns at the edges, the ringing rises |
@@ -575,7 +583,8 @@ characters, audio and polish. Every step ends playable, and the Windows package 
 **Step 7, polish:**
 - A mix pass, a bug bash, the itch page, the dev log.
 - **The 30-60 s video:**
-  1. Open on Scene 1's GOOD CUT: the spot slams the scanner on the beat, cut, Julian walks through.
+  1. Open on the signature shot: a front/back flip (the film's frame, cut to the same frame from behind the flats),
+     then Scene 1's GOOD CUT: the spot slams the scanner on the beat, cut, Julian walks through.
   2. A cue landing on the trumpet's warning.
   3. The finale's bleed to colour.
   4. A frame of the replay.
