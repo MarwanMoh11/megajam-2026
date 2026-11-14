@@ -23,7 +23,7 @@ VOICES = {
     "VEX":       dict(voice="Charlie", voice_id="IKne3meq5aSn9XLyUdCD", why="young, Australian, quick: props and sound on the earpiece", settings=(0.4, 0.8, 0.4)),
     "VANCE":     dict(voice="Print It - Vance (Voice Design, candidate 1 of 2, picked by Marwan)", voice_id="oDQy4IsGdMzP2p0Mj1UU", why="smooth, theatrical English showman with a hint of menace: the auctioneer at the mic", settings=(0.6, 0.8, 0.25), speed=1.1),
     "CHIEF":     dict(voice="Print It - Chief (Voice Design, candidate 2 of 3, picked by Marwan)", voice_id="miMOxTjoFH6ibPnOrTEa", why="gruff, older, working-class, unhurried and contemptuous: the security chief (Adam was too recognisable)", settings=(0.5, 0.8, 0.3)),
-    "DOORMAN":   dict(voice="Brian",   voice_id="nPczCjzI2devNBz1zQrb", why="deep, classy: the doorman on the carpet", settings=(0.55, 0.8, 0.2)),
+    "DOORMAN":   dict(voice="Print It - Doorman (Voice Design, candidate 1 of 2, picked by Marwan)", voice_id="QqoZ07rA2Lp7reDiPFFj", why="stiff, icily polite, old-fashioned East Coast: the doorman on the carpet", settings=(0.55, 0.8, 0.2)),
     "GUARD":     dict(voice="Chris",   voice_id="iP95p4xoKVk53GoZ742B", why="down-to-earth: the guard at the rope", settings=(0.5, 0.8, 0.3)),
     "BODYGUARD": dict(voice="Harry",   voice_id="SOYHLrjzK2X1ezoPC6cr", why="rough, fierce: Vance's bodyguard", settings=(0.45, 0.8, 0.4)),
     "BROADCAST": dict(voice="Print It - Broadcast (Voice Design, candidate 1 of 2, picked by Marwan)", voice_id="zp7wscOG54kLZi18OhAE", why="harried 1950s live-TV producer, fast and clipped: the drone's producer on talkback", settings=(0.55, 0.8, 0.25)),

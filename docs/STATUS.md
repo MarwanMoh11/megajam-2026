@@ -98,7 +98,7 @@ script is `docs/AUDIO_SCRIPT.md`; the tools are `tools/audio/`; the files are in
 - **Designed voices (Marwan picked from two or three ElevenLabs Voice Design candidates each):** the chief, Vance,
   the broadcast producer and the alarm guards. Vance's designed voice is slow and theatrical, so it reads 10% fast
   with steadier settings, and any pause over 0.6 s inside a line is cut to 0.4 s (all voices): his longest speech is
-  7.45 s, inside his 4 bars at the mic. The doorman's candidates are with Marwan.
+  7.45 s, inside his 4 bars at the mic. The doorman too (candidate 1 of 2).
 - **Warning phrases retaken:** the first bass and trumpet takes were single held notes. The bass is now a one-bar
   walking figure (four notes on the beats and a pickup, from a 10 s Music take); the trumpet is three short muted
   notes from the sound-effects endpoint (the music model only sustains it).
@@ -107,7 +107,8 @@ script is `docs/AUDIO_SCRIPT.md`; the tools are `tools/audio/`; the files are in
 
 **Only Marwan can judge (step 6):** the voices picked (`docs/AUDIO_SCRIPT.md`, Voices), the bed loop and its seam,
 the mix levels (bed 0.8, duck 45%, break 20%), whether the warning phrases cut through the bed and sit in its
-key (`C:\Jam\Audioeviewand_warnings_over_bed.wav`), Julian's quips, the doorman's voice.
+key (`C:\Jam\Audio
+eviewand_warnings_over_bed.wav`), Julian's quips.
 
 ## Step 4 as built, Nov 14 (the look)
 

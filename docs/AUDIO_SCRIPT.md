@@ -65,7 +65,7 @@ The key is read from the User environment (`ELEVENLABS_API_KEY`) inside the scri
 | VEX | Charlie (`IKne3meq5aSn9XLyUdCD`) | young, Australian, quick: props and sound on the earpiece |
 | VANCE | Print It - Vance (Voice Design, candidate 1 of 2, picked by Marwan) (`oDQy4IsGdMzP2p0Mj1UU`) | smooth, theatrical English showman with a hint of menace: the auctioneer at the mic |
 | CHIEF | Print It - Chief (Voice Design, candidate 2 of 3, picked by Marwan) (`miMOxTjoFH6ibPnOrTEa`) | gruff, older, working-class, unhurried and contemptuous: the security chief (Adam was too recognisable) |
-| DOORMAN | Brian (`nPczCjzI2devNBz1zQrb`) | deep, classy: the doorman on the carpet |
+| DOORMAN | Print It - Doorman (Voice Design, candidate 1 of 2, picked by Marwan) (`QqoZ07rA2Lp7reDiPFFj`) | stiff, icily polite, old-fashioned East Coast: the doorman on the carpet |
 | GUARD | Chris (`iP95p4xoKVk53GoZ742B`) | down-to-earth: the guard at the rope |
 | BODYGUARD | Harry (`SOYHLrjzK2X1ezoPC6cr`) | rough, fierce: Vance's bodyguard |
 | BROADCAST | Print It - Broadcast (Voice Design, candidate 1 of 2, picked by Marwan) (`zp7wscOG54kLZi18OhAE`) | harried 1950s live-TV producer, fast and clipped: the drone's producer on talkback |
