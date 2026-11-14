@@ -1,6 +1,7 @@
 // ATakeDirector slice (s): presses (step 2). See TakeDirector.h for the contract.
 
 #include "TakeDirector.h"
+#include "TakeAudio.h"
 
 #include "Device.h"
 #include "FollowSpot.h"
@@ -89,6 +90,10 @@ void ATakeDirector::HandleCut(ETakeCamera Camera, const FTakePress& Press)
 
 	// The view leaves the old character inside this call.
 	PC->StartFlight(To);
+	if (Audio)
+	{
+		Audio->OnCut();	// step 6: the switcher click, on the press frame
+	}
 	int32 CutsThisTake = 0;
 	if (UTakeGameInstance* GI = GetTakeGameInstance())
 	{

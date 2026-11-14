@@ -58,6 +58,7 @@ class ATakeCharacter;
 class ATakePlayerController;
 class UBarClockComponent;
 class UComposureComponent;
+class UTakeAudioComponent;
 class UTakeGameInstance;
 class ATakeDirector;
 
@@ -486,6 +487,10 @@ public:
 	/** Julian's composure (step 5). */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Take")
 	TObjectPtr<UComposureComponent> Composure;
+
+	/** Step 6: the voices, the sound effects and the composure loops (the band is the clock's). */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Take")
+	TObjectPtr<UTakeAudioComponent> Audio;
 
 	/** The blooper freeze before the reload (rule 9). */
 	UPROPERTY(EditAnywhere, Category = "Take|Blooper")

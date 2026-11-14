@@ -3,7 +3,11 @@
 #include "BarClockComponent.h"
 
 #include "Components/AudioComponent.h"
+#include "HAL/PlatformTime.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sound/SoundWave.h"
 #include "Sound/SoundWaveProcedural.h"
+#include "TakeAudio.h"
 #include "TakeTypes.h"
 
 namespace TakeClockA
@@ -326,6 +330,23 @@ void UBarClockComponent::BeginPlay()
 		PhraseWaves.Add(Wave);
 		PhraseAudios.Add(Audio);
 	}
+
+	// Step 6: the band's music. The bed starts on the first Advance, at the clock's place in its loop.
+	MusicAudio = NewObject<UAudioComponent>(OwnerActor, TEXT("TakeMusicAudio"));
+	MusicAudio->bAutoActivate = false;
+	MusicAudio->bAutoDestroy = false;
+	MusicAudio->bAllowSpatialization = false;
+	MusicAudio->bIsUISound = true;
+	MusicAudio->RegisterComponent();
+	MusicAudio->OnAudioPlaybackPercentNative.AddUObject(this, &UBarClockComponent::OnMusicPercent);
+	UTakeAudioComponent* Audio = OwnerActor->FindComponentByClass<UTakeAudioComponent>();
+	bBandLoaded = Audio && Audio->FindSound(BedSound) != nullptr;
+	MusicKind = 0;
+	HeistStartBeats = -1.0;
+	Reseeks = 0;
+	bFollowGivenUp = false;
+	AppliedBandLevel = -1.f;
+	bAppliedBackstage = false;
 }
 
 void UBarClockComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -347,6 +368,14 @@ void UBarClockComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	}
 	PhraseAudios.Reset();
 	PhraseWaves.Reset();
+	if (MusicAudio)
+	{
+		MusicAudio->OnAudioPlaybackPercentNative.RemoveAll(this);
+		MusicAudio->Stop();
+		MusicAudio->DestroyComponent();
+		MusicAudio = nullptr;
+	}
+	MusicKind = 0;
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -358,7 +387,41 @@ void UBarClockComponent::Advance(float DeltaSeconds)
 	const int64 PerBar = FMath::Max(1, BeatsPerBar);
 	const double Before = TotalBeats;
 	const float Step = FMath::Max(0.f, DeltaSeconds);
-	TotalBeats += static_cast<double>(Step) / static_cast<double>(GetSecondsPerBeat());
+	double StepBeats = static_cast<double>(Step) / static_cast<double>(GetSecondsPerBeat());
+
+	// Step 6: the clock follows the music. Small drift is taken up by running at most MaxDriftCorrection faster or
+	// slower; a bigger gap (an audio hitch, a restart) moves the music back onto the clock instead, so the clock
+	// never jumps and never waits.
+	if (MusicKind != 0 && bClockFollowsMusic && !bFollowGivenUp && !bFirstAdvance)
+	{
+		const double Music = GetMusicBeats();
+		if (Music >= 0.0)
+		{
+			const double Error = Music - (TotalBeats + StepBeats);
+			if (FMath::Abs(Error) > static_cast<double>(FMath::Max(0.05f, SnapBeats)))
+			{
+				++Reseeks;
+				UE_LOG(LogTemp, Warning, TEXT("TAKE band: music %.2f beats off the clock at %s, reseek %d"), Error,
+					*GetTimecode(), Reseeks);
+				if (Reseeks > 4)
+				{
+					bFollowGivenUp = true;
+					UE_LOG(LogTemp, Warning, TEXT("TAKE band: the clock stops following the music this take"));
+				}
+				else
+				{
+					StartMusic(MusicKind, MusicBaseBeats);
+				}
+			}
+			else
+			{
+				const double Cap = static_cast<double>(MaxDriftCorrection) * StepBeats;
+				StepBeats = FMath::Max(0.0, StepBeats + FMath::Clamp(Error, -Cap, Cap));
+			}
+		}
+	}
+
+	TotalBeats += StepBeats;
 	PulseAge += Step;
 
 	bool bClick = false;
@@ -368,6 +431,11 @@ void UBarClockComponent::Advance(float DeltaSeconds)
 	if (bFirstAdvance)
 	{
 		bFirstAdvance = false;
+		// Step 6: the band comes in where the clock is (not under the alarm: the heist cue has its own start).
+		if (bBandLoaded && !bAlarm && MusicKind == 0)
+		{
+			StartMusic(1, 0.0);
+		}
 		const int64 StartLine = TakeClockA::FloorBeat(Before);
 		if (Before - static_cast<double>(StartLine) < 1e-6)
 		{
@@ -398,16 +466,34 @@ void UBarClockComponent::Advance(float DeltaSeconds)
 
 	// Step 3: the alarm replaces the click on every beat (high on beats 1 and 3, low on 2 and 4) and never rests:
 	// it plays through break bars, mutes and a switched-off metronome.
+	// Step 6: the heist cue comes in on its first bar; a cue that has played out leaves the clock on game time.
+	if (HeistStartBeats >= 0.0 && TotalBeats >= HeistStartBeats - 1e-6)
+	{
+		const double CueBase = HeistStartBeats;
+		HeistStartBeats = -1.0;
+		StartMusic(2, CueBase);
+	}
+	if (MusicKind == 2 && MusicAudio && !MusicAudio->IsPlaying() && MusicReportSeconds >= 0.0)
+	{
+		MusicKind = 0;
+	}
+	UpdateBandLevel();
+
 	if (bClick && bAlarm)
 	{
-		const bool bHigh = (GetBeatInBar() % 2) == 1;
-		PlayPcm(bHigh ? PcmAlarmHigh : PcmAlarmLow);
+		// The stand-in alarm tone on every beat, only while there is no heist cue to play.
+		UTakeAudioComponent* Audio = GetOwner() ? GetOwner()->FindComponentByClass<UTakeAudioComponent>() : nullptr;
+		if (!Audio || !Audio->FindSound(HeistSound))
+		{
+			const bool bHigh = (GetBeatInBar() % 2) == 1;
+			PlayPcm(bHigh ? PcmAlarmHigh : PcmAlarmLow);
+		}
 		return;
 	}
 
 	// One click per frame even if a hitch crossed several lines (stacked clicks would smear). A band break or a
-	// MuteMetronome silences it; the beat events and the pulse above still happen.
-	if (bClick && bMetronome && !IsMetronomeMuted())
+	// MuteMetronome silences it; the beat events and the pulse above still happen. Step 6: the band replaces it.
+	if (bClick && bMetronome && !bBandLoaded && !IsMetronomeMuted())
 	{
 		PlayClick(bClickDownbeat);
 	}
@@ -482,7 +568,10 @@ FString UBarClockComponent::GetTimecode() const
 
 void UBarClockComponent::PlayAccent()
 {
-	PlayPcm(PcmAccent);
+	if (!PlayNamed(HiHatSplash, PhraseVolume))
+	{
+		PlayPcm(PcmAccent);
+	}
 }
 
 void UBarClockComponent::PlayClick(bool bDownbeat)
@@ -584,16 +673,26 @@ void UBarClockComponent::PlayPcm(const TArray<uint8>& Pcm)
 void UBarClockComponent::PlayWarning(EWatcherInstrument Instrument)
 {
 	// Played whether or not the metronome is muted (PlayPcm does not look at the mute).
+	// Step 6: the band's own phrase if it is imported, else the synthesised stand-in.
 	switch (Instrument)
 	{
 	case EWatcherInstrument::Bass:
-		PlayPhrase(PcmBass);
+		if (!PlayNamed(BassPhrase, PhraseVolume))
+		{
+			PlayPhrase(PcmBass);
+		}
 		break;
 	case EWatcherInstrument::Trumpet:
-		PlayPhrase(PcmTrumpet);
+		if (!PlayNamed(TrumpetPhrase, PhraseVolume))
+		{
+			PlayPhrase(PcmTrumpet);
+		}
 		break;
 	case EWatcherInstrument::DrumRoll:
-		PlayPhrase(PcmDrumRoll);
+		if (!PlayNamed(DrumRollPhrase, PhraseVolume))
+		{
+			PlayPhrase(PcmDrumRoll);
+		}
 		break;
 	case EWatcherInstrument::HiHat:
 		PlayAccent();
@@ -605,12 +704,18 @@ void UBarClockComponent::PlayWarning(EWatcherInstrument Instrument)
 
 void UBarClockComponent::PlayFeedback()
 {
-	PlayPhrase(PcmFeedback);
+	if (!PlayNamed(FeedbackSound, 1.f))
+	{
+		PlayPhrase(PcmFeedback);
+	}
 }
 
 void UBarClockComponent::PlayChime()
 {
-	PlayPhrase(PcmChime);
+	if (!PlayNamed(ChimeSound, 1.f))
+	{
+		PlayPhrase(PcmChime);
+	}
 }
 
 void UBarClockComponent::MuteMetronome(float Bars)
@@ -620,10 +725,11 @@ void UBarClockComponent::MuteMetronome(float Bars)
 		return;
 	}
 	// Counted from the beat line the clock is on, so the mute ends exactly on a beat line (a solo bar started on a
-	// bar line ends on the next bar line, whose downbeat clicks again).
+	// bar line ends on the next bar line, whose downbeat clicks again). Step 6: rounded up to a bar line, so the
+	// band knocked out mid-bar by the feedback comes back in on the next bar line, in phase (rule 2).
 	const double PerBar = static_cast<double>(FMath::Max(1, BeatsPerBar));
 	const double Until = FMath::FloorToDouble(TotalBeats) + static_cast<double>(Bars) * PerBar;
-	MutedUntilBeats = FMath::Max(MutedUntilBeats, Until);
+	MutedUntilBeats = FMath::Max(MutedUntilBeats, FMath::CeilToDouble(Until / PerBar - 1e-6) * PerBar);
 }
 
 bool UBarClockComponent::IsBreakBar(int32 Bar) const
@@ -688,29 +794,251 @@ void UBarClockComponent::SetAlarm(bool bOn)
 {
 	const bool bWasOn = bAlarm;
 	bAlarm = bOn;
-	// The frame it is switched on: one high tone at once, on the click voice (the band stops dead under it).
+	// The frame it is switched on: the band stops dead, and the alarm (one high tone at once as its stand-in).
 	if (bOn && !bWasOn)
 	{
-		PlayPcm(PcmAlarmHigh);
+		StopMusic(0.f);
+		if (!PlayNamed(AlarmSound, 1.f))
+		{
+			PlayPcm(PcmAlarmHigh);
+		}
+	}
+	if (!bOn && bWasOn)
+	{
+		// PRINT IT: the heist cue makes way for the sting.
+		StopMusic(0.15f);
 	}
 }
 
 void UBarClockComponent::PlaySting()
 {
-	PlayPhrase(PcmSting);
+	if (!PlayNamed(StingSound, 1.f))
+	{
+		PlayPhrase(PcmSting);
+	}
 }
 
 void UBarClockComponent::PlayClap()
 {
-	PlayPhrase(PcmClap);
+	if (!PlayNamed(ClapSound, 1.f))
+	{
+		PlayPhrase(PcmClap);
+	}
 }
 
 void UBarClockComponent::PlayThud()
 {
-	PlayPhrase(PcmThud);
+	if (!PlayNamed(ThudSound, 1.f))
+	{
+		PlayPhrase(PcmThud);
+	}
 }
 
 void UBarClockComponent::PlayCrackle()
 {
-	PlayPhrase(PcmCrackle);
+	if (!PlayNamed(CrackleSound, 1.f))
+	{
+		PlayPhrase(PcmCrackle);
+	}
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Step 6: the band
+// ---------------------------------------------------------------------------------------------------------------------
+
+bool UBarClockComponent::PlayNamed(FName Name, float Volume)
+{
+	UTakeAudioComponent* Audio = GetOwner() ? GetOwner()->FindComponentByClass<UTakeAudioComponent>() : nullptr;
+	USoundBase* Sound = Audio ? Audio->FindSound(Name) : nullptr;
+	if (!Sound)
+	{
+		return false;
+	}
+	UGameplayStatics::PlaySound2D(this, Sound, Volume);
+	return true;
+}
+
+int32 UBarClockComponent::BarsOf(float Seconds, int32 Override) const
+{
+	if (Override > 0)
+	{
+		return Override;
+	}
+	return FMath::Max(1, FMath::RoundToInt(Seconds / FMath::Max(0.01f, GetSecondsPerBar())));
+}
+
+void UBarClockComponent::StartMusic(int32 Kind, double BaseBeats)
+{
+	UTakeAudioComponent* Audio = GetOwner() ? GetOwner()->FindComponentByClass<UTakeAudioComponent>() : nullptr;
+	USoundWave* Wave = Audio ? Cast<USoundWave>(Audio->FindSound(Kind == 2 ? HeistSound : BedSound)) : nullptr;
+	if (!MusicAudio || !Wave || Wave->Duration <= 0.f)
+	{
+		MusicKind = 0;
+		return;
+	}
+	const double PerBar = static_cast<double>(FMath::Max(1, BeatsPerBar));
+	const double SecondsPerBeat = static_cast<double>(GetSecondsPerBeat());
+	double StartSeconds = 0.0;
+	if (Kind == 1)
+	{
+		// Bar N of the take plays the loop at bar ((N - 1) mod BedBars): the loop this beat is in starts at file second 0.
+		const double LoopBeats = static_cast<double>(BarsOf(Wave->Duration, BedBars)) * PerBar;
+		MusicBaseBeats = FMath::FloorToDouble(TotalBeats / LoopBeats) * LoopBeats;
+		StartSeconds = (TotalBeats - MusicBaseBeats) * SecondsPerBeat;
+		Wave->bLooping = true;
+	}
+	else
+	{
+		MusicBaseBeats = BaseBeats;
+		StartSeconds = FMath::Max(0.0, (TotalBeats - BaseBeats) * SecondsPerBeat);
+		Wave->bLooping = false;
+		if (StartSeconds >= static_cast<double>(Wave->Duration))
+		{
+			MusicKind = 0;
+			return;
+		}
+	}
+	MusicKind = Kind;
+	MusicDuration = Wave->Duration;
+	MusicReportSeconds = -1.0;
+	MusicWraps = 0;
+	LastRawPercent = 0.f;
+	MusicAudio->Stop();
+	MusicAudio->SetSound(Wave);
+	MusicAudio->SetVolumeMultiplier(1.f);
+	MusicAudio->Play(static_cast<float>(StartSeconds));
+	AppliedBandLevel = -1.f;
+	bAppliedBackstage = !bBackstage;	// re-applied below
+	UpdateBandLevel();
+}
+
+void UBarClockComponent::StopMusic(float FadeSeconds)
+{
+	MusicKind = 0;
+	HeistStartBeats = -1.0;
+	MusicReportSeconds = -1.0;
+	if (!MusicAudio || !MusicAudio->IsPlaying())
+	{
+		return;
+	}
+	if (FadeSeconds > 0.f)
+	{
+		MusicAudio->FadeOut(FadeSeconds, 0.f);
+	}
+	else
+	{
+		MusicAudio->Stop();
+	}
+}
+
+void UBarClockComponent::OnMusicPercent(const UAudioComponent* Component, const USoundWave* Wave, const float Percent)
+{
+	if (Component != MusicAudio || MusicKind == 0)
+	{
+		return;
+	}
+	// The mixer counts frames from the file's start (the seek included). A looping file may count on past 1 or
+	// wrap to 0: a drop of more than half the file is a wrap.
+	if (MusicKind == 1 && Percent < LastRawPercent - 0.5f)
+	{
+		++MusicWraps;
+	}
+	LastRawPercent = Percent;
+	MusicReportSeconds = (static_cast<double>(MusicWraps) + static_cast<double>(Percent)) * static_cast<double>(MusicDuration);
+	MusicReportTime = FPlatformTime::Seconds();
+}
+
+double UBarClockComponent::GetMusicBeats() const
+{
+	if (MusicReportSeconds < 0.0)
+	{
+		return -1.0;
+	}
+	const double Age = FPlatformTime::Seconds() - MusicReportTime;
+	if (Age > 0.5)
+	{
+		return -1.0;	// no news (a silent or stalled source): the clock runs on game time
+	}
+	const double Seconds = MusicReportSeconds + Age + static_cast<double>(MusicLatencySeconds);
+	return MusicBaseBeats + Seconds / static_cast<double>(GetSecondsPerBeat());
+}
+
+void UBarClockComponent::UpdateBandLevel()
+{
+	if (!MusicAudio || MusicKind == 0)
+	{
+		return;
+	}
+	float Level = 1.f;
+	if (MusicKind == 1)
+	{
+		if (TotalBeats < MutedUntilBeats)
+		{
+			Level = 0.f;	// the feedback's knock-out, an arriving watcher's solo bar
+		}
+		else if (IsBreakBar(GetBar()))
+		{
+			Level = BreakBedLevel;
+		}
+	}
+	if (bVoiceDuck)
+	{
+		Level *= VoiceDuckLevel;
+	}
+	Level *= BedVolume;
+	if (FMath::Abs(Level - AppliedBandLevel) > 0.001f)
+	{
+		MusicAudio->AdjustVolume(FMath::Max(0.f, BandFadeSeconds), FMath::Max(0.f, Level));
+		AppliedBandLevel = Level;
+	}
+	if (bBackstage != bAppliedBackstage)
+	{
+		MusicAudio->SetLowPassFilterEnabled(bBackstage);
+		MusicAudio->SetLowPassFilterFrequency(BackstageLowPassHz);
+		bAppliedBackstage = bBackstage;
+	}
+}
+
+void UBarClockComponent::StartHeistCue(int32 DeadlineBar)
+{
+	UTakeAudioComponent* Audio = GetOwner() ? GetOwner()->FindComponentByClass<UTakeAudioComponent>() : nullptr;
+	USoundWave* Wave = Audio ? Cast<USoundWave>(Audio->FindSound(HeistSound)) : nullptr;
+	if (!Wave)
+	{
+		return;
+	}
+	// The cue's last bar is the bar before DeadlineBar (the clock runs out as DeadlineBar begins).
+	const int32 FirstBar = DeadlineBar - BarsOf(Wave->Duration, HeistBars);
+	const double StartBeats = static_cast<double>(FirstBar - 1) * static_cast<double>(FMath::Max(1, BeatsPerBar));
+	if (TotalBeats >= StartBeats)
+	{
+		StartMusic(2, StartBeats);
+	}
+	else
+	{
+		HeistStartBeats = StartBeats;
+	}
+}
+
+void UBarClockComponent::TapeStop()
+{
+	StopMusic(FMath::Max(0.f, TapeStopFadeSeconds));
+}
+
+void UBarClockComponent::SetVoiceDuck(bool bOn)
+{
+	if (bVoiceDuck != bOn)
+	{
+		bVoiceDuck = bOn;
+		UpdateBandLevel();
+	}
+}
+
+void UBarClockComponent::SetBackstage(bool bOn)
+{
+	if (bBackstage != bOn)
+	{
+		bBackstage = bOn;
+		UpdateBandLevel();
+	}
 }

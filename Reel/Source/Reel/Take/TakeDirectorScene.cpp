@@ -2,6 +2,7 @@
 // See TakeDirector.h for the contract.
 
 #include "TakeDirector.h"
+#include "TakeAudio.h"
 
 #include "BarClockComponent.h"
 #include "ComposureComponent.h"
@@ -96,6 +97,10 @@ void ATakeDirector::FireTrigger(FName Name)
 	const int32 Bar = Clock ? Clock->GetBar() : 1;
 	FiredTriggers.Add(Name, Bar);
 	TAKE_LOG(TEXT("TRIGGER %s bar %d"), *Name.ToString(), Bar);
+	if (Audio)
+	{
+		Audio->OnTrigger(Name);	// step 6: Julian's line for it, if the script has one
+	}
 
 	// Watchers that arrive on it: on the next arrival line (the case: as the alarm goes live), plus their own extra
 	// bars. The guards who walk in at the alarm get no line each: the alarm speaks for them.

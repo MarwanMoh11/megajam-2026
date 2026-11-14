@@ -10,6 +10,7 @@
 
 AFollowSpot::AFollowSpot()
 {
+	FireSound = TEXT("sfx_lamp_strike");	// step 6: the lamp strikes on (the searchlight and the follow spot)
 	DeviceName = TEXT("SPOT");
 	UseVerb = TEXT("Spot");
 	Effect = EDeviceEffect::Blind;

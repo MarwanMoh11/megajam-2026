@@ -2,6 +2,7 @@
 // TakeDirector.h.
 
 #include "TakeDirector.h"
+#include "TakeAudio.h"
 
 #include "ComposureComponent.h"
 #include "Device.h"
@@ -176,6 +177,11 @@ bool ATakeDirector::FireDevice(ADevice* Device)
 		{
 			Flash(Device->FireLine, ETakeFlashKind::Line, 3.f);
 		}
+		if (Audio)
+		{
+			// Step 6: its sound, and the crew's line from the script if the level gives it none.
+			Audio->OnDeviceFired(Device->FireSound, Device->DeviceName, !Device->FireLine.IsEmpty());
+		}
 		return true;
 	}
 
@@ -214,6 +220,11 @@ bool ATakeDirector::SpotWatcher(AWatcher* Watcher)
 		Flash(WhyNot, ETakeFlashKind::Refusal);
 		TAKE_LOG(TEXT("SPOT REFUSED %s: %s"), *Watcher->GetLabel(), *WhyNot);
 		return false;
+	}
+	if (Audio)
+	{
+		// Step 6: the lamp, and Maya's line from the script if the level gives the light none.
+		Audio->OnDeviceFired(FollowSpot->FireSound, FollowSpot->DeviceName, !FollowSpot->FireLine.IsEmpty());
 	}
 	return true;
 }

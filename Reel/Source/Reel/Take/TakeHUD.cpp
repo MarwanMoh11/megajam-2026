@@ -11,6 +11,7 @@
 #include "Julian.h"
 #include "Mark.h"
 #include "TakeCharacter.h"
+#include "TakeAudio.h"
 #include "TakeDirector.h"
 #include "TakeGameInstance.h"
 #include "TakePlayerController.h"
@@ -199,6 +200,15 @@ void ATakeHUD::ReadFlashes(const ATakeDirector& Dir)
 		if (Head.Since < 0.0)
 		{
 			Head.Since = Kit.Now;
+			// Step 6: the line is spoken as it comes on screen, and holds for at least its voice.
+			if (Dir.Audio)
+			{
+				const float Voice = Dir.Audio->SpeakSubtitle(Head.Speaker, Head.Line);
+				if (Voice > 0.f)
+				{
+					Head.Hold = FMath::Max(Head.Hold, Voice + Dir.Audio->SubtitleVoicePad);
+				}
+			}
 		}
 		if (Kit.Now - Head.Since < Head.Hold)
 		{
