@@ -17,6 +17,22 @@
     "cart": "a hotel room-service trolley with two shelves, a push handle at one end and four small castor wheels, an ice bucket holding two champagne bottles on the top shelf, chrome metal frame and white linen cloth",
     "desk": "a radio broadcast sound mixing console on a sturdy wooden desk, a sloped control panel with rows of large round knobs and two round needle meters, a thick bundle of cables at the back, dark grey metal and dark wood",
     "chandelier": "a sputnik chandelier, a small central sphere with straight thin rods radiating in all directions, each rod ending in a round frosted bulb, hanging from a short ceiling rod, pewter grey metal and white bulbs",
-    "piano": "a black lacquered baby grand piano with the lid propped half open on a thick stick, black and white keys, three short thick legs"
+    "piano": "a black lacquered baby grand piano with the lid propped half open on a thick stick, black and white keys, three short thick legs",
+    "chair": "an auction room side chair, upholstered padded seat and straight padded back, slim tapered dark wood legs, charcoal fabric",
+    "column": "a tall slender classical fluted column, about six times as tall as it is wide, with a plain square base and a simple square capital, pale grey stone",
+    "cocktail": "a tall round cocktail bar table on a single slim pedestal stem with a heavy round base, dark wood top, pewter grey metal stem",
+    "bar": "a short straight section of a hotel bar counter, about twice as long as it is tall, a front of vertical rounded wooden ribs, a flat dark top with a rounded edge and a foot rail, dark walnut wood and pewter grey metal",
+    "backbar": "a back-bar shelving unit, wide and tall, three shelves full of dark green glass bottles, a plain mirror panel behind them, dark walnut wood",
+    "bust": "a classical stone bust of a man on a short square plinth, pale grey stone",
+    "vase": "a large classical urn vase with two handles on a short square plinth, pale grey stone",
+    "frame": "an empty ornate rectangular picture frame with carved moulding, landscape format, open centre, dark pewter grey metal",
+    "stanchion": "a crowd control stanchion post, a slim pole with a round ball top and a heavy round base, pewter grey metal",
+    "sofa": "a three-seat sofa, low rounded back and arms, tapered dark wood legs, charcoal velvet",
+    "stool": "a bar stool with a round padded seat, a chrome pedestal stem, a foot ring and a round base, charcoal leather",
+    "roadcase": "a black theatrical road case on castor wheels with metal corner protectors, edge trim and latches",
+    "crate": "a wooden shipping crate made of planks with diagonal cross braces, plain unpainted wood",
+    "lightstand": "a vintage film studio spotlight, a big round fresnel lamp head with barn doors, on a tall three-legged stand, black metal",
+    "camera": "a vintage movie camera with two round film reels on top, on a wooden tripod, black metal",
+    "coatrack": "a cloakroom clothes rail on wheels with dark coats and hats hanging from hangers, black metal"
   }
 }

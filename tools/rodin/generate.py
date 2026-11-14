@@ -125,6 +125,19 @@ def submit(names, redo):
         print(name, ": submitted, consumed", r.get("consumed"))
 
 
+def fetch(url, path, tries=4):
+    """Downloads url to path, retrying DNS and connection blips (this PC's DNS drops now and then)."""
+    for attempt in range(tries):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": UA})
+            with urllib.request.urlopen(req, timeout=300) as src, open(path, "wb") as dst:
+                shutil.copyfileobj(src, dst)
+            return True
+        except (urllib.error.URLError, OSError):
+            time.sleep(5 * (attempt + 1))
+    return False
+
+
 def download(name, t):
     st, r = post_json("/download", {"task_uuid": t["uuid"]})
     if st != 200 or "list" not in r:
@@ -134,9 +147,9 @@ def download(name, t):
     files = []
     for item in r["list"]:
         fn = os.path.basename(item["name"].replace("\\", "/")) or "file"
-        req = urllib.request.Request(item["url"], headers={"User-Agent": UA})
-        with urllib.request.urlopen(req, timeout=300) as src, open(os.path.join(d, fn), "wb") as dst:
-            shutil.copyfileobj(src, dst)
+        if not fetch(item["url"], os.path.join(d, fn)):
+            print(name, ": download of", fn, "failed; poll again later")
+            return False
         files.append(fn)
     t["files"], t["state"], t["downloaded"] = files, "done", time.strftime("%Y-%m-%d %H:%M:%S")
     save(name, t)
