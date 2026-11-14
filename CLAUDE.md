@@ -39,6 +39,8 @@ in `docs/JAM_PLAN.md`. Scoring the game (judge agents, ratings, design reviews) 
   levels. Expose anything tunable as `UPROPERTY(EditAnywhere)` so it changes without a recompile.
 - **Check your work in the editor.** After a change, look: a screenshot, a play-in-editor run, or the log. Don't
   report something as working from the code alone. Say plainly what only Marwan can judge (feel, look, sound).
+- **Build and ship; Marwan QAs at the end.** One compile and one quick look at most, then commit and move on: no
+  test-suite reruns, real-keys runs, probes or re-shoots unless he asks. List what is unverified for his QA instead.
 - **Save, commit and push at every working milestone.** The Preview engine can crash and lose unsaved work. If a
   push fails on Git LFS quota, keep committing locally and say so once: the push is only a backup.
 - **Keep the dev log.** At each milestone append to `docs/DEVLOG.md`: time, what changed, what the agents did, what
