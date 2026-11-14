@@ -200,7 +200,7 @@ void ATakeDirector::BeginPlay()
 			Deleted.bBuilt = bBuilt;
 			DeletedScenes.Add(Deleted);
 		};
-		AddDeletedScene(TEXT("ColdOpen"), TEXT("THE COLD OPEN"), TEXT("the searchlight lands on the beat he reaches the scanner"), false);
+		AddDeletedScene(TEXT("ColdOpen"), TEXT("THE COLD OPEN"), TEXT("the searchlight lands the moment he reaches the scanner"), false);
 		AddDeletedScene(TEXT("LongTake"), TEXT("THE LONG TAKE"), TEXT("cross the floor without cutting"), false);
 		AddDeletedScene(TEXT("Insert"), TEXT("THE INSERT"), TEXT("one cart catches Vance and the bodyguard as the lift lands"), false);
 		AddDeletedScene(TakeTriggers::Bow, TEXT("THE BOW"), TEXT("at the gold side exit, bow to the blinded drone"), true);

@@ -119,7 +119,7 @@ void ABeamWatcher::LayoutBeam()
 
 	PostB->SetRelativeLocation(EndB + FVector(0.f, 0.f, 60.f));
 
-	// FramePivot at the beam's midpoint so the beat pulse swells the line about its centre.
+	// FramePivot at the beam's midpoint.
 	FramePivot->SetRelativeLocation(Middle);
 	FrameMesh->SetRelativeLocation(FVector::ZeroVector);
 	FrameMesh->SetRelativeRotation(FRotator(0.f, Yaw, 0.f));
@@ -154,7 +154,7 @@ void ABeamWatcher::StepWatcher(float DeltaSeconds, UBarClockComponent* Clock)
 	}
 
 	// Dark countdown, then the state (dark first, else OFF / DROPPED / WATCHING via SyncState), the state-change
-	// log ("BEAM DROPPED", "BEAM LIVE"), the frame look (hidden / dark / red) and the beat pulse, this frame.
+	// log ("BEAM DROPPED", "BEAM LIVE") and the frame look (hidden / dark / red), this frame.
 	Super::StepWatcher(DeltaSeconds, Clock);
 }
 

@@ -31,8 +31,9 @@ Change a line there, not here.
 - **Composure:** a heartbeat while a watcher holds Julian, and a ringing that rises as composure falls below 60.
 - **Backstage:** on Vex's camera (C) the band is low-passed, as if through the flats. Nothing else is filtered.
 - **Robust to gaps:** a sound that is not imported is skipped, and the synthesised stand-in from steps 1-3 plays
-  where there is one (the click track, the warning pitches, the alarm tone). With the bed imported the click track
-  goes.
+  where there is one (the warning pitches, the alarm tone). There is no click track (Nov 15).
+- **Heard, not watched (Nov 15):** nothing on screen moves with the beat. The band is the clock and the warning;
+  the HUD counts in seconds.
 
 All tunables are `EditAnywhere`: the band's on the director's `Clock` (category Take|Band), the rest on its `Audio`
 component (Take|Audio), and each device's `FireSound`.

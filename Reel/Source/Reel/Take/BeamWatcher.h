@@ -26,7 +26,7 @@ public:
 	virtual void BeginPlay() override;	// BODY: (d)
 
 	/** Effect countdown; State Off before LiveFromBar, Dropped during the drop beat (beam hidden on the frame the
-	 *  beat starts, back on the frame it ends; PlayAccent on the drop), else Watching / Blinded / Masked. Pulse. */
+	 *  beat starts, back on the frame it ends; PlayAccent on the drop), else Watching / Blinded / Masked. */
 	virtual void StepWatcher(float DeltaSeconds, UBarClockComponent* Clock) override;	// BODY: (d)
 
 	/** TouchesJulian. */

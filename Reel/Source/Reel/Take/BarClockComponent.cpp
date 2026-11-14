@@ -21,20 +21,6 @@ namespace TakeClockA
 		Out.Add(static_cast<uint8>((Bits >> 8) & 0xFF));
 	}
 
-	/** A short decaying sine: the metronome click. */
-	void BuildSineClick(TArray<uint8>& Out, int32 Rate, float Freq, float Seconds, float Amp, float DecayPerSecond)
-	{
-		const int32 NumSamples = FMath::Max(1, FMath::RoundToInt(static_cast<float>(Rate) * Seconds));
-		const float AttackSamples = FMath::Max(1.f, static_cast<float>(Rate) * 0.001f);
-		Out.Reset(NumSamples * 2);
-		for (int32 Index = 0; Index < NumSamples; ++Index)
-		{
-			const float T = static_cast<float>(Index) / static_cast<float>(Rate);
-			const float Env = FMath::Exp(-T * DecayPerSecond) * FMath::Min(1.f, static_cast<float>(Index) / AttackSamples);
-			AppendSample(Out, FMath::Sin(static_cast<float>(UE_TWO_PI) * Freq * T) * Env * Amp);
-		}
-	}
-
 	/** A bright noise burst (white noise, differenced for a high-passed hiss): the beam's hi-hat splash. */
 	void BuildNoiseBurst(TArray<uint8>& Out, int32 Rate, float Seconds, float Amp, float DecayPerSecond)
 	{
@@ -424,10 +410,12 @@ void UBarClockComponent::Advance(float DeltaSeconds)
 	TotalBeats += StepBeats;
 	PulseAge += Step;
 
-	bool bClick = false;
-	bool bClickDownbeat = false;
+	// A beat line this frame: the stand-in alarm tone's cue. Nothing clicks: the metronome is gone, the band's music is
+	// the only thing that keeps time, and nothing on screen moves with the beat.
+	bool bBeatLine = false;
 
-	// The take's first frame sits on a beat line (bar N, beat 1): click and pulse it, without beat events.
+	// The take's first frame sits on a beat line (bar N, beat 1): the pulse (PyroDevice's flare) restarts, without
+	// beat events.
 	if (bFirstAdvance)
 	{
 		bFirstAdvance = false;
@@ -439,8 +427,7 @@ void UBarClockComponent::Advance(float DeltaSeconds)
 		const int64 StartLine = TakeClockA::FloorBeat(Before);
 		if (Before - static_cast<double>(StartLine) < 1e-6)
 		{
-			bClick = true;
-			bClickDownbeat = (StartLine % PerBar) == 0;
+			bBeatLine = true;
 			PulseAge = 0.f;
 		}
 	}
@@ -460,8 +447,7 @@ void UBarClockComponent::Advance(float DeltaSeconds)
 	if (bBeatCrossed)
 	{
 		PulseAge = 0.f;
-		bClick = true;
-		bClickDownbeat = bClickDownbeat || bBarCrossed;
+		bBeatLine = true;
 	}
 
 	// Step 3: the alarm replaces the click on every beat (high on beats 1 and 3, low on 2 and 4) and never rests:
@@ -479,7 +465,7 @@ void UBarClockComponent::Advance(float DeltaSeconds)
 	}
 	UpdateBandLevel();
 
-	if (bClick && bAlarm)
+	if (bBeatLine && bAlarm)
 	{
 		// The stand-in alarm tone on every beat, only while there is no heist cue to play.
 		UTakeAudioComponent* Audio = GetOwner() ? GetOwner()->FindComponentByClass<UTakeAudioComponent>() : nullptr;
@@ -488,14 +474,6 @@ void UBarClockComponent::Advance(float DeltaSeconds)
 			const bool bHigh = (GetBeatInBar() % 2) == 1;
 			PlayPcm(bHigh ? PcmAlarmHigh : PcmAlarmLow);
 		}
-		return;
-	}
-
-	// One click per frame even if a hitch crossed several lines (stacked clicks would smear). A band break or a
-	// MuteMetronome silences it; the beat events and the pulse above still happen. Step 6: the band replaces it.
-	if (bClick && bMetronome && !bBandLoaded && !IsMetronomeMuted())
-	{
-		PlayClick(bClickDownbeat);
 	}
 }
 
@@ -574,15 +552,8 @@ void UBarClockComponent::PlayAccent()
 	}
 }
 
-void UBarClockComponent::PlayClick(bool bDownbeat)
-{
-	PlayPcm(bDownbeat ? PcmDownbeat : PcmBeat);
-}
-
 void UBarClockComponent::BuildPcm()
 {
-	TakeClockA::BuildSineClick(PcmBeat, SampleRate, 1000.f, 0.05f, 0.7f, 90.f);
-	TakeClockA::BuildSineClick(PcmDownbeat, SampleRate, 1600.f, 0.06f, 0.85f, 80.f);
 	TakeClockA::BuildNoiseBurst(PcmAccent, SampleRate, 0.25f, 0.8f, 18.f);
 
 	// Step 2: the warning phrases (each under one beat, 0.5 s at 120 BPM) and the effects, at WarningVolume.

@@ -298,12 +298,7 @@ void FTakeFilmOverlay::DrawUnder(AHUD& Hud, UCanvas& Canvas, const FTakeFilmFram
 	if (bBurn && F.Composure < BurnBelow && BurnBelow > 0.f)
 	{
 		const float K = FMath::Clamp(1.f - F.Composure / BurnBelow, 0.f, 1.f);
-		float Alpha = BurnAlpha * K;
-		if (F.bSeen)
-		{
-			const float Fall = 10.f / Fps;
-			Alpha += BurnBeatAlpha * FMath::Clamp(1.f - F.SecondsSinceBeat / Fall, 0.f, 1.f);
-		}
+		const float Alpha = BurnAlpha * K;	// steady at the composure's level: no beat
 		DrawEdgeBands(Canvas, WithAlpha(TakeStyle::Danger, Alpha), PX, PY, PW, PH, (BurnMinPx + BurnExtraPx * K) * S);
 	}
 

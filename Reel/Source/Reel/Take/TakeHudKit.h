@@ -57,8 +57,8 @@ struct FTakeHudKit
 	GENERATED_BODY()
 
 	// --- the frame ---------------------------------------------------------------------------------------------------
-	/** Call first each DrawHUD: the screen, the scale s, the picture rect, real time and the beat. */
-	void Begin(UCanvas* InCanvas, double InRealTime, float InSecondsSinceBeat, float InBarHeight);
+	/** Call first each DrawHUD: the screen, the scale s, the picture rect and real time. */
+	void Begin(UCanvas* InCanvas, double InRealTime, float InBarHeight);
 
 	UCanvas* Canvas = nullptr;
 	/** Canvas units per px-at-1080: the screen's s (from its pixel height, §15.2) divided by the canvas's DPI scale.
@@ -71,7 +71,6 @@ struct FTakeHudKit
 	float PicY = 138.f;
 	float PicH = 804.f;
 	double Now = 0.0;
-	float SinceBeat = 1.f;
 	/** Multiplies every alpha the kit draws: set it around a composite to fade it out whole, then back to 1. */
 	float Fade = 1.f;
 
@@ -114,8 +113,6 @@ struct FTakeHudKit
 	float KeyWidth(const FString& KeyText, bool bSmall);
 	/** A keycap with its left edge at X; returns its width. */
 	float Key(const FString& KeyText, float X, float CentreY, const FTakeInk& Ink);
-	/** A beat pulse: 1.0 on the beat frame, PulseLow by frame 10, held to the next beat. */
-	float Pulse() const;
 	void GlyphDanger(float CentreX, float CentreY, float Alpha, bool bInkBorder) const;
 	void GlyphJulian(float CentreX, float CentreY, float Alpha) const;
 	void GlyphOff(float CentreX, float CentreY, const FLinearColor& C) const;

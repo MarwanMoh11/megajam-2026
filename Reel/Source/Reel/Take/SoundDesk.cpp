@@ -28,11 +28,10 @@ ASoundDesk::ASoundDesk()
 
 namespace TakeSoundDeskLocal
 {
-	/** The desk's body while the feedback runs: white, pulsing brighter on each beat. */
-	FLinearColor FlashColour(const FLinearColor& BodyColour, const UBarClockComponent* Clock)
+	/** The desk's body while the feedback runs: a steady near-white. */
+	FLinearColor FlashColour(const FLinearColor& BodyColour)
 	{
-		const float Pulse = Clock ? Clock->GetPulse() : 1.f;
-		return FMath::Lerp(FMath::Lerp(BodyColour, TakeColors::White, 0.6f), TakeColors::White, Pulse);
+		return FMath::Lerp(BodyColour, TakeColors::White, 0.8f);
 	}
 }
 
@@ -97,7 +96,6 @@ void ASoundDesk::StepDevice(float DeltaSeconds)
 
 	if (Body)
 	{
-		const ATakeDirector* Director = ATakeDirector::Get(this);
-		BodyMID = FTakeShapes::SetColour(Body, TakeSoundDeskLocal::FlashColour(BodyColour, Director ? Director->Clock.Get() : nullptr));
+		BodyMID = FTakeShapes::SetColour(Body, TakeSoundDeskLocal::FlashColour(BodyColour));
 	}
 }

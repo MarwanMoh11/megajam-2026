@@ -120,13 +120,12 @@ namespace TakeKitLocal
 
 // --- the frame --------------------------------------------------------------------------------------------------------
 
-void FTakeHudKit::Begin(UCanvas* InCanvas, double InRealTime, float InSecondsSinceBeat, float InBarHeight)
+void FTakeHudKit::Begin(UCanvas* InCanvas, double InRealTime, float InBarHeight)
 {
 	using namespace TakeStyle;
 	using namespace TakeKitLocal;
 	Canvas = InCanvas;
 	Now = InRealTime;
-	SinceBeat = InSecondsSinceBeat;
 	if (!Canvas)
 	{
 		using namespace TakeStyle;
@@ -513,14 +512,6 @@ float FTakeHudKit::Key(const FString& KeyText, float X, float CentreY, const FTa
 	return KW;
 }
 
-float FTakeHudKit::Pulse() const
-{
-	using namespace TakeStyle;
-	using namespace TakeKitLocal;
-	const float BeatFrame = FMath::FloorToFloat(FMath::Max(0.f, SinceBeat) * FilmFps);
-	return FMath::Lerp(1.f, PulseLow, FMath::Clamp(BeatFrame / PulseFrames, 0.f, 1.f));
-}
-
 void FTakeHudKit::GlyphDanger(float CentreX, float CentreY, float Alpha, bool bInkBorder) const
 {
 	using namespace TakeStyle;
@@ -683,7 +674,7 @@ float FTakeHudKit::Rich(TakeStyle::EType T, const FString& InText, float CentreX
 			{
 			case ERun::Word: Text(T, Run.Text, X, LineY, InInk.Text); break;
 			case ERun::Key: Key(Run.Text, X, LineY, InInk); break;
-			case ERun::Danger: GlyphDanger(X + Run.W * 0.5f, LineY, Pulse() * InInk.Text.A, false); break;
+			case ERun::Danger: GlyphDanger(X + Run.W * 0.5f, LineY, InInk.Text.A, false); break;
 			case ERun::Julian: GlyphJulian(X + Run.W * 0.5f, LineY, InInk.Text.A); break;
 			}
 			X += Run.W;

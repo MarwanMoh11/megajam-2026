@@ -698,3 +698,17 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   figure gave a clean bass bar with attacks every 0.50 s. The music model gave the muted trumpet as held notes three
   times, so the trumpet came from the sound-effects endpoint. Vance's designed voice ran his speeches to 10 s, past
   his 4 bars at the mic; 10% speed, steadier settings and the pause cap brought the longest to 7.45 s.
+
+## Nov 15, about 01:30 Cairo: step 6, nothing on screen keeps the beat
+
+- **What changed:** Marwan's call, relayed by the orchestrator: "make it like a stealth hitman game normal and use
+  the band as warnings". Every beat pulse is gone from the screen: the watchers' frames and tallies, the beam, the
+  sound desk, the danger burn, the HUD's glyphs, the alarm's blinking last bar and the title card's keycap are
+  steady. The HUD's beat squares and bar number became the take's running time; counts are in seconds ("arrives in
+  4 s", a 16-second alarm, the blooper reel's "AT 0:24"). The metronome click is removed. The bar clock, its events,
+  every gameplay timing and the band's warning phrases are unchanged.
+- **What the agents did:** one Claude Opus 5.5 session edited the C++ in the step 6 worktree and compiled the game
+  target there; step 5 kept the editor.
+- **What went wrong:** a missing include broke the first build. A session-wide interrupt stopped the work midway;
+  the retake of Vex's desk hint ("for four seconds") is held until Marwan says go, so the hint still says "two bars".
+  An earlier docs edit had turned a Windows path's `\r` and `\b` into control characters in STATUS.md; fixed.

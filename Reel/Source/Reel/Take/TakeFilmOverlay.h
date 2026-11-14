@@ -27,7 +27,6 @@ struct FTakeFilmFrame
 	ETakePhase Phase = ETakePhase::Rolling;
 	float Composure = 100.f;		// 0..100
 	bool bSeen = false;			// composure draining
-	float SecondsSinceBeat = 1.f;
 	bool bJulianOnScreen = false;
 	FVector2D JulianScreen = FVector2D::ZeroVector;
 };
@@ -142,9 +141,6 @@ struct FTakeFilmOverlay
 	float BurnExtraPx = 96.f;
 	UPROPERTY(EditAnywhere, Category = "Film|Burn", meta = (ClampMin = "0", ClampMax = "1"))
 	float BurnAlpha = 0.6f;
-	/** Added on each beat while SEEN, falling over 10 film frames. */
-	UPROPERTY(EditAnywhere, Category = "Film|Burn", meta = (ClampMin = "0", ClampMax = "1"))
-	float BurnBeatAlpha = 0.15f;
 
 	// --- the blooper (frame 0 = the blooper) ---------------------------------------------------------------------------
 	UPROPERTY(EditAnywhere, Category = "Film|Burn", meta = (ClampMin = "1"))

@@ -69,7 +69,8 @@ script is `docs/AUDIO_SCRIPT.md`; the tools are `tools/audio/`; the files are in
   beam's drop), the heist cue (10 bars, its last bar the deadline), the sting, and a tape-stop on failure. Every
   generated loop is measured for tempo and cut or resampled to exactly 120 BPM and a whole number of bars.
 - The feedback knocks the bed out for its 2 bars and it comes back on the next bar line, in phase. Voice ducks the
-  bed, never the warning phrases. The click track and the engine stand-ins go once the bed is imported.
+  bed, never the warning phrases. There is no click track (the metronome is gone, Nov 15); the engine stand-ins go
+  once the bed is imported.
 - **The bar clock follows the music.** The bed starts at the clock's place in its loop (bar N plays loop bar
   (N - 1) mod 16), so a blooper, a checkpoint retry or R restarts the music with the clock wherever the clock
   restarts. Each frame the clock steers toward the music's reported playback position (at most 10% fast or slow); a
@@ -102,13 +103,23 @@ script is `docs/AUDIO_SCRIPT.md`; the tools are `tools/audio/`; the files are in
 - **Warning phrases retaken:** the first bass and trumpet takes were single held notes. The bass is now a one-bar
   walking figure (four notes on the beats and a pickup, from a 10 s Music take); the trumpet is three short muted
   notes from the sound-effects endpoint (the music model only sustains it).
+- **Nothing on screen keeps the beat (Marwan, Nov 15: "like a stealth hitman game, the band as warnings").** The
+  bar clock and its beat and bar events still run every timing (arrivals, the beam's drop, the alarm's length) and
+  the band still warns a bar ahead, but nothing pulses or blinks: the watchers' frames are steady red (steady
+  emissive white at the alarm, `AlarmEmissive` 2.5), an arriving watcher's tally is lit steady while its warning is
+  up, the beam's frame, the sound desk (steady near-white while live), the danger burn at the picture's edges
+  (steady at the composure's level), the danger glyphs and the title card's keycap are all steady. The HUD's beat
+  squares, BAR number and BREAK are gone: it shows the take's running time (TIME m:ss). Counts are in seconds
+  (a beat is 0.5 s, rounded up): "GUARD arrives in 4 s", "a 16-second alarm", the alarm as a 16 s countdown with
+  a draining bar (tenths in the last 2 s), the blooper reel's "TAKE 3  AT 0:24". The metronome click is removed.
+  Left in place: the clock's `GetPulse` (only PyroDevice's flare reads it; step 5 removes that) and Vex's hint
+  "...for two bars" (its voice line needs a retake to say "four seconds": waiting on Marwan's go).
 - Copy note: Vex's existing hint "...Then Maya's pyro. Then run." breaks the copy deck's "nobody runs"; it is voiced
   as written because the game flashes those words.
 
 **Only Marwan can judge (step 6):** the voices picked (`docs/AUDIO_SCRIPT.md`, Voices), the bed loop and its seam,
 the mix levels (bed 0.8, duck 45%, break 20%), whether the warning phrases cut through the bed and sit in its
-key (`C:\Jam\Audio
-eviewand_warnings_over_bed.wav`), Julian's quips.
+key (`C:\Jam\Audio\review\band_warnings_over_bed.wav`), Julian's quips.
 
 ## Step 4 as built, Nov 14 (the look)
 
@@ -336,9 +347,9 @@ custom-depth pass and the dressing's draws).
   `LetterboxAspect`, the grain (`GrainOpacity` 0.07, `GrainCutOpacity`, `GrainCardOpacity`, `GrainMax` 0.14), the
   flicker (`FlickerMax` and its cut, card and low-composure versions), dust and scratches, the splice
   (`SpliceFlashOpacity`, `SpliceBandPx`, `SpliceBandFrames`), the viewfinder (`CornerArmPx`, `CornerAlpha`,
-  `ScanLineAlpha`), the burn (`BurnBelow` 50, `BurnAlpha`, `BurnBeatAlpha`) and the blooper burn
+  `ScanLineAlpha`), the burn (`BurnBelow` 50, `BurnAlpha`) and the blooper burn
   (`BlooperBurnFrames`, `BlooperPaperFrames`).
-- On the actors: watchers' `AlarmEmissive` (4), `AlarmPulseBrightness`, `BodyTint`, `FramePattern`; marks'
+- On the actors: watchers' `AlarmEmissive` (2.5, steady since Nov 15), `BodyTint`, `FramePattern`; marks'
   `PlateScale` (1.4, and 2 on the scanner's and the desk's marks; the world fix); devices' `BodyColour`, `RingReachColour`, `RingIdleColour`. The map is rebuilt
   from text, so change them in the scripts below to keep them.
 - In `Reel/Source/Reel/Take/TakeStyle.h` (a recompile): the colour tokens, the stencil numbers (`StencilRed`,
@@ -720,9 +731,9 @@ A jazz quintet on the floor plays at a fixed 120 BPM, so 1 bar is 2 s. They take
   | Vance's speech | A drum roll |
 
   You can hear a threat coming before you see it. Each instrument is taught on its own: the first time its watcher
-  arrives, it plays the phrase solo while that watcher's tally light blinks.
-- **On screen:** every watcher's frame pulses on the beat, but nothing on screen warns a bar ahead: only the band
-  does. Julian's path shows his arrival count, e.g. "on his mark in 6", and turns red only where danger is right now: the red tape, the beam, a
+  arrives, it plays the phrase solo while that watcher's tally light is lit.
+- **On screen:** nothing moves with the beat (Nov 15), and nothing on screen warns a bar ahead: only the band
+  does. Any count on screen is in seconds. Julian's path turns red only where danger is right now: the red tape, the beam, a
   live frame, the drone's cone. It never forecasts a turn.
 - **It never stops.** The feedback knocks the band out for its 2 bars, and they come back in on the next bar line. That
   drop isn't a band break: Vance doesn't speak, and no checkpoint saves. The alarm switches to the heist cue at the same tempo.
@@ -1039,8 +1050,8 @@ silhouettes. Hard spotlights shine through haze, inside the letterbox, with grai
   stencil (a per-object tag the post-process reads):
   - red is danger: frames, tape, tally lights;
   - gold is Julian: his marks and path, the reel, the side exit, the stamps, the DIRECTOR'S CUT grade.
-- **The alarm:** at the alarm the picture bleeds to full colour, and the watchers' frames switch to a white pulse on the
-  beat so they still read.
+- **The alarm:** at the alarm the picture bleeds to full colour, and the watchers' frames switch to steady emissive
+  white so they still read.
 
 **B and C:** the designed work-light palette: steel-blue shadow, cyan-white fluorescent highlights, and nothing warm
 except the red frames and the gold path. Bare
@@ -1063,7 +1074,8 @@ the film. Generated models are for props only.
 
 ## Audio
 
-**The band** is the score, the clock and the warning system (rule 2).
+**The band** is the score, the clock and the warning system (rule 2). It is heard, not watched: nothing on screen
+moves with the beat (Nov 15).
 - The mix has a real source for each camera: close on the floor, from above on the catwalk, through the flats
   backstage.
 - The feedback squeals through their PA, and they drop out for 2 bars.
@@ -1093,7 +1105,7 @@ duck the band's bed, never the warning phrases.
 **Credits and the key:** every tool and library goes in `docs/CREDITS.md`. Marwan sets `ELEVENLABS_API_KEY` on the PC
 themself (README, "The game"). Agents never type it or print it.
 
-**Until step 6:** subtitles, engine sounds and a click track (a metronome) stand in.
+**Until step 6:** subtitles and engine sounds stand in (the click track was removed on Nov 15).
 
 ## Tick order
 
@@ -1113,9 +1125,9 @@ The rules live in one director actor, `ATakeDirector`, which ticks after the pla
 | Event | Feedback |
 |---|---|
 | Cut | Hard cut, switcher click, the film or making-of look, a still |
-| Beat | Every frame pulses |
+| Beat | Nothing on screen (the band alone keeps time) |
 | A bar before a turn or pass | That watcher's instrument phrase |
-| A watcher arrives on a break | Its tally light blinks on, on the downbeat |
+| A watcher arrives | "<LABEL> arrives in N s"; its phrase solo the bar before; its tally lit, steady, while the warning is up |
 | Click a mark | A gold ring, the dotted path with its count, Julian turns and walks |
 | Hover a device | Range ring, markers on the watchers it would catch, pips |
 | Device fires | The crew's line, its sound, the effect starting in the hall, a pip goes out |

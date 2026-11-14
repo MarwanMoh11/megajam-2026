@@ -40,14 +40,12 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Clock")
 	int32 StartBar = 1;
 
-	/** The metronome click on every beat (higher pitch on the downbeat). */
-	UPROPERTY(EditAnywhere, Category = "Take|Clock")
-	bool bMetronome = true;
-
+	/** The volume of the synthesised stand-ins (warning phrases, alarm tone, feedback, chime). There is no metronome
+	 *  click: the band's music keeps time, and nothing in the game ticks on the beat. */
 	UPROPERTY(EditAnywhere, Category = "Take|Clock", meta = (ClampMin = "0", ClampMax = "1"))
 	float ClickVolume = 0.5f;
 
-	/** How long the visual pulse takes to fall from 1 (on the beat) to 0. */
+	/** How long GetPulse takes to fall from 1 (on the beat) to 0. Only PyroDevice's flare reads it; it goes with that. */
 	UPROPERTY(EditAnywhere, Category = "Take|Clock")
 	float PulseDecaySeconds = 0.2f;
 
@@ -79,7 +77,8 @@ public:
 	float GetSecondsPerBeat() const;	// BODY: (a)
 	float GetSecondsPerBar() const;	// BODY: (a)
 
-	/** 1 on the frame of a beat, falling to 0 over PulseDecaySeconds: the frames' pulse and the HUD's beat dot. */
+	/** 1 on the frame of a beat, falling to 0 over PulseDecaySeconds. Only PyroDevice's flare still reads it (step 5
+	 *  removes that); nothing else on screen moves with the beat. Delete it with the flare. */
 	float GetPulse() const;	// BODY: (a)
 
 	/** "bar.beat", e.g. "12.3": the HUD timecode and the TAKE_LOG stamp. */
@@ -87,9 +86,6 @@ public:
 
 	/** Plays the beam's hi-hat splash (a bright noise burst) at once. Called by ABeamWatcher on its drop beat. */
 	void PlayAccent();	// BODY: (a)
-
-	/** Plays one metronome click at once (bDownbeat: higher pitch). Advance calls it; exposed for tests. */
-	void PlayClick(bool bDownbeat);	// BODY: (a)
 
 	// --- step 2 (BODY: D) --------------------------------------------------------------------------------------------
 
@@ -346,8 +342,6 @@ private:
 	float PulseAge = 1000.f;
 
 	int32 SampleRate = 48000;
-	TArray<uint8> PcmBeat;
-	TArray<uint8> PcmDownbeat;
 	TArray<uint8> PcmAccent;
 
 	UPROPERTY(Transient)

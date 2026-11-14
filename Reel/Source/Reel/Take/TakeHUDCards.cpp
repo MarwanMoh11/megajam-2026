@@ -3,6 +3,7 @@
 
 #include "TakeHUD.h"
 
+#include "BarClockComponent.h"
 #include "Engine/Canvas.h"
 #include "TakeDirector.h"
 #include "TakeGameInstance.h"
@@ -115,13 +116,10 @@ void ATakeHUD::DrawTitleCard(const ATakeDirector& Dir, const FTakeFilmFrame& F)
 	Controls.bSmallKeys = true;
 	Kit.Rich(EType::Tag, TitleControls, CX, Next(Kit.Px(KeyHSmall), 5), Box.Z, 1, Controls);
 
-	// The prompt: its keycap's outline pulses on a 120 BPM beat of real time (the band holds on the title card).
-	const float SavedBeat = Kit.SinceBeat;
-	Kit.SinceBeat = static_cast<float>(FMath::Fmod(Kit.Now, 0.5));
-	FTakeInk Prompt = FTakeInk::Of(Paper, FTakeHudKit::A(Paper, Kit.Pulse()));
+	// The prompt: its keycap steady (nothing on screen keeps the beat).
+	FTakeInk Prompt = FTakeInk::Of(Paper, Paper);
 	Prompt.KeyLetter = Paper;
 	Kit.Rich(EType::Goal, TitlePrompt, CX, Next(Kit.Px(KeyH), -1), Box.Z, 1, Prompt);
-	Kit.SinceBeat = SavedBeat;
 }
 
 // --- the blooper slate ----------------------------------------------------------------------------------------------------------
@@ -343,6 +341,7 @@ void ATakeHUD::DrawReel(const ATakeDirector& Dir, const FVector4f& Box)
 	};
 	TArray<FItem> Items;
 	const float Gap = Kit.Px(Unit) * 2.f;
+	const float SecondsPerBar = Dir.Clock ? Dir.Clock->GetSecondsPerBar() : 2.f;	// a blooper's bar as its time
 	Items.Add({ EType::Title, TEXT("THE BLOOPER REEL"), Paper, 0.f });
 	if (!GI || GI->BlooperReel.Num() == 0)
 	{
@@ -353,7 +352,8 @@ void ATakeHUD::DrawReel(const ATakeDirector& Dir, const FVector4f& Box)
 	{
 		for (const FTakeBlooperRecord& Record : GI->BlooperReel)
 		{
-			Items.Add({ EType::Tag, FString::Printf(TEXT("TAKE %d  BAR %d"), Record.Take, Record.Bar), Ash, Gap });
+			const int32 At = FMath::Max(0, FMath::FloorToInt(static_cast<float>(FMath::Max(1, Record.Bar) - 1) * SecondsPerBar));
+			Items.Add({ EType::Tag, FString::Printf(TEXT("TAKE %d  AT %d:%02d"), Record.Take, At / 60, At % 60), Ash, Gap });
 			FString Line = FTakeHudKit::Sentence(TakeText::BlooperReasonLine(Record.Reason), true);
 			if (!Record.CaughtBy.IsEmpty())
 			{

@@ -302,7 +302,7 @@ void ATakeHUD::DrawLabels(const ATakeDirector& Dir)
 		{
 			if (C.bLive)
 			{
-				Kit.GlyphDanger(CX + Kit.Px(GlyphSquare) * 0.5f, CY, Kit.Pulse(), true);
+				Kit.GlyphDanger(CX + Kit.Px(GlyphSquare) * 0.5f, CY, 1.f, true);
 			}
 			else
 			{

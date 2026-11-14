@@ -22,6 +22,18 @@
 
 namespace TakeSceneLocal
 {
+	/** Whole seconds (rounded up, at least 1) from now to the start of Bar: the HUD counts in seconds, never bars. */
+	int32 SecondsUntilBar(const UBarClockComponent* Clock, int32 Bar)
+	{
+		if (!Clock)
+		{
+			return 1;
+		}
+		const double Beats = static_cast<double>(FMath::Max(1, Bar) - 1) * static_cast<double>(FMath::Max(1, Clock->BeatsPerBar))
+			- Clock->GetTotalBeats();
+		return FMath::Max(1, FMath::CeilToInt(static_cast<float>(Beats) * Clock->GetSecondsPerBeat() - 0.001f));
+	}
+
 	/** Scene 2: the objective names the rope once Julian's feet are this close to the beam (2D, cm). */
 	constexpr float RopePromptDistance = 700.f;
 
@@ -113,7 +125,8 @@ void ATakeDirector::FireTrigger(FName Name)
 			EachWatcher->ScheduleArrival(ArriveBar);
 			if (!bCase)
 			{
-				Flash(FString::Printf(TEXT("%s arrives on bar %d"), *EachWatcher->GetLabel(), ArriveBar), ETakeFlashKind::Danger, 3.f);
+				Flash(FString::Printf(TEXT("%s arrives in %d s"), *EachWatcher->GetLabel(),
+					TakeSceneLocal::SecondsUntilBar(Clock, ArriveBar)), ETakeFlashKind::Danger, 3.f);
 			}
 		}
 	}
@@ -211,7 +224,8 @@ void ATakeDirector::StepWarnings()
 			// It arrives on the next bar line: its instrument plays solo for one bar.
 			PlayOnce(EachWatcher->Instrument);
 			Clock->MuteMetronome(1.f);
-			Flash(FString::Printf(TEXT("%s arrives on the next bar"), *EachWatcher->GetLabel()), ETakeFlashKind::Danger, 2.f);
+			Flash(FString::Printf(TEXT("%s arrives in %d s"), *EachWatcher->GetLabel(),
+				TakeSceneLocal::SecondsUntilBar(Clock, ArriveBar)), ETakeFlashKind::Danger, 2.f);
 			if (EachWatcher->Instrument != EWatcherInstrument::None)
 			{
 				TAKE_LOG(TEXT("WARNING %s %s: arrives on bar %d"), *EachWatcher->GetLabel(),
@@ -390,7 +404,8 @@ void ATakeDirector::UpdateObjective()
 			{
 				NewObjective = bJulianExposed
 					? FString(TEXT("He has the keycard. Get JULIAN off the red tape."))
-					: FString::Printf(TEXT("Post [3] VEX at the CURTAIN WINCH and [2] MAYA at the PYRO BOARD: the case trips a %d-bar alarm"), FinaleBars);
+					: FString::Printf(TEXT("Post [3] VEX at the CURTAIN WINCH and [2] MAYA at the PYRO BOARD: the case trips a %d-second alarm"),
+						FMath::CeilToInt(static_cast<float>(FinaleBars) * (Clock ? Clock->GetSecondsPerBar() : 2.f)));
 			}
 			else if (CurrentCamera == ETakeCamera::B)
 			{
