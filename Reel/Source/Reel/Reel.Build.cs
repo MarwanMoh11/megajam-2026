@@ -26,6 +26,9 @@ public class Reel : ModuleRules
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
 
+		// Step 5: the devices' particle effects (TakeFX).
+		PrivateDependencyModuleNames.Add("Niagara");
+
 		PublicIncludePaths.AddRange(new string[] {
 			"Reel",
 			"Reel/Take",

@@ -1537,3 +1537,8 @@ print("AUCTION built: %d actors; world %s" % (len(eas.get_all_level_actors()), w
 # alone too ("<engine python>" -I tools/ue_mcp.py py tools/dress_auction.py) and saves the level itself.
 _dress = unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir() + "../tools/dress_auction.py")
 exec(open(_dress, encoding="utf-8").read(), dict(globals(), __name__="dress_auction"))
+
+# Step 5: the costumed cast, the band's instruments and the devices' particle effects. Runs after the dressing; it
+# re-runs alone too ("<engine python>" -I tools/ue_mcp.py py tools/build_cast.py) and saves the level itself.
+_cast = unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir() + "../tools/build_cast.py")
+exec(open(_cast, encoding="utf-8").read(), dict(globals(), __name__="build_cast"))

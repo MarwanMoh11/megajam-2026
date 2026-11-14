@@ -665,3 +665,25 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   `TeamName_GameName_step4p2.zip`).
 - **Needs Marwan's eye:** the amber-free alarm (warm enough?), the 2x marks, the hall's and dais's darkness, the
   dashes and hatching in motion, the house lights over the seats.
+
+## Nov 14 23:00 to Nov 15 00:35 Cairo: step 5 milestone, the cast and the effects (characters and props)
+- **What changed:** every placeholder person is now a template mannequin in costume. `ACastMember` (new C++) builds
+  each costume from the engine's basic shapes on the mannequin's bones: guests in dinner jackets, tails and top hats,
+  gowns (Quinn) with buns, stoles and small hats; staff in waistcoats; guards and the doorman in peaked caps and
+  epaulettes; Vance in a tall top hat with a cane; the bodyguard broad, bald, in dark glasses. Guests stand frozen in
+  the idle at staggered times or sit (the pose bent at the hips and knees on a poseable copy). The band is a quintet
+  on the riser: singer at a stand microphone, trumpet (from the pistol aim pose), upright bass, drums and piano, all
+  in fedoras, under a dim key of their own. Watchers' mannequins walk on the template's blend space at the guard's
+  speed; Julian, Maya and Vex wear a bow tie, headsets, a belt and a beanie. Everyone dips on the band's beat. Julian
+  bows at The Bow (about 40 degrees from the waist, 0.9 s, input never taken). `ATakeFX` plays three Niagara systems
+  duplicated from engine templates on the frame of the event: the pyro at its five charges, sparks at the PA when the
+  sound desk lands, glass at a champagne cart. `tools/build_cast.py` places all of it (run by `build_auction.py`).
+- **What the agents did:** one Opus agent wrote the kits, the poses, the bow and the effects, tuned them on screenshots
+  and ran the scripted tests; it was stopped mid-run and a second agent resumed: saved, rebuilt the editor DLL from the
+  files on disk (the last Live Coding patch was older than `CastMember.cpp`), restarted and re-shot in play.
+- **What went wrong:** bodies that bob redrew every cached shadow each frame (1.4-3.3 ms of GPU), so guests and the
+  band cast no shadow; posed copies refreshed their bones every frame (about 1 ms for 44 seated guests) until their
+  tick was turned off.
+- **Proof so far:** play-in-editor shots of the band, Vance and the pyro after the rebuild
+  (`Reel/Saved/Screenshots/WindowsEditor/s5m_*.png`). Still open: the bob's tuning, the drums and piano from the
+  floor, the pyro's size, the tests, the frame time and the package.
