@@ -117,9 +117,13 @@ RULES = [
     dict(prop="chandelier", parts=[r"Dress_Chandelier_\d+"], mode="fit", face=0, group_pad=80.0,
          size=(260.0, 260.0, 260.0), top=40.0),
 ]
-# New pieces with no box (x0, x1, y0, y1, z0, z1): the grand piano on the band's riser, between the front two players
-# with its keyboard to the pianist at the back (STATUS "The set": the band on its riser; build_auction.py BAND).
-NEW = [dict(prop="piano", box=(3726.0, 3834.0, 1340.0, 1494.0, 30.0, 150.0), mode="fit", face=90)]
+# New pieces with no box (x0, x1, y0, y1, z0, z1). The grand piano on the band's riser (BAND x 3640-3920, y 1320-1600,
+# top 30 cm): its keyboard on the east side (face 0, +X), its body reaching west, so a pianist seated at the keyboard
+# faces west, down the hall to the house. It leaves the back line (bass 3693,1571; drums 3811,1561) clear and covers
+# today's singer, trumpet and seated pianist: step 5 (tools/build_cast.py) re-seats the pianist at SEAT and moves the
+# front line after it, from the transform "check" prints. Nothing of the band or the box upright is moved or hidden.
+NEW = [dict(prop="piano", box=(3680.0, 3855.0, 1340.0, 1490.0, 30.0, 160.0), mode="fit", face=0,
+            seat=35.0)]       # the pianist's seat: this many cm east of the keyboard edge, on the keyboard's middle
 GAMEPLAY = ("Mark", "Watcher", "Device", "Crew", "Julian", "Maya", "Vex", "Character", "Guard", "Drone", "Spot")
 
 
@@ -743,6 +747,13 @@ def check():
     news = [a for a in props if label(a).split("_")[1].lower() in [s["prop"] for s in NEW]]
     for a in news:
         b = bounds(a)
+        spec = [s for s in NEW if s["prop"] == label(a).split("_")[1].lower()][0]
+        loc, rt, sc = a.get_actor_location(), a.get_actor_rotation(), a.get_actor_scale3d()
+        REPORT.append("%s: location (%.0f, %.0f, %.0f), yaw %.0f, scale %.3f; bounds x %.0f-%.0f, y %.0f-%.0f, "
+                      "z %.0f-%.0f" % (label(a), loc.x, loc.y, loc.z, rt.yaw, sc.x, b[0], b[1], b[2], b[3], b[4], b[5]))
+        if spec.get("seat") is not None:                        # keyboard on the +X side when face is 0
+            REPORT.append("%s seat for a pianist facing yaw 180: (%.0f, %.0f, %.0f)"
+                          % (label(a), b[1] + spec["seat"], (b[2] + b[3]) / 2, spec["box"][4]))
         for g in play:
             p = g.get_actor_location()
             dx = max(b[0] - p.x, 0.0, p.x - b[1])
