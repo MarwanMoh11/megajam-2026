@@ -424,3 +424,27 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
 - Not done yet: the packaged build of this layout and the real-input run of the exe (the session ran out of usage
   here). The key script is ready outside the repo except for two aim numbers for the beam. Known and cosmetic:
   composure still drains after SCENE 2 CLEARED.
+
+### 03:53, Sat Nov 14: step 2 packaged and played from the exe with real keys
+- **What changed:** the composure bar now holds after SCENE 2 CLEARED (it used to drain behind the end title). Mouse
+  smoothing is off in `Reel/Config/DefaultInput.ini`. Packaged for Windows (Shipping), zipped (326 MB).
+- **The proof:** one run of the packaged exe driven by real keyboard and mouse input (a PowerShell script outside
+  the repo, `C:\Jam\Builds\shots\play2.ps1`), 164 s from the back of the queue to the keycard: The Door, Vex and
+  Maya walked to their posts, the floor round the blocked aisle, a beam blooper on purpose (back on the rope mark
+  with the clock back from bar 62 to bar 60 and the crew still posted), route 2, the dais cart (x2), SCENE 2
+  CLEARED. Screenshots in `docs/shots/step2_*.png`.
+- **What the agents did:** Claude (the orchestrator) did all of this part alone: the editor runs, the package, the
+  key script. No subagents ran.
+- **What went wrong, and it took four tries of the exe:**
+  1. The first run drifted: Maya ended against the gallery rail and Julian clipped a bench. Walking distances were
+     exact, the mouse turns were not.
+  2. Unreal smooths mouse input by default. With injected mouse moves at a high frame rate the smoothing added up to
+     40% to a turn, and not the same amount twice. Turned off: a turn is now exactly 0.136 degrees a count (the
+     engine scales the look by the camera's field of view, 70).
+  3. Left turns still did nothing. That was the test script, not the game: PowerShell hands a bare `-90` to an
+     untyped function parameter as text, so `$deg * 1.29` repeated the string. Typed the parameters.
+  4. The scripted editor test walks with a command that steers round props, so it never showed that Vex's straight
+     line to the dock door clips a pallet of crates. The key script now goes round it. The same test also sent
+     the use and the cut on one frame once (the cut wins, the use is refused), which read as a failed lift.
+- **Still open:** route 1 is tight (about 20 composure left on the dais). The band-break checkpoints of rule 9 are
+  not built. Labels overlap on Maya's camera when several watchers line up.

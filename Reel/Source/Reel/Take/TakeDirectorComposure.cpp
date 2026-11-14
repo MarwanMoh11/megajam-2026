@@ -55,7 +55,8 @@ bool ATakeDirector::IsJulianExposed() const
 
 void ATakeDirector::StepComposure(float DeltaSeconds)
 {
-	if (!Composure)
+	// The scene is cleared: the bar stays where the take ended, nothing drains or refills it behind the end title.
+	if (!Composure || Phase == ETakePhase::Cleared)
 	{
 		return;
 	}

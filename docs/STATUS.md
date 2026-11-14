@@ -1,8 +1,9 @@
 # Status
 
-Last updated: 2026-11-14, about 00:10 Cairo. **Gate 1 is passed:** Marwan played the rework and the street-start
-build on Nov 13 and said to start step 2. Step 2 is being built now, without the parts written for fixed cameras
-and hard cuts (see "Step 2 as built" below). Theme: **Director's Cut**.
+Last updated: 2026-11-14, about 04:00 Cairo. **Gate 1 is passed:** Marwan played the rework and the street-start
+build on Nov 13 and said to start step 2. **Step 2 is built and packaged** (Nov 14), without the parts written for
+fixed cameras and hard cuts (see "Step 2 as built" below). Next: step 3, Scene 3 and the ends. Theme:
+**Director's Cut**.
 
 ## Gate 1 answer, Nov 13 about 18:15: Marwan changed three rules
 
@@ -155,6 +156,26 @@ the scanner, the stair and the podium, cool rim lights from the dais end, red at
 the reel's case, cyan-white work light backstage and on the catwalk. The follow spot is a real light while it
 burns. Lumen is off for the level. Exposure is fixed. The dressing pass is step 4.
 
+**Small things filled in at the end.** Mouse smoothing is off (`bEnableMouseSmoothing=False` in
+`Reel/Config/DefaultInput.ini`): the look is the raw mouse, and a scripted key-and-mouse run repeats exactly. After
+SCENE 2 CLEARED the composure bar stays where the take ended. A cut key and E pressed on the same frame do the cut
+and refuse the use ("Mid-cut"). A blooper keeps the take number; only R starts a new take.
+
+**Proof, Nov 14.** Scripted play-in-editor runs: the whole take from the back of the queue; the carpet blooper; the
+beam blooper back to the rope with the banner use given back and the crew still posted; route 1 (banner then spot)
+and route 2 (cart then spot); the free lift, the sound desk lift and the dais cart lift. One run of the packaged
+`.exe` with real keys and mouse (`C:\Jam\Builds\shots\play2.ps1`, 164 s): The Door, both crew walks, the floor, a
+beam blooper back to the rope with the clock back from bar 62 to bar 60, route 2, the dais cart (x2), the keycard.
+Its screenshots are `docs/shots/step2_*.png`.
+
+**Only Marwan can judge:**
+- Route 1 (banner then spot) reaches the dais with about 20 composure left: too tight or right?
+- The lift takes 1 s (the spec says 1.5 s) and the arrivals searchlight blinds for 6 s (the follow spot 4 s).
+- Whether the three warning pitches can be told apart by ear, and whether the drone feels fair.
+- The night look: exposure, the haze, how dark the hall and the backstage are.
+- Maya's walk to the follow spot (about 22 s) and Vex's (about 6 s): too long before the hall?
+- Label clutter where several watchers and devices line up on Maya's camera, and the wording of every line.
+
 **Scoring:** any score of this game, by an agent or by Marwan, follows `docs/JUDGING_RUBRIC.md` (the jam's criteria,
 fixed anchors, and when to stop). Design review is closed; the next scores come at gates 1 and 2.
 
@@ -172,12 +193,11 @@ K's spec is archived in `docs/ideas/k-meanwhile-spec.md`, and nothing in `protot
 `docs/ART_STYLE.md` was written for K: only the parts named under "Look" apply, and where it differs from this file,
 this file wins.
 
-State: **step 1 is rebuilt to the gate 1 answer** (Nov 13, about 19:40). The C++ is in
-`Reel/Source/Reel/Take/`, the map is `/Game/Take/Lvl_Auction` (the project starts in it), and
-`tools/build_auction.py` rebuilds the map from its numbers (`Lvl_TestBox` and `tools/build_testbox.py` are the old
-step 1 and no longer load cleanly). In play-in-editor Julian gets past the guard and the beam two ways (cart plus
-spot, banner plus spot), each with a crew character firing a device and the player walking Julian, and a blooper
-reloads the level. Next: **gate 1 again**, Marwan plays it. Nothing past step 1 is built.
+State: **step 2 is built** (Nov 14, about 04:00). The C++ is in `Reel/Source/Reel/Take/`, the map is
+`/Game/Take/Lvl_Auction` (the project starts in it), and `tools/build_auction.py` rebuilds the map from its numbers
+(`Lvl_TestBox` and `tools/build_testbox.py` are the old step 1 and no longer load cleanly). From the street start
+the take plays through Scene 1 (The Door) and Scene 2 (The Floor) to the keycard lift, with a checkpoint at each
+scene, at the rope and on the dais. Next: **step 3**, Scene 3 and the ends. Nothing past step 2 is built.
 
 ## The pitch
 
@@ -719,7 +739,7 @@ characters, audio and polish. Every step ends playable, and the Windows package 
 | Fri, by 11:45 | **0. Pipeline** | Done |
 | Fri 17:00-22:00 | **1. Core loop in a test box.** See "Step 1" below | In play-in-editor, Julian gets past the guard and the beam two ways, by a cue plus a device timed to his arrival. **Built Nov 13, 17:30. Rebuilt to the gate 1 answer (walk, flights, the two-floor auction building) Nov 13, 19:40** |
 | Fri about 22:30 | **Gate 1.** Marwan plays for 5 minutes. If they don't want another go, change a rule (windows, drain, uses), not the art | A yes, or the rule changed. **First answer Nov 13, 18:15: three rules changed (top of this file). Passed Nov 13, about 23:45: Marwan played the rework and the street-start build and said to start step 2** |
-| Fri night to Sat morning | **2. The set, its look, Scenes 1 and 2.** See "Step 2" below. Package | Scenes 1-2 play in the package, and screenshots show the film and the making-of |
+| Fri night to Sat morning | **2. The set, its look, Scenes 1 and 2.** See "Step 2" below. Package | Scenes 1-2 play in the package, and screenshots show the film and the making-of. **Built Nov 14, about 04:00, for the walking game: see "Step 2 as built". The film and making-of split waits for gate 2** |
 | Sat (midterm 12:30) | **3. Scene 3 and the ends.** See "Step 3" below. Package | Title card to blooper reel in the package |
 | Sat evening | **Gate 2.** Marwan plays a full take cold | They want another go |
 | Sat evening and night | **4. Look.** Dressing the fronts and backs, the film burn, the letterbox HUD, the stamps | Screenshots pass ART_STYLE §14 |
