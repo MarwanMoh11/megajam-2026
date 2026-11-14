@@ -9,6 +9,13 @@
 #include "Sound/SoundWaveProcedural.h"
 #include "TakeAudio.h"
 #include "TakeTypes.h"
+// QA time: the warnings ask the director where Julian and the watchers are; the beam's splash plays at the beam.
+#include "BeamWatcher.h"
+#include "Julian.h"
+#include "Sound/SoundAttenuation.h"
+#include "Sound/SoundBase.h"
+#include "TakeDirector.h"
+#include "Watcher.h"
 
 namespace TakeClockA
 {
@@ -336,6 +343,28 @@ void UBarClockComponent::BeginPlay()
 	bFollowGivenUp = false;
 	AppliedBandLevel = -1.f;
 	bAppliedBackstage = false;
+
+	// QA time: the warnings' memory, the beam splash's attenuation, slow time.
+	for (int32 Slot = 0; Slot < NumInstrumentSlots; ++Slot)
+	{
+		LastWarningBeats[Slot] = -1.0;
+		LastCueSound[Slot] = NAME_None;
+		bInStretch[Slot] = false;
+	}
+	PendingCues.Reset();
+	CueRng.GenerateNewSeed();
+	AccentAttenuation = NewObject<USoundAttenuation>(this);
+	AccentAttenuation->Attenuation.bAttenuate = true;
+	AccentAttenuation->Attenuation.bSpatialize = true;
+	AccentAttenuation->Attenuation.AttenuationShape = EAttenuationShape::Sphere;
+	AccentAttenuation->Attenuation.AttenuationShapeExtents = FVector(FMath::Max(0.f, AccentInnerRadius), 0.f, 0.f);
+	AccentAttenuation->Attenuation.FalloffDistance = FMath::Max(1.f, AccentFalloffDistance);
+	AccentAttenuation->Attenuation.DistanceAlgorithm = EAttenuationDistanceModel::NaturalSound;
+	SlowAmount = 0.f;
+	SlowMuffle = 0.f;
+	bMusicHeld = false;
+	bRejoinPending = false;
+	AppliedLowPassHz = -1.f;
 }
 
 void UBarClockComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -381,7 +410,8 @@ void UBarClockComponent::Advance(float DeltaSeconds)
 	// Step 6: the clock follows the music. Small drift is taken up by running at most MaxDriftCorrection faster or
 	// slower; a bigger gap (an audio hitch, a restart) moves the music back onto the clock instead, so the clock
 	// never jumps and never waits.
-	if (MusicKind != 0 && bClockFollowsMusic && !bFollowGivenUp && !bFirstAdvance)
+	// QA time: not while slow time holds the music (the clock runs on the slowed game time with the world).
+	if (MusicKind != 0 && bClockFollowsMusic && !bFollowGivenUp && !bFirstAdvance && !bMusicHeld)
 	{
 		const double Music = GetMusicBeats();
 		if (Music >= 0.0)
@@ -462,6 +492,18 @@ void UBarClockComponent::Advance(float DeltaSeconds)
 	{
 		MusicKind = 0;
 	}
+
+	// QA time: Julian's stretches near each watcher (bar lines), the phrases waiting out their few ms, and the music
+	// back in after slow time, on a beat line.
+	if (bBarCrossed && bSmartWarnings)
+	{
+		UpdateStretches();
+	}
+	FirePendingCues();
+	if (bMusicHeld && bRejoinPending && SlowAmount <= 0.f && (bBeatCrossed || !bSlowRejoinOnBeat))
+	{
+		RejoinMusic();
+	}
 	UpdateBandLevel();
 
 	if (bBeatLine && bAlarm)
@@ -535,7 +577,37 @@ FString UBarClockComponent::GetTimecode() const
 
 void UBarClockComponent::PlayAccent()
 {
-	if (!PlayNamed(HiHatSplash, PhraseVolume))
+	if (bSmartWarnings)
+	{
+		// QA time: a mechanical event, heard at its source: the beam nearest Julian (there is one).
+		const ATakeDirector* Director = Cast<ATakeDirector>(GetOwner());
+		const AJulian* Hero = Director ? Director->Julian.Get() : nullptr;
+		const ABeamWatcher* Nearest = nullptr;
+		double NearestDistSq = TNumericLimits<double>::Max();
+		if (Director)
+		{
+			for (const AWatcher* EachWatcher : Director->Watchers)
+			{
+				const ABeamWatcher* Beam = Cast<ABeamWatcher>(EachWatcher);
+				if (!Beam)
+				{
+					continue;
+				}
+				const double DistSq = Hero ? FVector::DistSquared(Beam->GetAimPoint(), Hero->GetFeetLocation()) : 0.0;
+				if (!Nearest || DistSq < NearestDistSq)
+				{
+					Nearest = Beam;
+					NearestDistSq = DistSq;
+				}
+			}
+		}
+		if (Nearest)
+		{
+			PlayAccentAt(Nearest->GetAimPoint());
+			return;
+		}
+	}
+	if (!PlayNamed(HiHatSplash, bSmartWarnings ? AccentVolume : PhraseVolume))
 	{
 		PlayPcm(PcmAccent);
 	}
@@ -632,6 +704,38 @@ void UBarClockComponent::PlayPcm(const TArray<uint8>& Pcm)
 
 void UBarClockComponent::PlayWarning(EWatcherInstrument Instrument)
 {
+	if (bSmartWarnings)
+	{
+		// QA time (note 9): only when it tells the player something, a variant, varied (see the header).
+		if (Instrument == EWatcherInstrument::HiHat)
+		{
+			PlayAccent();
+			return;
+		}
+		if (Instrument == EWatcherInstrument::None)
+		{
+			return;
+		}
+		const float Level = WarningGate(Instrument);
+		if (Level <= 0.f)
+		{
+			return;
+		}
+		const bool bBass = Instrument == EWatcherInstrument::Bass;
+		const bool bTrumpet = Instrument == EWatcherInstrument::Trumpet;
+		USoundBase* Sound = PickCue(Instrument, bBass ? BassPhrase : (bTrumpet ? TrumpetPhrase : DrumRollPhrase),
+			bBass ? BassVariants : (bTrumpet ? TrumpetVariants : DrumRollVariants));
+		if (Sound)
+		{
+			PlayVaried(Sound, PhraseVolume * Level, bBass || bTrumpet, false, FVector::ZeroVector);
+		}
+		else
+		{
+			PlayPhrase(bBass ? PcmBass : (bTrumpet ? PcmTrumpet : PcmDrumRoll));
+		}
+		return;
+	}
+
 	// Played whether or not the metronome is muted (PlayPcm does not look at the mute).
 	// Step 6: the band's own phrase if it is imported, else the synthesised stand-in.
 	switch (Instrument)
@@ -867,9 +971,13 @@ void UBarClockComponent::StartMusic(int32 Kind, double BaseBeats)
 	MusicAudio->Stop();
 	MusicAudio->SetSound(Wave);
 	MusicAudio->SetVolumeMultiplier(1.f);
-	MusicAudio->Play(static_cast<float>(StartSeconds));
-	AppliedBandLevel = -1.f;
-	bAppliedBackstage = !bBackstage;	// re-applied below
+	// QA time: in from silence over the band fade, at its level now (it may be muffled by slow time), rather than at
+	// full level for a moment and then down.
+	const float StartLevel = ComputeBandLevel();
+	MusicAudio->FadeIn(FMath::Max(0.01f, BandFadeSeconds), FMath::Max(0.f, StartLevel), static_cast<float>(StartSeconds));
+	AppliedBandLevel = StartLevel;
+	AppliedLowPassHz = -1.f;
+	bAppliedBackstage = !bBackstage;	// the filter is re-applied below
 	UpdateBandLevel();
 }
 
@@ -948,12 +1056,8 @@ double UBarClockComponent::GetMusicBeats() const
 	return MusicBaseBeats + Seconds / static_cast<double>(GetSecondsPerBeat());
 }
 
-void UBarClockComponent::UpdateBandLevel()
+float UBarClockComponent::ComputeBandLevel() const
 {
-	if (!MusicAudio || MusicKind == 0)
-	{
-		return;
-	}
 	float Level = 1.f;
 	if (MusicKind == 1)
 	{
@@ -970,16 +1074,48 @@ void UBarClockComponent::UpdateBandLevel()
 	{
 		Level *= VoiceDuckLevel;
 	}
-	Level *= BedVolume;
+	if (SlowMuffle > 0.f)
+	{
+		Level *= FMath::Lerp(1.f, FMath::Clamp(SlowBedLevel, 0.f, 1.f), FMath::Clamp(SlowMuffle, 0.f, 1.f));
+	}
+	return Level * BedVolume;
+}
+
+void UBarClockComponent::UpdateBandLevel()
+{
+	if (!MusicAudio || MusicKind == 0)
+	{
+		return;
+	}
+	const float Level = ComputeBandLevel();
 	if (FMath::Abs(Level - AppliedBandLevel) > 0.001f)
 	{
 		MusicAudio->AdjustVolume(FMath::Max(0.f, BandFadeSeconds), FMath::Max(0.f, Level));
 		AppliedBandLevel = Level;
 	}
-	if (bBackstage != bAppliedBackstage)
+	// The low-pass: backstage (through the flats) and slow time (far away), the lower of the two; 0 = off.
+	// QA time: slow time sweeps it on a log scale from 20 kHz down to SlowLowPassHz.
+	float WantHz = 0.f;
+	if (bBackstage)
 	{
-		MusicAudio->SetLowPassFilterEnabled(bBackstage);
-		MusicAudio->SetLowPassFilterFrequency(BackstageLowPassHz);
+		WantHz = FMath::Max(20.f, BackstageLowPassHz);
+	}
+	if (SlowMuffle > 0.001f)
+	{
+		const float Alpha = FMath::Clamp(SlowMuffle, 0.f, 1.f);
+		const float SlowHz = FMath::Pow(2.f, FMath::Lerp(FMath::Log2(20000.f), FMath::Log2(FMath::Max(100.f, SlowLowPassHz)), Alpha));
+		WantHz = WantHz > 0.f ? FMath::Min(WantHz, SlowHz) : SlowHz;
+	}
+	const bool bOnChanged = (WantHz > 0.f) != (AppliedLowPassHz > 0.f);
+	const bool bHzChanged = WantHz > 0.f && FMath::Abs(WantHz - AppliedLowPassHz) > 0.01f * FMath::Max(1.f, AppliedLowPassHz);
+	if (bOnChanged || bHzChanged || bBackstage != bAppliedBackstage)
+	{
+		MusicAudio->SetLowPassFilterEnabled(WantHz > 0.f);
+		if (WantHz > 0.f)
+		{
+			MusicAudio->SetLowPassFilterFrequency(WantHz);
+		}
+		AppliedLowPassHz = WantHz;
 		bAppliedBackstage = bBackstage;
 	}
 }
@@ -1026,4 +1162,285 @@ void UBarClockComponent::SetBackstage(bool bOn)
 		bBackstage = bOn;
 		UpdateBandLevel();
 	}
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// QA time (Nov 14): warnings that tell the player something (note 9), and the music under slow time (note 2)
+// ---------------------------------------------------------------------------------------------------------------------
+
+float UBarClockComponent::RangeFor(EWatcherInstrument Instrument) const
+{
+	switch (Instrument)
+	{
+	case EWatcherInstrument::Bass:
+		return BassRange;
+	case EWatcherInstrument::Trumpet:
+		return TrumpetRange;
+	case EWatcherInstrument::DrumRoll:
+		return DrumRollRange;
+	default:
+		return 0.f;
+	}
+}
+
+float UBarClockComponent::WarningGate(EWatcherInstrument Instrument)
+{
+	const int32 Slot = static_cast<int32>(Instrument);
+	if (Slot <= 0 || Slot >= NumInstrumentSlots)
+	{
+		return 0.f;
+	}
+	const ATakeDirector* Director = Cast<ATakeDirector>(GetOwner());
+	const AJulian* Hero = Director ? Director->Julian.Get() : nullptr;
+	if (!Hero)
+	{
+		return 1.f;	// nothing to measure against: as before
+	}
+	const FVector Feet = Hero->GetFeetLocation();
+	const int32 NextBar = GetBar() + 1;
+	bool bArrival = false;
+	float Nearest = TNumericLimits<float>::Max();
+	for (const AWatcher* EachWatcher : Director->Watchers)
+	{
+		if (!EachWatcher || EachWatcher->Instrument != Instrument)
+		{
+			continue;
+		}
+		if (EachWatcher->GetArriveBar() > 0 && EachWatcher->GetArriveBar() == NextBar)
+		{
+			bArrival = true;
+		}
+		if (EachWatcher->HasArrived())
+		{
+			Nearest = FMath::Min(Nearest, EachWatcher->DistanceToPoint(Feet));
+		}
+	}
+
+	const double Now = TotalBeats;
+	const double SecondsPerBeat = static_cast<double>(GetSecondsPerBeat());
+	if (bArrival)
+	{
+		// News: a watcher walks in on the next bar line. Always, in full (its solo bar).
+		LastWarningBeats[Slot] = Now;
+		return 1.f;
+	}
+
+	const float Range = RangeFor(Instrument);
+	if (Range > 0.f && Nearest > Range)
+	{
+		UE_LOG(LogTemp, Verbose, TEXT("TAKE band: warning %d held at %s, its watcher %.0f cm away"), Slot, *GetTimecode(), Nearest);
+		return 0.f;	// it does not matter to Julian where he is
+	}
+	if (!bInStretch[Slot])
+	{
+		// The first turn since he came into its range: at once, in full.
+		bInStretch[Slot] = true;
+		LastWarningBeats[Slot] = Now;
+		return 1.f;
+	}
+	const float Cooldown = Nearest <= CloseRange ? CloseCooldownSeconds : WarningCooldownSeconds;
+	const double Since = LastWarningBeats[Slot] < 0.0 ? TNumericLimits<double>::Max() : (Now - LastWarningBeats[Slot]) * SecondsPerBeat;
+	if (Since < static_cast<double>(Cooldown) - 0.01)
+	{
+		return 0.f;	// he heard it a moment ago
+	}
+	LastWarningBeats[Slot] = Now;
+	return FMath::Clamp(RepeatLevel, 0.f, 1.f);
+}
+
+void UBarClockComponent::UpdateStretches()
+{
+	const ATakeDirector* Director = Cast<ATakeDirector>(GetOwner());
+	const AJulian* Hero = Director ? Director->Julian.Get() : nullptr;
+	if (!Hero)
+	{
+		return;
+	}
+	const FVector Feet = Hero->GetFeetLocation();
+	float Nearest[NumInstrumentSlots];
+	for (int32 Slot = 0; Slot < NumInstrumentSlots; ++Slot)
+	{
+		Nearest[Slot] = TNumericLimits<float>::Max();
+	}
+	for (const AWatcher* EachWatcher : Director->Watchers)
+	{
+		const int32 Slot = EachWatcher ? static_cast<int32>(EachWatcher->Instrument) : 0;
+		if (Slot > 0 && Slot < NumInstrumentSlots && EachWatcher->HasArrived())
+		{
+			Nearest[Slot] = FMath::Min(Nearest[Slot], EachWatcher->DistanceToPoint(Feet));
+		}
+	}
+	for (int32 Slot = 1; Slot < NumInstrumentSlots; ++Slot)
+	{
+		const float Range = RangeFor(static_cast<EWatcherInstrument>(Slot));
+		if (bInStretch[Slot] && Range > 0.f && Nearest[Slot] > Range * FMath::Max(1.f, RangeExitFactor))
+		{
+			bInStretch[Slot] = false;
+		}
+	}
+}
+
+USoundBase* UBarClockComponent::PickCue(EWatcherInstrument Instrument, FName Phrase, const TArray<FName>& Variants)
+{
+	UTakeAudioComponent* Audio = GetOwner() ? GetOwner()->FindComponentByClass<UTakeAudioComponent>() : nullptr;
+	if (!Audio)
+	{
+		return nullptr;
+	}
+	TArray<FName, TInlineAllocator<8>> Names;
+	TArray<USoundBase*, TInlineAllocator<8>> Sounds;
+	const auto Consider = [&Names, &Sounds, Audio](FName Name)
+	{
+		if (USoundBase* Sound = Audio->FindSound(Name))
+		{
+			Names.Add(Name);
+			Sounds.Add(Sound);
+		}
+	};
+	Consider(Phrase);
+	for (const FName& Name : Variants)
+	{
+		if (Name != Phrase)
+		{
+			Consider(Name);
+		}
+	}
+	if (Sounds.Num() == 0)
+	{
+		return nullptr;
+	}
+	const int32 Slot = FMath::Clamp(static_cast<int32>(Instrument), 0, NumInstrumentSlots - 1);
+	if (Sounds.Num() > 1)
+	{
+		// Never the one it played last.
+		const int32 Last = Names.IndexOfByKey(LastCueSound[Slot]);
+		if (Last != INDEX_NONE)
+		{
+			Names.RemoveAt(Last);
+			Sounds.RemoveAt(Last);
+		}
+	}
+	const int32 Pick = CueRng.RandRange(0, Sounds.Num() - 1);
+	LastCueSound[Slot] = Names[Pick];
+	return Sounds[Pick];
+}
+
+void UBarClockComponent::PlayVaried(USoundBase* Sound, float Volume, bool bPitched, bool bAtLocation, const FVector& Where)
+{
+	if (!Sound)
+	{
+		return;
+	}
+	FTakePendingCue Cue;
+	Cue.Sound = Sound;
+	Cue.Volume = FMath::Max(0.f, Volume) * FMath::Pow(10.f, -CueRng.FRandRange(0.f, FMath::Max(0.f, VolumeJitterDb)) / 20.f);
+	const float Cents = CueRng.FRandRange(-1.f, 1.f) * FMath::Max(0.f, bPitched ? PitchedJitterCents : UnpitchedJitterCents);
+	Cue.Pitch = FMath::Pow(2.f, Cents / 1200.f);
+	Cue.bAtLocation = bAtLocation;
+	Cue.Location = Where;
+	const float Late = CueRng.FRandRange(0.f, FMath::Clamp(TimingJitterSeconds, 0.f, 0.1f));
+	Cue.AtBeats = TotalBeats + static_cast<double>(Late) / static_cast<double>(GetSecondsPerBeat());
+	PendingCues.Add(Cue);
+	if (Late < 0.004f)
+	{
+		FirePendingCues();	// nothing to wait for: this frame
+	}
+}
+
+void UBarClockComponent::FirePendingCues()
+{
+	for (int32 Index = 0; Index < PendingCues.Num(); )
+	{
+		const FTakePendingCue& Cue = PendingCues[Index];
+		// Due, or stale (more than a beat out: the clock was moved under it).
+		if (Cue.AtBeats > TotalBeats + 1e-6 && Cue.AtBeats - TotalBeats < 1.0)
+		{
+			++Index;
+			continue;
+		}
+		if (USoundBase* Sound = Cue.Sound.Get())
+		{
+			if (Cue.bAtLocation)
+			{
+				UGameplayStatics::PlaySoundAtLocation(this, Sound, Cue.Location, FRotator::ZeroRotator, Cue.Volume, Cue.Pitch,
+					0.f, AccentAttenuation);
+			}
+			else
+			{
+				UGameplayStatics::PlaySound2D(this, Sound, Cue.Volume, Cue.Pitch);
+			}
+		}
+		PendingCues.RemoveAt(Index);
+	}
+}
+
+void UBarClockComponent::PlayAccentAt(const FVector& Where)
+{
+	USoundBase* Sound = PickCue(EWatcherInstrument::HiHat, HiHatSplash, HiHatVariants);
+	if (!Sound)
+	{
+		PlayPcm(PcmAccent);	// the stand-in has no place in the world
+		return;
+	}
+	if (AccentAttenuation)
+	{
+		AccentAttenuation->Attenuation.AttenuationShapeExtents = FVector(FMath::Max(0.f, AccentInnerRadius), 0.f, 0.f);
+		AccentAttenuation->Attenuation.FalloffDistance = FMath::Max(1.f, AccentFalloffDistance);
+	}
+	PlayVaried(Sound, AccentVolume, false, true, Where);
+}
+
+void UBarClockComponent::SetSlowAmount(float Amount, float RealDeltaSeconds)
+{
+	SlowAmount = FMath::Clamp(Amount, 0.f, 1.f);
+	if (SlowAmount > 0.f)
+	{
+		// Slowing (or slowed): the music is held, under the filter, and the clock stops following it.
+		if (!bMusicHeld && MusicKind != 0)
+		{
+			UE_LOG(LogTemp, Log, TEXT("TAKE band: music held for slow time at %s"), *GetTimecode());
+		}
+		bMusicHeld = bMusicHeld || MusicKind != 0;
+		bRejoinPending = false;
+		SlowMuffle = FMath::Max(SlowMuffle, SlowAmount);
+	}
+	else if (bMusicHeld)
+	{
+		// Time is back: the music comes in again where the clock is, on the next beat line (Advance) or now.
+		bRejoinPending = true;
+		if (MusicKind == 0 || !MusicAudio)
+		{
+			bMusicHeld = false;	// nothing playing to bring back (a blooper stopped it; the heist cue starts itself)
+			bRejoinPending = false;
+		}
+		else if (!bSlowRejoinOnBeat)
+		{
+			RejoinMusic();
+		}
+	}
+	else if (SlowMuffle > 0.f)
+	{
+		// Back in: the level and the filter open.
+		SlowMuffle = SlowRejoinFadeSeconds > 0.f
+			? FMath::Max(0.f, SlowMuffle - FMath::Max(0.f, RealDeltaSeconds) / SlowRejoinFadeSeconds) : 0.f;
+	}
+	UpdateBandLevel();
+}
+
+void UBarClockComponent::RejoinMusic()
+{
+	bMusicHeld = false;
+	bRejoinPending = false;
+	if (MusicKind == 0 || !MusicAudio)
+	{
+		return;
+	}
+	// The music played on at its own speed under the slow while the clock went slow with the world. It restarts
+	// where the clock is (as a restore does), still muffled: SetSlowAmount then opens it over SlowRejoinFadeSeconds.
+	const int32 Kind = MusicKind;
+	StartMusic(Kind, MusicBaseBeats);
+	// A music start is corrected once in its first bar (STATUS, step 6 phase 2): that one does not count toward
+	// giving up the follow, or a few slows in a take would leave the clock on game time.
+	Reseeks = FMath::Max(0, Reseeks - 1);
+	UE_LOG(LogTemp, Log, TEXT("TAKE band: music back in at %s after slow time"), *GetTimecode());
 }

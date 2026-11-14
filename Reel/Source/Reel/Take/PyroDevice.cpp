@@ -22,6 +22,9 @@ APyroDevice::APyroDevice()
 	UseVerb = TEXT("Fire the pyro");
 	LockedUntil = FName(TakeTriggers::Case);
 
+	// QA devices: the firing board's armed lamp is red (dark until the alarm unlocks it); its key lever throws.
+	PilotColour = FLinearColor(1.f, 0.10f, 0.04f);
+
 	FlareLight = CreateDefaultSubobject<UPointLightComponent>(TEXT("FlareLight"));
 	FlareLight->SetupAttachment(RootComponent);
 	FlareLight->SetMobility(EComponentMobility::Movable);
@@ -123,7 +126,7 @@ bool APyroDevice::Fire()
 		FlareLight->SetIntensity(FlareCandelas);
 		FlareLight->SetVisibility(true);
 	}
-	if (Body)
+	if (Body && BodyIsBox())	// a model keeps its own material: its lamp and lever say it fired
 	{
 		BodyMID = FTakeShapes::SetColour(Body, TakeColors::White);
 	}
@@ -139,6 +142,8 @@ bool APyroDevice::Fire()
 
 void APyroDevice::StepDevice(float DeltaSeconds)
 {
+	StepLook(DeltaSeconds);	// QA devices: the armed lamp (it lights when the alarm unlocks the board), the key lever
+
 	if (!bRunning)
 	{
 		return;

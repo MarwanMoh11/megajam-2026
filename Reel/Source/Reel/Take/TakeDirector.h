@@ -259,6 +259,17 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Frames")
 	ETakeFrameDisplay FrameDisplay = ETakeFrameDisplay::Planning;
 
+	// --- QA sight ---
+	/** QA (Marwan's notes 5, 18, 19): false (the default): nothing is drawn over the world: no sight frames, frame
+	 *  lines, tally cubes, T plates or hatched tape. The world says the same with light (guards' torches, the drone's
+	 *  searchlight, lamps on the scanner and the beam's posts, warm pools on marks, a cool light over forbidden
+	 *  ground, a lift of light on planned watchers; AWatcher::UpdateWorldCues). True: the old drawn overlays come back
+	 *  (debug), the frames as FrameDisplay says. Keep FrameDisplay at Planning: it is what lists the planned watchers.
+	 *  Look only: no sight test reads it. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Frames")
+	bool bDrawnSightOverlays = false;
+	// --- end QA sight ---
+
 	/** Step 6, before the watchers step: the frame display and who is planned this frame (Planning: the watchers the
 	 *  device in reach would catch if it can fire, and the follow spot's aimed watcher) go to every watcher. */
 	void StepFrameCues();
@@ -626,6 +637,63 @@ public:
 	/** How long the alarm's bleed to full colour takes, s (§15.2 motion.bar: 48 film frames). */
 	UPROPERTY(EditAnywhere, Category = "Take|Look", meta = (ClampMin = "0"))
 	float BleedSeconds = 2.f;
+
+	// --- QA look ---
+	/** QA note 8: 1 = the colour film (a muted period print; the crew's cameras cool video), 0 = the step 4
+	 *  monochrome exactly; between mixes the two. Written to the grade's ColourFilm (tools/build_look.py). The HUD
+	 *  writes the grade's Stress itself, through GradeMID. */
+	UPROPERTY(EditAnywhere, Category = "Take|Look", meta = (ClampMin = "0", ClampMax = "1"))
+	float FilmColour = 1.f;
+	/** What the grade last got, and on which instance (SetupLook makes a new one on a restore). */
+	float AppliedFilmColour = -1.f;
+	TWeakObjectPtr<UMaterialInstanceDynamic> FilmColourMID;
+	// --- end QA look ---
+
+	// --- QA time ---
+	/** QA note 2: slow time, for the switching tutorial (scene1 calls it; bodies in TakeDirectorSlow.cpp).
+	 *  BeginSlow eases the whole take down to Scale (global time dilation: the world, the characters, every watcher
+	 *  and the bar clock, which the director advances on the slowed time) over EaseSeconds of real time, and holds it
+	 *  until EndSlow with the same Reason. Several reasons may hold it at once: the slowest wins, and time comes back
+	 *  when the last one ends. The music cannot slow, so it is held under a low-pass, ducked, and comes back in where
+	 *  the clock is, on a beat line, when time is back (UBarClockComponent::SetSlowAmount): nothing is out of phase.
+	 *  Voices, the HUD's subtitles (they count real time), UI sounds and the mouse look run at normal speed.
+	 *  Safe to call twice (a second BeginSlow with the same Reason only changes its scale), to end without a begin
+	 *  (nothing happens), and across a blooper, a checkpoint restore or R: the freeze ends it at once, and the reload
+	 *  starts a fresh world at normal speed.
+	 *  For callers: (1) a voice starts when its subtitle comes on screen (the HUD's queue, at the earliest the frame
+	 *  after Flash), so VoiceSecondsLeft() is still 0 on the frame of the Flash: wait for it to rise above 0, then to
+	 *  fall back to 0, before EndSlow. (2) The director's DeltaSeconds is slowed too: anything that must keep normal
+	 *  speed (the cut's camera flight, PC->StepFlight) divides its DeltaSeconds by GetSlowScale(). */
+	void BeginSlow(FName Reason, float Scale = 0.15f, float EaseSeconds = 0.25f);
+	void EndSlow(FName Reason, float EaseSeconds = 0.35f);
+	/** A reason holds slow time, or time is still easing back to normal. */
+	bool IsSlowed() const;
+	/** Seconds left of the voice line playing now (real seconds), 0 when none. */
+	float VoiceSecondsLeft() const;
+	/** The time scale now (1 = normal; it eases). */
+	float GetSlowScale() const { return SlowScaleNow; }
+	/** Every frame, from UTakeAudioComponent's tick, with the real (undilated) frame time: the ease, the reset on a
+	 *  blooper or the end, the music's hold. */
+	void StepSlow(float RealDeltaSeconds);
+	/** Off: BeginSlow does nothing (the QA switch back to the old behaviour). */
+	UPROPERTY(EditAnywhere, Category = "Take|Slow")
+	bool bSlowTimeEnabled = true;
+	/** No slow goes below this scale. */
+	UPROPERTY(EditAnywhere, Category = "Take|Slow", meta = (ClampMin = "0.01", ClampMax = "1"))
+	float MinSlowScale = 0.05f;
+	/** A safety net: slow time ends by itself after this many real seconds without an EndSlow (0: never). */
+	UPROPERTY(EditAnywhere, Category = "Take|Slow", meta = (ClampMin = "0"))
+	float MaxSlowHoldSeconds = 0.f;
+	/** The reasons holding it, with their scales. */
+	TMap<FName, float> SlowReasons;
+	float SlowScaleNow = 1.f;
+	float SlowEaseFrom = 1.f;
+	float SlowEaseTo = 1.f;
+	float SlowEaseSeconds = 0.f;
+	float SlowEaseElapsed = 0.f;
+	/** Real seconds since the first reason began (MaxSlowHoldSeconds). */
+	float SlowHeldSeconds = 0.f;
+	// --- end QA time ---
 
 	// ---------------------------------------------------------------------------------------------------------------
 	// The level's actors (gathered at BeginPlay)

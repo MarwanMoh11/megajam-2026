@@ -8,6 +8,7 @@
 #include "Mark.generated.h"
 
 class UStaticMeshComponent;
+class USpotLightComponent;
 
 /** Place it on the floor (actor location = the floor point Julian stands on). Its shapes are NoCollision. */
 UCLASS()
@@ -135,6 +136,77 @@ public:
 
 	UPROPERTY(VisibleAnywhere, Category = "Take")
 	TObjectPtr<UStaticMeshComponent> CrossB;
+
+	// --- QA sight: a gently lit place to stand (Marwan's note 18: no T marks) ----------------------------------------
+	// With the drawn overlays off (ATakeDirector::bDrawnSightOverlays) the plate and disc are hidden in game (still
+	// shown in the editor) and the mark is a soft warm pool of light from above. Julian on it: the pool settles on him
+	// (tighter, a little brighter). An action running: it warms and brightens with the progress. Done: it dims to an
+	// ember. Look only: standing on the mark is still AJulian::StepMarks's test (StandRadius).
+
+	UPROPERTY(EditAnywhere, Category = "Take|Cues")
+	bool bMarkLight = true;
+
+	/** The light's height over the stand point, cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "50"))
+	float PoolHeight = 320.f;
+
+	/** At rest: candelas, the pool's radius on the floor (cm) and colour. */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "0"))
+	float PoolCandelas = 260.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "10"))
+	float PoolRadius = 80.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Cues")
+	FLinearColor PoolColour = FLinearColor(1.f, 0.8f, 0.55f);
+
+	/** Julian on it: candelas, radius and colour (it settles on him). */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "0"))
+	float OccupiedCandelas = 380.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "10"))
+	float OccupiedRadius = 58.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Cues")
+	FLinearColor OccupiedColour = FLinearColor(1.f, 0.76f, 0.48f);
+
+	/** An action at its end (it runs from the occupied look to this): candelas and colour. */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "0"))
+	float ActionCandelas = 650.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Cues")
+	FLinearColor ActionColour = FLinearColor(1.f, 0.66f, 0.36f);
+
+	/** A done action mark keeps this share of the rest pool (an ember: its work is done). */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "0", ClampMax = "1"))
+	float DoneScale = 0.35f;
+
+	/** How fast the pool follows, per second (0 = snaps). */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "0"))
+	float PoolEaseRate = 7.f;
+
+	/** The pool's glow in the haze (0 = none, the cheap default). */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "0"))
+	float PoolHaze = 0.f;
+
+	/** The pool (a spot light from above, no shadows). */
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<USpotLightComponent> PoolLight;
+
+	/** Eases the pool toward its look (the only thing a mark ticks for). */
+	virtual void Tick(float DeltaSeconds) override;
+
+protected:
+	/** The pool now (eased toward PoolTarget's values). */
+	float PoolCandelasNow = 0.f;
+	float PoolRadiusNow = 80.f;
+	FLinearColor PoolColourNow = FLinearColor::White;
+
+	/** The pool's look for the state now. */
+	void GetPoolTarget(float& OutCandelas, float& OutRadius, FLinearColor& OutColour) const;
+
+	/** Moves the pool toward its look by DeltaSeconds (< 0: snaps) and applies it to PoolLight. */
+	void ApplyPool(float DeltaSeconds);
 
 protected:
 	bool bIsOccupied = false;

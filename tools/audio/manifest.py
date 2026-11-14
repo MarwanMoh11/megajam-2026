@@ -158,7 +158,38 @@ MUSIC = [
      "Jazz snare drum roll, one bar long, crescendo from soft to loud, ending on a short cymbal hit, dry studio"),
     ("band_hihat", "The beam drops (one beat in every 4 bars)", 0, 0.8, "sfx",
      "A single open hi-hat cymbal splash on a jazz drum kit, dry, short"),
+    # --- QA time (Nov 14): variants, so a repeated warning is never the same sample twice running (the clock picks
+    # one at random, never the last). The bed is in G minor (measured): pitched variants ask for it, and process.py
+    # tunes them onto the G-minor scale (BAND_KEY) with at most a 1.5-semitone shift.
+    ("band_bass_2", "Warning, a bar before the guard turns (variant)", 0, 10, "music",
+     "Solo upright jazz bass in G minor, nothing else: no drums, no piano, no horns. Dry studio, exactly 120 BPM in "
+     "4/4. A sly noir figure: four low plucked quarter notes walking down G, F, E-flat, D, one on each beat, then a "
+     "bar of rest; the same figure again and again."),
+    ("band_bass_3", "Warning, a bar before the guard turns (variant)", 0, 10, "music",
+     "Solo upright jazz bass in G minor, nothing else: no drums, no piano, no horns. Dry studio, exactly 120 BPM in "
+     "4/4. A creeping noir figure: four low plucked quarter notes, D, E-flat, F-sharp, G, one on each beat, then a "
+     "bar of rest; the same figure again and again."),
+    ("band_trumpet_2", "Warning, a bar before the drone passes (variant)", 0, 1.5, "sfx",
+     "Two short staccato notes on a harmon-muted jazz trumpet, G falling to D, bah-dah, soft, then silence, dry "
+     "studio, solo"),
+    ("band_trumpet_3", "Warning, a bar before the drone passes (variant)", 0, 1.5, "sfx",
+     "Three short soft staccato notes on a muted jazz trumpet, B-flat, A, G, swung, then silence, dry studio, solo"),
+    ("band_drumroll_2", "Warning, a bar before Vance speaks (variant)", 0, 2.2, "sfx",
+     "Jazz snare drum roll with wire brushes, one bar long, swelling from soft to loud, ending on a short cymbal "
+     "choke, dry studio"),
+    ("band_drumroll_3", "Warning, a bar before Vance speaks (variant)", 0, 2.2, "sfx",
+     "Jazz snare drum press roll with sticks, one bar long, crescendo from soft to medium, ending on a single rim "
+     "click, dry studio"),
+    ("band_hihat_2", "The beam drops, at the beam (variant)", 0, 0.8, "sfx",
+     "A single soft hi-hat chick opening into a short splash on a jazz drum kit, quiet, dry, short"),
+    ("band_hihat_3", "The beam drops, at the beam (variant)", 0, 0.8, "sfx",
+     "A single quiet hi-hat foot splash, a soft metallic chick with a brief shimmer, jazz drum kit, dry, short"),
 ]
+
+# --- QA time: the band's key (measured from mus_bed: G minor). process.py tunes pitched phrase variants onto it.
+BAND_KEY_ROOT = 7            # pitch class of G (C = 0)
+BAND_KEY_SCALE = (0, 2, 3, 5, 7, 8, 10)   # natural minor
+KEY_FIT_PHRASES = ("band_bass_", "band_trumpet_")   # variant ids only: the shipped originals stay as they are
 
 # Loudness targets (integrated LUFS) and the peak ceiling, by prefix.
 LOUDNESS = {"vo_": -16.0, "sfx_": -18.0, "mus_bed": -21.0, "mus_heist": -18.0, "mus_sting": -15.0, "band_": -17.0}

@@ -4,6 +4,7 @@
 
 #include "BarClockComponent.h"
 #include "Components/BoxComponent.h"
+#include "Components/PointLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Julian.h"
 #include "TakeShapes.h"
@@ -55,6 +56,8 @@ ABeamWatcher::ABeamWatcher()
 {
 	FramePattern = TakeStyle::PatternDash;	// the beam is a line from post A: dashed, not banded
 	Label = TEXT("BEAM");
+	PlanLightOffset = FVector(0.f, 0.f, 70.f);	// QA sight: the planning lift over the beam's middle, reaching both posts
+	PlanLightRadius = 300.f;
 
 	// Two 120 cm posts; post B at EndB. OnConstruction re-places post B, the line and the click volume.
 	PostA = FTakeShapes::CreateShape(this, TEXT("PostA"), ETakeShape::Cylinder, Root, FVector(0.f, 0.f, 60.f), FVector(0.15f, 0.15f, 1.2f));
@@ -71,6 +74,14 @@ ABeamWatcher::ABeamWatcher()
 	ClickVolume->SetRelativeLocation(EndB * 0.5f + FVector(0.f, 0.f, BeamHeight));
 	ClickVolume->InitBoxExtent(FVector(Length * 0.5f + 20.f, 40.f, 80.f));
 	ClickVolume->SetRelativeRotation(FRotator(0.f, EndB.Rotation().Yaw, 0.f));
+
+	// QA sight: the electric eye's lamp at beam height on each post, and a small light at each (LayoutBeam places them).
+	LampA = FTakeShapes::CreateShape(this, TEXT("LampA"), ETakeShape::Sphere, Root, FVector(0.f, 0.f, BeamHeight),
+		FVector(0.2f, 0.2f, 0.2f), FRotator::ZeroRotator, false);
+	LampB = FTakeShapes::CreateShape(this, TEXT("LampB"), ETakeShape::Sphere, Root, EndB + FVector(0.f, 0.f, BeamHeight),
+		FVector(0.2f, 0.2f, 0.2f), FRotator::ZeroRotator, false);
+	PostLightA = FTakeShapes::CreateCuePoint(this, TEXT("PostLightA"), Root, FVector(0.f, 0.f, BeamHeight), PostLightRadius);
+	PostLightB = FTakeShapes::CreateCuePoint(this, TEXT("PostLightB"), Root, EndB + FVector(0.f, 0.f, BeamHeight), PostLightRadius);
 }
 
 void ABeamWatcher::OnConstruction(const FTransform& Transform)
@@ -89,6 +100,52 @@ void ABeamWatcher::BeginPlay()
 	bBeforeLive = LiveFromBar > 1;
 	SyncState();
 	RefreshFrameLook();
+	UpdateWorldCues(-1.f);	// QA sight: the post lamps for the state now
+}
+
+void ABeamWatcher::UpdateWorldCues(float DeltaSeconds)
+{
+	Super::UpdateWorldCues(DeltaSeconds);
+
+	// Red while live; green while blinded or masked (the crew has it); dim while it drops or before it is live.
+	const bool bThere = HasArrived() && !IsHidden();
+	const bool bDark = DarkSecondsLeft > 0.f;
+	FLinearColor Glow = LampOffColour;
+	uint8 Stencil = TakeStyle::StencilRed;
+	FLinearColor LightColour = PostLightLiveColour;
+	float Candelas = 0.f;
+	if (IsLive())
+	{
+		Glow = LampLiveColour;
+		Candelas = PostLightCandelas;
+	}
+	else if (bDark)
+	{
+		Glow = LampDarkColour;
+		Stencil = TakeStyle::StencilWhite;
+		LightColour = PostLightDarkColour;
+		Candelas = PostLightCandelas * 0.5f;
+	}
+	if (!bThere)
+	{
+		Candelas = 0.f;
+	}
+	for (UStaticMeshComponent* Lamp : { LampA.Get(), LampB.Get() })
+	{
+		if (Lamp)
+		{
+			Lamp->SetVisibility(bThere);
+			FTakeShapes::SetLamp(Lamp, Glow, Stencil);
+		}
+	}
+	for (UPointLightComponent* PostLight : { PostLightA.Get(), PostLightB.Get() })
+	{
+		if (PostLight && !FMath::IsNearlyEqual(PostLight->AttenuationRadius, PostLightRadius, 1.f))
+		{
+			PostLight->SetAttenuationRadius(FMath::Max(PostLightRadius, 10.f));
+		}
+		FTakeShapes::SetCueLight(PostLight, Candelas, LightColour, PostLightHaze);
+	}
 }
 
 void ABeamWatcher::SyncState()
@@ -123,7 +180,29 @@ void ABeamWatcher::LayoutBeam()
 	FramePivot->SetRelativeLocation(Middle);
 	FrameMesh->SetRelativeLocation(FVector::ZeroVector);
 	FrameMesh->SetRelativeRotation(FRotator(0.f, Yaw, 0.f));
-	FrameMesh->SetRelativeScale3D(FVector(Length / 100.f, BeamThickness / 100.f, BeamThickness / 100.f));
+	// QA sight: a thin glint with the drawn overlays off (the touch test is the segment, not this mesh).
+	const float Thick = DrawsSightOverlays(this) ? BeamThickness : FMath::Max(GlintThickness, 0.2f);
+	FrameMesh->SetRelativeScale3D(FVector(Length / 100.f, Thick / 100.f, Thick / 100.f));
+
+	// QA sight: the lamps and lights at beam height on each post.
+	const FVector EndA(0.f, 0.f, BeamHeight);
+	const FVector EndBLocal = EndB + FVector(0.f, 0.f, BeamHeight);
+	if (LampA)
+	{
+		LampA->SetRelativeLocation(EndA);
+	}
+	if (LampB)
+	{
+		LampB->SetRelativeLocation(EndBLocal);
+	}
+	if (PostLightA)
+	{
+		PostLightA->SetRelativeLocation(EndA);
+	}
+	if (PostLightB)
+	{
+		PostLightB->SetRelativeLocation(EndBLocal);
+	}
 
 	ClickVolume->SetRelativeLocation(Middle);
 	ClickVolume->SetRelativeRotation(FRotator(0.f, Yaw, 0.f));

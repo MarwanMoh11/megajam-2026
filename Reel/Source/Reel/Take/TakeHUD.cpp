@@ -30,7 +30,7 @@ ATakeHUD::ATakeHUD()
 		TEXT("3|VEX|props and sound, backstage") };
 	TitleRules = {
 		TEXT("Get JULIAN in, lift the keycard, take the reel and get him out."),
-		TEXT("[danger] Red sees him and burns his composure.   [julian] Gold is his: his marks, the reel, the way out.") };
+		TEXT("[danger] Watched, he loses his nerve: the picture drains and closes in.   [julian] Gold is his: his marks, the reel, the way out.") };
 	CreditLines = {
 		TEXT("PRINT IT"),
 		TEXT("A heist shot in one take."),
@@ -56,7 +56,8 @@ void ATakeHUD::DrawHUD()
 		return;
 	}
 
-	const FTakeFilmFrame FilmFrame = MakeFilmFrame(*Dir, Canvas->ClipX, Canvas->ClipY);
+	FTakeFilmFrame FilmFrame = MakeFilmFrame(*Dir, Canvas->ClipX, Canvas->ClipY);
+	UpdateStress(*Dir, FilmFrame);	// QA hud: composure as the picture (and the grade's Stress scalar)
 	const float BarH = Film.DrawsLetterbox(FilmFrame) ? Film.BarHeight(FilmFrame)
 		: TakeStyle::LetterboxBar(Canvas->ClipX, Canvas->ClipY, Film.LetterboxAspect);
 	Kit.Begin(Canvas, FilmFrame.RealTime, BarH);
@@ -71,6 +72,11 @@ void ATakeHUD::DrawHUD()
 		// The look is off, or the screen is wider than 2.39:1: the bars are still the HUD's lanes (MinBar tall).
 		Kit.Rect(0.f, 0.f, Kit.W, Kit.Bar, Ink);
 		Kit.Rect(0.f, Kit.PicBottom(), Kit.W, Kit.Bar, Ink);
+	}
+	// QA hud: composure is the picture: over the picture, under every word, on every camera, film look or not.
+	if (bComposureInPicture && Dir->Phase != ETakePhase::Title && Dir->Phase != ETakePhase::Printed)
+	{
+		Film.DrawStress(*Canvas, FilmFrame, Kit.PicY, Kit.PicH);
 	}
 
 	if (Dir->Phase == ETakePhase::Title)
@@ -109,6 +115,7 @@ void ATakeHUD::TrackState(const ATakeDirector& Dir)
 	if (Dir.Phase != LastPhase)
 	{
 		using namespace TakeStyle;
+		const ETakePhase Before = LastPhase;
 		LastPhase = Dir.Phase;
 		PhaseSince = Kit.Now;
 		if (Dir.Phase != ETakePhase::Rolling && Dir.Phase != ETakePhase::Cleared)
@@ -117,6 +124,13 @@ void ATakeHUD::TrackState(const ATakeDirector& Dir)
 			Subtitles.Reset();
 			Stamps.Reset();
 			GoalFlash = FTakeShown();
+			KeyPrompt = FTakeShown();
+		}
+		// QA hud: the take rolls again (Action!, or back from a blooper): the goal comes back for a moment.
+		if (Dir.Phase == ETakePhase::Rolling)
+		{
+			GoalSince = Kit.Now;
+			bGoalBrief = Before == ETakePhase::BlooperFreeze;
 		}
 	}
 	const ETakeCamera Look = Dir.GetLookCamera();
@@ -125,12 +139,26 @@ void ATakeHUD::TrackState(const ATakeDirector& Dir)
 		using namespace TakeStyle;
 		LastLook = Look;
 		LookSince = Kit.Now;
+		// QA hud: the lesson was learnt: the player cut to the camera it taught (the key is the camera's tab number).
+		if (TeachKey >= 1 && TeachKey <= 3 && static_cast<int32>(Look) + 1 == TeachKey)
+		{
+			using namespace TakeStyle;
+			++TaughtCount[TeachKey];
+			TeachKey = 0;
+		}
 	}
-	if (Dir.Objective != LastGoal)
+	// QA hud: a goal is new when its words change (a countdown's digits ticking inside it are the same goal).
+	const FString GoalWords = GoalKey(Dir.Objective);
+	if (GoalWords != LastGoal)
 	{
 		using namespace TakeStyle;
-		LastGoal = Dir.Objective;
+		LastGoal = GoalWords;
 		GoalSince = Kit.Now;
+		bGoalBrief = false;
+		// A goal that leads with a cut key is a lesson until the player has made that cut KeyTeachTimes times on cue.
+		const int32 CutKey = LeadingCutKey(Dir.Objective);
+		bTeaching = CutKey >= 1 && CutKey <= 3 && TaughtCount[CutKey] < KeyTeachTimes;
+		TeachKey = bTeaching ? CutKey : 0;
 	}
 	const float Composure = Dir.Composure ? Dir.Composure->GetComposure() : 100.f;
 	if (LastComposure >= 0.f && Composure - LastComposure >= RefillMinJump)
@@ -181,6 +209,15 @@ void ATakeHUD::ReadFlashes(const ATakeDirector& Dir)
 			Stamps.Add(Shown);
 			break;
 		default:
+			// QA hud: in the minimal HUD a note that leads with a keycap ("[2] Cut to MAYA") is a prompt: the bottom
+			// lane, for the seconds it was flashed for, on real time (so a slowed world cannot stretch or cut it).
+			if (bMinimalHud && Flash.Kind == ETakeFlashKind::Note && Flash.Text.TrimStart().StartsWith(TEXT("[")))
+			{
+				using namespace TakeStyle;
+				Shown.Hold = FMath::Max(Flash.Seconds, FlashHoldSeconds);
+				KeyPrompt = Shown;
+				break;
+			}
 			GoalFlash = Shown;	// a newer flash replaces an older one
 			break;
 		}
@@ -240,7 +277,15 @@ FString ATakeHUD::NoFinalStop(const FString& In)
 bool ATakeHUD::IsRefusalShowing() const
 {
 	using namespace TakeStyle;
-	return !Refusal.Text.IsEmpty() && Age(Refusal.Since) < RefusalHoldSeconds;
+	return !Refusal.Text.IsEmpty() && Age(Refusal.Since) < RefusalHold();
+}
+
+float ATakeHUD::RefusalHold() const
+{
+	using namespace TakeStyle;
+	// QA hud: in the minimal HUD, Enter's answer (the controls) is the only legend in play, so it holds longer.
+	return bMinimalHud && Refusal.Text.StartsWith(TEXT("[WASD]")) ? FMath::Max(RefusalHoldSeconds, ControlsAnswerSeconds)
+		: RefusalHoldSeconds;
 }
 
 FString ATakeHUD::SceneName(int32 Scene) const
@@ -254,13 +299,26 @@ FString ATakeHUD::SceneName(int32 Scene) const
 void ATakeHUD::DrawBars(const ATakeDirector& Dir)
 {
 	using namespace TakeStyle;
-	DrawSlateStrip(Dir);
-	DrawKeyTabs(Dir);
+	// QA hud: the minimal HUD keeps the goal line, the prompt lane and the alarm's seconds; each switch brings one back.
+	if (Shows(bShowSlateStrip))
+	{
+		DrawSlateStrip(Dir);
+	}
+	if (Shows(bShowKeyTabs))
+	{
+		DrawKeyTabs(Dir);
+	}
 	DrawClock(Dir);
 	DrawGoal(Dir);
-	DrawB1(Dir, false);
-	DrawComposure(Dir);
-	if (Dir.Phase == ETakePhase::Rolling || Dir.Phase == ETakePhase::Cleared)
+	if (!bMinimalHud || Dir.Phase != ETakePhase::BlooperFreeze)
+	{
+		DrawB1(Dir, false);	// QA hud: on a blooper the lane is drawn once, with the slate (never twice over itself)
+	}
+	if (Shows(bShowComposureLine))
+	{
+		DrawComposure(Dir);
+	}
+	if (Shows(bShowControlsRow) && (Dir.Phase == ETakePhase::Rolling || Dir.Phase == ETakePhase::Cleared))
 	{
 		using namespace TakeStyle;
 		// The only controls legend in play: paper while the opening slate runs (a cold start) and when Enter asks.
@@ -390,6 +448,17 @@ void ATakeHUD::DrawClock(const ATakeDirector& Dir)
 	const float Y = Kit.RowT1();
 	const float Right = Kit.W - Kit.Px(Margin);
 
+	if (Dir.bAlarm && Dir.bAlarmLive && !Shows(bShowFullAlarm))
+	{
+		using namespace TakeStyle;
+		DrawAlarmNumber(Dir);	// QA hud: the one number the player needs
+		return;
+	}
+	if (!(Dir.bAlarm && Dir.bAlarmLive) && !Shows(bShowRunningTime))
+	{
+		using namespace TakeStyle;
+		return;	// QA hud: no running time in the minimal HUD
+	}
 	if (Dir.bAlarm && Dir.bAlarmLive)
 	{
 		using namespace TakeStyle;
@@ -427,13 +496,25 @@ void ATakeHUD::DrawClock(const ATakeDirector& Dir)
 void ATakeHUD::DrawGoal(const ATakeDirector& Dir)
 {
 	using namespace TakeStyle;
-	const float Y = Kit.RowT2();
+	const float Y = GoalRow();
 	const float MaxW = Kit.Px(GoalMaxW);
 
 	// A flash takes the goal line's place for FlashHoldSeconds: a square for arrivals, a T for his wins.
 	if (!GoalFlash.Text.IsEmpty() && Age(GoalFlash.Since) < FlashHoldSeconds)
 	{
 		using namespace TakeStyle;
+		if (bMinimalHud)
+		{
+			using namespace TakeStyle;
+			// QA hud: no glyphs; the words carry the meaning in colour (gold his, red danger), and fade out.
+			const FLinearColor Words = GoalFlash.Kind == ETakeFlashKind::Julian ? TakeStyle::Julian
+				: (GoalFlash.Kind == ETakeFlashKind::Danger ? Danger : Paper);
+			Kit.Fade = FMath::Min(FMath::Clamp(Age(GoalFlash.Since) / GoalFadeInSeconds, 0.f, 1.f),
+				FadeOut(Age(GoalFlash.Since), FlashHoldSeconds, GoalFadeSeconds));
+			Kit.Rich(EType::Goal, NoFinalStop(GoalFlash.Text), Kit.CX(), Y, MaxW, 1, FTakeInk::Of(Words, Words));
+			Kit.Fade = 1.f;
+			return;
+		}
 		FString Line = GoalFlash.Text;
 		if (GoalFlash.Kind == ETakeFlashKind::Danger)
 		{
@@ -451,6 +532,14 @@ void ATakeHUD::DrawGoal(const ATakeDirector& Dir)
 		using namespace TakeStyle;
 		return;
 	}
+	// QA hud: the minimal goal line appears when the goal changes, holds, and fades; a lesson sits in the prompt lane.
+	const float Alpha = bMinimalHud ? GoalAlpha(Dir) : 1.f;
+	if (Alpha <= 0.f || IsKeyTeaching())
+	{
+		using namespace TakeStyle;
+		return;
+	}
+	Kit.Fade = Alpha;
 	float LastY = Y;
 	const float Widest = Kit.Rich(EType::Goal, NoFinalStop(Dir.Objective), Kit.CX(), Y, MaxW, 2, FTakeInk::Of(Paper, Paper), &LastY);
 
@@ -458,11 +547,212 @@ void ATakeHUD::DrawGoal(const ATakeDirector& Dir)
 	const float Grow = FMath::Clamp(static_cast<float>(FilmFrame(Age(GoalSince)) + 1) / GoalRuleFrames, 0.f, 1.f);
 	const float RuleW = FMath::RoundToFloat(Widest * Grow);
 	Kit.Rect(FMath::RoundToFloat(Kit.CX() - RuleW * 0.5f), LastY + Kit.Px(GoalRuleUnder), RuleW, Kit.Ln(GoalRule), Bone);
+	Kit.Fade = 1.f;
+}
+
+// --- QA hud: the minimal HUD -----------------------------------------------------------------------------------------------
+
+float ATakeHUD::GoalRow() const
+{
+	using namespace TakeStyle;
+	return bMinimalHud ? FMath::RoundToFloat(Kit.Bar * GoalRowInBar) : Kit.RowT2();
+}
+
+float ATakeHUD::PromptRow() const
+{
+	using namespace TakeStyle;
+	return bMinimalHud ? FMath::RoundToFloat(Kit.PicBottom() + Kit.Bar * PromptRowInBar) : Kit.RowB1();
+}
+
+float ATakeHUD::FadeOut(float InAge, float Hold, float FadeSeconds)
+{
+	using namespace TakeStyle;
+	// 1 until FadeSeconds before Hold, then linear to 0 at Hold.
+	return FMath::Clamp((Hold - InAge) / FMath::Max(0.01f, FadeSeconds), 0.f, 1.f);
+}
+
+float ATakeHUD::GoalAlpha(const ATakeDirector& Dir) const
+{
+	using namespace TakeStyle;
+	// The cleared scene's "[R] New take" and the blooper's freeze: the first holds, the second shows nothing.
+	if (Dir.Phase == ETakePhase::Cleared || bShowGoalAlways)
+	{
+		using namespace TakeStyle;
+		return 1.f;
+	}
+	if (Dir.Phase != ETakePhase::Rolling)
+	{
+		using namespace TakeStyle;
+		return 0.f;
+	}
+	const float Since = Age(GoalSince);
+	const float Hold = bGoalBrief ? GoalAfterBlooperSeconds : GoalHoldSeconds;
+	const float In = FMath::Clamp(Since / FMath::Max(0.01f, GoalFadeInSeconds), 0.f, 1.f);
+	return FMath::Min(In, FadeOut(Since, Hold + GoalFadeSeconds, GoalFadeSeconds));
+}
+
+FString ATakeHUD::GoalKey(const FString& In)
+{
+	using namespace TakeStyle;
+	FString Out;
+	Out.Reserve(In.Len());
+	for (const TCHAR Ch : In)
+	{
+		using namespace TakeStyle;
+		if (!FChar::IsDigit(Ch) && Ch != TEXT('.'))
+		{
+			Out.AppendChar(Ch);
+		}
+	}
+	return Out;
+}
+
+int32 ATakeHUD::LeadingCutKey(const FString& In)
+{
+	using namespace TakeStyle;
+	const FString Trimmed = In.TrimStart();
+	if (Trimmed.Len() >= 3 && Trimmed[0] == TEXT('[') && Trimmed[2] == TEXT(']') && Trimmed[1] >= TEXT('1')
+		&& Trimmed[1] <= TEXT('3'))
+	{
+		using namespace TakeStyle;
+		return static_cast<int32>(Trimmed[1] - TEXT('0'));
+	}
+	return 0;
+}
+
+void ATakeHUD::DrawAlarmNumber(const ATakeDirector& Dir)
+{
+	using namespace TakeStyle;
+	const UBarClockComponent* Clock = Dir.Clock;
+	const int32 Count = FMath::Max(1, Dir.FinaleBars);
+	const float Total = Clock ? FMath::Max(0.1f, static_cast<float>(Count) * Clock->GetSecondsPerBar()) : 1000.f;
+	const float SecondsLeft = FMath::Clamp(Dir.GetAlarmSecondsLeft(), 0.f, Total);
+	const bool bLast = SecondsLeft <= 2.f;
+	const FString Numeral = bLast ? FString::Printf(TEXT("%.1f"), SecondsLeft) : FString::FromInt(FMath::CeilToInt(SecondsLeft));
+	// The seconds alone, top right in the bar; red for the last two, with tenths.
+	Kit.Text(EType::Title, Numeral, Kit.W - Kit.Px(Margin), FMath::RoundToFloat(Kit.Bar * 0.5f), bLast ? Danger : Paper,
+		ETakeAlign::Right);
+}
+
+void ATakeHUD::DrawUsePrompt(const FTakeUseTarget& Use, float Y)
+{
+	using namespace TakeStyle;
+	// Ready: paper; in reach but not ready: bone with silver keycaps. The device's uses as pips after the words.
+	FTakeInk Ink = Use.bCanFire ? FTakeInk::Of(Paper, Paper) : FTakeInk::Of(Bone, Silver);
+	Ink.bSmallKeys = true;
+	const FString Words = NoFinalStop(Use.Prompt);
+	const float MaxW = Kit.Px(UseMaxW);
+	const ADevice* Device = Use.Device.Get();
+	const int32 Uses = Device ? Device->Uses : 0;
+	const bool bPips = Uses > 0 && Device->UsesLeft > 0;
+	const float PipStep = Kit.Px(PipW) + Kit.Px(PipGap);
+	const float PipsW = bPips ? Kit.Px(KeyTextGap) * 2.f + PipStep * static_cast<float>(Uses) - Kit.Px(PipGap) : 0.f;
+	const float WordsW = FMath::Min(Kit.RichWidth(EType::Goal, Words, Ink), MaxW);
+	const float Left = FMath::RoundToFloat(Kit.CX() - (WordsW + PipsW) * 0.5f);
+	Kit.Rich(EType::Goal, Words, Left + WordsW * 0.5f, Y, MaxW, 1, Ink);
+	if (bPips)
+	{
+		using namespace TakeStyle;
+		float PX = Kit.Snap(Left + WordsW + Kit.Px(KeyTextGap) * 2.f);
+		for (int32 Index = 0; Index < Uses; ++Index)
+		{
+			using namespace TakeStyle;
+			Kit.Pip(PX, Y, Index < Device->UsesLeft, Use.bCanFire ? Paper : Bone, Silver);
+			PX += PipStep;
+		}
+	}
+}
+
+void ATakeHUD::DrawPromptLane(const ATakeDirector& Dir, bool bRefusalsOnly)
+{
+	using namespace TakeStyle;
+	// One small prompt at a time near the bottom centre, only while it applies. In order: why a press was refused (or
+	// Enter's answer, the controls), a flashed key prompt, then by camera: Julian's mark action, else a cut key being
+	// taught; the crew: a cut key being taught, else the Use prompt (with the device's uses as pips).
+	const float Y = PromptRow();
+	const float MaxW = Kit.Px(UseMaxW);
+	if (IsRefusalShowing())
+	{
+		using namespace TakeStyle;
+		FTakeInk Ink = FTakeInk::Of(Bone, Bone);
+		Ink.bSmallKeys = true;
+		Kit.Fade = FadeOut(Age(Refusal.Since), RefusalHold(), PromptFadeSeconds);
+		Kit.Rich(EType::Goal, NoFinalStop(Refusal.Text), Kit.CX(), Y, IsControlsAnswer() ? Kit.W - 2.f * Kit.Px(Margin) : MaxW,
+			1, Ink);
+		Kit.Fade = 1.f;
+		return;
+	}
+	if (bRefusalsOnly || Dir.Phase != ETakePhase::Rolling)
+	{
+		using namespace TakeStyle;
+		return;
+	}
+	const ATakePlayerController* TakePC = Cast<ATakePlayerController>(GetOwningPlayerController());
+	if (TakePC && TakePC->IsInFlight())
+	{
+		using namespace TakeStyle;
+		return;
+	}
+	FTakeInk Lesson = FTakeInk::Of(Paper, Paper);
+	Lesson.bSmallKeys = true;
+	if (!KeyPrompt.Text.IsEmpty() && Age(KeyPrompt.Since) < KeyPrompt.Hold)
+	{
+		using namespace TakeStyle;
+		Kit.Fade = FadeOut(Age(KeyPrompt.Since), KeyPrompt.Hold, PromptFadeSeconds);
+		Kit.Rich(EType::Goal, NoFinalStop(KeyPrompt.Text), Kit.CX(), Y, MaxW, 1, Lesson);
+		Kit.Fade = 1.f;
+		return;
+	}
+	const bool bLesson = IsKeyTeaching() && !Dir.Objective.IsEmpty();
+
+	if (Dir.CurrentCamera == ETakeCamera::A)
+	{
+		using namespace TakeStyle;
+		const AMark* ActionMark = Dir.Julian ? Dir.Julian->GetStandingMark() : nullptr;
+		if (ActionMark && ActionMark->IsActionMark() && !ActionMark->IsActionDone())
+		{
+			using namespace TakeStyle;
+			Kit.Text(EType::Goal, ActionMark->ActionVerb, Kit.CX(), Y, Paper, ETakeAlign::Centre);
+			const float BW = Kit.Px(ActionBarW);
+			const float BH = Kit.Ln(ActionBarH);
+			const float BX = FMath::RoundToFloat(Kit.CX() - BW * 0.5f);
+			const float BY = Y + Kit.Px(ActionBarUnder);
+			Kit.Rect(BX, BY + BH * 0.5f, BW, Kit.Ln(LineHair), Silver);
+			Kit.Rect(BX, BY, FMath::RoundToFloat(BW * FMath::Clamp(ActionMark->GetActionAlpha(), 0.f, 1.f)), BH,
+				TakeStyle::Julian);
+			return;
+		}
+		if (bLesson)
+		{
+			using namespace TakeStyle;
+			Kit.Rich(EType::Goal, NoFinalStop(Dir.Objective), Kit.CX(), Y, MaxW, 1, Lesson);
+		}
+		return;
+	}
+
+	// The crew: a lesson always names another camera ("[1] Cut back to JULIAN"), so it wins over this one's device.
+	if (bLesson)
+	{
+		using namespace TakeStyle;
+		Kit.Rich(EType::Goal, NoFinalStop(Dir.Objective), Kit.CX(), Y, MaxW, 1, Lesson);
+		return;
+	}
+	if (!Dir.CurrentUse.Prompt.IsEmpty())
+	{
+		using namespace TakeStyle;
+		DrawUsePrompt(Dir.CurrentUse, Y);
+	}
 }
 
 void ATakeHUD::DrawB1(const ATakeDirector& Dir, bool bRefusalsOnly)
 {
 	using namespace TakeStyle;
+	if (bMinimalHud)
+	{
+		using namespace TakeStyle;
+		DrawPromptLane(Dir, bRefusalsOnly);	// QA hud
+		return;
+	}
 	const float Y = Kit.RowB1();
 	const float MaxW = Kit.Px(UseMaxW);
 	if (IsRefusalShowing() && !IsControlsAnswer())

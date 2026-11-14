@@ -97,4 +97,7 @@ protected:
 
 	/** Puts every panel Alpha along its drop (0 rolled up .. 1 on the floor), this frame. */
 	void SetCurtainDrop(float Alpha);
+
+	/** QA devices: a crank (if one is set) turns while the curtain falls. */
+	virtual bool IsHandleTurning() const override { return bDropping; }
 };

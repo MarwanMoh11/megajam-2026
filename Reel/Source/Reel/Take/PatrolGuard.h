@@ -7,6 +7,7 @@
 #include "PatrolGuard.generated.h"
 
 class APatrolPoint;
+class USpotLightComponent;
 
 /** Where the guard's lure is. */
 enum class EGuardLurePhase : uint8
@@ -122,6 +123,86 @@ public:
 	/** A cap block on the front of the head so his facing reads from above. */
 	UPROPERTY(VisibleAnywhere, Category = "Take")
 	TObjectPtr<UStaticMeshComponent> Cap;
+
+	// --- QA sight: his torch (Marwan's note 5: no vision cone) -------------------------------------------------------
+	// The soft pool his torch throws ahead of him is what he sees; when he holds Julian it tightens and warms onto
+	// him. Look only: HoldsJulian is the same wedge as before (FrameRange, FrameHalfAngle).
+
+	/** Off: no torch (a watcher whose sight is told some other way). */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues")
+	bool bSightLight = true;
+
+	/** The torch at rest, candelas (a lit floor reads 95-130 at about 30-40 lux). */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "0"))
+	float SightLightCandelas = 900.f;
+
+	/** The torch's colour at rest: warm tungsten. */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues")
+	FLinearColor SightLightColour = FLinearColor(1.f, 0.84f, 0.62f);
+
+	/** It aims at the floor this far along FrameRange (0..1). */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "0.1", ClampMax = "1"))
+	float SightLightAimFraction = 0.5f;
+
+	/** The pool's half-angle as a share of FrameHalfAngle. */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "0.2", ClampMax = "2"))
+	float SightLightConeScale = 1.f;
+
+	/** The beam's glow in the haze (0 = none). */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "0"))
+	float SightLightHaze = 0.35f;
+
+	/** The torch's height under his eye, cm, and how far in front of him it is held. */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues")
+	FVector SightLightOffset = FVector(25.f, 0.f, -15.f);
+
+	/** While he holds Julian: candelas, colour (warmer) and half-angle of the tightened pool on him. */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "0"))
+	float HoldLightCandelas = 2400.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Cues")
+	FLinearColor HoldLightColour = FLinearColor(1.f, 0.55f, 0.32f);
+
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "2", ClampMax = "45"))
+	float HoldConeDegrees = 9.f;
+
+	/** How fast the pool swings onto him and back, per second (0 = snaps). */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "0"))
+	float HoldEaseRate = 12.f;
+
+	/** How fast the torch comes up on his arrival and dims when he is blinded, per second (0 = snaps). */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "0"))
+	float LightEaseRate = 8.f;
+
+	/** Blinded: the torch drops to this share (he is dazzled; it is not watching). */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "0", ClampMax = "1"))
+	float BlindedLightScale = 0.1f;
+
+	/** The alarm: the torch goes this colour and this much brighter. */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues")
+	FLinearColor AlarmLightColour = FLinearColor(0.86f, 0.93f, 1.f);
+
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "0"))
+	float AlarmLightScale = 1.4f;
+
+	/** On the frame he starts holding Julian, his cast body plays the "LookAt" gesture (ACastMember::PlayGesture). */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues")
+	bool bLookAtGesture = true;
+
+	/** The torch (a spot light, no shadows). */
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<USpotLightComponent> SightLight;
+
+protected:
+	/** QA sight: the base (planning lift), then the torch: rest pool, hold, blinded, alarm. */
+	virtual void UpdateWorldCues(float DeltaSeconds) override;
+
+	/** The torch's hold (0 at rest, 1 on Julian) and level (0 off, 1 on), now. */
+	float HoldAlpha = 0.f;
+	float LightAlpha = 0.f;
+
+	/** He held Julian at the last UpdateWorldCues (the LookAt gesture plays on the change). */
+	bool bCueWasHolding = false;
 
 protected:
 	EGuardLurePhase LurePhase = EGuardLurePhase::None;

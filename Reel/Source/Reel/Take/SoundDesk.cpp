@@ -18,6 +18,10 @@ ASoundDesk::ASoundDesk()
 	FiredFrom = ETakeCamera::C;
 	UseVerb = TEXT("FEEDBACK");
 
+	// QA devices: the meters' amber glow, jumping while the feedback runs; the master fader is the lever.
+	PilotColour = FLinearColor(1.f, 0.62f, 0.22f);
+	PilotRunFlickerHz = 9.f;
+
 	// A desk: a low wide box.
 	if (Body)
 	{
@@ -55,8 +59,8 @@ bool ASoundDesk::Fire()
 	// Lands on this frame, like the follow spot: StepDevices (step 3, same frame) applies the Blind.
 	MarkLanded();
 
-	// The body flashes white from this frame.
-	if (Body)
+	// The body flashes white from this frame (the box only: a model's meters flicker instead, through the pilot).
+	if (Body && BodyIsBox())
 	{
 		BodyMID = FTakeShapes::SetColour(Body, TakeColors::White);
 	}
@@ -75,6 +79,8 @@ bool ASoundDesk::Fire()
 
 void ASoundDesk::StepDevice(float DeltaSeconds)
 {
+	StepLook(DeltaSeconds);	// QA devices: the meters, the fader
+
 	if (!bRunning)
 	{
 		return;
@@ -94,7 +100,7 @@ void ASoundDesk::StepDevice(float DeltaSeconds)
 		return;
 	}
 
-	if (Body)
+	if (Body && BodyIsBox())
 	{
 		BodyMID = FTakeShapes::SetColour(Body, TakeSoundDeskLocal::FlashColour(BodyColour));
 	}

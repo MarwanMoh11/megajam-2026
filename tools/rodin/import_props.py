@@ -11,8 +11,9 @@
 #              save=True on purpose (a retake overwrites, and the Preview engine can crash). The mesh is renamed
 #              SM_<Prop>, gets a single box collision (placed props are NoCollision; device bodies keep a box, as the
 #              cube they replace had) and Nanite where it repeats (NANITE below)
-#   materials  M_Prop (lit): the base texture's luminance remapped between two greys (Dark, Light), so hue is gone and
-#              the value sits in the band §15.9 gives that kind of surface; the normal map kept; one roughness per prop;
+#   materials  M_Prop (lit): the base texture's luminance remapped between two greys (Dark, Light), so the value sits
+#              in the band §15.9 gives that kind of surface, and (QA note 8) the texture's own hue kept at that value
+#              (KeepColour, PropSat; 0 = the grey band as before); the normal map kept; one roughness per prop;
 #              optional emissive on the brightest texels (the chandelier's bulbs). One MI_Prop_<Prop> per prop
 #   place      swaps: the box keeps its collision and goes invisible (component visibility only); a Prop_ actor
 #              (NoCollision, no navigation) fills the box it replaced. Repeats go on one instanced component per prop.
@@ -256,7 +257,18 @@ def import_one(n):
 
 
 # --- 2. materials -----------------------------------------------------------------------------------------------------------
-BASE_HLSL = "float l = dot(C, float3(0.2126, 0.7152, 0.0722)); return lerp(Dark, Light, saturate(l));"
+# --- QA look (note 8, Nov 14): the props keep their own colour. The texture's luminance still lands in the prop's
+# value band (Dark..Light, so the value hierarchy holds), but its hue and saturation come back: KeepColour 0 = the
+# grey band as before, 1 = the texture's colour at the band's value; PropSat scales that colour (the grade mutes it
+# again). Both are M_Prop parameters (per-prop overrides in the editor); TUNGSTEN warms the chandelier's bulbs.
+KEEP_COLOUR, PROP_SAT = 1.0, 0.75
+TUNGSTEN = (0.80, 0.50, 0.24)
+BASE_HLSL = ("float3 lw = float3(0.2126, 0.7152, 0.0722);\n"
+             "float l = dot(C.rgb, lw);\n"
+             "float3 band = lerp(Dark.rgb, Light.rgb, saturate(l));\n"
+             "float3 hue = lerp(float3(1.0, 1.0, 1.0), min(C.rgb / max(l, 0.02), 3.0), PropSat);\n"
+             "return lerp(band, min(hue * dot(band, lw), 1.0), KeepColour);")
+# --- end QA look
 EMIT_HLSL = ("float l = dot(C, float3(0.2126, 0.7152, 0.0722));\n"
              "return Col * Scale * saturate((l - Lo) / max(1.0 - Lo, 0.01));")
 
@@ -317,12 +329,16 @@ def build_master(default_base, default_normal):
     rough = param(m, unreal.MaterialExpressionScalarParameter, "Roughness", -500, 200, 0.6)
     metal = param(m, unreal.MaterialExpressionScalarParameter, "Metallic", -500, 260, 0.0)
     elo = param(m, unreal.MaterialExpressionScalarParameter, "EmitLo", -900, 500, 0.6)
-    ecol = param(m, unreal.MaterialExpressionVectorParameter, "EmitColor", -900, 560, lc(BONE))
+    ecol = param(m, unreal.MaterialExpressionVectorParameter, "EmitColor", -900, 560, lc(TUNGSTEN))   # QA look: was BONE
     esc = param(m, unreal.MaterialExpressionScalarParameter, "EmitScale", -900, 660, 0.0)
-    cb = custom(m, BASE_HLSL, ["C", "Dark", "Light"], -500, -100)
+    cb = custom(m, BASE_HLSL, ["C", "Dark", "Light", "KeepColour", "PropSat"], -500, -100)   # QA look: + 2 inputs
     mel.connect_material_expressions(bt, "RGB", cb, "C")
     mel.connect_material_expressions(dark, "", cb, "Dark")
     mel.connect_material_expressions(light, "", cb, "Light")
+    mel.connect_material_expressions(param(m, unreal.MaterialExpressionScalarParameter, "KeepColour", -900, 160,
+                                           KEEP_COLOUR), "", cb, "KeepColour")   # QA look
+    mel.connect_material_expressions(param(m, unreal.MaterialExpressionScalarParameter, "PropSat", -900, 220,
+                                           PROP_SAT), "", cb, "PropSat")         # QA look
     ce = custom(m, EMIT_HLSL, ["C", "Lo", "Col", "Scale"], -500, 450)
     mel.connect_material_expressions(bt, "RGB", ce, "C")
     mel.connect_material_expressions(elo, "", ce, "Lo")

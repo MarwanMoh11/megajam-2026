@@ -3,10 +3,12 @@
 #include "RedTapeZone.h"
 
 #include "Components/BoxComponent.h"
+#include "Components/RectLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "TakeShapes.h"
 #include "TakeStyle.h"
 #include "TakeTypes.h"
+#include "Watcher.h"
 
 ARedTapeZone::ARedTapeZone()
 {
@@ -25,6 +27,10 @@ ARedTapeZone::ARedTapeZone()
 	TapeSouth = FTakeShapes::CreateShape(this, TEXT("TapeSouth"), ETakeShape::Cube, Root, FVector(-Extent.X, 0.f, 1.f), Flat, FRotator::ZeroRotator, false);
 	TapeEast = FTakeShapes::CreateShape(this, TEXT("TapeEast"), ETakeShape::Cube, Root, FVector(0.f, Extent.Y, 1.f), Flat, FRotator::ZeroRotator, false);
 	TapeWest = FTakeShapes::CreateShape(this, TEXT("TapeWest"), ETakeShape::Cube, Root, FVector(0.f, -Extent.Y, 1.f), Flat, FRotator::ZeroRotator, false);
+
+	// QA sight: the cool light over the area, pointing down (LayoutTape sizes and lights it).
+	CoolLight = FTakeShapes::CreateCueRect(this, TEXT("CoolLight"), Root, FVector(0.f, 0.f, CoolLightHeight),
+		FRotator(-90.f, 0.f, 0.f), 800.f);
 }
 
 void ARedTapeZone::OnConstruction(const FTransform& Transform)
@@ -53,11 +59,15 @@ void ARedTapeZone::LayoutTape()
 		Area->SetBoxExtent(FVector(HalfX, HalfY, Height));
 	}
 
+	// QA sight: with the drawn overlays off the strips are a thin lit brass threshold (or nothing), not hatched tape.
+	const bool bDrawn = AWatcher::DrawsSightOverlays(this);
+	const float StripWidth = bDrawn ? Width : FMath::Max(1.f, ThresholdWidth);
+
 	// Cube mesh is 100 cm: scale = size / 100. North/South run along Y at +-X; East/West along X at +-Y.
 	// The N/S strips are a tape width longer so the corners close.
 	const float Thick = 0.01f;
-	const FVector AlongY(Width / 100.f, (2.f * HalfY + Width) / 100.f, Thick);
-	const FVector AlongX((2.f * HalfX) / 100.f, Width / 100.f, Thick);
+	const FVector AlongY(StripWidth / 100.f, (2.f * HalfY + StripWidth) / 100.f, Thick);
+	const FVector AlongX((2.f * HalfX) / 100.f, StripWidth / 100.f, Thick);
 
 	struct FStrip
 	{
@@ -79,9 +89,34 @@ void ARedTapeZone::LayoutTape()
 		}
 		Strip.Comp->SetRelativeLocation(Strip.Location);
 		Strip.Comp->SetRelativeScale3D(Strip.Scale);
-		FTakeShapes::SetSignal(Strip.Comp, TakeStyle::StencilRed);
-		FTakeShapes::SetColour(Strip.Comp, TakeColors::Red);
-		FTakeShapes::SetPattern(Strip.Comp, TakeStyle::PatternHatch);	// §15.8: hatched at 45 degrees
+		if (bDrawn)
+		{
+			Strip.Comp->SetHiddenInGame(false);
+			FTakeShapes::SetSignal(Strip.Comp, TakeStyle::StencilRed);
+			FTakeShapes::SetColour(Strip.Comp, TakeColors::Red);
+			FTakeShapes::SetPattern(Strip.Comp, TakeStyle::PatternHatch);	// §15.8: hatched at 45 degrees
+		}
+		else
+		{
+			Strip.Comp->SetHiddenInGame(!bThresholdStrips);
+			FTakeShapes::SetPlain(Strip.Comp);
+			FTakeShapes::SetColour(Strip.Comp, ThresholdColour);
+		}
+	}
+
+	// QA sight: the cool wash over the area, the area's size, its barn doors keeping it there. On in both modes
+	// unless bCoolLight is off (with the drawn overlays it is under the tape; it costs one unshadowed light).
+	if (CoolLight)
+	{
+		const float LightHeight = FMath::Max(CoolLightHeight, 50.f);
+		CoolLight->SetRelativeLocation(FVector(0.f, 0.f, LightHeight));
+		CoolLight->SetRelativeRotation(FRotator(-90.f, 0.f, 0.f));	// +X down: source width along Y, height along X
+		CoolLight->SetSourceWidth(2.f * HalfY);
+		CoolLight->SetSourceHeight(2.f * HalfX);
+		CoolLight->SetBarnDoorAngle(FMath::Clamp(CoolLightBarnDoorAngle, 0.f, 90.f));
+		CoolLight->SetBarnDoorLength(FMath::Max(CoolLightBarnDoorLength, 0.f));
+		CoolLight->SetAttenuationRadius(FMath::Sqrt(HalfX * HalfX + HalfY * HalfY + LightHeight * LightHeight) * 1.2f);
+		FTakeShapes::SetCueLight(CoolLight, bCoolLight ? CoolLightCandelas : 0.f, CoolLightColour);
 	}
 }
 

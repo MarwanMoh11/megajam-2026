@@ -73,6 +73,12 @@ void ATakeHUD::DrawReticle(const ATakeDirector& Dir)
 		using namespace TakeStyle;
 		return;
 	}
+	// QA hud: the minimal HUD shows the reticle only while a device is in reach (the player is aiming).
+	if (!Shows(bShowReticleAlways) && Dir.CurrentUse.Prompt.IsEmpty())
+	{
+		using namespace TakeStyle;
+		return;
+	}
 	const bool bUseUp = Dir.CurrentUse.bCanFire && !Dir.CurrentUse.Prompt.IsEmpty();
 	const FLinearColor C = bUseUp ? TakeStyle::Julian : FTakeHudKit::A(Paper, ReticleAlpha);
 	const float CX = Kit.CX();
@@ -100,6 +106,12 @@ void ATakeHUD::DrawLabels(const ATakeDirector& Dir)
 	const ETakeCamera Look = Dir.GetLookCamera();
 	const bool bFilmCam = Look == ETakeCamera::A;
 	const bool bTagsOnly = bFilmCam && !bLabelsOnFilmCamera;	// Julian's camera: countdown tags only
+	// QA hud: no tape labels or countdown tags in the minimal HUD unless their switch brings them back.
+	if (bTagsOnly ? !Shows(bShowCountdownTags) : !Shows(bShowWorldLabels))
+	{
+		using namespace TakeStyle;
+		return;
+	}
 	const float Clear = Kit.Px(LabelBarClear);
 
 	auto OnPicture = [this, Clear](const FVector& P) -> TOptional<FVector2D>

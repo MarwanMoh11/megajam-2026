@@ -2,14 +2,18 @@
 
 #include "Mark.h"
 
+#include "Components/SpotLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "TakeShapes.h"
 #include "TakeStyle.h"
 #include "TakeTypes.h"
+#include "Watcher.h"
 
 AMark::AMark()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	// QA sight: it ticks only to ease its pool of light (ApplyPool).
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bStartWithTickEnabled = true;
 
 	Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 	RootComponent = Root;
@@ -23,6 +27,85 @@ AMark::AMark()
 	CrossA = FTakeShapes::CreateShape(this, TEXT("CrossA"), ETakeShape::Cube, Root, FVector(22.f, 0.f, 3.f), FVector(0.14f, 0.8f, 0.02f), FRotator::ZeroRotator, false);
 	CrossB = FTakeShapes::CreateShape(this, TEXT("CrossB"), ETakeShape::Cube, Root, FVector(-12.f, 0.f, 3.f), FVector(0.56f, 0.14f, 0.02f), FRotator::ZeroRotator, false);
 	Disc->SetVisibility(false);
+
+	// QA sight: the warm pool from above (off until ApplyPool lights it).
+	PoolLight = FTakeShapes::CreateCueSpot(this, TEXT("PoolLight"), Root, FVector(0.f, 0.f, PoolHeight),
+		FRotator(-90.f, 0.f, 0.f), PoolHeight * 1.6f);
+}
+
+void AMark::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	ApplyPool(DeltaSeconds);
+}
+
+void AMark::GetPoolTarget(float& OutCandelas, float& OutRadius, FLinearColor& OutColour) const
+{
+	OutCandelas = PoolCandelas;
+	OutRadius = PoolRadius;
+	OutColour = PoolColour;
+	if (!bMarkLight || !bAppeared || IsHidden() || AWatcher::DrawsSightOverlays(this))
+	{
+		OutCandelas = 0.f;	// the drawn plate says it instead, or the mark is not there yet
+		return;
+	}
+	const bool bRunning = IsActionMark() && !bActionDone && ActionProgress > 0.f;
+	if (IsActionMark() && bActionDone)
+	{
+		OutCandelas = PoolCandelas * FMath::Clamp(DoneScale, 0.f, 1.f);
+	}
+	else if (bRunning)
+	{
+		// Warms and brightens with the action, and draws in a little more on him.
+		const float A = GetActionAlpha();
+		OutCandelas = FMath::Lerp(OccupiedCandelas, ActionCandelas, A);
+		OutRadius = FMath::Lerp(OccupiedRadius, OccupiedRadius * 0.85f, A);
+		OutColour = FMath::Lerp(OccupiedColour, ActionColour, A);
+	}
+	else if (bIsOccupied)
+	{
+		OutCandelas = OccupiedCandelas;
+		OutRadius = OccupiedRadius;
+		OutColour = OccupiedColour;
+	}
+}
+
+void AMark::ApplyPool(float DeltaSeconds)
+{
+	if (!PoolLight)
+	{
+		return;
+	}
+	float Candelas = 0.f;
+	float Radius = PoolRadius;
+	FLinearColor Colour = PoolColour;
+	GetPoolTarget(Candelas, Radius, Colour);
+
+	// Lights up from its radius, not from a point; eases otherwise.
+	if (PoolCandelasNow <= 0.5f)
+	{
+		PoolRadiusNow = Radius;
+		PoolColourNow = Colour;
+	}
+	PoolCandelasNow = FTakeShapes::Ease(PoolCandelasNow, Candelas, PoolEaseRate, DeltaSeconds);
+	PoolRadiusNow = FTakeShapes::Ease(PoolRadiusNow, Radius, PoolEaseRate, DeltaSeconds);
+	const float ColourAlpha = (PoolEaseRate <= 0.f || DeltaSeconds < 0.f) ? 1.f : 1.f - FMath::Exp(-PoolEaseRate * DeltaSeconds);
+	PoolColourNow = FMath::Lerp(PoolColourNow, Colour, ColourAlpha);
+	if (FMath::Abs(PoolCandelasNow - Candelas) < 0.5f)
+	{
+		PoolCandelasNow = Candelas;
+	}
+
+	const float Height = FMath::Max(PoolHeight, 50.f);
+	const FVector LightLocal(0.f, 0.f, Height);
+	if (!PoolLight->GetRelativeLocation().Equals(LightLocal, 1.0))
+	{
+		PoolLight->SetRelativeLocation(LightLocal);
+		PoolLight->SetAttenuationRadius(Height * 1.6f);
+	}
+	PoolLight->SetWorldRotation(FRotator(-90.f, 0.f, 0.f));
+	FTakeShapes::SetCueCone(PoolLight, FMath::RadiansToDegrees(FMath::Atan2(FMath::Max(PoolRadiusNow, 10.f), Height)), 0.45f);
+	FTakeShapes::SetCueLight(PoolLight, PoolCandelasNow, PoolColourNow, PoolHaze);
 }
 
 void AMark::OnConstruction(const FTransform& Transform)
@@ -38,12 +121,15 @@ void AMark::BeginPlay()
 	// actors begin play in no fixed order.
 	// Step 3: a mark that appears on a trigger starts hidden; the director syncs it on its first tick (after the
 	// checkpoint restore), so a restore past the trigger shows it before the first rendered frame.
+	PoolCandelasNow = 0.f;
 	if (!AppearOn.IsNone())
 	{
 		SetAppeared(false);
+		ApplyPool(-1.f);	// QA sight: dark until it appears
 		return;
 	}
 	ApplyLook();
+	ApplyPool(-1.f);	// QA sight: the pool for the state now, snapped
 }
 
 void AMark::SetOccupied(bool bOccupied)
@@ -85,6 +171,13 @@ void AMark::ApplyLook()
 	Disc->SetVisibility(bIsOccupied || bRunning || bDone);
 	CrossA->SetVisibility(true);
 	CrossB->SetVisibility(true);
+
+	// QA sight (Marwan's note 18): no T plates in game unless the drawn overlays are on; the editor still shows them so
+	// the marks can be found. The pool of light says it instead (ApplyPool, eased in Tick).
+	const bool bHideInGame = !AWatcher::DrawsSightOverlays(this);
+	Disc->SetHiddenInGame(bHideInGame);
+	CrossA->SetHiddenInGame(bHideInGame);
+	CrossB->SetHiddenInGame(bHideInGame);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

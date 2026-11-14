@@ -3,6 +3,10 @@
 #include "TakeShapes.h"
 
 #include "Components/BoxComponent.h"
+#include "Components/LocalLightComponent.h"
+#include "Components/PointLightComponent.h"
+#include "Components/RectLightComponent.h"
+#include "Components/SpotLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/CollisionProfile.h"
 #include "Engine/StaticMesh.h"
@@ -238,4 +242,188 @@ void FTakeShapes::SetupEditorOnlyBox(UBoxComponent* Box, const FVector& Extent, 
 	Box->SetCanEverAffectNavigation(false);
 	Box->SetHiddenInGame(true);
 	Box->ShapeColor = EditorColour;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// QA sight: world cues
+// ---------------------------------------------------------------------------------------------------------------------
+
+void FTakeShapes::SetupCueLight(ULocalLightComponent* Light, float AttenuationRadius)
+{
+	if (!Light)
+	{
+		return;
+	}
+	// Cheap by construction: movable, no shadows of any kind, no translucency lighting, culled with distance.
+	Light->SetMobility(EComponentMobility::Movable);
+	Light->SetCastShadows(false);
+	Light->CastStaticShadows = false;
+	Light->CastDynamicShadows = false;
+	Light->bAffectTranslucentLighting = false;
+	Light->IntensityUnits = ELightUnits::Candelas;
+	Light->Intensity = 0.f;
+	Light->AttenuationRadius = FMath::Max(AttenuationRadius, 10.f);
+	Light->VolumetricScatteringIntensity = 0.f;
+	Light->MaxDrawDistance = CueLightMaxDrawDistance;
+	Light->MaxDistanceFadeRange = CueLightMaxDrawDistance * 0.2f;
+	if (UPointLightComponent* const Point = Cast<UPointLightComponent>(Light))
+	{
+		Point->bUseInverseSquaredFalloff = true;
+	}
+	Light->SetVisibility(false);
+}
+
+USpotLightComponent* FTakeShapes::CreateCueSpot(AActor* Owner, FName Name, USceneComponent* Parent,
+	const FVector& RelLocation, const FRotator& RelRotation, float AttenuationRadius)
+{
+	USpotLightComponent* Light = Owner->CreateDefaultSubobject<USpotLightComponent>(Name);
+	if (Parent)
+	{
+		Light->SetupAttachment(Parent);
+	}
+	Light->SetRelativeLocation(RelLocation);
+	Light->SetRelativeRotation(RelRotation);
+	SetupCueLight(Light, AttenuationRadius);
+	return Light;
+}
+
+UPointLightComponent* FTakeShapes::CreateCuePoint(AActor* Owner, FName Name, USceneComponent* Parent,
+	const FVector& RelLocation, float AttenuationRadius)
+{
+	UPointLightComponent* Light = Owner->CreateDefaultSubobject<UPointLightComponent>(Name);
+	if (Parent)
+	{
+		Light->SetupAttachment(Parent);
+	}
+	Light->SetRelativeLocation(RelLocation);
+	SetupCueLight(Light, AttenuationRadius);
+	return Light;
+}
+
+URectLightComponent* FTakeShapes::CreateCueRect(AActor* Owner, FName Name, USceneComponent* Parent,
+	const FVector& RelLocation, const FRotator& RelRotation, float AttenuationRadius)
+{
+	URectLightComponent* Light = Owner->CreateDefaultSubobject<URectLightComponent>(Name);
+	if (Parent)
+	{
+		Light->SetupAttachment(Parent);
+	}
+	Light->SetRelativeLocation(RelLocation);
+	Light->SetRelativeRotation(RelRotation);
+	SetupCueLight(Light, AttenuationRadius);
+	return Light;
+}
+
+void FTakeShapes::SetCueLight(ULocalLightComponent* Light, float Candelas, const FLinearColor& Colour, float Haze)
+{
+	if (!Light)
+	{
+		return;
+	}
+	const bool bOn = Candelas > 0.5f;
+	if (Light->IsVisible() != bOn)
+	{
+		Light->SetVisibility(bOn);
+	}
+	if (!bOn)
+	{
+		return;
+	}
+	if (!FMath::IsNearlyEqual(Light->Intensity, Candelas, 0.25f))
+	{
+		Light->SetIntensity(Candelas);
+	}
+	if (Light->LightColor != Colour.ToFColor(true))
+	{
+		Light->SetLightColor(Colour);
+	}
+	const float UseHaze = FMath::Max(Haze, 0.f);
+	if (!FMath::IsNearlyEqual(Light->VolumetricScatteringIntensity, UseHaze, 0.005f))
+	{
+		Light->SetVolumetricScatteringIntensity(UseHaze);
+	}
+}
+
+void FTakeShapes::SetCueCone(USpotLightComponent* Light, float OuterDegrees, float InnerRatio)
+{
+	if (!Light)
+	{
+		return;
+	}
+	const float Outer = FMath::Clamp(OuterDegrees, 1.f, 80.f);
+	const float Inner = FMath::Clamp(Outer * FMath::Clamp(InnerRatio, 0.f, 0.98f), 0.f, Outer - 0.5f);
+	if (FMath::Abs(Light->OuterConeAngle - Outer) >= 0.25f)
+	{
+		Light->SetOuterConeAngle(Outer);
+	}
+	if (FMath::Abs(Light->InnerConeAngle - Inner) >= 0.25f)
+	{
+		Light->SetInnerConeAngle(Inner);
+	}
+}
+
+void FTakeShapes::SetPlain(UStaticMeshComponent* Comp)
+{
+	if (!Comp)
+	{
+		return;
+	}
+	if (Comp->bRenderCustomDepth)
+	{
+		Comp->SetRenderCustomDepth(false);
+	}
+	UMaterialInterface* const Basic = GetMaterial();
+	UMaterialInstanceDynamic* const Old = Cast<UMaterialInstanceDynamic>(Comp->GetMaterial(0));
+	if (!Basic || (Old && Old->Parent == Basic))
+	{
+		return;
+	}
+	FLinearColor Colour = FLinearColor::White;
+	if (Old)
+	{
+		Old->GetVectorParameterValue(FHashedMaterialParameterInfo(ColorParam), Colour);
+	}
+	if (UMaterialInstanceDynamic* const MID = Comp->CreateDynamicMaterialInstance(0, Basic))
+	{
+		MID->SetVectorParameterValue(ColorParam, Colour);
+	}
+}
+
+void FTakeShapes::SetLamp(UStaticMeshComponent* Comp, const FLinearColor& Colour, uint8 Stencil)
+{
+	static const FName PatternParam(TEXT("Pattern"));
+	if (!Comp)
+	{
+		return;
+	}
+	UMaterialInterface* const Signal = GetSignalMaterial();
+	UMaterialInterface* const Wanted = Signal ? Signal : GetMaterial();
+	UMaterialInstanceDynamic* MID = Cast<UMaterialInstanceDynamic>(Comp->GetMaterial(0));
+	if (!MID || MID->Parent != Wanted)
+	{
+		MID = Comp->CreateDynamicMaterialInstance(0, Wanted);
+	}
+	if (Comp->CustomDepthStencilValue != Stencil)
+	{
+		Comp->SetCustomDepthStencilValue(Stencil);
+	}
+	const bool bDepth = Stencil != 0;
+	if (static_cast<bool>(Comp->bRenderCustomDepth) != bDepth)
+	{
+		Comp->SetRenderCustomDepth(bDepth);
+	}
+	if (MID)
+	{
+		MID->SetScalarParameterValue(PatternParam, 0.f);	// TakeStyle::PatternSolid
+		MID->SetVectorParameterValue(ColorParam, Colour);
+	}
+}
+
+float FTakeShapes::Ease(float Current, float Target, float Rate, float DeltaSeconds)
+{
+	if (Rate <= 0.f || DeltaSeconds < 0.f)
+	{
+		return Target;
+	}
+	return FMath::Lerp(Target, Current, FMath::Exp(-Rate * DeltaSeconds));
 }

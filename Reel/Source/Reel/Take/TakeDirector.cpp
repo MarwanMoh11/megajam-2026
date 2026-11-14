@@ -16,6 +16,7 @@
 #include "SceneTrigger.h"
 #include "Shutter.h"
 #include "Engine/PostProcessVolume.h"
+#include "Materials/MaterialInstanceDynamic.h"   // QA look: FilmColour -> the grade's ColourFilm
 #include "TakeAudio.h"
 #include "TakeCharacter.h"
 #include "TakeGameInstance.h"
@@ -452,6 +453,16 @@ void ATakeDirector::Tick(float DeltaSeconds)
 		SyncMarksAppeared();
 		StepLook(0.f, true);
 	}
+
+	// --- QA look ---
+	// The colour film or the monochrome (FilmColour): written when it changes or the grade's instance is new.
+	if (GradeMID && (FilmColour != AppliedFilmColour || FilmColourMID.Get() != GradeMID.Get()))
+	{
+		GradeMID->SetScalarParameterValue(TEXT("ColourFilm"), FMath::Clamp(FilmColour, 0.f, 1.f));
+		AppliedFilmColour = FilmColour;
+		FilmColourMID = GradeMID.Get();
+	}
+	// --- end QA look ---
 
 	// Step 3: the title card and the end sequence run in place of steps 1-6.
 	if (Phase == ETakePhase::Title)

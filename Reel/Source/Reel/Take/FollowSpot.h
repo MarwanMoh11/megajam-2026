@@ -84,13 +84,58 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Spot")
 	float LightRadius = 4500.f;
 
+	// --- QA devices (Nov 14, notes 10, 17, 18) ----------------------------------------------------------------------
+
+	/** Switch: the old drawn beam (a white cylinder from the lamp to the target). Off: the real light's shaft through
+	 *  the hall's haze is the beam. */
+	UPROPERTY(EditAnywhere, Category = "Take|Spot")
+	bool bShowBeamShape = false;
+
+	/** The light's volumetric scattering while it burns: how strongly its shaft shows in the haze. */
+	UPROPERTY(EditAnywhere, Category = "Take|Spot")
+	float BeamHaze = 4.f;
+
+	/** The model swings (turns about its anchor) onto its target on the press, and back to rest when it is ready. */
+	UPROPERTY(EditAnywhere, Category = "Take|Spot")
+	bool bSwingModel = true;
+
+	/** Which way the model's lens faces at rest, a yaw local to the actor, degrees. */
+	UPROPERTY(EditAnywhere, Category = "Take|Spot")
+	float LensYaw = 0.f;
+
+	/** The lens at rest, local to the actor and relative to ModelOffset (it turns with the swing): the beam starts
+	 *  here when the model shows. */
+	UPROPERTY(EditAnywhere, Category = "Take|Spot")
+	FVector LensOffset = FVector(40.f, 0.f, 150.f);
+
+	/** How fast it swings, degrees a second. */
+	UPROPERTY(EditAnywhere, Category = "Take|Spot")
+	float SwingDegreesPerSecond = 320.f;
+
+	/** The share of the swing taken on the press frame itself. */
+	UPROPERTY(EditAnywhere, Category = "Take|Spot")
+	float SwingFirstStep = 0.4f;
+
 protected:
 	UPROPERTY(Transient)
 	TObjectPtr<AWatcher> Target;
 
 	float BusySecondsLeft = 0.f;
 
+	/** The swing now and the swing that faces the target, degrees from rest. */
+	float SwingYaw = 0.f;
+	float SwingAimYaw = 0.f;
+
 private:
 	/** Stretches the beam from the lamp to the target and shows it (hides it if there is no target), this frame. */
 	void UpdateBeam();
+
+	/** The swing (degrees from rest) that points the lens at the target; the current swing if there is none. */
+	float GetAimSwing() const;
+
+	/** Eases the swing toward the target (or back to rest when idle) and turns the model, this frame. */
+	void StepSwing(float DeltaSeconds);
+
+	/** The lens in the world, turned with the swing. */
+	FVector GetLensPoint() const;
 };

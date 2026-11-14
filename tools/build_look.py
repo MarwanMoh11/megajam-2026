@@ -9,6 +9,9 @@
 #                  display-referred picture §15.3 is written for, the grade runs in display 0-1, and the result is
 #                  decoded back to linear for the tonemapper's sRGB encode.
 #   MI_FilmGrade   its numbers (§15.3). Tune them here or in the editor; C++ drives Bleed and MakingOf per frame.
+#                  QA note 8 (Nov 14): ColourFilm 1 (the default) is a muted period colour print, the crew's cameras
+#                  cool video, the alarm a push to full colour; 0 is the step 4 monochrome exactly (the director's
+#                  FilmColour sets it). Stress 0..1 (the HUD, from composure) drains, cools and closes the picture in.
 #   M_TakeSignal   unlit, vector parameter Color -> emissive: everything that keeps its colour (stencil 1, 2, 3).
 #   MI_Signal_Red, MI_Signal_Gold   for the map's own meshes (the carpet, the reel's case, the gold side exit).
 import unreal
@@ -46,6 +49,21 @@ SCALARS = {
     "KeepStencil": 1.0,      # 0 = everything graded (a check)
     "OutputScale": 0.6,      # measured with DebugFlat: after the grade the engine shows linear x1.65 (display x1.25)
     "DebugFlat": 0.0,        # 1 = known values instead of the picture (a check of what the engine does after the grade)
+    # --- QA look (note 8, Nov 14): a period colour print instead of the monochrome. ColourFilm 0 = the step 4 picture
+    # exactly (the director's FilmColour drives it; 1 here is the default); every number below is display 0-1.
+    "ColourFilm": 1.0,       # 1 = the colour film, 0 = the old monochrome (and steel-blue making-of) exactly
+    "ColSat": 0.62,          # the film's saturation: muted period colour, about two thirds
+    "ColBlack": 0.02,        # the film's levels (per channel) and a soft S: softer than the monochrome's 0.6
+    "ColWhite": 0.95,
+    "ColContrast": 0.35,
+    "SplitTone": 1.0,        # how much of ShadowTint (cool) and HighTint (warm) the shadows and highlights take
+    "MoSat": 0.50,           # the crew's cameras: flat video, a little less colour than the film, cooler (MoTint)
+    "AlarmColSat": 1.15,     # the alarm's bleed: full colour pushed past the scene's own, and a harder curve
+    "AlarmContrast": 0.6,
+    "Stress": 0.0,           # 0..1, driven by the HUD from composure: at 1 the picture drains, cools and closes in
+    "StressDrain": 0.85,     # saturation lost at Stress 1 (less while the alarm bleeds: it keeps 40% of it)
+    "StressClose": 0.65,     # how dark the frame's edge gets at Stress 1
+    "StressRadius": 0.22,    # where that darkening starts (0 the centre, 1 the corner)
 }
 VECTORS = {
     "Ink": INK, "Silver": SILVER, "Paper": PAPER,
@@ -53,6 +71,12 @@ VECTORS = {
     "RedToken": (0.864, 0.167, 0.095),   # danger #D3301F (0.827, 0.188, 0.122) before the film overlay: its grain
                                          # (0.07 toward grey) and flicker bring it back to the token on screen
     "GoldToken": (0.959, 0.753, 0.274),  # julian #E9B949 (0.914, 0.725, 0.286), the same way
+    # --- QA look: the colour film's tints (multipliers, about value-neutral) ---
+    "ShadowTint": (0.93, 0.98, 1.08),    # shadows toward a cool blue-green (1.14 blue read as a blue night)
+    "HighTint": (1.08, 1.00, 0.86),      # highlights and practicals toward tungsten
+    "ColLift": (0.024, 0.025, 0.030),    # the print's base: blacks lifted a touch, and cool
+    "MoTint": (0.90, 0.98, 1.08),        # the crew's video: cooler and cleaner than the film
+    "StressTint": (0.84, 0.94, 1.10),    # at Stress 1 the picture cools by this
 }
 
 HLSL = r"""
@@ -78,6 +102,21 @@ float m1 = saturate((Y - MoBlack) / max(0.001, MoRange));
 float3 mo = lerp(lerp(MoShadow.rgb, MoMid.rgb, saturate(m1 * 2.0)), lerp(MoMid.rgb, MoHigh.rgb, saturate(m1 * 2.0 - 1.0)), step(0.5, m1));
 mo = lerp(o, mo, MoKeep);
 float3 graded = lerp(film, mo, MakingOf);
+// QA look: the colour film. Levels and a soft S per channel, saturation ColSat, shadows cool and highlights warm
+// (multipliers near value-neutral), blacks lifted to the print's cool base. The crew's video: flat levels, MoSat,
+// cooled by MoTint. ColourFilm 0 leaves graded as the monochrome above, exactly.
+float3 cl = saturate((o - ColBlack) / max(0.001, ColWhite - ColBlack));
+cl = lerp(cl, cl * cl * (3.0 - 2.0 * cl), ColContrast);
+float cY = dot(cl, lumw);
+float3 cf = max(lerp(float3(cY, cY, cY), cl, ColSat), 0.0);
+float shW = (1.0 - smoothstep(0.0, 0.45, cY)) * SplitTone;
+float hiW = smoothstep(0.35, 0.95, cY) * SplitTone;
+cf *= lerp(float3(1.0, 1.0, 1.0), ShadowTint.rgb, shW) * lerp(float3(1.0, 1.0, 1.0), HighTint.rgb, hiW);
+cf = ColLift.rgb + cf * (1.0 - ColLift.rgb);
+float3 ml = saturate((o - MoBlack) / max(0.001, MoRange));
+float mY = dot(ml, lumw);
+float3 mc = max(lerp(float3(mY, mY, mY), ml, MoSat), 0.0) * MoTint.rgb;
+graded = lerp(graded, saturate(lerp(cf, mc, MakingOf)), ColourFilm);
 // what keeps its colour: a saturated red or gold source shows its token's hue at the source's value (the token
 // itself once the source is as bright as the token), anything less saturated on it (a grey tally, a white pulse)
 // keeps its own colour at saturation x StencilSat; then the value floors (red Y >= 0.20, gold Y >= 0.45)
@@ -96,7 +135,18 @@ float2 p = float2((UV.x - 0.5) / 0.5, (UV.y - 0.5) / 0.3722);
 float r = length(p) / 1.414;
 graded *= 1.0 - Vignette * (1.0 - MakingOf) * smoothstep(0.5, 1.0, r);
 float3 alarm = lerp(saturate(lerp(float3(Y, Y, Y), o, AlarmSat)), sc, kept);
+// QA look: in the colour film the alarm is a push, to more than the scene's own colour and a harder curve
+float3 al = saturate((o - ColBlack) / max(0.001, ColWhite - ColBlack));
+al = lerp(al, al * al * (3.0 - 2.0 * al), AlarmContrast);
+float aY = dot(al, lumw);
+alarm = lerp(alarm, lerp(saturate(lerp(float3(aY, aY, aY), al, AlarmColSat)), sc, kept), ColourFilm);
 float3 d = saturate(lerp(graded, alarm, Bleed));
+// QA look: Stress (the HUD's composure, 0..1) drains the colour, cools and closes the frame in; 0 changes nothing
+float st = saturate(Stress);
+float dY = dot(d, lumw);
+d = lerp(d, float3(dY, dY, dY), st * StressDrain * (1.0 - 0.6 * Bleed));
+d *= lerp(float3(1.0, 1.0, 1.0), StressTint.rgb, st);
+d = saturate(d * (1.0 - StressClose * st * smoothstep(StressRadius, 1.0, r)));
 // a check of the pipeline after the grade: top half ten greys 0..1, bottom half the true red and gold tokens
 float3 dbg = lerp(float3(1.0, 1.0, 1.0) * (floor(UV.x * 10.0) / 9.0), lerp(float3(0.827, 0.188, 0.122), float3(0.914, 0.725, 0.286), step(0.5, UV.x)), step(0.5, UV.y));
 d = lerp(d, dbg, DebugFlat);

@@ -65,8 +65,13 @@ void AFollowSpot::BeginPlay()
 		Light->SetInnerConeAngle(Cone * 0.6f);
 		Light->SetAttenuationRadius(FMath::Max(1.f, LightRadius));
 		Light->SetLightColor(BeamColour);
+		Light->SetVolumetricScatteringIntensity(FMath::Max(BeamHaze, 0.f));	// QA devices: the shaft in the haze
 		Light->SetVisibility(false);
 	}
+
+	// QA devices: at rest, facing where the model was set.
+	SwingYaw = 0.f;
+	SwingAimYaw = 0.f;
 }
 
 bool AFollowSpot::CanFire(FString& OutWhyNot) const
@@ -82,6 +87,9 @@ bool AFollowSpot::CanFire(FString& OutWhyNot) const
 
 void AFollowSpot::StepDevice(float DeltaSeconds)
 {
+	StepLook(DeltaSeconds);		// QA devices: the pilot lamp
+	StepSwing(DeltaSeconds);	// QA devices: the lamp head swings onto the target, and home when idle
+
 	if (!bRunning)
 	{
 		return;
@@ -160,6 +168,17 @@ bool AFollowSpot::FireAt(AWatcher* Watcher, FString& OutWhyNot)
 	BusySecondsLeft = Duration;
 	bRunning = true;
 	RunSeconds = 0.f;
+
+	// QA devices: the lamp swings a good part of the way onto the target on this frame (the rest over the next few).
+	SwingAimYaw = GetAimSwing();
+	SwingYaw = FMath::UnwindDegrees(SwingYaw + FMath::FindDeltaAngleDegrees(SwingYaw, SwingAimYaw)
+		* FMath::Clamp(SwingFirstStep, 0.f, 1.f));
+	if (HasModel() && bSwingModel)
+	{
+		PlaceModel(FQuat(FVector::UpVector, FMath::DegreesToRadians(SwingYaw)));
+	}
+	OnFiredLook();	// the lamp goes bright, Maya reaches for the handle
+
 	UpdateBeam();	// the beam shows from the lamp to the target this frame
 	MarkLanded();	// the Blind lands in StepDevices this frame
 
@@ -198,7 +217,9 @@ void AFollowSpot::UpdateBeam()
 		return;
 	}
 
-	const FVector BeamStart = Body->GetComponentLocation();
+	// QA devices: with the model, the beam starts at its lens (turned with the swing); else at the box lamp.
+	const bool bFromModel = HasModel();
+	const FVector BeamStart = bFromModel ? GetLensPoint() : Body->GetComponentLocation();
 	const FVector BeamEnd = Target->GetActorLocation() + FVector(0.f, 0.f, BeamTargetHeight);
 	const FVector Span = BeamEnd - BeamStart;
 	const double SpanLength = Span.Size();
@@ -208,21 +229,74 @@ void AFollowSpot::UpdateBeam()
 		return;
 	}
 
-	const FVector BeamDir = Span / SpanLength;
+	// While the lamp is still swinging on, the beam points where the lens points: it sweeps onto the target.
+	FVector BeamDir = Span / SpanLength;
+	if (bFromModel && bSwingModel)
+	{
+		const float Behind = FMath::FindDeltaAngleDegrees(SwingAimYaw, SwingYaw);
+		BeamDir = FQuat(FVector::UpVector, FMath::DegreesToRadians(Behind)).RotateVector(BeamDir);
+	}
 	if (BeamShape)
 	{
-		BeamShape->SetWorldLocationAndRotation(BeamStart + Span * 0.5, FQuat::FindBetweenNormals(FVector::UpVector, BeamDir));
+		BeamShape->SetWorldLocationAndRotation(BeamStart + BeamDir * SpanLength * 0.5, FQuat::FindBetweenNormals(FVector::UpVector, BeamDir));
 		BeamShape->SetWorldScale3D(FVector(BeamThickness, BeamThickness, SpanLength / 100.0));
-		BeamShape->SetVisibility(true);
+		BeamShape->SetVisibility(bShowBeamShape);	// note 18: off, the light's shaft is the beam
 	}
 
 	// The real light rides the beam just clear of the lamp's own body (inside it, the lamp would shadow its own
 	// light), aimed at the target: a spot light shines along its X axis.
 	if (Light)
 	{
-		const double Clearance = FMath::Min(static_cast<double>(Body->Bounds.SphereRadius) + 5.0, SpanLength * 0.5);
+		const double Clearance = bFromModel ? FMath::Min(8.0, SpanLength * 0.5)
+			: FMath::Min(static_cast<double>(Body->Bounds.SphereRadius) + 5.0, SpanLength * 0.5);
 		const FVector LightAt = BeamStart + BeamDir * Clearance;
 		Light->SetWorldLocationAndRotation(LightAt, BeamDir.Rotation());
 		Light->SetVisibility(true);
 	}
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// QA devices (Nov 14): the swing
+// ---------------------------------------------------------------------------------------------------------------------
+
+float AFollowSpot::GetAimSwing() const
+{
+	if (!IsValid(Target))
+	{
+		return SwingYaw;
+	}
+	const FTransform& Frame = GetActorTransform();
+	const FVector Anchor = Frame.TransformPosition(ModelOffset);
+	const FVector Local = Frame.InverseTransformVectorNoScale(Target->GetActorLocation() - Anchor);
+	if (Local.SizeSquared2D() < 1.0)
+	{
+		return SwingYaw;
+	}
+	const float Yaw = FMath::RadiansToDegrees(static_cast<float>(FMath::Atan2(Local.Y, Local.X)));
+	return FMath::UnwindDegrees(Yaw - LensYaw);
+}
+
+void AFollowSpot::StepSwing(float DeltaSeconds)
+{
+	// Onto the target while busy (it may walk), home to rest when ready again.
+	SwingAimYaw = (bRunning && IsValid(Target)) ? GetAimSwing() : 0.f;
+	const float Delta = FMath::FindDeltaAngleDegrees(SwingYaw, SwingAimYaw);
+	const float MaxStep = FMath::Max(SwingDegreesPerSecond, 1.f) * DeltaSeconds;
+	const float Step = FMath::Clamp(Delta, -MaxStep, MaxStep);
+	if (FMath::IsNearlyZero(Step, 0.01f))
+	{
+		return;
+	}
+	SwingYaw = FMath::UnwindDegrees(SwingYaw + Step);
+	if (HasModel() && bSwingModel)
+	{
+		PlaceModel(FQuat(FVector::UpVector, FMath::DegreesToRadians(SwingYaw)));
+	}
+}
+
+FVector AFollowSpot::GetLensPoint() const
+{
+	const FVector Turned = (HasModel() && bSwingModel)
+		? FQuat(FVector::UpVector, FMath::DegreesToRadians(SwingYaw)).RotateVector(LensOffset) : LensOffset;
+	return GetActorTransform().TransformPosition(ModelOffset + Turned);
 }

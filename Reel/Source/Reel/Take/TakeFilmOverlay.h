@@ -29,6 +29,10 @@ struct FTakeFilmFrame
 	bool bSeen = false;			// composure draining
 	bool bJulianOnScreen = false;
 	FVector2D JulianScreen = FVector2D::ZeroVector;
+	// QA hud: composure as the picture (ATakeHUD::UpdateStress, eased on real time).
+	float Stress = 0.f;				// 0 calm .. 1 composure gone: one curve for every cue
+	float SeenWeight = 0.f;			// 0..1: a watcher holds Julian right now
+	FVector2D SeenDir = FVector2D::ZeroVector;	// toward the watcher(s) holding him, screen axes (x right, y down)
 };
 
 USTRUCT()
@@ -83,9 +87,9 @@ struct FTakeFilmOverlay
 	float FlickerCutMax = 0.05f;
 	UPROPERTY(EditAnywhere, Category = "Film|Flicker", meta = (ClampMin = "0", ClampMax = "1"))
 	float FlickerCardMax = 0.06f;
-	/** Below LowComposure on the film (and on the blooper's first frame: BlooperFlicker). */
+	/** At full stress on the film (bStressDirt; off: below LowComposure). The blooper's first frame: BlooperFlicker. */
 	UPROPERTY(EditAnywhere, Category = "Film|Flicker", meta = (ClampMin = "0", ClampMax = "1"))
-	float FlickerLowMax = 0.06f;
+	float FlickerLowMax = 0.08f;
 	UPROPERTY(EditAnywhere, Category = "Film|Flicker", meta = (ClampMin = "0", ClampMax = "1"))
 	float BlooperFlicker = 0.10f;
 
@@ -96,7 +100,7 @@ struct FTakeFilmOverlay
 	float DustCardPerSecond = 3.f;
 	UPROPERTY(EditAnywhere, Category = "Film|Dust", meta = (ClampMin = "0", ClampMax = "24"))
 	float DustLowPerSecond = 4.f;
-	/** Composure below this on the film: more dust and flicker (§15.4). */
+	/** With bStressDirt off: composure below this on the film means more dust and flicker (§15.4). */
 	UPROPERTY(EditAnywhere, Category = "Film|Dust", meta = (ClampMin = "0", ClampMax = "100"))
 	float LowComposure = 25.f;
 	UPROPERTY(EditAnywhere, Category = "Film|Dust", meta = (ClampMin = "0.5"))
@@ -132,15 +136,68 @@ struct FTakeFilmOverlay
 	UPROPERTY(EditAnywhere, Category = "Film|Viewfinder", meta = (ClampMin = "0", ClampMax = "1"))
 	float ScanLineCutAlpha = 0.10f;
 
-	// --- the burn as composure falls (every camera) --------------------------------------------------------------
-	UPROPERTY(EditAnywhere, Category = "Film|Burn", meta = (ClampMin = "0", ClampMax = "100"))
-	float BurnBelow = 50.f;
+	// --- QA hud: composure as the picture (every camera; DrawStress). One curve, F.Stress 0..1 -----------------------
+	/** The vignette closes in as stress rises (ink, an ellipse; the centre always stays clear). */
+	UPROPERTY(EditAnywhere, Category = "Film|Stress")
+	bool bStressVignette = true;
+	/** A cool navy wash over the picture (the grade's Stress scalar drains the colour; this is the overlay's share). */
+	UPROPERTY(EditAnywhere, Category = "Film|Stress")
+	bool bStressWash = true;
+	/** Grain, flicker and dust rise with stress on the film (off: the old step below LowComposure). */
+	UPROPERTY(EditAnywhere, Category = "Film|Stress")
+	bool bStressDirt = true;
+	/** A watcher holds him: the vignette pulls toward the watcher's side and that edge glows warm. */
+	UPROPERTY(EditAnywhere, Category = "Film|Stress")
+	bool bSeenPull = true;
+	/** High stress: the vignette and the burn beat like a pulse. */
+	UPROPERTY(EditAnywhere, Category = "Film|Stress")
+	bool bHeartbeat = true;
+
+	UPROPERTY(EditAnywhere, Category = "Film|Stress", meta = (ClampMin = "0", ClampMax = "1"))
+	float VignetteMaxAlpha = 0.7f;
+	/** The vignette's size against the picture's at stress 0 (mostly off the picture) and at stress 1. */
+	UPROPERTY(EditAnywhere, Category = "Film|Stress", meta = (ClampMin = "0.5"))
+	float VignetteScaleCalm = 2.1f;
+	UPROPERTY(EditAnywhere, Category = "Film|Stress", meta = (ClampMin = "0.5"))
+	float VignetteScaleTight = 1.05f;
+	/** The ellipse's clear centre, as a fraction of the vignette's half-size. */
+	UPROPERTY(EditAnywhere, Category = "Film|Stress", meta = (ClampMin = "0", ClampMax = "0.95"))
+	float VignetteClear = 0.38f;
+	UPROPERTY(EditAnywhere, Category = "Film|Stress", meta = (ClampMin = "0", ClampMax = "1"))
+	float WashMaxAlpha = 0.1f;
+	/** Added to GrainOpacity at full stress (GrainMax still caps it). */
+	UPROPERTY(EditAnywhere, Category = "Film|Stress", meta = (ClampMin = "0", ClampMax = "1"))
+	float GrainStressExtra = 0.05f;
+	/** The warm burn at the picture's edges starts at this stress (0.2: composure about 80). */
+	UPROPERTY(EditAnywhere, Category = "Film|Burn", meta = (ClampMin = "0", ClampMax = "1"))
+	float BurnFrom = 0.2f;
 	UPROPERTY(EditAnywhere, Category = "Film|Burn", meta = (ClampMin = "0"))
 	float BurnMinPx = 24.f;
 	UPROPERTY(EditAnywhere, Category = "Film|Burn", meta = (ClampMin = "0"))
-	float BurnExtraPx = 96.f;
+	float BurnExtraPx = 120.f;
 	UPROPERTY(EditAnywhere, Category = "Film|Burn", meta = (ClampMin = "0", ClampMax = "1"))
 	float BurnAlpha = 0.6f;
+	/** Held: the vignette at least this dark and this tight, its centre pulled this far (of the half-picture) away. */
+	UPROPERTY(EditAnywhere, Category = "Film|Stress", meta = (ClampMin = "0", ClampMax = "1"))
+	float SeenVignetteAlpha = 0.4f;
+	UPROPERTY(EditAnywhere, Category = "Film|Stress", meta = (ClampMin = "0.5"))
+	float SeenVignetteScale = 1.45f;
+	UPROPERTY(EditAnywhere, Category = "Film|Stress", meta = (ClampMin = "0", ClampMax = "0.5"))
+	float SeenPull = 0.16f;
+	/** Held: the warm glow on the watcher's side, its strength and its depth (px at 1080). */
+	UPROPERTY(EditAnywhere, Category = "Film|Stress", meta = (ClampMin = "0", ClampMax = "1"))
+	float SeenGlowAlpha = 0.45f;
+	UPROPERTY(EditAnywhere, Category = "Film|Stress", meta = (ClampMin = "0"))
+	float SeenGlowPx = 240.f;
+	/** The pulse starts at this stress, adds up to HeartbeatDepth to the vignette and burn, at these rates. */
+	UPROPERTY(EditAnywhere, Category = "Film|Stress", meta = (ClampMin = "0", ClampMax = "1"))
+	float HeartbeatFrom = 0.45f;
+	UPROPERTY(EditAnywhere, Category = "Film|Stress", meta = (ClampMin = "0", ClampMax = "1"))
+	float HeartbeatDepth = 0.2f;
+	UPROPERTY(EditAnywhere, Category = "Film|Stress", meta = (ClampMin = "20"))
+	float HeartbeatBpmCalm = 72.f;
+	UPROPERTY(EditAnywhere, Category = "Film|Stress", meta = (ClampMin = "20"))
+	float HeartbeatBpmTight = 112.f;
 
 	// --- the blooper (frame 0 = the blooper) ---------------------------------------------------------------------------
 	UPROPERTY(EditAnywhere, Category = "Film|Burn", meta = (ClampMin = "1"))
@@ -166,6 +223,11 @@ struct FTakeFilmOverlay
 	/** The bar height for this screen (0 without the letterbox). */
 	float BarHeight(const FTakeFilmFrame& F) const;
 
+	/** QA hud: composure as the picture, over the picture rect (PicY, PicH) and under the HUD, on every camera and
+	 *  with or without the film look: the cool wash, the vignette closing in (pulled toward a watcher holding him),
+	 *  the warm burn at the edges, the warm glow on the watcher's side, the pulse at high stress. */
+	void DrawStress(UCanvas& Canvas, const FTakeFilmFrame& F, float PicY, float PicH);
+
 private:
 	UPROPERTY(Transient)
 	TObjectPtr<UTexture2D> GrainTex;
@@ -177,6 +239,8 @@ private:
 	TObjectPtr<UTexture2D> BurnTex;
 	UPROPERTY(Transient)
 	TObjectPtr<UTexture2D> ScanTex;
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> VignetteTex;
 
 	// Runtime state (not saved).
 	int64 FilmFrame = -1;
@@ -202,4 +266,10 @@ private:
 	void DrawFilm(AHUD& Hud, UCanvas& Canvas, const FTakeFilmFrame& F, float X, float Y, float W, float H,
 		float Grain, float Flicker);
 	void DrawEdgeBands(UCanvas& Canvas, const FLinearColor& Colour, float X, float Y, float W, float H, float Depth);
+	/** QA hud: 0..HeartbeatDepth, a lub-dub on real time, rising with stress. */
+	float HeartbeatAt(const FTakeFilmFrame& F) const;
+	/** QA hud: the vignette texture centred on Centre (half-size HalfW x HalfH), clipped to the picture rect, the
+	 *  picture outside it filled at the same alpha (the texture is opaque at its border). */
+	void DrawVignette(UCanvas& Canvas, const FVector2D& Centre, float HalfW, float HalfH, float Alpha, float X,
+		float Y, float W, float H);
 };

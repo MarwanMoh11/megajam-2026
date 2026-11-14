@@ -6,6 +6,8 @@
 #include "Watcher.h"
 #include "BeamWatcher.generated.h"
 
+class UPointLightComponent;
+
 /**
  * Post A stands at the actor location, post B at EndB (local offset; a widget in the editor). Live from
  * LiveFromBar; drops for one beat in every DropEveryBars bars (beat DropBeatInBar of bars that are multiples of
@@ -91,9 +93,60 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Take")
 	TObjectPtr<UStaticMeshComponent> PostB;
 
+	// --- QA sight: an electric eye (Marwan's note 18: no dotted lines) ------------------------------------------------
+	// With the drawn overlays off the laser is a thin solid glint (no dashes), and each post carries a lamp at beam
+	// height with a small glow in the haze: red while live, dim while it drops or before it is live, green while
+	// blinded or masked. Touching it is still an instant blooper, exactly as before.
+
+	/** The laser's thickness with the drawn overlays off, cm (BeamThickness with them on). */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "0.2"))
+	float GlintThickness = 1.5f;
+
+	/** The post lamps' glow (values above 1 bloom): live, dropped or not yet live, blinded or masked. */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues")
+	FLinearColor LampLiveColour = FLinearColor(4.f, 0.3f, 0.15f);
+
+	UPROPERTY(EditAnywhere, Category = "Take|Cues")
+	FLinearColor LampOffColour = FLinearColor(0.25f, 0.02f, 0.01f);
+
+	UPROPERTY(EditAnywhere, Category = "Take|Cues")
+	FLinearColor LampDarkColour = FLinearColor(0.3f, 3.2f, 0.8f);
+
+	/** The small light at each post: candelas while live (half while blinded or masked, none while dropped), reach,
+	 *  colours and glow in the haze. */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "0"))
+	float PostLightCandelas = 40.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "10"))
+	float PostLightRadius = 160.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Cues")
+	FLinearColor PostLightLiveColour = FLinearColor(1.f, 0.2f, 0.1f);
+
+	UPROPERTY(EditAnywhere, Category = "Take|Cues")
+	FLinearColor PostLightDarkColour = FLinearColor(0.35f, 1.f, 0.5f);
+
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "0"))
+	float PostLightHaze = 1.2f;
+
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<UStaticMeshComponent> LampA;
+
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<UStaticMeshComponent> LampB;
+
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<UPointLightComponent> PostLightA;
+
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<UPointLightComponent> PostLightB;
+
 protected:
 	bool bDropped = false;
 	bool bBeforeLive = false;
+
+	/** QA sight: the base (planning lift), then the post lamps and lights, this frame. */
+	virtual void UpdateWorldCues(float DeltaSeconds) override;
 
 	/** Dark first (base), else OFF before LiveFromBar, DROPPED on the drop beat, else WATCHING. */
 	virtual void SyncState() override;

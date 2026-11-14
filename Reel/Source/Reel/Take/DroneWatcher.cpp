@@ -11,6 +11,7 @@
 #include "TakeCharacter.h"
 #include "TakeDirector.h"
 #include "TakeShapes.h"
+#include "TakeStyle.h"
 
 namespace TakeDroneLocal
 {
@@ -50,6 +51,7 @@ ADroneWatcher::ADroneWatcher()
 	Label = TEXT("DRONE");
 	Instrument = EWatcherInstrument::Trumpet;
 	LabelHeight = 600.f;
+	PlanLightOffset = FVector(0.f, 0.f, -110.f);	// QA sight: the planning lift under the body, on its belly and lens
 
 	// The cone's footprint: a flat disc on the floor (FrameMesh is the base's cube: re-shaped here).
 	FTakeShapes::SetupShape(FrameMesh, ETakeShape::Cylinder, false);
@@ -66,6 +68,10 @@ ADroneWatcher::ADroneWatcher()
 	SearchLight->SetMobility(EComponentMobility::Movable);
 	SearchLight->SetCastShadows(false);
 	SearchLight->bUseInverseSquaredFalloff = true;
+
+	// QA sight: the lens under the body, the glint that says where the eye is.
+	Lens = FTakeShapes::CreateShape(this, TEXT("Lens"), ETakeShape::Sphere, Root, FVector(0.f, 0.f, 506.f),
+		FVector(0.12f, 0.12f, 0.12f), FRotator::ZeroRotator, false);
 }
 
 void ADroneWatcher::OnConstruction(const FTransform& Transform)
@@ -85,6 +91,8 @@ void ADroneWatcher::BeginPlay()
 	BuildFrameLines();
 	SyncState();
 	RefreshFrameLook();
+	HoldAlpha = 0.f;
+	UpdateWorldCues(-1.f);	// QA sight: the searchlight and lens for the state now
 }
 
 void ADroneWatcher::StepWatcher(float DeltaSeconds, UBarClockComponent* Clock)
@@ -119,10 +127,61 @@ void ADroneWatcher::StepWatcher(float DeltaSeconds, UBarClockComponent* Clock)
 	}
 	Super::StepWatcher(DeltaSeconds, Clock);
 
-	// Step 6: the searchlight is on while it sees (arrived, not blinded): the dark drone's pool goes out with it.
+	// Step 6: the searchlight is on while it sees (arrived, not blinded): the dark drone's pool goes out with it, this
+	// frame (UpdateWorldCues, from SetTally after the sight test, then aims and colours it).
 	if (SearchLight && SearchLight->IsVisible() != IsLive())
 	{
 		SearchLight->SetVisibility(IsLive());
+	}
+}
+
+void ADroneWatcher::UpdateWorldCues(float DeltaSeconds)
+{
+	Super::UpdateWorldCues(DeltaSeconds);
+
+	const bool bOn = IsLive();
+	const bool bHolding = bOn && bTally;
+	// It snaps onto him on the frame it has him; it lets go more slowly.
+	HoldAlpha = bHolding ? 1.f : FTakeShapes::Ease(HoldAlpha, 0.f, HoldReleaseRate, DeltaSeconds);
+	if (HoldAlpha < 0.005f)
+	{
+		HoldAlpha = 0.f;
+	}
+
+	if (SearchLight)
+	{
+		// At rest straight down, its pool the sight cone's footprint (ConeRadius); holding, onto his feet, tight.
+		const float Radius = FMath::Max(ConeRadius, 1.f);
+		const float Drop = FMath::Max(FlyHeight - 20.f, 1.f);
+		FQuat Aim = FRotator(-90.f, 0.f, 0.f).Quaternion();
+		float Outer = FMath::RadiansToDegrees(FMath::Atan2(Radius, Drop));
+		if (HoldAlpha > 0.f)
+		{
+			const ATakeDirector* Director = ATakeDirector::Get(this);
+			const AJulian* JulianActor = Director ? Director->Julian.Get() : nullptr;
+			if (JulianActor)
+			{
+				const FVector ToFeet = JulianActor->GetFeetLocation() - SearchLight->GetComponentLocation();
+				if (!ToFeet.IsNearlyZero())
+				{
+					Aim = FQuat::Slerp(Aim, ToFeet.Rotation().Quaternion(), HoldAlpha);
+					const float HoldOuter = FMath::RadiansToDegrees(FMath::Atan2(FMath::Max(HoldPoolRadius, 20.f), static_cast<float>(ToFeet.Size())));
+					Outer = FMath::Lerp(Outer, HoldOuter, HoldAlpha);
+				}
+			}
+		}
+		SearchLight->SetWorldRotation(Aim);
+		FTakeShapes::SetCueCone(SearchLight, Outer, FMath::Lerp(SearchLightInnerRatio, 0.8f, HoldAlpha));
+		const float Candelas = bOn ? FMath::Lerp(FMath::Max(SearchLightCandelas, 0.f), FMath::Max(HoldLightCandelas, 0.f), HoldAlpha) : 0.f;
+		FTakeShapes::SetCueLight(SearchLight, Candelas, FMath::Lerp(SearchLightColour, HoldLightColour, HoldAlpha), SearchLightHaze);
+	}
+
+	// The lens: a glint while it looks, broadcast red while it has him, dark while blinded or off.
+	if (Lens)
+	{
+		Lens->SetVisibility(HasArrived());
+		const FLinearColor Glow = !bOn ? FLinearColor(0.02f, 0.02f, 0.02f) : FMath::Lerp(LensColour, LensHoldColour, HoldAlpha);
+		FTakeShapes::SetLamp(Lens, Glow, HoldAlpha > 0.5f ? TakeStyle::StencilRed : static_cast<uint8>(0));
 	}
 }
 
@@ -277,6 +336,10 @@ void ADroneWatcher::LayoutDrone()
 	Tally->SetRelativeLocation(FVector(0.f, 0.f, Height - TakeDroneLocal::TallyBelowBody));
 	ClickVolume->SetRelativeLocation(FVector(0.f, 0.f, Height));
 	ClickVolume->SetBoxExtent(TakeDroneLocal::BodyClickExtent);
+	if (Lens)
+	{
+		Lens->SetRelativeLocation(FVector(0.f, 0.f, Height - 14.f));	// QA sight: just under the body
+	}
 
 	FTakeShapes::SetColour(FrameMesh, TakeColors::Red);
 	FTakeShapes::SetColour(Body, BodyTint);
@@ -291,7 +354,8 @@ void ADroneWatcher::LayoutDrone()
 		SearchLight->SetIntensityUnits(ELightUnits::Candelas);
 		SearchLight->SetIntensity(FMath::Max(SearchLightCandelas, 0.f));
 		SearchLight->SetOuterConeAngle(FMath::Clamp(Half, 1.f, 80.f));
-		SearchLight->SetInnerConeAngle(FMath::Clamp(Half * 0.55f, 0.f, 79.f));
+		SearchLight->SetInnerConeAngle(FMath::Clamp(Half * FMath::Clamp(SearchLightInnerRatio, 0.f, 0.95f), 0.f, 79.f));	// QA sight
+		SearchLight->SetLightColor(SearchLightColour);
 		SearchLight->SetAttenuationRadius(FMath::Sqrt(Radius * Radius + Height * Height) * 1.4f);
 		SearchLight->SetVolumetricScatteringIntensity(FMath::Max(SearchLightHaze, 0.f));
 		SearchLight->SetCastShadows(false);

@@ -1,0 +1,21 @@
+{
+  "_comment": "Package front (QA Nov 14): the street in front of the auction house and its lobby. Same shape as props.json; generate.py adds STYLE to every prompt. Run with RODIN_PROPS_FILE=tools/rodin/props_front.json.",
+  "style": "1940s American period piece, realistic proportions, single object, centred, matte, neutral flat lighting, no baked shadows, no text, no logos, plain background",
+  "params": {
+    "tier": "Gen-2.5-Low",
+    "texture_mode": "high",
+    "mesh_mode": "Raw",
+    "quality_override": "15000",
+    "geometry_file_format": "glb",
+    "material": "PBR",
+    "preview_render": "true"
+  },
+  "props": {
+    "front_sedan": "a 1940s four-door sedan car seen whole, long rounded front fenders flowing into the doors, tall chrome waterfall grille, round headlamps, chrome bumpers, whitewall tyres, sloping fastback roof, deep glossy black paint",
+    "front_streetlamp": "a 1940s cast-iron city street lamp post, fluted dark green iron column on a wide ornate base, a single glass lantern globe on top, about four metres tall",
+    "front_palm": "a tall kentia palm in a large round glazed ceramic planter pot, arching green fronds, cream and brass pot",
+    "front_desk": "a 1940s art deco hotel reception desk, curved front of polished walnut with brass bands, cream marble top, a wooden counter seen whole",
+    "front_postercase": "a 1940s cinema poster display case on two short legs, a tall brass frame with a glass front around a blank movie poster, a small brass lamp hood on top",
+    "front_armchair": "a 1940s leather club armchair seen whole, deep rounded rolled arms, a low curved back, a thick seat cushion, short dark wooden legs, oxblood brown leather"
+  }
+}

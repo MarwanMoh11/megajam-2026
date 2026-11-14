@@ -23,6 +23,10 @@ ACartDevice::ACartDevice()
 	Body->SetRelativeLocation(FVector(0.f, 0.f, 45.f));
 	Body->SetRelativeScale3D(FVector(1.0f, 0.6f, 0.9f));
 
+	// QA devices: a cart has no lamp of its own; the warm pool around it says "in reach".
+	PilotSize = 0.f;
+	PilotOffset = FVector(0.f, 0.f, 120.f);
+
 	CrashMarker = FTakeShapes::CreateShape(this, TEXT("CrashMarker"), ETakeShape::Cube, Root, CrashOffset + FVector(0.f, 0.f, 1.f), FVector(0.4f, 0.4f, 0.02f), FRotator(0.f, 45.f, 0.f), false);
 	CrashMarker->SetHiddenInGame(true);
 }
@@ -35,6 +39,12 @@ void ACartDevice::BeginPlay()
 	if (Body)
 	{
 		BodyHome = Body->GetRelativeLocation();
+		BodyRestBottom = static_cast<float>(Body->Bounds.Origin.Z - Body->Bounds.BoxExtent.Z);
+	}
+	// QA devices: the model stands on its anchor at the door; its bottom is the floor the crash lands on.
+	if (Model && HasModel())
+	{
+		ModelRestBottom = static_cast<float>(Model->Bounds.Origin.Z - Model->Bounds.BoxExtent.Z);
 	}
 }
 
@@ -55,6 +65,8 @@ bool ACartDevice::Fire()
 
 void ACartDevice::StepDevice(float DeltaSeconds)
 {
+	StepLook(DeltaSeconds);	// QA devices: the pilot (dark once it has crashed)
+
 	if (!bRunning || bCrashed)
 	{
 		return;
@@ -103,15 +115,42 @@ void ACartDevice::PlaceCart(float Alpha, bool bTipped)
 
 	const FVector Flat(CrashOffset.X, CrashOffset.Y, 0.f);
 	const double TravelYaw = Flat.IsNearlyZero() ? 0.0 : Flat.Rotation().Yaw;
+	const FVector Move = CrashOffset * Alpha;
 
-	FVector CartLocation = BodyHome + CrashOffset * Alpha;
 	FRotator CartRotation(0.0, TravelYaw, 0.0);
 	if (bTipped)
 	{
-		// On its side: rolled 90 degrees about its travel axis, resting on what was its flank.
-		CartRotation.Roll = 90.0;
-		const FVector Scale = Body->GetRelativeScale3D();
-		CartLocation.Z = BodyHome.Z + CrashOffset.Z - Scale.Z * 50.0 + Scale.Y * 50.0;
+		// On its side: rolled about its travel axis, resting on what was its flank (from its bounds, so a generated
+		// mesh on the body lands on the floor too, not only the unit cube).
+		CartRotation.Roll = TipDegrees;
 	}
-	Body->SetRelativeLocationAndRotation(CartLocation, CartRotation);
+	Body->SetRelativeLocationAndRotation(BodyHome + Move, CartRotation);
+	if (bTipped)
+	{
+		RestOnFloor(Body, BodyRestBottom, static_cast<float>(CrashOffset.Z));
+	}
+
+	// QA devices: the model rolls with the box, keeping its own facing; at the crash it falls on its side across its
+	// way and lands on the floor.
+	if (HasModel())
+	{
+		const FVector Axis = Flat.IsNearlyZero() ? FVector::XAxisVector : Flat.GetSafeNormal();
+		const FQuat Tip = bTipped ? FQuat(Axis, FMath::DegreesToRadians(TipDegrees)) : FQuat::Identity;
+		PlaceModel(Tip, Move);
+		if (bTipped)
+		{
+			RestOnFloor(Model, ModelRestBottom, static_cast<float>(CrashOffset.Z));
+		}
+	}
+}
+
+void ACartDevice::RestOnFloor(USceneComponent* C, float RestBottomZ, float RiseZ)
+{
+	const UPrimitiveComponent* const Prim = Cast<UPrimitiveComponent>(C);
+	if (!Prim)
+	{
+		return;
+	}
+	const double Bottom = Prim->Bounds.Origin.Z - Prim->Bounds.BoxExtent.Z;
+	C->AddWorldOffset(FVector(0.0, 0.0, static_cast<double>(RestBottomZ) + RiseZ - Bottom));
 }

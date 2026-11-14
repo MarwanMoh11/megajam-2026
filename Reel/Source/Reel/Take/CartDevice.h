@@ -42,10 +42,21 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Take")
 	TObjectPtr<UStaticMeshComponent> CrashMarker;
 
+	/** QA devices: how far the cart tips over at the crash, about its way, degrees (90: on its side). */
+	UPROPERTY(EditAnywhere, Category = "Take|Cart")
+	float TipDegrees = 90.f;
+
 protected:
 	bool bCrashed = false;
 
 private:
+	/** QA devices: lifts or drops C so its bounds' bottom sits RiseZ above where it sat at the door, this frame. */
+	void RestOnFloor(USceneComponent* C, float RestBottomZ, float RiseZ);
+
+	/** The bottoms of the box and the model at the door, world Z (BeginPlay). */
+	float BodyRestBottom = 0.f;
+	float ModelRestBottom = 0.f;
+
 	/** 0 at the door .. 1 at the crash point, from RunSeconds and RollSeconds. */
 	float GetRollAlpha() const;
 

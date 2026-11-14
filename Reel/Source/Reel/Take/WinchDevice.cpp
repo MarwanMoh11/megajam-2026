@@ -118,6 +118,8 @@ bool AWinchDevice::Fire()
 
 void AWinchDevice::StepDevice(float DeltaSeconds)
 {
+	StepLook(DeltaSeconds);	// QA devices: the lamp (lit from the alarm), the rope lock's lever
+
 	// Nothing before the fire and nothing after the landing: the curtain stays down for the rest of the take.
 	if (!bDropping)
 	{

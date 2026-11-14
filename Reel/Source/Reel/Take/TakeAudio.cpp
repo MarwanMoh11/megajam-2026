@@ -5,7 +5,9 @@
 #include "BarClockComponent.h"
 #include "ComposureComponent.h"
 #include "Components/AudioComponent.h"
+#include "HAL/PlatformTime.h"
 #include "Kismet/GameplayStatics.h"
+#include "Misc/App.h"
 #include "Sound/SoundBase.h"
 #include "Sound/SoundWave.h"
 #include "TakeDirector.h"
@@ -155,7 +157,10 @@ float UTakeAudioComponent::PlayRow(int32 Row)
 	VoiceAudio->SetSound(Sound);
 	VoiceAudio->SetVolumeMultiplier(VoiceVolume);
 	VoiceAudio->Play();
-	return FMath::Max(0.f, Sound->GetDuration());
+	// QA time: for VoiceSecondsLeft (real time: a voice plays at normal speed under slow time).
+	VoiceStartSeconds = FPlatformTime::Seconds();
+	VoiceLengthSeconds = FMath::Max(0.f, Sound->GetDuration());
+	return VoiceLengthSeconds;
 }
 
 float UTakeAudioComponent::SpeakSubtitle(const FString& Speaker, FString& InOutLine)
@@ -208,6 +213,16 @@ void UTakeAudioComponent::StopVoice()
 bool UTakeAudioComponent::IsVoicePlaying() const
 {
 	return VoiceAudio && VoiceAudio->IsPlaying();
+}
+
+float UTakeAudioComponent::GetVoiceSecondsLeft() const
+{
+	if (!IsVoicePlaying())
+	{
+		return 0.f;
+	}
+	const double Elapsed = FPlatformTime::Seconds() - VoiceStartSeconds;
+	return FMath::Max(0.f, VoiceLengthSeconds - static_cast<float>(Elapsed));
 }
 
 // --- event sites -------------------------------------------------------------------------------------------------------
@@ -339,6 +354,9 @@ void UTakeAudioComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 	{
 		return;
 	}
+
+	// QA time: slow time eases, resets and holds the music on the real frame time (this tick's DeltaTime is slowed).
+	Director->StepSlow(FApp::GetDeltaTime());
 
 	if (PendingCutSeconds >= 0.f)
 	{

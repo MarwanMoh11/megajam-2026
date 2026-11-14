@@ -11,6 +11,19 @@
 class UAudioComponent;
 class USoundWave;
 class USoundWaveProcedural;
+class USoundBase;
+class USoundAttenuation;
+
+/** QA time: a band phrase waiting for its few ms of timing variation; it plays when the clock reaches AtBeats. */
+struct FTakePendingCue
+{
+	TWeakObjectPtr<USoundBase> Sound;
+	float Volume = 1.f;
+	float Pitch = 1.f;
+	double AtBeats = 0.0;
+	bool bAtLocation = false;
+	FVector Location = FVector::ZeroVector;
+};
 
 /**
  * Bars and beats are 1-based for everyone: the take starts on bar 1, beat 1 (timecode "1.1"). At 120 BPM a beat
@@ -256,7 +269,164 @@ public:
 	/** The bed is imported and playing: the clicks are off and the clock follows it. */
 	bool HasBand() const { return bBandLoaded; }
 
+	// --- QA time (Nov 14, Marwan's note 9): warnings that tell the player something ----------------------------------
+	// The band's turn warnings used to play on every cycle, identical, wherever Julian was, and the beam's hi-hat
+	// splashed over everything every 8 s. Now (bSmartWarnings) a turn warning plays only when it is information the
+	// player can use: the watcher is within its range of Julian; the first turn after he comes into range plays in
+	// full, later turns in the same stretch wait out a cooldown (shorter when he is in the watcher's reach) and play a
+	// little quieter. An arrival always plays (it is news). Each instrument has variants: one at random, never the one
+	// it played last, with a little level, pitch and timing variation (pitched phrases stay in tune with the band;
+	// timing only ever late, by a few ms, so the phrase stays on the beat). The beam's splash is a quiet sound at the
+	// beam, in the world, heard near it only.
+
+	/** Off: the old behaviour (every warning and every beam drop, 2D, the same sample each time). */
+	UPROPERTY(EditAnywhere, Category = "Take|Band|Cues")
+	bool bSmartWarnings = true;
+
+	/** Variants played besides BassPhrase, TrumpetPhrase, DrumRollPhrase and HiHatSplash (any not imported are skipped). */
+	UPROPERTY(EditAnywhere, Category = "Take|Band|Cues")
+	TArray<FName> BassVariants = { TEXT("band_bass_2"), TEXT("band_bass_3") };
+
+	UPROPERTY(EditAnywhere, Category = "Take|Band|Cues")
+	TArray<FName> TrumpetVariants = { TEXT("band_trumpet_2"), TEXT("band_trumpet_3") };
+
+	UPROPERTY(EditAnywhere, Category = "Take|Band|Cues")
+	TArray<FName> DrumRollVariants = { TEXT("band_drumroll_2"), TEXT("band_drumroll_3") };
+
+	UPROPERTY(EditAnywhere, Category = "Take|Band|Cues")
+	TArray<FName> HiHatVariants = { TEXT("band_hihat_2"), TEXT("band_hihat_3") };
+
+	/** A turn warning plays only while that watcher is within this of Julian (cm, the watcher's DistanceToPoint):
+	 *  the guard (bass), the drone (trumpet), Vance (drum roll). 0: any distance. */
+	UPROPERTY(EditAnywhere, Category = "Take|Band|Cues", meta = (ClampMin = "0"))
+	float BassRange = 1600.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Band|Cues", meta = (ClampMin = "0"))
+	float TrumpetRange = 2200.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Band|Cues", meta = (ClampMin = "0"))
+	float DrumRollRange = 1800.f;
+
+	/** Julian has left a watcher's range once he is past its range times this: his next approach is a new stretch,
+	 *  whose first turn warning plays at once and in full. */
+	UPROPERTY(EditAnywhere, Category = "Take|Band|Cues", meta = (ClampMin = "1"))
+	float RangeExitFactor = 1.25f;
+
+	/** Within a stretch, an instrument's next turn warning waits at least this long (clock seconds; 4 bars = 8 s). */
+	UPROPERTY(EditAnywhere, Category = "Take|Band|Cues", meta = (ClampMin = "0"))
+	float WarningCooldownSeconds = 14.f;
+
+	/** Julian within this of the watcher (cm, in its reach): every turn matters, the cooldown is CloseCooldownSeconds. */
+	UPROPERTY(EditAnywhere, Category = "Take|Band|Cues", meta = (ClampMin = "0"))
+	float CloseRange = 900.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Band|Cues", meta = (ClampMin = "0"))
+	float CloseCooldownSeconds = 5.f;
+
+	/** The level of a repeat within a stretch (the player has heard it once already). */
+	UPROPERTY(EditAnywhere, Category = "Take|Band|Cues", meta = (ClampMin = "0", ClampMax = "1"))
+	float RepeatLevel = 0.7f;
+
+	/** Each phrase plays this many dB quieter at most (a random amount from 0). */
+	UPROPERTY(EditAnywhere, Category = "Take|Band|Cues", meta = (ClampMin = "0"))
+	float VolumeJitterDb = 2.5f;
+
+	/** Pitch variation, +- cents: the bass and the trumpet (kept small: in tune with the band), and the drums. */
+	UPROPERTY(EditAnywhere, Category = "Take|Band|Cues", meta = (ClampMin = "0"))
+	float PitchedJitterCents = 8.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Band|Cues", meta = (ClampMin = "0"))
+	float UnpitchedJitterCents = 60.f;
+
+	/** Each phrase comes in late by up to this (seconds of clock time; a human player's feel, still on the beat). */
+	UPROPERTY(EditAnywhere, Category = "Take|Band|Cues", meta = (ClampMin = "0", ClampMax = "0.1"))
+	float TimingJitterSeconds = 0.025f;
+
+	/** The beam's splash at the beam: its level, and the attenuation (full within the inner radius, silent past
+	 *  inner radius + falloff). */
+	UPROPERTY(EditAnywhere, Category = "Take|Band|Cues", meta = (ClampMin = "0", ClampMax = "2"))
+	float AccentVolume = 0.45f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Band|Cues", meta = (ClampMin = "0"))
+	float AccentInnerRadius = 300.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Band|Cues", meta = (ClampMin = "1"))
+	float AccentFalloffDistance = 2200.f;
+
+	/** The hi-hat splash in the world at Where, quiet and attenuated (a variant, varied like the phrases). PlayAccent
+	 *  calls it at the beam nearest Julian when bSmartWarnings is on. */
+	void PlayAccentAt(const FVector& Where);
+
+	// --- QA time: slow time (ATakeDirector::BeginSlow / EndSlow, TakeDirectorSlow.cpp) -------------------------------
+	// The world, the watchers and this clock slow together: the director ticks on the slowed game time, so Advance
+	// gets slowed seconds and every bar line comes later by the same factor. The music cannot slow without falling
+	// apart, so it is held: it keeps playing at its own speed under a low-pass, ducked, and the clock stops following
+	// it. When time is back to normal the music is restarted at the clock's place (bar N, loop bar (N-1) mod 16, as
+	// on a restore) on the next beat line, and opens up again: in phase, on the grid.
+
+	/** 0 normal .. 1 fully slowed. The director sets it every frame (the real frame time with it). */
+	void SetSlowAmount(float Amount, float RealDeltaSeconds);
+
+	/** The music is held by slow time (or waiting for its beat line to come back in). */
+	bool IsMusicHeld() const { return bMusicHeld; }
+
+	/** The bed's level when fully slowed (times its usual level). */
+	UPROPERTY(EditAnywhere, Category = "Take|Band|Slow", meta = (ClampMin = "0", ClampMax = "1"))
+	float SlowBedLevel = 0.3f;
+
+	/** The low-pass on the music when fully slowed (Hz): far away, under water. */
+	UPROPERTY(EditAnywhere, Category = "Take|Band|Slow", meta = (ClampMin = "100"))
+	float SlowLowPassHz = 650.f;
+
+	/** After the music comes back in, its level and filter open over this long (real seconds). */
+	UPROPERTY(EditAnywhere, Category = "Take|Band|Slow", meta = (ClampMin = "0"))
+	float SlowRejoinFadeSeconds = 0.4f;
+
+	/** The music comes back in on the next beat line after time is back (off: the frame time is back). */
+	UPROPERTY(EditAnywhere, Category = "Take|Band|Slow")
+	bool bSlowRejoinOnBeat = true;
+
 private:
+	// --- QA time state ---
+	/** One slot per EWatcherInstrument. */
+	static constexpr int32 NumInstrumentSlots = 5;
+	/** Clock beats of the instrument's last turn warning (< 0: none this take). */
+	double LastWarningBeats[NumInstrumentSlots] = { -1.0, -1.0, -1.0, -1.0, -1.0 };
+	/** The sound it played last (never twice running). */
+	FName LastCueSound[NumInstrumentSlots];
+	/** Julian is in a stretch within this instrument's watcher's range (the first turn warning of a stretch is full). */
+	bool bInStretch[NumInstrumentSlots] = { false, false, false, false, false };
+
+	/** Phrases waiting for their few ms of timing variation. */
+	TArray<FTakePendingCue> PendingCues;
+
+	UPROPERTY(Transient)
+	TObjectPtr<USoundAttenuation> AccentAttenuation;
+
+	FRandomStream CueRng;
+
+	/** bSmartWarnings: is this turn warning worth playing now, and at what level (0: not now). Arrivals: always 1. */
+	float WarningGate(EWatcherInstrument Instrument);
+	/** Ends the stretches Julian has walked out of (each bar line). */
+	void UpdateStretches();
+	/** The range for an instrument (0: any). */
+	float RangeFor(EWatcherInstrument Instrument) const;
+	/** A random imported sound of the instrument's (the phrase and its variants), never the one played last; null if none. */
+	USoundBase* PickCue(EWatcherInstrument Instrument, FName Phrase, const TArray<FName>& Variants);
+	/** Queues Sound with the variation (2D, or at Where), or plays it now if there is no timing variation. */
+	void PlayVaried(USoundBase* Sound, float Volume, bool bPitched, bool bAtLocation, const FVector& Where);
+	void FirePendingCues();
+
+	/** Slow time: how slowed (0..1), the held music's extra muffle (0..1: rises with the slow, holds until the music
+	 *  is back in, then falls over SlowRejoinFadeSeconds). */
+	float SlowAmount = 0.f;
+	float SlowMuffle = 0.f;
+	bool bMusicHeld = false;
+	/** Time is back: the music comes back in on the next beat line. */
+	bool bRejoinPending = false;
+	float AppliedLowPassHz = -1.f;
+	void RejoinMusic();
+
 	/** MuteMetronome: silent until TotalBeats reaches this. */
 	double MutedUntilBeats = 0.0;
 
@@ -294,6 +464,8 @@ private:
 	/** The music's position in clock beats now (extrapolated from the last report), or < 0 if unknown. */
 	double GetMusicBeats() const;
 	void UpdateBandLevel();
+	/** QA time: the music's level now (break, mute, voice duck, slow time's muffle, BedVolume). */
+	float ComputeBandLevel() const;
 	/** Plays the named sound once (2D, at Volume), true if it is imported. */
 	bool PlayNamed(FName Name, float Volume);
 	int32 BarsOf(float Seconds, int32 Override) const;

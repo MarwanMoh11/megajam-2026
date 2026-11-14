@@ -82,6 +82,10 @@ protected:
 	EBannerPhase BannerPhase = EBannerPhase::Up;
 	float PhaseSeconds = 0.f;
 
+	/** QA devices: the winch's crank turns while the banner drops (one way) and while it raises (the other). */
+	virtual bool IsHandleTurning() const override { return BannerPhase == EBannerPhase::Dropping || BannerPhase == EBannerPhase::Raising; }
+	virtual float HandleSpinSign() const override { return BannerPhase == EBannerPhase::Raising ? -1.f : 1.f; }
+
 private:
 	/** Sizes and colours the batten, the matte and its click volume, matte rolled up. From OnConstruction and BeginPlay. */
 	void LayoutBanner();

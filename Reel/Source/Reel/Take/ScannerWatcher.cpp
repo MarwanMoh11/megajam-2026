@@ -4,6 +4,7 @@
 
 #include "BarClockComponent.h"
 #include "Components/BoxComponent.h"
+#include "Components/SpotLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Julian.h"
 #include "TakeCharacter.h"
@@ -71,6 +72,7 @@ AScannerWatcher::AScannerWatcher()
 	Label = TEXT("SCANNER");
 	LabelHeight = 300.f;
 	EyeHeight = 251.f;
+	PlanLightOffset = FVector(-70.f, 0.f, 10.f);	// QA sight: the planning lift in front of the eye, on the approach side
 
 	// The frame: a flat rectangle on the floor in front of the gate (FrameMesh is the base's cube).
 	FrameMesh->SetRelativeLocation(FVector(-90.f, 0.f, 0.f));
@@ -93,6 +95,13 @@ AScannerWatcher::AScannerWatcher()
 		FVector(0.06f, 3.2f, 0.06f), FRotator::ZeroRotator, false);
 	Eye = FTakeShapes::CreateShape(this, TEXT("Eye"), ETakeShape::Sphere, Root, FVector(-14.f, 0.f, 251.f),
 		FVector(0.14f, 0.14f, 0.14f), FRotator::ZeroRotator, false);
+
+	// QA sight: a lamp on each post and the light from the lintel (LayoutScanner places them).
+	LampLeft = FTakeShapes::CreateShape(this, TEXT("LampLeft"), ETakeShape::Sphere, Root, FVector(-18.f, -156.f, 205.f),
+		FVector(0.09f, 0.09f, 0.09f), FRotator::ZeroRotator, false);
+	LampRight = FTakeShapes::CreateShape(this, TEXT("LampRight"), ETakeShape::Sphere, Root, FVector(-18.f, 156.f, 205.f),
+		FVector(0.09f, 0.09f, 0.09f), FRotator::ZeroRotator, false);
+	ScanLight = FTakeShapes::CreateCueSpot(this, TEXT("ScanLight"), Root, FVector(-34.f, 0.f, 241.f), FRotator(-77.f, 180.f, 0.f), 400.f);
 }
 
 void AScannerWatcher::OnConstruction(const FTransform& Transform)
@@ -111,6 +120,73 @@ void AScannerWatcher::BeginPlay()
 	SetGateOpen(!IsLive());
 	SyncState();
 	RefreshFrameLook();
+	ApplyBarLook();
+	UpdateWorldCues(-1.f);	// QA sight: lamps, eye and scan light for the state now
+}
+
+void AScannerWatcher::UpdateWorldCues(float DeltaSeconds)
+{
+	Super::UpdateWorldCues(DeltaSeconds);
+
+	// Red while it scans, green while it is blinded or masked; nothing before it is on set.
+	const bool bThere = HasArrived() && !IsHidden();
+	const bool bScanning = IsLive();
+	const FLinearColor Glow = bScanning ? LampLiveColour : LampOpenColour;
+	const uint8 Stencil = bScanning ? TakeStyle::StencilRed : TakeStyle::StencilWhite;
+	for (UStaticMeshComponent* Lamp : { LampLeft.Get(), LampRight.Get() })
+	{
+		if (Lamp)
+		{
+			Lamp->SetVisibility(bThere);
+			FTakeShapes::SetLamp(Lamp, Glow, Stencil);
+		}
+	}
+	// The eye is a lamp too, with the drawn overlays off (with them on it stays the old red signal).
+	if (Eye && !DrawsSightOverlays(this))
+	{
+		FTakeShapes::SetLamp(Eye, Glow, Stencil);
+	}
+
+	// The light from the lintel onto the box it reads.
+	if (ScanLight)
+	{
+		const float Depth = FMath::Max(FrameDepth, 1.f);
+		const float HalfWidth = FMath::Max(GateHalfWidth, 1.f);
+		const FVector LightLocal = EyeOffset + FVector(-20.f, 0.f, -10.f);
+		if (!ScanLight->GetRelativeLocation().Equals(LightLocal, 1.0))
+		{
+			ScanLight->SetRelativeLocation(LightLocal);
+		}
+		const FVector Target = GetActorTransform().TransformPosition(FVector(-Depth * 0.5f, 0.f, 2.f));
+		const FVector ToTarget = Target - ScanLight->GetComponentLocation();
+		const float Dist = FMath::Max(static_cast<float>(ToTarget.Size()), 10.f);
+		ScanLight->SetWorldRotation(ToTarget.Rotation());
+		const float HalfDiagonal = FMath::Sqrt(Depth * Depth * 0.25f + HalfWidth * HalfWidth);
+		FTakeShapes::SetCueCone(ScanLight, FMath::RadiansToDegrees(FMath::Atan2(HalfDiagonal, Dist)), 0.6f);
+		if (!FMath::IsNearlyEqual(ScanLight->AttenuationRadius, Dist * 1.6f, 1.f))
+		{
+			ScanLight->SetAttenuationRadius(Dist * 1.6f);
+		}
+		const float Candelas = !bThere ? 0.f : ScanLightCandelas * (bScanning ? 1.f : FMath::Clamp(OpenLightScale, 0.f, 1.f));
+		FTakeShapes::SetCueLight(ScanLight, Candelas, bScanning ? ScanLightLiveColour : ScanLightOpenColour, ScanLightHaze);
+	}
+}
+
+void AScannerWatcher::ApplyBarLook()
+{
+	if (!GateBar)
+	{
+		return;
+	}
+	if (DrawsSightOverlays(this))
+	{
+		FTakeShapes::SetSignal(GateBar, bGateOpen ? TakeStyle::StencilGold : TakeStyle::StencilRed);
+		FTakeShapes::SetColour(GateBar, bGateOpen ? TakeColors::Gold : TakeColors::Red);
+		return;
+	}
+	// A velvet rope across the gate, lying on the ground while the gate is open.
+	FTakeShapes::SetPlain(GateBar);
+	FTakeShapes::SetColour(GateBar, RopeColour);
 }
 
 void AScannerWatcher::StepWatcher(float DeltaSeconds, UBarClockComponent* Clock)
@@ -240,9 +316,19 @@ void AScannerWatcher::LayoutScanner()
 	ClickVolume->SetRelativeLocation(EyeOffset);
 	ClickVolume->SetBoxExtent(TakeScannerLocal::EyeClickExtent);
 
+	// QA sight: the lamps on the posts, just inside the gate's width and in front of it.
+	const float LampY = FMath::Max(HalfWidth - LampInset, 1.f);
+	if (LampLeft)
+	{
+		LampLeft->SetRelativeLocation(FVector(LampForward, -LampY, LampHeight));
+	}
+	if (LampRight)
+	{
+		LampRight->SetRelativeLocation(FVector(LampForward, LampY, LampHeight));
+	}
+
 	FTakeShapes::SetColour(FrameMesh, TakeColors::Red);
-	FTakeShapes::SetSignal(GateBar, bGateOpen ? TakeStyle::StencilGold : TakeStyle::StencilRed);
-	FTakeShapes::SetColour(GateBar, bGateOpen ? TakeColors::Gold : TakeColors::Red);
+	ApplyBarLook();
 	FTakeShapes::SetSignal(Eye, TakeStyle::StencilRed);
 	FTakeShapes::SetColour(Eye, TakeColors::Red);
 	FTakeShapes::SetColour(Tally, TakeColors::DarkGrey);
@@ -261,8 +347,12 @@ void AScannerWatcher::SetGateOpen(bool bOpen)
 	if (GateBar)
 	{
 		GateBar->SetRelativeLocation(FVector(0.f, 0.f, bOpen ? TakeScannerLocal::OpenBarZ : BarHeight));
-		FTakeShapes::SetSignal(GateBar, bOpen ? TakeStyle::StencilGold : TakeStyle::StencilRed);
-		FTakeShapes::SetColour(GateBar, bOpen ? TakeColors::Gold : TakeColors::Red);
+		ApplyBarLook();	// QA sight: the old red / gold signal, or the velvet rope
+	}
+	// QA sight: the lamps go green (or red) on the frame the gate changes.
+	if (bChanged && HasActorBegunPlay())
+	{
+		UpdateWorldCues(0.f);
 	}
 
 	if (bChanged)

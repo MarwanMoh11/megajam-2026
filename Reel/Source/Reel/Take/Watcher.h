@@ -15,6 +15,7 @@ class UBoxComponent;
 class UStaticMeshComponent;
 class UMaterialInstanceDynamic;
 class UBarClockComponent;
+class UPointLightComponent;
 class AJulian;
 
 /** Place on the floor: the actor location is the floor point under it. */
@@ -62,7 +63,7 @@ public:
 	virtual bool ApplyEffect(EDeviceEffect Effect, float Duration, const FVector& Point);	// BODY: (d)
 
 	/** Called by StepSight every frame. Holding an exposed Julian: frame solid bright red + tally light on, this
-	 *  frame; otherwise the normal frame and the tally off. */
+	 *  frame; otherwise the normal frame and the tally off. QA sight: then UpdateWorldCues, every frame. */
 	virtual void SetTally(bool bHolding);	// BODY: (d)
 
 	/** The beam: touching it is an instant blooper. The guard: catching an exposed Julian is SEEN. */
@@ -250,6 +251,55 @@ public:
 
 	UPROPERTY(VisibleAnywhere, Category = "Take")
 	TObjectPtr<UBoxComponent> ClickVolume;
+
+	// --- QA sight: world cues instead of drawn frames (Marwan's notes 5, 18, 19) --------------------------------------
+	// Only the look changes: what sees Julian, where and for how long is exactly as before (HoldsJulian, the timers).
+
+	/** The director's switch (ATakeDirector::bDrawnSightOverlays): true brings the old drawn frames, frame lines,
+	 *  tally cubes, mark plates and hatched tape back (debug). False (also with no director): world cues only. Marks
+	 *  and tape read it too. */
+	static bool DrawsSightOverlays(const UObject* Context);
+
+	/** Planning: a soft lift of light on a watcher the crew member in reach could catch (or the follow spot's aim),
+	 *  candelas at its peak. 0 = none. */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "0"))
+	float PlanLightCandelas = 160.f;
+
+	/** The planning light's colour: a pale moonlight, apart from the warm pools (safe) and the guards' torches. */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues")
+	FLinearColor PlanLightColour = FLinearColor(0.70f, 0.82f, 1.f);
+
+	/** Where the planning light hangs, from the aim point (GetAimPoint), cm: above and in front, so it lifts the head,
+	 *  shoulders and the floor round him (a light inside the body would light nothing). */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues")
+	FVector PlanLightOffset = FVector(40.f, 0.f, 90.f);
+
+	/** How far the planning light reaches, cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "10"))
+	float PlanLightRadius = 260.f;
+
+	/** How fast the planning light comes and goes, per second (0 = snaps). */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "0"))
+	float PlanLightEaseRate = 9.f;
+
+	/** The planning light (a point light, no shadows; off at rest). */
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<UPointLightComponent> PlanLight;
+
+protected:
+	/** QA sight: every frame from SetTally (after the sight test, so the hold is this frame's), and snapped
+	 *  (DeltaSeconds < 0) from BeginPlay: the world cues follow the state. Base: hides the drawn pieces when the
+	 *  switch is off and runs the planning light. Subclasses add their own lights and lamps and call Super. */
+	virtual void UpdateWorldCues(float DeltaSeconds);
+
+	/** A crew member is planning a device on this watcher this frame (SetFrameCue). */
+	bool IsPlannedNow() const { return bPlanned; }
+
+	/** The last StepWatcher's DeltaSeconds, spent by the next UpdateWorldCues (so two calls in a frame ease once). */
+	float CueDeltaSeconds = 0.f;
+
+	/** The planning light's level now, 0..1. */
+	float PlanAlpha = 0.f;
 
 protected:
 	/** Frame colour for the current state (red live, RedDark blinded/masked, hidden when dropped/off is the

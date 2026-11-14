@@ -266,6 +266,87 @@ RING_IDLE = (0.05, 0.09, 0.13)       # device rings out of reach: mo.shadow side
 CURTAIN = (0.06, 0.035, 0.045)       # the house curtain in velvet (was red: a false danger)
 FLARE = (1.0, 0.92, 0.80)            # the pyro's flare light: warm white, not gold
 
+# --- QA look -------------------------------------------------------------------------------------------------------------
+# Note 8 (Nov 14): colour is allowed. A muted 1940s palette laid over the greys above, each at about the luminance of
+# the grey it replaces (Y = 0.2126 R + 0.7152 G + 0.0722 B), so the value hierarchy and §15.11's floor numbers hold:
+# Julian (Y 0.78) the lightest, the heavies near black. By zone: the lobby bottle green over cream marble, the hall and
+# the dais burgundy over oak, the north rooms navy; walnut furniture, burgundy and bottle-green velvet, brass and aged
+# gilt trim (gold is no longer Julian's), cream linen and plinths, warm tungsten practicals and keys. PALETTE False
+# keeps the greys. Instances only, no master recompiled (M_SignalPattern's cache untouched):
+#     DRESS_ONLY = ("palette", "zones", "lights", "tints")   in a wrapper that execs this file
+PALETTE = True
+if PALETTE:
+    LIT.update({
+        "MI_Front_Street": ((0.022, 0.025, 0.030), 0.35),        # wet asphalt, a touch cool
+        "MI_Front_Pave": ((0.118, 0.105, 0.090), 0.8),           # warm grey flags
+        "MI_Front_Facade": ((0.32, 0.27, 0.20), 0.7),            # limestone
+        "MI_Front_Canopy": ((0.020, 0.036, 0.027), 0.5),         # bottle-green ironwork: canopy, lamp posts, doors
+        "MI_Front_Glass": ((0.018, 0.026, 0.032), 0.1),
+        "MI_Front_Marble": ((0.150, 0.124, 0.098), 0.25),        # cream marble, veined (PATTERNS 2)
+        "MI_Front_Wall": ((0.19, 0.148, 0.108), 0.85),           # cream plaster: the columns
+        "MI_Front_Damask": ((0.26, 0.095, 0.09), 0.85),          # the hall and the dais: burgundy damask
+        "MI_Front_Damask_Lobby": ((0.075, 0.175, 0.11), 0.85),   # the lobby: bottle-green damask
+        "MI_Front_Damask_North": ((0.08, 0.105, 0.19), 0.85),    # the north rooms: navy damask
+        "MI_Front_Runner": ((0.10, 0.028, 0.032), 1.0),          # burgundy runners
+        "MI_Front_Panel": ((0.078, 0.046, 0.028), 0.55),         # walnut: desks, the bar, chairs, stools, easels
+        "MI_Front_Parquet": ((0.135, 0.086, 0.050), 0.45),       # oak
+        "MI_Front_Trim": ((0.37, 0.31, 0.20), 0.35),             # aged gilt over ivory: cornice, pilasters, dais lip
+        "MI_Front_Brass": ((0.40, 0.29, 0.12), 0.3),             # brass: stanchions, frames, instruments, fascia
+        "MI_Front_Velvet": ((0.105, 0.026, 0.032), 1.0),         # burgundy velvet: the rope, the banners
+        "MI_Front_Velvet_Green": ((0.024, 0.058, 0.038), 1.0),   # bottle-green velvet: benches, sofas
+        "MI_Front_Linen": ((0.48, 0.43, 0.34), 0.9),             # cream linen
+        "MI_Front_Plinth": ((0.43, 0.39, 0.32), 0.6),            # cream marble plinths and cases (PATTERNS 2)
+        "MI_Front_Stage": ((0.16, 0.115, 0.075), 0.5),           # dark oak stage boards (PATTERNS 1, wider)
+        "MI_Front_Case": ((0.20, 0.14, 0.095), 0.5),             # walnut cases along the rope aisle
+        "MI_Front_Foliage": ((0.04, 0.078, 0.035), 0.9),
+        "MI_Back_Ply": ((0.24, 0.165, 0.10), 0.9),               # raw plywood
+        "MI_Back_Batten": ((0.32, 0.235, 0.145), 0.9),           # pine
+        "MI_Back_Concrete": ((0.118, 0.12, 0.124), 0.9),
+        "MI_Back_Steel": ((0.074, 0.08, 0.092), 0.4),
+        "MI_Back_Tape": ((0.66, 0.63, 0.55), 0.9),
+        "MI_Person_A": ((0.16, 0.19, 0.27), 0.8),                # navy
+        "MI_Person_B": ((0.37, 0.26, 0.17), 0.8),                # brown tweed
+        "MI_Person_C": ((0.33, 0.36, 0.30), 0.8),                # dove grey-green
+        "MI_Person_Head": ((0.56, 0.40, 0.30), 0.8),
+        "MI_Person_Band": ((0.045, 0.038, 0.035), 0.8),
+        "MI_Canvas_Light": ((0.52, 0.42, 0.26), 0.9),            # ochre landscapes
+        "MI_Canvas_Dark": ((0.15, 0.11, 0.065), 0.9),            # old-master browns
+        "MI_Car_Grey": ((0.05, 0.11, 0.075), 0.3),               # bottle green
+        "MI_Car_Silver": ((0.34, 0.30, 0.235), 0.3),             # cream
+    })
+    TUNGSTEN = (0.80, 0.50, 0.24)                                # Y 0.545, as BONE was
+    GLOW.update({
+        "MI_Front_Sconce": (TUNGSTEN, 1.0),
+        "MI_Front_Footlight": (TUNGSTEN, 0.5),
+        "MI_Front_Screen": ((0.72, 0.54, 0.34), 0.4),
+    })
+    PATTERNS.update({
+        "MI_Front_Damask_Lobby": PATTERNS["MI_Front_Damask"],
+        "MI_Front_Damask_North": PATTERNS["MI_Front_Damask"],
+        "MI_Front_Plinth": (2, 0.20, 0.05, 0.6),
+        "MI_Front_Stage": (1, 0.22, 0.08, 1.6),
+    })
+    SURFACES[0:0] = [                                            # first match wins: these go in front
+        ("MI_Box_Wall", ("lobby",), None, "MI_Front_Damask_Lobby"),
+        ("MI_Box_Wall", ("north",), None, "MI_Front_Damask_North"),
+        ("MI_Box_Trim", FRONTS, ("Gallery_Bench", "Bench"), "MI_Front_Velvet_Green"),
+        ("MI_Box_Sofa", None, None, "MI_Front_Velvet_Green"),
+        ("MI_Box_Gold", None, ("Bottle", "Bar_Bottles"), "MI_Front_Glass"),
+        ("MI_Box_Gold", None, None, "MI_Front_Brass"),
+    ]
+    WARM_KEY = unreal.Color(r=255, g=219, b=179, a=255)        # (1.0, 0.86, 0.70): build_auction's WARM, a little warmer
+    for _kk in ("Key_Scanner", "Key_Stair", "Key_Aisle", "Key_Rope", "Key_Tape", "Key_Podium", "Fill_Dais"):
+        RETUNE[_kk] = dict(RETUNE.get(_kk, {}), light_color=WARM_KEY)
+    COOL = (0.78, 0.86, 1.0)                                     # the rims, Back_Dais, the facade wash: a paler blue
+    RETUNE["Rim_Hall"] = dict(RETUNE.get("Rim_Hall", {}),        # (0.55, 0.70, 1.0) turned the hall and its haze
+                              light_color=unreal.Color(r=199, g=219, b=255, a=255))   # into a blue night
+    TINTS.update({"Julian": (0.82, 0.77, 0.66),                 # an ivory dinner jacket, still the lightest (Y 0.77)
+                  "Maya": (0.34, 0.40, 0.46),                   # slate blue
+                  "Vex": (0.19, 0.165, 0.13)})                  # olive brown
+    BANNER_BODY = (0.27, 0.10, 0.09)                             # burgundy, darker than before (Y 0.135)
+    CURTAIN = (0.105, 0.026, 0.032)                              # burgundy velvet
+# --- end QA look
+
 # =========================================================================================================================
 eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
 les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
@@ -704,6 +785,21 @@ def load_instances():
         p = DRESS + "/" + n
         if eal.does_asset_exist(p):
             MI[n] = eal.load_asset(p)
+
+
+# --- QA look ---
+def repalette():
+    """The LIT and GLOW instances' numbers on the masters as they stand, making any new instance: no master is
+    recompiled (so M_SignalPattern's per-session cache is untouched). Step "palette", run only when asked for."""
+    m, g = eal.load_asset(DRESS + "/M_Dress"), eal.load_asset(DRESS + "/M_DressGlow")
+    for n, (rgb, r) in LIT.items():
+        pat, amp, prough, pscale = PATTERNS.get(n, (0, 0.0, 0.0, 1.0))
+        MI[n] = instance(n, m, {"Roughness": r, "Pattern": pat, "PatternAmp": amp, "PatternRough": prough,
+                                "PatternScale": pscale}, {"Color": rgb})
+    for n, (rgb, sc) in GLOW.items():
+        MI[n] = instance(n, g, {"Scale": sc}, {"Color": rgb})
+    REPORT.append("palette: %d instances re-numbered (PALETTE %s)" % (len(LIT) + len(GLOW), PALETTE))
+# --- end QA look
 
 
 # --- zones and the level's boxes --------------------------------------------------------------------------------------
@@ -1320,9 +1416,13 @@ if step("materials"):
     build_instances()
 else:
     load_instances()
+if ONLY is not None and "palette" in ONLY:      # --- QA look: instances only (a full run builds them above)
+    repalette()
 if step("surfaces"):
     resurface()
     resign()
+elif ONLY is not None and "zones" in ONLY:      # --- QA look: the surfaces by zone, without the signs
+    resurface()
 if step("dressing"):
     dress()
 if step("lights"):

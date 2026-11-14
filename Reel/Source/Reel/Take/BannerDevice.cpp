@@ -19,6 +19,14 @@ ABannerDevice::ABannerDevice()
 	FiredFrom = ETakeCamera::B;
 	BodyColour = TakeColors::DarkGrey;
 
+	// QA devices: the model is the hand winch on Maya's platform (ModelOffset puts it there); the box is the cloth
+	// that drops, so it stays. The winch's crank turns as the banner drops and raises; it never "throws".
+	bModelHidesBody = false;
+	BodyColour = FLinearColor(0.15f, 0.028f, 0.035f);	// the gala's burgundy banner, not a grey slab
+	BattenColour = FLinearColor(0.03f, 0.028f, 0.025f);	// a black iron batten
+	HandleThrow = FRotator::ZeroRotator;
+	HandleSpinDegrees = 540.f;
+
 	// Place the actor at the batten, up in the flies. The matte (Body) hangs under it, rolled up (Up phase).
 	Batten = FTakeShapes::CreateShape(this, TEXT("Batten"), ETakeShape::Cube, Root, FVector::ZeroVector, FVector(0.1f, MatteSize.Y / 100.f + 0.2f, 0.1f));
 
@@ -78,6 +86,8 @@ bool ABannerDevice::Fire()
 
 void ABannerDevice::StepDevice(float DeltaSeconds)
 {
+	StepLook(DeltaSeconds);	// QA devices: the pilot, the crank
+
 	if (!bRunning)
 	{
 		return;

@@ -1,0 +1,19 @@
+{
+  "_comment": "Package heroes (QA note 21): the three leads as full-body characters for skinning onto the UE5 mannequin skeleton (tools/build_heroes.py). generate.py adds STYLE to every prompt and sends PARAMS as form fields: TAPose asks Rodin for a T/A pose on human-like models; Quad mesh mode for even topology at the joints. Generate Julian alone first and judge him.",
+  "style": "1940s Hollywood film noir, one single adult person, full body from head to toe, standing upright in a symmetrical A-pose with both arms straight and held out from the body at about 45 degrees, palms facing the thighs, fingers together, legs straight and slightly apart, feet flat, realistic adult human proportions, game-ready character, matte cloth, neutral flat lighting, no baked shadows, holding nothing, no base, no ground, no text, no logos, plain background",
+  "params": {
+    "tier": "Gen-2.5-Low",
+    "TAPose": "true",
+    "texture_mode": "high",
+    "mesh_mode": "Quad",
+    "quality_override": "15000",
+    "geometry_file_format": "glb",
+    "material": "PBR",
+    "preview_render": "true"
+  },
+  "props": {
+    "heroes_julian": "a handsome leading man actor in his late thirties, slicked-back dark brown hair, clean-shaven, strong jaw, wearing a white dinner jacket with peaked lapels and one button, a white dress shirt, a black silk bow tie, a white pocket square, black tuxedo trousers with a satin side stripe and black polished oxford shoes",
+    "heroes_maya": "a woman in her early thirties, a 1940s film crew lighting gaffer, wearing a dark red headscarf tied over her hair with a small radio headset over it, a rolled-sleeve khaki work shirt, high-waisted navy blue work trousers, a brown leather tool belt with pouches and pliers at her hips, brown leather work gloves and sturdy brown work boots",
+    "heroes_vex": "a wiry man in his late twenties, a 1940s film studio props and sound technician, wearing a dark bottle-green boiler suit with rolled sleeves and buttoned front pockets, a grey tweed flat cap, a pair of old bakelite headphones hanging round his neck, a belt hung with rolls of tape at his waist and scuffed brown work boots"
+  }
+}

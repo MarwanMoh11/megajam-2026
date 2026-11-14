@@ -226,6 +226,65 @@ def fit_music(x, mid, bars):
     return seg, "; ".join(note)
 
 
+# --- QA time: phrase variants -----------------------------------------------------------------------------------------
+def phrase_base(iid):
+    """'band_bass_2' -> 'band_bass': a variant is cut and checked like its original."""
+    head, _, tail = iid.rpartition("_")
+    return head if tail.isdigit() and head.startswith("band_") else iid
+
+
+def cents_histogram(x, lo=150.0, hi=2500.0, n=16384, hop=4096):
+    """Spectral energy by pitch, in 10-cent bins of the octave (bin 0 = C at A440)."""
+    m = mono(x)
+    if len(m) < n:
+        m = np.concatenate([m, np.zeros(n - len(m))])
+    mag, f = dsp.stft_mag(m, n, hop)
+    sel = (f > lo) & (f < hi)
+    energy = (mag[:, sel] ** 2).sum(axis=0)
+    cents = (1200.0 * np.log2(f[sel] / 261.6256)) % 1200.0
+    h = np.zeros(120)
+    np.add.at(h, (np.round(cents / 10.0).astype(int)) % 120, energy)
+    return h / (h.sum() or 1.0)
+
+
+def grid_score(h, grid_cents, shift):
+    """How much of h lies within 30 cents of the grid once h is moved by shift cents."""
+    pos = (np.arange(120) * 10.0 + shift) % 1200.0
+    d = np.min(np.abs(((pos[:, None] - np.asarray(grid_cents)[None, :]) + 600.0) % 1200.0 - 600.0), axis=1)
+    return float(h[d <= 30.0].sum())
+
+
+_BED_TUNING = []
+
+
+def bed_tuning():
+    """The bed's offset from A440 in cents (-50..50), measured once."""
+    if not _BED_TUNING:
+        bed = os.path.join(OUT_DIR, "mus_bed.wav")
+        t = 0.0
+        if os.path.exists(bed):
+            h = cents_histogram(read_wav(bed)[0])
+            semis = [k * 100.0 for k in range(12)]
+            t = max(np.arange(-50, 51, 5), key=lambda s: grid_score(h, semis, -s))
+        _BED_TUNING.append(float(t))
+    return _BED_TUNING[0]
+
+
+def fit_key(x):
+    """Moves a pitched phrase onto the band's scale (manifest BAND_KEY_*, at the bed's tuning) with the smallest
+    resample that fits best, at most 150 cents (the length changes by under 9%: it is cut to its bar after)."""
+    h = cents_histogram(x)
+    t = bed_tuning()
+    grid = [((M.BAND_KEY_ROOT * 100 + d * 100) % 1200) + t for d in M.BAND_KEY_SCALE]
+    before = grid_score(h, grid, 0.0)
+    best = max(np.arange(-150, 151, 5), key=lambda s: grid_score(h, grid, s) - 0.0004 * abs(s))
+    after = grid_score(h, grid, best)
+    if abs(best) < 10 or after < before + 0.03:
+        return x, f"in key: {before:.0%} on G minor (bed tuning {t:+.0f} c)"
+    y = dsp.resample(x, 2.0 ** (-best / 1200.0))
+    return y, f"tuned {best:+.0f} c: {before:.0%} -> {after:.0%} on G minor (bed tuning {t:+.0f} c)"
+
+
 def process(iid):
     raw = os.path.join(RAW_DIR, iid + ".mp3")
     x, rate = decode_mp3(raw)
@@ -255,11 +314,14 @@ def process(iid):
         else:
             x = trim(x, -50, 0.003, 0.2)
             # The bass figure repeats every bar: cut just before the next bar's first note, so its pickup leads
-            # into the bar the guard turns on.
+            # into the bar the guard turns on. QA time: a variant ("band_bass_2") is cut like its original.
+            base = phrase_base(iid)
+            if iid.startswith(M.KEY_FIT_PHRASES):
+                x, note = fit_key(x)    # before the cut: the resample changes the length a little
             longest = {"band_bass": BAR - 0.01, "band_trumpet": BAR + 0.25, "band_drumroll": BAR + 0.4,
-                       "band_hihat": 0.9, "mus_sting": 4.0}.get(iid, 4.0)
-            x = fade(x[: int(longest * RATE)], 0.002, 0.04 if iid == "band_bass" else 0.12)
-            if iid in ("band_bass", "band_trumpet", "band_drumroll", "band_hihat"):
+                       "band_hihat": 0.9, "mus_sting": 4.0}.get(base, 4.0)
+            x = fade(x[: int(longest * RATE)], 0.002, 0.04 if base == "band_bass" else 0.12)
+            if base in ("band_bass", "band_trumpet", "band_drumroll", "band_hihat"):
                 x = mono(x)
     x = normalise(x, M.loudness_for(iid))
     write_wav(os.path.join(OUT_DIR, iid + ".wav"), x)

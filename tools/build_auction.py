@@ -1542,3 +1542,6 @@ exec(open(_dress, encoding="utf-8").read(), dict(globals(), __name__="dress_auct
 # re-runs alone too ("<engine python>" -I tools/ue_mcp.py py tools/build_cast.py) and saves the level itself.
 _cast = unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir() + "../tools/build_cast.py")
 exec(open(_cast, encoding="utf-8").read(), dict(globals(), __name__="build_cast"))
+
+# --- QA found --- Last: the set overlays (tools/sets/run_all.py: front, hall, rooms, devices, heroes), so a rebuild re-applies them.
+exec(open(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir() + "../tools/sets/run_all.py"), encoding="utf-8").read(), {"__name__": "run_all"})

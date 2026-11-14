@@ -13,6 +13,10 @@ class UStaticMesh;
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
 class UBoxComponent;
+class ULocalLightComponent;
+class USpotLightComponent;
+class UPointLightComponent;
+class URectLightComponent;
 
 /** /Engine/BasicShapes meshes. Cube, Sphere, Cylinder and Cone are 100 cm across with the pivot at the centre
  *  (Cone: 100 cm tall, base radius 50, tip pointing +Z). Plane is 100 x 100 cm, zero thickness, facing +Z. */
@@ -93,4 +97,45 @@ struct FTakeShapes
 
 	/** A box that is only a shape in the editor (zones): no collision at all, hidden in game, no navigation. */
 	static void SetupEditorOnlyBox(UBoxComponent* Box, const FVector& Extent, const FColor& EditorColour);
+
+	// --- QA sight: world cues (lights and lamps instead of drawn overlays) ------------------------------------------
+
+	/** The shared cue-light setup: movable, no shadows (static or dynamic), candelas, no light functions, culled past
+	 *  CueLightMaxDrawDistance with a fade, no volumetric haze until asked (SetCueLight). Point and spot lights get
+	 *  inverse-squared falloff. Constructor or runtime. */
+	static void SetupCueLight(ULocalLightComponent* Light, float AttenuationRadius);
+
+	/** CONSTRUCTOR ONLY: a cue spot light (SetupCueLight), off until SetCueLight turns it on. */
+	static USpotLightComponent* CreateCueSpot(AActor* Owner, FName Name, USceneComponent* Parent,
+		const FVector& RelLocation, const FRotator& RelRotation, float AttenuationRadius);
+
+	/** CONSTRUCTOR ONLY: a cue point light (SetupCueLight), off until SetCueLight turns it on. */
+	static UPointLightComponent* CreateCuePoint(AActor* Owner, FName Name, USceneComponent* Parent,
+		const FVector& RelLocation, float AttenuationRadius);
+
+	/** CONSTRUCTOR ONLY: a cue rect light (SetupCueLight), off until SetCueLight turns it on. */
+	static URectLightComponent* CreateCueRect(AActor* Owner, FName Name, USceneComponent* Parent,
+		const FVector& RelLocation, const FRotator& RelRotation, float AttenuationRadius);
+
+	/** RUNTIME: a cue light's strength (candelas), colour and haze (volumetric scattering) this frame; at or near 0
+	 *  candelas it is hidden, so it costs nothing. Cheap when nothing changes. */
+	static void SetCueLight(ULocalLightComponent* Light, float Candelas, const FLinearColor& Colour, float Haze = 0.f);
+
+	/** RUNTIME: a cue spot's cone (outer half-angle, degrees; inner = outer * InnerRatio). Only touches the light when
+	 *  it moves by a quarter of a degree or more (a cone change rebuilds the light's render state). */
+	static void SetCueCone(USpotLightComponent* Light, float OuterDegrees, float InnerRatio);
+
+	/** RUNTIME or OnConstruction: back to the plain lit basic-shape material (BasicShapeMaterial), custom depth off,
+	 *  keeping the colour it had; undoes SetSignal / SetFaint. A no-op when it is already plain. */
+	static void SetPlain(UStaticMeshComponent* Comp);
+
+	/** RUNTIME or OnConstruction: a small lamp: the unlit signal material showing Colour as its glow (values above 1
+	 *  glow brighter), solid pattern; custom depth with Stencil (0: none, so the grade treats it as any other pixel). */
+	static void SetLamp(UStaticMeshComponent* Comp, const FLinearColor& Colour, uint8 Stencil);
+
+	/** Cue lights stop drawing this far from the view, cm (with a 20% fade); 0 = never culled. */
+	static constexpr float CueLightMaxDrawDistance = 5000.f;
+
+	/** Moves Current toward Target at Rate per second (exponential; Rate <= 0 or DeltaSeconds < 0 snaps). */
+	static float Ease(float Current, float Target, float Rate, float DeltaSeconds);
 };

@@ -1,0 +1,27 @@
+{
+  "_comment": "Package rooms (QA pass, Nov 14): the hero piece of each side room. generate.py adds STYLE to every prompt. Placed by tools/sets/rooms.py.",
+  "style": "1940s period piece, realistic proportions, single object, centred, matte, neutral flat lighting, no baked shadows, no text, no logos, plain background",
+  "params": {
+    "tier": "Gen-2.5-Low",
+    "texture_mode": "high",
+    "mesh_mode": "Raw",
+    "quality_override": "15000",
+    "geometry_file_format": "glb",
+    "material": "PBR",
+    "preview_render": "true"
+  },
+  "props": {
+    "rooms_range": "a 1940s commercial restaurant kitchen range, a long black cast-iron cooking stove with six round burner plates on top, two oven doors with chrome handles below, a high back splash shelf, standing on short legs",
+    "rooms_projector": "a 1940s 35mm cinema projector on its heavy cast-iron pedestal stand, two large round film reel housings above and below the lamp house, a lens pointing forward, dark green enamel and black metal",
+    "rooms_filing": "a 1940s four-drawer steel filing cabinet, tall upright box with four drawers each with a small card holder and a handle, olive grey painted metal",
+    "rooms_desk": "a 1940s oak office pedestal desk with drawers on both sides, on top a black manual typewriter, a brass desk lamp with a green glass shade, a black rotary telephone and a stack of ledgers",
+    "rooms_switchboard": "a 1940s telephone operator switchboard cabinet, an upright wooden cabinet with a panel of many small round jack holes and indicator lamps, a sloping shelf in front with rows of patch cords and plugs, and an operator's headset hanging on the side",
+    "rooms_filmshelf": "a tall steel storage shelving unit with five shelves packed with stacks of flat round metal film canisters lying on their sides, grey painted metal",
+    "rooms_shelving": "a tall wooden warehouse shelving unit with four shelves loaded with small wooden crates, brown paper wrapped parcels tied with string and straw packing",
+    "rooms_lockers": "a row of four tall narrow 1940s steel staff lockers joined together, each with vented door slots and a small handle, painted grey green metal",
+    "rooms_vaultdoor": "a massive round bank vault door leaf on its own, a thick polished steel disc standing upright on its edge, a large spoked wheel handle in the centre and a ring of round locking bolts sticking out around its rim, a heavy hinge block on one side",
+    "rooms_handtruck": "a 1940s two-wheeled warehouse hand truck dolly, an upright steel frame with two handles at the top, a flat nose plate at the bottom and two rubber wheels, standing upright",
+    "rooms_sink": "a 1940s art deco porcelain pedestal washbasin with two chrome taps, white glazed ceramic on a fluted pedestal",
+    "rooms_lorry": "a 1940s box van lorry seen whole, a rounded cab with a long grille and round headlamps and a tall rectangular box body behind it with double rear doors, dark green paint"
+  }
+}

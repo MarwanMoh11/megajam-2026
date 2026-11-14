@@ -1,0 +1,14 @@
+{
+  "_comment": "Package hall (QA Nov 14): the great hall's seating, the bandstand and the live broadcast position. Same shape as props.json; generate.py adds STYLE to every prompt. Run with RODIN_PROPS_FILE=tools/rodin/props_hall.json. Cap: 9 generations.",
+  "style": "1940s American period piece, realistic proportions, single object seen whole, centred, matte, neutral flat lighting, no baked shadows, no text, no logos, plain background",
+  "params": {"tier": "Gen-2.5-Low", "texture_mode": "high", "mesh_mode": "Raw", "quality_override": "15000", "geometry_file_format": "glb", "material": "PBR", "preview_render": "true"},
+  "props": {
+    "hall_chair": "a 1940s hotel ballroom side chair of the kind set out in rows for an auction, a gilded wooden frame with four slim straight legs, a padded burgundy velvet seat and a padded upholstered upright rectangular back framed in gilt, plain and solid",
+    "hall_tvcamera": "a large late 1940s black and white television studio camera like the RCA TK-30: a boxy dark grey metal camera body with a rotating turret of four round lenses on its front, a hooded viewfinder on top, two side handles at the back, mounted on a heavy tall studio pedestal column with a three-wheeled castor base",
+    "hall_drums": "a 1940s swing big band drum kit: a large bass drum with a plain cream front head, a snare drum on a stand, a small mounted tom, a floor tom on legs, a hi-hat stand and one large ride cymbal on a stand, black lacquer shells with chrome hardware",
+    "hall_bass": "an upright double bass standing upright on its endpin, dark varnished brown maple body with a spruce top and two f-holes, a long black fingerboard up the neck, a carved scroll and tuning pegs at the top, four strings over a wooden bridge",
+    "hall_mic": "a 1940s broadcast ribbon microphone with a large oblong chrome grille like the RCA 44, on a tall slim chrome floor stand with a heavy round cast-iron base",
+    "hall_phone": "a 1940s black bakelite desk telephone with a rotary dial on the front and the handset resting in a cradle on top",
+    "hall_monitor": "a late 1940s television studio monitor: a dark metal cabinet with a small rounded black and white picture tube screen on its front, standing on a tall four-legged metal stand"
+  }
+}

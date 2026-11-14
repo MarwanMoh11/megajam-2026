@@ -132,6 +132,45 @@ void ATakePlayerController::PlayerTick(float DeltaTime)
 	const float Forward = (IsInputKeyDown(EKeys::W) ? 1.f : 0.f) - (IsInputKeyDown(EKeys::S) ? 1.f : 0.f);
 	const float Right = (IsInputKeyDown(EKeys::D) ? 1.f : 0.f) - (IsInputKeyDown(EKeys::A) ? 1.f : 0.f);
 	const FVector2D Axes(Forward, Right);
+
+	// Look: mouse up looks up (unless inverted).
+	float MouseX = 0.f;
+	float MouseY = 0.f;
+	GetInputMouseDelta(MouseX, MouseY);
+
+	// QA scene1: the glance and the look pan run on real time and give way to the player's own input on its frame.
+	const float RealDt = GetRealDeltaSeconds();
+	if (bGlance)
+	{
+		GlanceMouse += FMath::Abs(MouseX) + FMath::Abs(MouseY);
+		if (!Axes.IsZero() || GlanceMouse > GlanceMouseBreak)
+		{
+			TAKE_LOG(TEXT("GLANCE handed back (%s)"), Axes.IsZero() ? TEXT("mouse") : TEXT("WASD"));
+			EndGlance();
+		}
+		else
+		{
+			// Holding on the glance: he stands, the look waits.
+			StepGlance(RealDt);
+			return;
+		}
+	}
+	if (bLookPan)
+	{
+		LookPanMouse += FMath::Abs(MouseX) + FMath::Abs(MouseY);
+		if (!Axes.IsZero() || LookPanMouse > GlanceMouseBreak)
+		{
+			bLookPan = false;
+			TAKE_LOG(TEXT("LOOKPAN handed back (%s)"), Axes.IsZero() ? TEXT("mouse") : TEXT("WASD"));
+		}
+		else
+		{
+			StepLookPan(RealDt);
+			MouseX = 0.f;	// the pan has the look this frame
+			MouseY = 0.f;
+		}
+	}
+
 	if (!Axes.IsZero())
 	{
 		if (bWalkTo)
@@ -142,10 +181,6 @@ void ATakePlayerController::PlayerTick(float DeltaTime)
 		Current->Move(Axes);
 	}
 
-	// Look: mouse up looks up (unless inverted).
-	float MouseX = 0.f;
-	float MouseY = 0.f;
-	GetInputMouseDelta(MouseX, MouseY);
 	if (MouseX != 0.f || MouseY != 0.f)
 	{
 		Current->AddLook(MouseX * LookSensitivity, MouseY * LookSensitivity * (bInvertLookY ? -1.f : 1.f));
@@ -211,6 +246,8 @@ void ATakePlayerController::SnapTo(ATakeCharacter* To)
 	}
 	FlightTo = nullptr;
 	FlightElapsed = 0.f;
+	bGlance = false;	// QA scene1
+	bLookPan = false;
 	Current = To;
 	SetViewTarget(To);	// default transition params: no blend, the view changes this frame
 	TAKE_LOG(TEXT("VIEW -> %s (snap)"), TakeText::CameraLetter(To->Id));
@@ -243,7 +280,21 @@ void ATakePlayerController::StartFlight(ATakeCharacter* To)
 	}
 	FlightTo = To;
 	FlightElapsed = 0.f;
-	Current->GetFollowView(FlightStartLocation, FlightStartRotation, FlightStartFOV);
+	bLookPan = false;	// QA scene1
+	if (bGlance && FlightCamera)
+	{
+		// QA scene1: from a glance, the flight rises from the glance's view (no jump back to the follow view first).
+		bGlance = false;
+		FlightStartLocation = FlightCamera->GetActorLocation();
+		FlightStartRotation = FlightCamera->GetActorRotation();
+		const UCameraComponent* GlanceLens = FlightCamera->GetCameraComponent();
+		FlightStartFOV = GlanceLens ? GlanceLens->FieldOfView : GlanceFOV;
+	}
+	else
+	{
+		bGlance = false;
+		Current->GetFollowView(FlightStartLocation, FlightStartRotation, FlightStartFOV);
+	}
 	PlaceFlightCamera(FlightStartLocation, FlightStartRotation.Quaternion(), FlightStartFOV);
 	SetViewTarget(FlightCamera.Get());	// no blend: the flight camera is the view this frame
 	TAKE_LOG(TEXT("FLIGHT %s -> %s"), TakeText::CameraLetter(Current->Id), TakeText::CameraLetter(To->Id));
@@ -279,7 +330,19 @@ void ATakePlayerController::StepFlight(float Dt)
 		return;
 	}
 
-	FlightElapsed += FMath::Max(Dt, 0.f);
+	// QA scene1: on real time, so the taught switch's slowed world does not stretch the flight (a touch slower while
+	// slowed, so the switch is shown under the line).
+	float StepDt = Dt;
+	if (bFlightOnRealTime)
+	{
+		StepDt = GetRealDeltaSeconds();
+		const ATakeDirector* const Director = ATakeDirector::Get(this);
+		if (Director && Director->IsSlowed())
+		{
+			StepDt *= FMath::Clamp(SlowedFlightRate, 0.1f, 1.f);
+		}
+	}
+	FlightElapsed += FMath::Max(StepDt, 0.f);
 	if (FlightSeconds <= 0.f || FlightElapsed >= FlightSeconds)
 	{
 		LandFlight();
@@ -398,6 +461,115 @@ void ATakePlayerController::LandFlight()
 	Current = To;
 	SetViewTarget(To);	// no blend: the follow camera is the view this frame
 	TAKE_LOG(TEXT("VIEW -> %s"), TakeText::CameraLetter(To->Id));
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// QA scene1: the director's glance (the camera pans by itself to show who to cut to) and the look pan (QA note 10)
+// ---------------------------------------------------------------------------------------------------------------------
+
+float ATakePlayerController::GetRealDeltaSeconds() const
+{
+	const UWorld* World = GetWorld();
+	return World ? FMath::Clamp(World->DeltaRealTimeSeconds, 0.f, 0.1f) : 0.f;
+}
+
+void ATakePlayerController::StartGlance(const FVector& Target)
+{
+	if (!Current || IsInFlight() || !EnsureFlightCamera())
+	{
+		TAKE_LOG(TEXT("GLANCE refused (%s)"), !Current ? TEXT("on no one") : TEXT("mid-flight"));
+		return;
+	}
+	if (bWalkTo)
+	{
+		bWalkTo = false;
+		TAKE_LOG(TEXT("WALKTO cancelled (glance)"));
+	}
+	bLookPan = false;
+	Current->GetFollowView(GlanceFromLocation, GlanceFromRotation, GlanceFromFOV);
+	GlanceTarget = Target;
+	GlanceElapsed = 0.f;
+	GlanceMouse = 0.f;
+	bGlance = true;
+	PlaceFlightCamera(GlanceFromLocation, GlanceFromRotation.Quaternion(), GlanceFromFOV);
+	SetViewTarget(FlightCamera.Get());	// no blend: the turn starts from the follow view itself
+	TAKE_LOG(TEXT("GLANCE %s -> (%.0f, %.0f, %.0f)"), TakeText::CameraLetter(Current->Id), Target.X, Target.Y, Target.Z);
+}
+
+void ATakePlayerController::EndGlance()
+{
+	if (!bGlance)
+	{
+		return;
+	}
+	bGlance = false;
+	if (!IsInFlight() && Current)
+	{
+		SetViewTarget(Current.Get());	// back on the follow view this frame
+	}
+	TAKE_LOG(TEXT("GLANCE ended"));
+}
+
+void ATakePlayerController::StepGlance(float RealDt)
+{
+	using namespace TakePlayerControllerLocal;
+
+	if (!bGlance || !FlightCamera)
+	{
+		return;
+	}
+	GlanceElapsed += RealDt;
+	if (GlanceMaxSeconds > 0.f && GlanceElapsed >= GlanceMaxSeconds)
+	{
+		TAKE_LOG(TEXT("GLANCE timed out"));
+		EndGlance();
+		return;
+	}
+	const float E = EaseInOut(GlanceSeconds > KINDA_SMALL_NUMBER ? GlanceElapsed / GlanceSeconds : 1.f);
+	const FVector ToTarget = GlanceTarget - GlanceFromLocation;
+	const FQuat EndRotation = ToTarget.IsNearlyZero() ? GlanceFromRotation.Quaternion() : ToTarget.Rotation().Quaternion();
+	PlaceFlightCamera(GlanceFromLocation, FQuat::Slerp(GlanceFromRotation.Quaternion(), EndRotation, E),
+		FMath::Lerp(GlanceFromFOV, GlanceFOV, E));
+}
+
+void ATakePlayerController::StartLookPan(const FVector& Target, float Seconds)
+{
+	if (!Current || IsInFlight())
+	{
+		return;
+	}
+	LookPanTarget = Target;
+	LookPanDuration = FMath::Max(0.f, Seconds);
+	LookPanElapsed = 0.f;
+	LookPanMouse = 0.f;
+	LookPanFromYaw = Current->GetLookYaw();
+	LookPanFromPitch = Current->GetLookPitch();
+	bLookPan = true;
+	TAKE_LOG(TEXT("LOOKPAN %s -> (%.0f, %.0f, %.0f) %.2f s"), TakeText::CameraLetter(Current->Id), Target.X, Target.Y,
+		Target.Z, LookPanDuration);
+}
+
+void ATakePlayerController::StepLookPan(float RealDt)
+{
+	using namespace TakePlayerControllerLocal;
+
+	if (!bLookPan || !Current)
+	{
+		bLookPan = false;
+		return;
+	}
+	LookPanElapsed += RealDt;
+	const float A = EaseInOut(LookPanDuration > KINDA_SMALL_NUMBER ? LookPanElapsed / LookPanDuration : 1.f);
+	// The boom swings with the look, so the aim is solved from where the camera is this frame (it settles as it goes).
+	const FRotator Want = (LookPanTarget - Current->GetAimOrigin()).Rotation();
+	const float Yaw = LookPanFromYaw + FMath::FindDeltaAngleDegrees(LookPanFromYaw, static_cast<float>(Want.Yaw)) * A;
+	const float Pitch = FMath::Lerp(LookPanFromPitch, static_cast<float>(Want.Pitch), A);
+	Current->SetLook(Yaw, Pitch);
+	if (A >= 1.f)
+	{
+		bLookPan = false;
+		TAKE_LOG(TEXT("LOOKPAN done yaw %.1f pitch %.1f"), Current->GetLookYaw(), Current->GetLookPitch());
+	}
 }
 
 void ATakePlayerController::TakeCut(const FString& CameraName)

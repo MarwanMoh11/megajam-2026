@@ -110,6 +110,9 @@ public:
 	void StopVoice();
 	bool IsVoicePlaying() const;
 
+	/** QA time: real seconds left of the voice playing now, 0 when none (ATakeDirector::VoiceSecondsLeft). */
+	float GetVoiceSecondsLeft() const;
+
 	// --- the director's calls (one line at each event site) ---------------------------------------------------------
 
 	/** A cut was taken (the press frame). */
@@ -163,6 +166,10 @@ private:
 
 	/** A delayed voice (the blooper's "Cut!"): seconds left, < 0 = none. Counted in real time (the freeze). */
 	float PendingCutSeconds = -1.f;
+
+	/** QA time: when the voice now playing started (FPlatformTime, real seconds) and its length. */
+	double VoiceStartSeconds = 0.0;
+	float VoiceLengthSeconds = 0.f;
 
 	UAudioComponent* MakeLoop(FName Name);
 	void StepLoop(UAudioComponent* Audio, float& Level, float Target, float DeltaTime);

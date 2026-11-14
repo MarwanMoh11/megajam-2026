@@ -19,10 +19,17 @@ DEST = "/Game/Take/Audio"
 LOOPING = {"mus_bed"} | {s[0] for s in M.SFX if s[4]}
 MUSIC = {m[0] for m in M.MUSIC if m[2]}            # the bed and the heist cue
 
+# QA time (Nov 14): only what is new or changed is imported (a WAV newer than its .uasset); FORCE_ALL redoes them all.
+FORCE_ALL = False
+CONTENT = os.path.join(os.path.dirname(os.path.dirname(HERE)), "Reel", "Content", "Take", "Audio")
+
 tasks = []
 for iid in M.all_ids():
     path = os.path.join(SRC, iid + ".wav")
     if not os.path.exists(path):
+        continue
+    uasset = os.path.join(CONTENT, iid + ".uasset")
+    if not FORCE_ALL and os.path.exists(uasset) and os.path.getmtime(uasset) >= os.path.getmtime(path):
         continue
     t = unreal.AssetImportTask()
     t.filename = path
@@ -36,7 +43,7 @@ for iid in M.all_ids():
 unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks(tasks)
 
 done, flagged = 0, 0
-for iid in M.all_ids():
+for iid in [t.destination_name for t in tasks]:   # only what this run imported
     asset = unreal.load_asset(f"{DEST}/{iid}.{iid}")
     if not asset:
         continue

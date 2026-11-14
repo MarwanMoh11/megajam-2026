@@ -3,6 +3,8 @@
 #include "PatrolGuard.h"
 
 #include "BarClockComponent.h"
+#include "CastMember.h"
+#include "Components/SpotLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Julian.h"
 #include "PatrolPoint.h"
@@ -64,6 +66,12 @@ APatrolGuard::APatrolGuard()
 	FrameMesh->SetRelativeScale3D(FVector(0.02f, Width / 100.f, FrameRange / 100.f));
 
 	Tally->SetRelativeLocation(FVector(0.f, 0.f, 200.f));
+
+	// QA sight: his torch, held a little in front at chest-to-eye height, pitched at the floor ahead (off until
+	// UpdateWorldCues lights it).
+	SightLight = FTakeShapes::CreateCueSpot(this, TEXT("SightLight"), Root,
+		FVector(SightLightOffset.X, SightLightOffset.Y, EyeHeight + SightLightOffset.Z), FRotator(-20.f, 0.f, 0.f),
+		FrameRange * 1.25f);
 }
 
 void APatrolGuard::OnConstruction(const FTransform& Transform)
@@ -83,6 +91,102 @@ void APatrolGuard::BeginPlay()
 	LastPatrolIndex = -1;
 	SyncState();
 	RefreshFrameLook();
+	HoldAlpha = 0.f;
+	bCueWasHolding = false;
+	UpdateWorldCues(-1.f);	// QA sight: the torch for the state now, snapped
+}
+
+void APatrolGuard::UpdateWorldCues(float DeltaSeconds)
+{
+	Super::UpdateWorldCues(DeltaSeconds);
+	if (!SightLight)
+	{
+		return;
+	}
+
+	// The torch's level: off before he is on set, dim while he is dazzled (not watching), full while he watches.
+	const bool bPresent = bSightLight && HasArrived() && !IsHidden();
+	const bool bHolding = bPresent && IsLive() && bTally;
+	const float LevelTarget = !bPresent ? 0.f : (IsLive() ? 1.f : FMath::Clamp(BlindedLightScale, 0.f, 1.f));
+	const float HoldTarget = bHolding ? 1.f : 0.f;
+	LightAlpha = FTakeShapes::Ease(LightAlpha, LevelTarget, LightEaseRate, DeltaSeconds);
+	HoldAlpha = FTakeShapes::Ease(HoldAlpha, HoldTarget, HoldEaseRate, DeltaSeconds);
+	if (FMath::Abs(LightAlpha - LevelTarget) < 0.005f)
+	{
+		LightAlpha = LevelTarget;
+	}
+	if (FMath::Abs(HoldAlpha - HoldTarget) < 0.005f)
+	{
+		HoldAlpha = HoldTarget;
+	}
+
+	// The frame he starts holding Julian his head turns to him (the cast body's gesture), as the pool swings on.
+	if (bHolding && !bCueWasHolding && bLookAtGesture)
+	{
+		TArray<AActor*> Attached;
+		GetAttachedActors(Attached);
+		for (AActor* Each : Attached)
+		{
+			if (ACastMember* Member = Cast<ACastMember>(Each))
+			{
+				Member->PlayGesture(FName(TEXT("LookAt")));
+				break;
+			}
+		}
+	}
+	bCueWasHolding = bHolding;
+
+	if (LightAlpha <= 0.f)
+	{
+		FTakeShapes::SetCueLight(SightLight, 0.f, SightLightColour);
+		return;
+	}
+
+	// At rest: pitched at the floor SightLightAimFraction along his frame, as wide as his frame. He turns, it turns.
+	const float Range = FMath::Max(FrameRange, 1.f);
+	const FVector LightLocal(SightLightOffset.X, SightLightOffset.Y, EyeHeight + SightLightOffset.Z);
+	if (!SightLight->GetRelativeLocation().Equals(LightLocal, 1.0))
+	{
+		SightLight->SetRelativeLocation(LightLocal);
+	}
+	const float LightHeight = FMath::Max(static_cast<float>(LightLocal.Z), 10.f);
+	const float AimAhead = FMath::Max(Range * SightLightAimFraction, 50.f);
+	const FRotator RestLocal(-FMath::RadiansToDegrees(FMath::Atan2(LightHeight, AimAhead)), 0.f, 0.f);
+	FQuat Aim = GetActorQuat() * RestLocal.Quaternion();
+
+	// Holding Julian: the pool swings onto his chest and tightens.
+	if (HoldAlpha > 0.f)
+	{
+		const ATakeDirector* Director = ATakeDirector::Get(this);
+		const AJulian* JulianActor = Director ? Director->Julian.Get() : nullptr;
+		if (JulianActor)
+		{
+			const FVector ToHim = JulianActor->GetFeetLocation() + FVector(0.f, 0.f, 100.f) - SightLight->GetComponentLocation();
+			if (!ToHim.IsNearlyZero())
+			{
+				Aim = FQuat::Slerp(Aim, ToHim.Rotation().Quaternion(), HoldAlpha);
+			}
+		}
+	}
+	SightLight->SetWorldRotation(Aim);
+
+	const float RestCone = FMath::Clamp(FrameHalfAngle * SightLightConeScale, 4.f, 70.f);
+	FTakeShapes::SetCueCone(SightLight, FMath::Lerp(RestCone, HoldConeDegrees, HoldAlpha), FMath::Lerp(0.55f, 0.75f, HoldAlpha));
+	const float Attenuation = Range * 1.25f;
+	if (!FMath::IsNearlyEqual(SightLight->AttenuationRadius, Attenuation, 1.f))
+	{
+		SightLight->SetAttenuationRadius(Attenuation);
+	}
+
+	float Candelas = FMath::Lerp(SightLightCandelas, HoldLightCandelas, HoldAlpha) * LightAlpha;
+	FLinearColor Colour = FMath::Lerp(SightLightColour, HoldLightColour, HoldAlpha);
+	if (bAlarmLook)
+	{
+		// The alarm: a harder, colder torch (the hold still warms it, half as much).
+		Colour = FMath::Lerp(Colour, AlarmLightColour, 1.f - 0.5f * HoldAlpha);
+		Candelas *= FMath::Max(AlarmLightScale, 0.f);
+	}
+	FTakeShapes::SetCueLight(SightLight, Candelas, Colour, SightLightHaze);
 }
 
 void APatrolGuard::SyncState()

@@ -109,12 +109,53 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Drone", meta = (ClampMin = "0"))
 	float SearchLightCandelas = 600.f;
 
-	/** The beam's glow in the haze (0 = none). */
+	/** The beam's glow in the haze (0 = none). QA sight: 0.3 -> 1.0, so the beam reads on its own now the cone is gone. */
 	UPROPERTY(EditAnywhere, Category = "Take|Drone", meta = (ClampMin = "0"))
-	float SearchLightHaze = 0.3f;
+	float SearchLightHaze = 1.f;
+
+	// --- QA sight: the searchlight is the cue (Marwan's note 19: no cone) ---------------------------------------------
+
+	/** The pool's soft edge: inner cone = outer * this (higher: a crisper edge, closer to the true ConeRadius). */
+	UPROPERTY(EditAnywhere, Category = "Take|Drone", meta = (ClampMin = "0", ClampMax = "0.95"))
+	float SearchLightInnerRatio = 0.8f;
+
+	/** The searchlight's colour at rest: a cool broadcast white. */
+	UPROPERTY(EditAnywhere, Category = "Take|Drone")
+	FLinearColor SearchLightColour = FLinearColor(0.92f, 0.95f, 1.f);
+
+	/** When it has Julian the pool snaps onto him: its radius on him (cm), candelas and colour. */
+	UPROPERTY(EditAnywhere, Category = "Take|Drone", meta = (ClampMin = "20"))
+	float HoldPoolRadius = 90.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Drone", meta = (ClampMin = "0"))
+	float HoldLightCandelas = 1600.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Drone")
+	FLinearColor HoldLightColour = FLinearColor(1.f, 0.9f, 0.78f);
+
+	/** How fast the pool lets go of him and widens again, per second (it snaps onto him; 0 = snaps back too). */
+	UPROPERTY(EditAnywhere, Category = "Take|Drone", meta = (ClampMin = "0"))
+	float HoldReleaseRate = 6.f;
+
+	/** The lens's glint (glow colour, values above 1 bloom) at rest, and while it has him (a broadcast tally red). */
+	UPROPERTY(EditAnywhere, Category = "Take|Drone")
+	FLinearColor LensColour = FLinearColor(2.4f, 2.2f, 1.8f);
+
+	UPROPERTY(EditAnywhere, Category = "Take|Drone")
+	FLinearColor LensHoldColour = FLinearColor(4.f, 0.45f, 0.25f);
+
+	/** The lens under the body (a small sphere that glints; dark while blinded or off). */
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<UStaticMeshComponent> Lens;
 
 protected:
 	TWeakObjectPtr<const AActor> ChaseTarget;
+
+	/** QA sight: the base (planning lift), then the searchlight (rest pool, the snap onto Julian) and the lens. */
+	virtual void UpdateWorldCues(float DeltaSeconds) override;
+
+	/** 1 while it has Julian (snapped), easing to 0 after. */
+	float HoldAlpha = 0.f;
 
 private:
 	/** Disc size, body height, tally and click volume at the body; colours. From OnConstruction and BeginPlay. */

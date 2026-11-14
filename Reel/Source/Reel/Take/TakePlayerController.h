@@ -215,6 +215,53 @@ public:
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|Flight")
 	TObjectPtr<ACameraActor> FlightCamera;
 
+	// --- QA scene1: the director's glance, the look pan, the flight on real time (QA notes 2, 10) -------------------
+
+	/** The camera leaves the follow view of the character the player is on and turns (zooming to GlanceFOV) to frame
+	 *  Target over GlanceSeconds of real time, then holds there. It hands the view back at once on WASD (that frame's
+	 *  walk still happens), on mouse movement past GlanceMouseBreak, on [1] for the character it is on (the
+	 *  director), on EndGlance or SnapTo, or after GlanceMaxSeconds; a cut's flight starts from the glance's view.
+	 *  Does nothing in a flight or on no one. Flies FlightCamera. */
+	void StartGlance(const FVector& Target);
+	void EndGlance();
+	bool IsGlancing() const { return bGlance; }
+
+	/** Eases the look of the character the player is on onto Target over Seconds (real time). WASD or the mouse past
+	 *  GlanceMouseBreak hands the look back on that frame; a flight or SnapTo ends it. */
+	void StartLookPan(const FVector& Target, float Seconds);
+	bool IsLookPanning() const { return bLookPan; }
+
+	/** This frame's real (undilated) seconds, clamped to 0..0.1: what runs on it is not slowed by a slowed world. */
+	float GetRealDeltaSeconds() const;
+
+	/** The glance's turn, s (real time). */
+	UPROPERTY(EditAnywhere, Category = "Take|Glance", meta = (ClampMin = "0"))
+	float GlanceSeconds = 1.1f;
+
+	/** The glance zooms to this FOV, degrees. */
+	UPROPERTY(EditAnywhere, Category = "Take|Glance", meta = (ClampMin = "5", ClampMax = "120"))
+	float GlanceFOV = 40.f;
+
+	/** The glance hands the view back by itself after this long, s (real time). */
+	UPROPERTY(EditAnywhere, Category = "Take|Glance", meta = (ClampMin = "0"))
+	float GlanceMaxSeconds = 12.f;
+
+	/** Mouse movement (summed GetInputMouseDelta units) that takes the camera back from a glance or a look pan. */
+	UPROPERTY(EditAnywhere, Category = "Take|Glance", meta = (ClampMin = "0"))
+	float GlanceMouseBreak = 6.f;
+
+	/** The flight runs on real time, so a slowed world (the taught first switch) does not stretch it. Off: world
+	 *  time, as before the QA pass. */
+	UPROPERTY(EditAnywhere, Category = "Take|Flight")
+	bool bFlightOnRealTime = true;
+
+	/** While the world is slowed (ATakeDirector::IsSlowed), the flight runs at this share of real time: a touch slower,
+	 *  so the switch is shown while the line plays. */
+	UPROPERTY(EditAnywhere, Category = "Take|Flight", meta = (ClampMin = "0.1", ClampMax = "1"))
+	float SlowedFlightRate = 0.8f;
+
+	// --- end QA scene1 ---
+
 protected:
 	void OnKeyOne();	// BODY: (s)
 	void OnKeyTwo();	// BODY: (s)
@@ -274,4 +321,25 @@ protected:
 	/** The test walk (TakeWalkTo). */
 	bool bWalkTo = false;
 	FVector WalkToPoint = FVector::ZeroVector;
+
+	// --- QA scene1: the glance and the look pan ---
+	void StepGlance(float RealDt);
+	void StepLookPan(float RealDt);
+
+	bool bGlance = false;
+	float GlanceElapsed = 0.f;
+	float GlanceMouse = 0.f;
+	FVector GlanceTarget = FVector::ZeroVector;
+	FVector GlanceFromLocation = FVector::ZeroVector;
+	FRotator GlanceFromRotation = FRotator::ZeroRotator;
+	float GlanceFromFOV = 90.f;
+
+	bool bLookPan = false;
+	float LookPanElapsed = 0.f;
+	float LookPanDuration = 0.f;
+	float LookPanMouse = 0.f;
+	FVector LookPanTarget = FVector::ZeroVector;
+	float LookPanFromYaw = 0.f;
+	float LookPanFromPitch = 0.f;
+	// --- end QA scene1 ---
 };

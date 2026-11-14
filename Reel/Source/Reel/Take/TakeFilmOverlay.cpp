@@ -132,6 +132,21 @@ void FTakeFilmOverlay::EnsureTextures()
 			return FColor(0, 0, 0, Y == 0 ? 255 : 0);
 		});
 	}
+	if (!VignetteTex)
+	{
+		// QA hud: white, alpha 0 inside VignetteClear of the half-size, rising on a smoothstep to 1 at r = 1, so the
+		// whole border (edge midpoints r = 1, corners more) is opaque and the fill outside it meets it without a seam.
+		const float Clear = FMath::Clamp(VignetteClear, 0.f, 0.95f);
+		VignetteTex = MakeTexture(256, 256, false, false, [Clear](int32 X, int32 Y)
+		{
+			const float DX = (X + 0.5f) / 128.f - 1.f;
+			const float DY = (Y + 0.5f) / 128.f - 1.f;
+			const float R = FMath::Sqrt(DX * DX + DY * DY);
+			const float T = FMath::Clamp((R - Clear) / (1.f - Clear), 0.f, 1.f);
+			const float A = T * T * (3.f - 2.f * T);
+			return FColor(255, 255, 255, static_cast<uint8>(FMath::RoundToInt(A * 255.f)));
+		});
+	}
 }
 
 void FTakeFilmOverlay::Track(const FTakeFilmFrame& F)
@@ -250,18 +265,26 @@ void FTakeFilmOverlay::DrawUnder(AHUD& Hud, UCanvas& Canvas, const FTakeFilmFram
 	const bool bLow = F.Composure < LowComposure;
 	const bool bBlooper = F.Phase == ETakePhase::BlooperFreeze;
 	const int32 BlooperFrame = static_cast<int32>(FMath::FloorToDouble((F.RealTime - PhaseTime) * Fps));
+	// QA hud: the dirt rises with the stress on one curve (bStressDirt); off, the old step below LowComposure.
+	const float Stress = FMath::Clamp(F.Stress, 0.f, 1.f);
 
 	// The picture: the film's dirt, or the making-of's viewfinder.
 	if (F.bFilmPicture)
 	{
-		Roll(F, bLow ? DustLowPerSecond : DustPerSecond, ScratchEveryMin, ScratchEveryMax);
-		float Flicker = bCutBurst ? FlickerCutMax : (bLow ? FlickerLowMax : FlickerMax);
+		const float Dust = bStressDirt ? FMath::Lerp(DustPerSecond, DustLowPerSecond, Stress)
+			: (bLow ? DustLowPerSecond : DustPerSecond);
+		Roll(F, Dust, ScratchEveryMin, ScratchEveryMax);
+		const float CalmFlicker = bStressDirt ? FMath::Lerp(FlickerMax, FlickerLowMax, Stress)
+			: (bLow ? FlickerLowMax : FlickerMax);
+		float Flicker = bCutBurst ? FMath::Max(FlickerCutMax, CalmFlicker) : CalmFlicker;
 		if (bBlooper && BlooperFrame == 0)
 		{
 			Flicker = BlooperFlicker;
 			FlickerRoll = 1.f;
 		}
-		DrawFilm(Hud, Canvas, F, PX, PY, PW, PH, bCutBurst && bCutToFilm ? GrainCutOpacity : GrainOpacity, Flicker);
+		const float CalmGrain = GrainOpacity + (bStressDirt ? GrainStressExtra * Stress : 0.f);
+		DrawFilm(Hud, Canvas, F, PX, PY, PW, PH, bCutBurst && bCutToFilm ? FMath::Max(GrainCutOpacity, CalmGrain) : CalmGrain,
+			Flicker);
 	}
 	else if (bViewfinder)
 	{
@@ -294,13 +317,7 @@ void FTakeFilmOverlay::DrawUnder(AHUD& Hud, UCanvas& Canvas, const FTakeFilmFram
 		}
 	}
 
-	// The burn as composure falls (every camera): a danger band along the picture's four edges.
-	if (bBurn && F.Composure < BurnBelow && BurnBelow > 0.f)
-	{
-		const float K = FMath::Clamp(1.f - F.Composure / BurnBelow, 0.f, 1.f);
-		const float Alpha = BurnAlpha * K;	// steady at the composure's level: no beat
-		DrawEdgeBands(Canvas, WithAlpha(TakeStyle::Danger, Alpha), PX, PY, PW, PH, (BurnMinPx + BurnExtraPx * K) * S);
-	}
+	// QA hud: the burn as composure falls moved to DrawStress (every camera, with or without the film look).
 
 	// The splice: a paper flash on the press frame (one film frame), and on a cut to the film an ink frame-line band
 	// rolling from the picture's bottom edge to its top over SpliceBandFrames.
@@ -392,5 +409,132 @@ void FTakeFilmOverlay::DrawOver(AHUD& Hud, UCanvas& Canvas, const FTakeFilmFrame
 	if (bPrintItSnap && F.Phase == ETakePhase::Printed && Frame == 0)
 	{
 		PaintRect(Canvas, TakeStyle::Ink, 0.f, 0.f, F.ScreenW, F.ScreenH);
+	}
+}
+
+// --- QA hud: composure as the picture ------------------------------------------------------------------------------------
+
+float FTakeFilmOverlay::HeartbeatAt(const FTakeFilmFrame& F) const
+{
+	if (!bHeartbeat)
+	{
+		return 0.f;
+	}
+	const float Stress = FMath::Clamp(F.Stress, 0.f, 1.f);
+	const float Amp = HeartbeatDepth * FMath::SmoothStep(HeartbeatFrom, 1.f, Stress);
+	if (Amp <= 0.f)
+	{
+		return 0.f;
+	}
+	// Lub-dub: two soft bumps early in each beat, the second smaller; the rate climbs with the stress.
+	const double Bpm = static_cast<double>(FMath::Lerp(HeartbeatBpmCalm, HeartbeatBpmTight, Stress));
+	const double Beats = F.RealTime * Bpm / 60.0;
+	const float P = static_cast<float>(Beats - FMath::FloorToDouble(Beats));
+	const float Lub = FMath::Exp(-FMath::Square((P - 0.05f) / 0.06f));
+	const float Dub = 0.6f * FMath::Exp(-FMath::Square((P - 0.24f) / 0.06f));
+	return Amp * FMath::Min(1.f, Lub + Dub);
+}
+
+void FTakeFilmOverlay::DrawVignette(UCanvas& Canvas, const FVector2D& Centre, float HalfW, float HalfH, float Alpha,
+	float X, float Y, float W, float H)
+{
+	if (Alpha <= 0.f || HalfW <= 1.f || HalfH <= 1.f || W <= 0.f || H <= 0.f)
+	{
+		return;
+	}
+	const FLinearColor Colour = WithAlpha(TakeStyle::Ink, Alpha);
+	const float X0 = static_cast<float>(Centre.X) - HalfW;
+	const float X1 = static_cast<float>(Centre.X) + HalfW;
+	const float Y0 = static_cast<float>(Centre.Y) - HalfH;
+	const float Y1 = static_cast<float>(Centre.Y) + HalfH;
+
+	// The texture, clipped to the picture (its UVs cut to match), so nothing spills into the bars.
+	const float IX0 = FMath::Max(X0, X);
+	const float IX1 = FMath::Min(X1, X + W);
+	const float IY0 = FMath::Max(Y0, Y);
+	const float IY1 = FMath::Min(Y1, Y + H);
+	if (IX1 > IX0 && IY1 > IY0)
+	{
+		const FVector2D UV0((IX0 - X0) / (X1 - X0), (IY0 - Y0) / (Y1 - Y0));
+		const FVector2D UV1((IX1 - X0) / (X1 - X0), (IY1 - Y0) / (Y1 - Y0));
+		PaintTile(Canvas, VignetteTex, IX0, IY0, IX1 - IX0, IY1 - IY0, UV0, UV1, Colour);
+	}
+
+	// The picture outside the texture: solid at the same alpha (above, below, then left and right between them).
+	const float Top = FMath::Clamp(Y0, Y, Y + H);
+	const float Bottom = FMath::Clamp(Y1, Y, Y + H);
+	PaintRect(Canvas, Colour, X, Y, W, Top - Y);
+	PaintRect(Canvas, Colour, X, Bottom, W, Y + H - Bottom);
+	const float Left = FMath::Clamp(X0, X, X + W);
+	const float Right = FMath::Clamp(X1, X, X + W);
+	PaintRect(Canvas, Colour, X, Top, Left - X, Bottom - Top);
+	PaintRect(Canvas, Colour, Right, Top, X + W - Right, Bottom - Top);
+}
+
+void FTakeFilmOverlay::DrawStress(UCanvas& Canvas, const FTakeFilmFrame& F, float PicY, float PicH)
+{
+	const float Stress = FMath::Clamp(F.Stress, 0.f, 1.f);
+	const float Seen = bSeenPull ? FMath::Clamp(F.SeenWeight, 0.f, 1.f) : 0.f;
+	if ((Stress <= 0.002f && Seen <= 0.002f) || PicH <= 0.f || F.ScreenW <= 0.f)
+	{
+		return;
+	}
+	EnsureTextures();
+	const float S = TakeStyle::Scale(F.ScreenH);
+	const float PX = 0.f;
+	const float PY = PicY;
+	const float PW = F.ScreenW;
+	const float PH = PicH;
+	const float Beat = HeartbeatAt(F);
+	const FVector2D Pull = F.SeenDir.SizeSquared() > 1.0 ? F.SeenDir.GetSafeNormal() : F.SeenDir;
+
+	// 1. The colour cools and drains (the grade's Stress does the draining; the overlay adds a navy wash).
+	if (bStressWash && WashMaxAlpha > 0.f)
+	{
+		PaintRect(Canvas, WithAlpha(TakeStyle::MoShadow, WashMaxAlpha * Stress), PX, PY, PW, PH);
+	}
+
+	// 2. The vignette closes in; held, it is at least SeenVignetteAlpha and its clear centre slides away from the
+	//    watcher, so the dark gathers on his side.
+	if (bStressVignette)
+	{
+		float Alpha = VignetteMaxAlpha * Stress;
+		float Scale = FMath::Lerp(VignetteScaleCalm, VignetteScaleTight, Stress);
+		if (Seen > 0.f)
+		{
+			Alpha = FMath::Max(Alpha, SeenVignetteAlpha * Seen);
+			Scale = FMath::Min(Scale, FMath::Lerp(VignetteScaleCalm, SeenVignetteScale, Seen));
+		}
+		Alpha = FMath::Clamp(Alpha * (1.f + Beat), 0.f, 0.95f);
+		const FVector2D Centre(PX + PW * 0.5f - static_cast<float>(Pull.X) * Seen * SeenPull * PW * 0.5f,
+			PY + PH * 0.5f - static_cast<float>(Pull.Y) * Seen * SeenPull * PH * 0.5f);
+		DrawVignette(Canvas, Centre, PW * 0.5f * Scale, PH * 0.5f * Scale, Alpha, PX, PY, PW, PH);
+	}
+
+	// 3. The edges burn warm from BurnFrom, deeper and stronger as it rises, with the pulse.
+	if (bBurn)
+	{
+		const float K = FMath::SmoothStep(BurnFrom, 1.f, Stress);
+		if (K > 0.f)
+		{
+			DrawEdgeBands(Canvas, WithAlpha(TakeStyle::Danger, FMath::Min(1.f, BurnAlpha * K * (1.f + Beat))), PX, PY, PW,
+				PH, (BurnMinPx + BurnExtraPx * K) * S);
+		}
+	}
+
+	// 4. Held: a warm glow on the edge(s) facing the watcher, so the player knows which way to break the line.
+	if (Seen > 0.f && !Pull.IsNearlyZero())
+	{
+		const float Depth = FMath::Min(SeenGlowPx * S, FMath::Min(PW, PH) * 0.5f);
+		const float Base = SeenGlowAlpha * Seen;
+		const float L = Base * FMath::Max(0.f, static_cast<float>(-Pull.X));
+		const float R = Base * FMath::Max(0.f, static_cast<float>(Pull.X));
+		const float T = Base * FMath::Max(0.f, static_cast<float>(-Pull.Y));
+		const float B = Base * FMath::Max(0.f, static_cast<float>(Pull.Y));
+		const FLinearColor Warm = TakeStyle::Danger;
+		PaintTile(Canvas, RampHTex, PX, PY, Depth, PH, FVector2D(0.f, 0.f), FVector2D(1.f, 1.f), WithAlpha(Warm, L));
+		PaintTile(Canvas, RampHTex, PX + PW - Depth, PY, Depth, PH, FVector2D(1.f, 0.f), FVector2D(0.f, 1.f), WithAlpha(Warm, R));
+		PaintTile(Canvas, RampVTex, PX, PY, PW, Depth, FVector2D(0.f, 0.f), FVector2D(1.f, 1.f), WithAlpha(Warm, T));
+		PaintTile(Canvas, RampVTex, PX, PY + PH - Depth, PW, Depth, FVector2D(0.f, 1.f), FVector2D(1.f, 0.f), WithAlpha(Warm, B));
 	}
 }

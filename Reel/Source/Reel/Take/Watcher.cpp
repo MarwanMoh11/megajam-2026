@@ -4,6 +4,7 @@
 
 #include "BarClockComponent.h"
 #include "Components/BoxComponent.h"
+#include "Components/PointLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Julian.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -58,6 +59,9 @@ AWatcher::AWatcher()
 	Tally = FTakeShapes::CreateShape(this, TEXT("Tally"), ETakeShape::Cube, Root, FVector(0.f, 0.f, 200.f), FVector(0.15f, 0.15f, 0.15f), FRotator::ZeroRotator, false);
 
 	ClickVolume = FTakeShapes::CreateClickVolume(this, TEXT("ClickVolume"), Root, FVector(70.f, 70.f, 100.f), FVector(0.f, 0.f, 100.f));
+
+	// QA sight: the planning lift (off at rest; UpdateWorldCues places it over the aim point each frame it shows).
+	PlanLight = FTakeShapes::CreateCuePoint(this, TEXT("PlanLight"), Root, FVector(0.f, 0.f, AimHeight) + PlanLightOffset, PlanLightRadius);
 }
 
 void AWatcher::BeginPlay()
@@ -94,6 +98,42 @@ void AWatcher::BeginPlay()
 
 	// Subclasses that lay their frame out after this call it again.
 	BuildFrameLines();
+
+	// QA sight: the world cues for the state now, snapped (subclasses snap again after their own layout).
+	PlanAlpha = 0.f;
+	CueDeltaSeconds = 0.f;
+	UpdateWorldCues(-1.f);
+}
+
+bool AWatcher::DrawsSightOverlays(const UObject* Context)
+{
+	const ATakeDirector* Director = Context ? ATakeDirector::Get(Context) : nullptr;
+	return Director && Director->bDrawnSightOverlays;
+}
+
+void AWatcher::UpdateWorldCues(float DeltaSeconds)
+{
+	// The planning lift: a soft light over a watcher the crew member in reach could catch. World cues only (the drawn
+	// overlays have their faint frame for this).
+	if (!PlanLight)
+	{
+		return;
+	}
+	const bool bLift = !DrawsSightOverlays(this) && bPlanned && IsLive() && !IsHidden();
+	PlanAlpha = FTakeShapes::Ease(PlanAlpha, bLift ? 1.f : 0.f, PlanLightEaseRate, DeltaSeconds);
+	if (PlanAlpha < 0.002f)
+	{
+		PlanAlpha = 0.f;
+	}
+	else
+	{
+		PlanLight->SetWorldLocation(GetAimPoint() + GetActorRotation().RotateVector(PlanLightOffset));
+		if (!FMath::IsNearlyEqual(PlanLight->AttenuationRadius, PlanLightRadius, 1.f))
+		{
+			PlanLight->SetAttenuationRadius(FMath::Max(PlanLightRadius, 10.f));
+		}
+	}
+	FTakeShapes::SetCueLight(PlanLight, PlanLightCandelas * PlanAlpha, PlanLightColour);
 }
 
 void AWatcher::SetHovered(bool bInHovered)
@@ -117,6 +157,7 @@ void AWatcher::StepWatcher(float DeltaSeconds, UBarClockComponent* Clock)
 {
 	// Subclasses update their own timers / clock flags before calling this. The arrival first: a watcher that
 	// arrives this frame shows its frame and lines this frame (SyncState / RefreshFrameLook below).
+	CueDeltaSeconds += FMath::Max(DeltaSeconds, 0.f);	// QA sight: spent by this frame's UpdateWorldCues (SetTally)
 	StepArrival(DeltaSeconds, Clock);
 
 	const EWatcherState OldState = State;
@@ -199,13 +240,15 @@ bool AWatcher::ApplyEffect(EDeviceEffect Effect, float Duration, const FVector& 
 
 void AWatcher::SetTally(bool bHolding)
 {
-	if (bHolding == bTally)
+	if (bHolding != bTally)
 	{
-		return;
+		bTally = bHolding;
+		// RefreshFrameLook colours the tally (lit while holding, or the arrival blink) this frame.
+		RefreshFrameLook();
 	}
-	bTally = bHolding;
-	// RefreshFrameLook colours the tally (lit while holding, or the arrival blink) this frame.
-	RefreshFrameLook();
+	// QA sight: StepSight calls this every frame after the sight test: the world cues follow this frame's hold.
+	UpdateWorldCues(CueDeltaSeconds);
+	CueDeltaSeconds = 0.f;
 }
 
 float AWatcher::DistanceToPoint(const FVector& Point) const
@@ -237,6 +280,26 @@ void AWatcher::RefreshFrameLook()
 {
 	if (!FrameMesh)
 	{
+		return;
+	}
+
+	// QA sight (Marwan's notes 5, 18, 19): with the drawn overlays off, no frame, frame line or tally cube is drawn;
+	// the world cues say it (UpdateWorldCues). The beam's laser is a thing in the world: it stays, solid (no dashes).
+	const bool bWorldCues = !DrawsSightOverlays(this);
+	if (bWorldCues && UsesFrameDisplay())
+	{
+		FrameMesh->SetVisibility(false);
+		for (const TObjectPtr<UStaticMeshComponent>& LinePtr : FrameLines)
+		{
+			if (UStaticMeshComponent* Line = LinePtr.Get())
+			{
+				Line->SetVisibility(false);
+			}
+		}
+		if (Tally)
+		{
+			Tally->SetVisibility(false);
+		}
 		return;
 	}
 
@@ -300,7 +363,7 @@ void AWatcher::RefreshFrameLook()
 		{
 			FTakeShapes::SetSignal(Shape, FrameStencil);
 		}
-		FTakeShapes::SetPattern(Shape, Pattern);
+		FTakeShapes::SetPattern(Shape, bWorldCues ? TakeStyle::PatternSolid : Pattern);
 		return FTakeShapes::SetColour(Shape, Colour);
 	};
 	FrameMID = Paint(FrameMesh, FramePattern);
@@ -321,7 +384,7 @@ void AWatcher::RefreshFrameLook()
 	// The tally: hidden before arrival; lit, steady, while the arrival warning is up or while it holds Julian.
 	if (Tally)
 	{
-		Tally->SetVisibility(HasArrived());
+		Tally->SetVisibility(HasArrived() && !bWorldCues);	// QA sight: the beam's posts carry lamps instead
 		const FLinearColor TallyColour = (bTally || IsArrivalBlinking()) ? HoldingColour : TakeColors::RedDark;
 		TallyMID = FTakeShapes::SetColour(Tally, TallyColour);
 	}

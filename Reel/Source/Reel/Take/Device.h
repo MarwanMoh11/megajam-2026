@@ -3,6 +3,8 @@
 // Since the Nov 13 rework it is fired by Maya or Vex standing in its use ring and pressing Use (E): see
 // ATakeDirector::FindUseTarget. It is no longer clicked (ITakeClickable and ClickVolume stay, unused by the input).
 // Collision: every shape here comes from FTakeShapes (NoCollision): it never blocks a character or the follow camera.
+// QA Nov 14 (notes 10, 17, 18): a period model stands in for the box (ModelMesh), a pilot lamp and a warm pool say
+// "in reach" instead of the floor ring (bShowUseRing, off), and a part moves on the press (the handle, or the model).
 
 #pragma once
 
@@ -16,6 +18,8 @@ class UBoxComponent;
 class UInstancedStaticMeshComponent;
 class UStaticMeshComponent;
 class UMaterialInstanceDynamic;
+class UPointLightComponent;
+class UStaticMesh;
 class AWatcher;
 
 UCLASS(Abstract)
@@ -44,7 +48,7 @@ public:
 	FVector GetUsePoint() const;	// BODY: (u)
 
 	/** Called by ATakeDirector::StepUse when this becomes (true) or stops being (false) the current character's use
-	 *  target: the use ring goes GoldBright (dim Grey when false), this frame. */
+	 *  target: the pilot lamp and its pool go bright (dim when false), this frame (and the ring, if shown). */
 	void SetInReach(bool bInReach);	// BODY: (u)
 
 	bool IsInReach() const { return bIsInReach; }
@@ -198,6 +202,150 @@ public:
 	UPROPERTY(VisibleInstanceOnly, Transient, BlueprintReadOnly, Category = "Take|State")
 	int32 UsesLeft = 1;
 
+	// --- QA devices (Nov 14): the period model ----------------------------------------------------------------------
+
+	/** The period model shown in place of the box body (a generated mesh in /Game/Take/Props/Devices). Set, with
+	 *  bUseModel on: Model shows it with the mesh's own material (never recoloured), and the box (Body) is hidden
+	 *  (bModelHidesBody) but keeps its job. Unset: the box, as before. */
+	UPROPERTY(EditAnywhere, Category = "Take|Model")
+	TSoftObjectPtr<UStaticMesh> ModelMesh;
+
+	/** Switch: off shows the box again, whatever ModelMesh says. */
+	UPROPERTY(EditAnywhere, Category = "Take|Model")
+	bool bUseModel = true;
+
+	/** Where the model stands, local to the actor: the floor point under the middle of the mesh's footprint (the
+	 *  mesh's own pivot does not matter). The banner's is its winch on Maya's platform. */
+	UPROPERTY(EditAnywhere, Category = "Take|Model", meta = (MakeEditWidget = true))
+	FVector ModelOffset = FVector::ZeroVector;
+
+	/** The model's turn, local to the actor (the follow spot and the searchlight swing from here). */
+	UPROPERTY(EditAnywhere, Category = "Take|Model")
+	FRotator ModelRotation = FRotator::ZeroRotator;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Model")
+	FVector ModelScale = FVector::OneVector;
+
+	/** The box hides while the model shows. Off for the banner: its box is the cloth that drops. */
+	UPROPERTY(EditAnywhere, Category = "Take|Model")
+	bool bModelHidesBody = true;
+
+	/** Switch: the old dashed ring on the floor around the use point (note 18: off, the pilot lamp says it now). */
+	UPROPERTY(EditAnywhere, Category = "Take|Model")
+	bool bShowUseRing = false;
+
+	/** The gesture the user plays on the press (ATakeCharacter::PlayGesture). None: no gesture. */
+	UPROPERTY(EditAnywhere, Category = "Take|Model")
+	FName UseGesture = FName(TEXT("Use"));
+
+	// --- QA devices: the pilot lamp and its pool ---------------------------------------------------------------------
+
+	/** Switch: a small lamp on the device and a soft warm pool around it. Dim while it can be used, bright while the
+	 *  active crew member is in reach (and while it runs), dark when spent or locked (it lights when it unlocks). */
+	UPROPERTY(EditAnywhere, Category = "Take|Pilot")
+	bool bShowPilot = true;
+
+	/** The lamp, local to the actor. */
+	UPROPERTY(EditAnywhere, Category = "Take|Pilot", meta = (MakeEditWidget = true))
+	FVector PilotOffset = FVector(0.f, 0.f, 110.f);
+
+	/** The lamp's diameter, cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Pilot")
+	float PilotSize = 5.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Pilot")
+	FLinearColor PilotColour = FLinearColor(1.f, 0.52f, 0.16f);
+
+	/** The lamp's glow (emissive multiplier) while it can be used and nobody is in reach. */
+	UPROPERTY(EditAnywhere, Category = "Take|Pilot")
+	float PilotIdleGlow = 0.8f;
+
+	/** ...while the active crew member is in reach, or it runs. */
+	UPROPERTY(EditAnywhere, Category = "Take|Pilot")
+	float PilotReachGlow = 8.f;
+
+	/** While it runs the lamp flickers at this rate, Hz (0: steady; the sound desk's meters jump). */
+	UPROPERTY(EditAnywhere, Category = "Take|Pilot")
+	float PilotRunFlickerHz = 0.f;
+
+	/** The pool's light at the lamp, candelas, out of reach and in reach. No shadows. */
+	UPROPERTY(EditAnywhere, Category = "Take|Pilot")
+	float PoolIdleCandelas = 3.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Pilot")
+	float PoolReachCandelas = 30.f;
+
+	/** The pool's reach, cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Pilot")
+	float PoolRadius = 260.f;
+
+	// --- QA devices: the moving part (a lever that throws, or a crank that turns) -----------------------------------
+
+	/** Switch: a brass lever with a black knob, pivoting at HandleOffset. It runs along the pivot's +Z. */
+	UPROPERTY(EditAnywhere, Category = "Take|Handle")
+	bool bShowHandle = false;
+
+	/** The pivot, local to the actor. */
+	UPROPERTY(EditAnywhere, Category = "Take|Handle", meta = (MakeEditWidget = true))
+	FVector HandleOffset = FVector(0.f, 0.f, 90.f);
+
+	/** The pivot's turn at rest, local to the actor. */
+	UPROPERTY(EditAnywhere, Category = "Take|Handle")
+	FRotator HandleRest = FRotator::ZeroRotator;
+
+	/** Added to the rest turn when thrown (on the press frame it is already partly thrown). */
+	UPROPERTY(EditAnywhere, Category = "Take|Handle")
+	FRotator HandleThrow = FRotator(-70.f, 0.f, 0.f);
+
+	/** Seconds to throw fully (it comes back at the same rate when the device is ready again). */
+	UPROPERTY(EditAnywhere, Category = "Take|Handle")
+	float HandleThrowSeconds = 0.2f;
+
+	/** While its part moves (the banner dropping or raising, the curtain falling) the lever also turns about the
+	 *  pivot's X at this rate, degrees a second: a crank on a winch wheel. 0: it only throws. */
+	UPROPERTY(EditAnywhere, Category = "Take|Handle")
+	float HandleSpinDegrees = 0.f;
+
+	/** A spent one-use device keeps its lever thrown (and its lamp dark). */
+	UPROPERTY(EditAnywhere, Category = "Take|Handle")
+	bool bHandleStaysThrownWhenSpent = true;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Handle")
+	float HandleLength = 40.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Handle")
+	float HandleThickness = 3.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Handle")
+	float HandleKnobSize = 7.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Handle")
+	FLinearColor HandleColour = FLinearColor(0.42f, 0.27f, 0.08f);
+
+	UPROPERTY(EditAnywhere, Category = "Take|Handle")
+	FLinearColor HandleKnobColour = FLinearColor(0.02f, 0.018f, 0.016f);
+
+	// --- QA devices: a rope or cable (the banner's to the batten, the curtain's up to the grid) ----------------------
+
+	UPROPERTY(EditAnywhere, Category = "Take|Rope")
+	bool bShowRope = false;
+
+	/** The rope's ends, local to the actor. */
+	UPROPERTY(EditAnywhere, Category = "Take|Rope", meta = (MakeEditWidget = true))
+	FVector RopeFrom = FVector::ZeroVector;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Rope", meta = (MakeEditWidget = true))
+	FVector RopeTo = FVector(0.f, 0.f, 300.f);
+
+	UPROPERTY(EditAnywhere, Category = "Take|Rope")
+	float RopeThickness = 2.5f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Rope")
+	FLinearColor RopeColour = FLinearColor(0.16f, 0.12f, 0.07f);
+
+	/** Is a model showing (ModelMesh set and loaded, bUseModel on)? */
+	bool HasModel() const { return bHasModel; }
+
 	// --- components -------------------------------------------------------------------------------------------------
 
 	UPROPERTY(VisibleAnywhere, Category = "Take")
@@ -215,9 +363,82 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Take")
 	TObjectPtr<UInstancedStaticMeshComponent> UseRing;
 
+	/** QA devices: the period model (ModelMesh). NoCollision, no navigation: never blocks a sight trace or the camera. */
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<UStaticMeshComponent> Model;
+
+	/** QA devices: the pilot lamp (unlit, glows) and its warm pool (a small point light, no shadows). */
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<UStaticMeshComponent> PilotLamp;
+
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<UPointLightComponent> PilotPool;
+
+	/** QA devices: the lever's pivot, the lever and its knob. */
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<USceneComponent> HandlePivot;
+
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<UStaticMeshComponent> HandleBar;
+
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<UStaticMeshComponent> HandleKnob;
+
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<UStaticMeshComponent> Rope;
+
 protected:
-	/** Places UseRing at UseOffset and lays its UseRingDots dashes out at UseRadius; colours it for bIsInReach. */
+	/** Places UseRing at UseOffset and lays its UseRingDots dashes out at UseRadius; colours it for bIsInReach.
+	 *  bShowUseRing off: the ring is emptied and hidden. */
 	void LayOutUseRing();	// BODY: (u)
+
+	// --- QA devices -------------------------------------------------------------------------------------------------
+
+	/** Loads ModelMesh onto Model (or clears it), hides or shows the box, lays out the pilot, the handle and the
+	 *  rope. From OnConstruction and BeginPlay. */
+	void ApplyLook();
+
+	/** Puts the model where it stands, turned by ExtraTurn (local to the actor, about the model's anchor) and moved by
+	 *  ExtraMove. The anchor (ModelOffset) is the floor point under the middle of the mesh's footprint. */
+	void PlaceModel(const FQuat& ExtraTurn = FQuat::Identity, const FVector& ExtraMove = FVector::ZeroVector);
+
+	/** Every frame from StepDevice (every subclass calls it first): the pilot's glow, the lever's throw and spin. */
+	void StepLook(float DeltaSeconds);
+
+	/** On the press frame (Fire, the follow spot's FireAt): the lever jumps part of its throw, the lamp goes bright,
+	 *  and the user reaches for it (UseGesture). */
+	void OnFiredLook();
+
+	/** Does the crank turn now? Default: while running. The banner: dropping or raising; the curtain: falling. */
+	virtual bool IsHandleTurning() const { return bRunning; }
+
+	/** Which way the crank turns now: 1 or -1 (the banner winds back the other way as it raises). */
+	virtual float HandleSpinSign() const { return 1.f; }
+
+	/** Should the lever be thrown now? Default: while running, or spent (bHandleStaysThrownWhenSpent). */
+	virtual bool IsHandleThrown() const;
+
+	/** Is the box body showing a basic shape that may be recoloured (no model over it, no generated mesh on it)? */
+	bool BodyIsBox() const;
+
+	/** The pilot's glow for the state now: 0 spent (and not running) or locked; PilotReachGlow running or in reach
+	 *  (flickering at PilotRunFlickerHz while running); PilotIdleGlow otherwise. */
+	float PilotGlowNow() const;
+
+	/** Sets the lamp's emissive colour and the pool's light for Glow, this frame (a no-op when unchanged). */
+	void SetPilotGlow(float Glow);
+
+	/** Turns the lever's pivot for HandleAlpha and HandleSpin, this frame. */
+	void PoseHandle();
+
+	bool bHasModel = false;
+	float HandleAlpha = 0.f;
+	float HandleSpin = 0.f;
+	float PilotGlowShown = -1.f;
+	float PilotClock = 0.f;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> PilotMID;
 
 	bool bRunning = false;
 	bool bLanded = false;
