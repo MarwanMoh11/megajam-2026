@@ -821,3 +821,30 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   function) and returns no input node from a duplicated material, so the faint material is rebuilt from source. The
   pool sits low in camera A's composed view, so it was measured by diffing the same frozen frame with it on and off.
   Marwan asked for less testing: "stop with the obsessive testing, just get work done and I will QA in the end".
+
+## Nov 15, after the sight frames (PC clock 20:00-21:30): the Rodin props and the procedural surfaces, phase 2
+
+- **What changed:** the grey boxes got real furniture. 23 props generated with Hyper3D Rodin (text to 3D, 0.5 credits
+  each, 11.5 credits in all) are imported into `/Game/Take/Props` and placed over the boxes they stand for: the podium,
+  the case's pedestal and reel, the lobby chandelier, a grand piano on the band's riser, the champagne carts' and the
+  sound desk's bodies, and the repeats (144 hall chairs over the 12 benches, 12 fluted columns, 36 picture frames, 27
+  stanchions, cocktail tables, the bar, sofas, crates, road cases, cloak rails, film cameras, light stands, busts and
+  urns on the plinths). Every box keeps its collision and goes invisible, so gameplay, sight lines and navigation are
+  what they were; the props ignore Visibility (the watchers' line traces) and Camera, the heroes and raised pieces have
+  no collision, and the floor furniture blocks only the pawn. The set's surfaces got procedural value patterns in the
+  M_Dress material (parquet, marble veins, a damask on the front-of-house walls, the aisle runners, plywood, concrete),
+  with their averages held so the §15.11 floor numbers stand. Marwan chose procedural over texture packs.
+- **What the agents did:** one Claude Opus 5.5 session wrote the Rodin client and prompts outside the editor (a quality
+  sample first, Marwan's go, then the rest), the import and placement script (`tools/rodin/import_props.py`: each mesh
+  fit to its box, repeats on instanced components, Nanite on the repeats, one material whose texture is remapped into
+  the set's value band), and the surface patterns; then in the editor merged the branch, imported, placed, shot the
+  rooms before and after with stat unit, and ran the full scripted play test.
+- **What went wrong:** the Rodin API only allows its low tier on this account; Tripo's API wallet was empty although the
+  web plan had credits, and PBRgen is personal use only, so both were dropped. The lineup row west of the street sits in
+  an unlit void and showed nothing: facings were read off the lit street and the bust's face instead (glTF's front comes
+  in as +X), except the grand piano, which Rodin drew side-on: a top-down shot showed its keyboard sideways, so it is
+  turned 90 degrees. The full scripted play test then ran to PRINTED with no blooper and every walk on time (the queue,
+  the gate, the floor past the cocktail tables, the rope, the dais, the lift, the winch, the trap). After the props GPU time read 2-3 ms higher in every room, backstage too; hiding every prop or switching
+  the patterns off in the same session changed nothing, so it is the machine warming up between runs, not the props. The
+  prop textures were still taken down one mip (VRAM about 0.4 GB more before). The device bodies are recoloured flat at
+  runtime, so the carts and the desk show the Rodin shape without its texture. The bar came out as a round ribbed block.

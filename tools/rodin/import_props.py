@@ -35,7 +35,7 @@ NAMES = globals().get("PROPS_NAMES")
 SRC = r"C:\Jam\Art\Rodin"
 DEST = "/Game/Take/Props"
 DRESS = "/Game/Take/Dress"
-LINEUP = (-5600.0, -2400.0)        # x, first y: outside the building, west of the street (nothing plays there)
+LINEUP = globals().get("PROPS_LINEUP") or (-5600.0, -2400.0)       # x, first y: outside the building, west of the street (nothing plays there)
 
 eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
 eal = unreal.EditorAssetLibrary
@@ -84,6 +84,7 @@ ALL = sorted(set(LOOK) | set(SIGNAL) | set(DEVICES))
 # The yaw (degrees, multiples of 90) that turns each imported mesh to face +X. Rodin's front comes in along an
 # unknown axis after Interchange's glTF conversion: set from the lineup screenshot in phase 2.
 FRONT = {n: 0.0 for n in ALL}
+FRONT["piano"] = 270.0              # Rodin drew the grand side-on: its keyboard comes in on +Y (seen from above, Nov 15)
 
 # What each prop replaces. parts: label patterns grouped by touching bounds into one piece; hide: patterns hidden
 # with no prop of their own; mode: fit (uniform, inside), fitxy (uniform from the footprint), stretch (per axis),
@@ -125,6 +126,12 @@ RULES = [
 NEW = [dict(prop="piano", box=(3680.0, 3855.0, 1340.0, 1490.0, 30.0, 160.0), mode="fit", face=0,
             seat=35.0)]       # the pianist's seat: this many cm east of the keyboard edge, on the keyboard's middle
 GAMEPLAY = ("Mark", "Watcher", "Device", "Crew", "Julian", "Maya", "Vex", "Character", "Guard", "Drone", "Spot")
+# Collision (Nov 14 rules): the watchers see with Visibility line traces (TakeDirectorSight.cpp) and the camera boom
+# probes Camera, so no prop answers either. The heroes and the raised pieces are NoCollision (a hero's hidden box keeps
+# the collision it had); the floor fillers block Pawn only, a box each, so Julian can't walk through the furniture.
+BLOCKERS = {"chair", "column", "cocktail", "bar", "backbar", "stool", "stanchion", "sofa", "roadcase", "crate",
+            "coatrack", "camera", "lightstand", "piano"}
+LOOSE = []                          # (prop, box): floor fillers over a piece that let the pawn through before
 
 
 # --- helpers ------------------------------------------------------------------------------------------------------------
@@ -482,7 +489,7 @@ class Placer:
         c.set_static_mesh(self.meshes[prop])
         if mat:
             c.set_material(0, mat)
-        c.set_collision_profile_name("NoCollision")
+        collide(c, prop)
         try_set(c, cast_shadow=bool(shadow), receives_decals=False, can_ever_affect_navigation=False)
         if src is not None:                                     # the reel: the case's gold and its stencil
             try_set(c, render_custom_depth=src.get_editor_property("render_custom_depth"),
@@ -507,7 +514,7 @@ class Placer:
             c.set_static_mesh(self.meshes[prop])
             if mi:
                 c.set_material(0, mi)
-            c.set_collision_profile_name("NoCollision")
+            collide(c, prop)
             try_set(c, cast_shadow=bool(shadow), receives_decals=False, can_ever_affect_navigation=False)
             for (loc, r, sc, _r) in items:
                 c.add_instance(unreal.Transform(unreal.Vector(*loc), unreal.Rotator(*as_rot(r)),
@@ -519,6 +526,23 @@ class Placer:
             if a:
                 eas.destroy_actor(a)
             return False
+
+
+def collide(c, prop):
+    if prop not in BLOCKERS:
+        c.set_collision_profile_name("NoCollision")
+        return
+    C, R = unreal.CollisionChannel, unreal.CollisionResponseType
+    c.set_collision_enabled(unreal.CollisionEnabled.QUERY_ONLY)
+    c.set_collision_object_type(C.ECC_WORLD_STATIC)
+    c.set_collision_response_to_all_channels(R.ECR_IGNORE)
+    c.set_collision_response_to_channel(C.ECC_PAWN, R.ECR_BLOCK)
+
+
+def blocks_pawn(a):
+    c = a.static_mesh_component
+    return c.get_collision_enabled() != unreal.CollisionEnabled.NO_COLLISION and \
+        c.get_collision_response_to_channel(unreal.CollisionChannel.ECC_PAWN) == unreal.CollisionResponseType.ECR_BLOCK
 
 
 def hide(a):
@@ -629,6 +653,8 @@ def place():
                 P.signal.append((prop, loc, r, sc, src))
             else:
                 P.add(mesh_prop, target, facing(rule, members, box, mesh), rule["mode"], box)
+            if mesh_prop in BLOCKERS and not any(blocks_pawn(a) for a in members):
+                LOOSE.append((mesh_prop, target))
             for a in members:
                 if not any(re.match(r"^(%s)$" % p, label(a)) for p in rule.get("keep", [])):
                     hide(a)
@@ -639,6 +665,7 @@ def place():
         if spec["prop"] in P.meshes and (not NAMES or spec["prop"] in NAMES):
             P.add(spec["prop"], list(spec["box"]), float(spec["face"]), spec["mode"], None)
             counts[spec["prop"]] = counts.get(spec["prop"], 0) + 1
+            LOOSE.append((spec["prop"], list(spec["box"])))
     P.spawn_all()
     for (prop, loc, yaw, sc, src) in P.signal:
         P.actor(prop, loc, yaw, sc, src.get_material(0), False, src=src)
@@ -761,6 +788,13 @@ def check():
             if math.hypot(dx, dy) < 120.0:
                 warn("%s is %.0f cm from %s (%s): the 1.2 m rule" % (label(a), math.hypot(dx, dy), label(g),
                                                                        type(g).__name__))
+    # New pawn blockers (the piece under them let Julian through): where they stand and what gameplay is nearest.
+    for prop, b in LOOSE:
+        near = min(((math.hypot(max(b[0] - p.x, 0.0, p.x - b[1]), max(b[2] - p.y, 0.0, p.y - b[3])), label(g))
+                    for g in play for p in [g.get_actor_location()]), default=(1e9, "-"))
+        REPORT.append("new blocker %s x %.0f-%.0f y %.0f-%.0f: %.0f cm from %s%s"
+                      % (prop, b[0], b[1], b[2], b[3], near[0], near[1],
+                         "  CROSSES Y -200..200 (carpet, aisle)" if b[2] < 200 and b[3] > -200 else ""))
 
 
 # --- 5. lineup ------------------------------------------------------------------------------------------------------------
