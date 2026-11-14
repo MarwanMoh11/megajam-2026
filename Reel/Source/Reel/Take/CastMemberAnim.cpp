@@ -184,7 +184,7 @@ namespace CastRig
 	};
 
 	/** One hand's goal from one layer. */
-	struct FGoal
+	struct FRigGoal
 	{
 		float W = 0.f;
 		FVector Pos = FVector::ZeroVector;
@@ -199,9 +199,9 @@ namespace CastRig
 	};
 
 	/** What one layer asks of the body (degrees for the turns). */
-	struct FLayer
+	struct FRigLayer
 	{
-		FGoal L, R;
+		FRigGoal L, R;
 		float LeanF = 0.f, LeanS = 0.f, Twist = 0.f;
 		float HeadYaw = 0.f, HeadPitch = 0.f, HeadRoll = 0.f;
 		float ShrugL = 0.f, ShrugR = 0.f;
@@ -211,7 +211,7 @@ namespace CastRig
 			L.W *= K; R.W *= K;
 			LeanF *= K; LeanS *= K; Twist *= K; HeadYaw *= K; HeadPitch *= K; HeadRoll *= K; ShrugL *= K; ShrugR *= K;
 		}
-		void AddBody(const FLayer& O)
+		void AddBody(const FRigLayer& O)
 		{
 			LeanF += O.LeanF; LeanS += O.LeanS; Twist += O.Twist; HeadYaw += O.HeadYaw; HeadPitch += O.HeadPitch;
 			HeadRoll += O.HeadRoll; ShrugL += O.ShrugL; ShrugR += O.ShrugR;
@@ -219,7 +219,7 @@ namespace CastRig
 	};
 
 	/** Where things are on the body this frame (component space). */
-	struct FFrame
+	struct FRigFrame
 	{
 		FVector C;			// between the shoulders
 		FVector Head;
@@ -264,7 +264,7 @@ namespace CastRig
 
 	/** The act built from bones (no clip): T seconds in, Len long (below 0: open-ended). Weights are 0..1 before the
 	 *  act's envelope. Every motion is on a smooth curve; hands lead, the spine and head follow small. */
-	void BuildAct(ECastAct Act, float T, float Len, const FFrame& F, FLayer& O)
+	void BuildAct(ECastAct Act, float T, float Len, const FRigFrame& F, FRigLayer& O)
 	{
 		const float E = F.Energy;
 		const float Ph = F.Phase * 6.2832f;
@@ -289,7 +289,7 @@ namespace CastRig
 			Dir = Dir.GetSafeNormal();
 			const bool bLeft = FVector::DotProduct(Dir, V(0.f, 1.f, 0.f)) < -0.2f;
 			const float Side = bLeft ? -1.f : 1.f;
-			FGoal& G = bLeft ? O.L : O.R;
+			FRigGoal& G = bLeft ? O.L : O.R;
 			const FVector Shoulder = bLeft ? F.SL : F.SR;
 			if (Act == ECastAct::Wave)
 			{
@@ -419,9 +419,9 @@ namespace CastRig
 		case ECastAct::Lift:
 		{
 			const float Down = Bump(T, 0.f, FMath::Min(End, 0.9f));
-			const float Up = Ease(FMath::Clamp((T - 0.45f) / 0.4f, 0.f, 1.f));
+			const float Rise = Ease(FMath::Clamp((T - 0.45f) / 0.4f, 0.f, 1.f));
 			const FVector Low = F.C + V(36.f, 0.f, -66.f), High = F.C + V(30.f, 0.f, -22.f);
-			const FVector P = FMath::Lerp(Low, High, Up);
+			const FVector P = FMath::Lerp(Low, High, Rise);
 			O.R.Set(1.f, P + V(0.f, 11.f, 0.f), V(-0.3f, 1.f, -0.6f), V(1.f, 0.f, -0.3f), V(0.f, -1.f, 0.3f));
 			O.L.Set(1.f, P + V(0.f, -11.f, 0.f), V(-0.3f, -1.f, -0.6f), V(1.f, 0.f, -0.3f), V(0.f, 1.f, 0.3f));
 			O.LeanF = 30.f * Down;
@@ -445,7 +445,7 @@ namespace CastRig
 
 	/** The band playing, built from bones (no instrument clip), loosely on the beat: each instrument on its own
 	 *  subdivision and phase, never a whole-body jolt. */
-	void BuildBand(ECastInstrument Inst, float Beat, const FFrame& F, FLayer& O)
+	void BuildBand(ECastInstrument Inst, float Beat, const FRigFrame& F, FRigLayer& O)
 	{
 		const float Ph = F.Phase;
 		switch (Inst)
@@ -517,7 +517,7 @@ namespace CastRig
 		}
 	}
 
-	void BuildHold(ECastHold Hold, const FFrame& F, FLayer& O)
+	void BuildHold(ECastHold Hold, const FRigFrame& F, FRigLayer& O)
 	{
 		switch (Hold)
 		{
@@ -829,7 +829,7 @@ void FCastAnimProxy::ApplyLayers(FCompactPose& Pose)
 
 	// 2. What each layer asks for.
 	auto MakeFrame = [&]() {
-		FFrame F;
+		FRigFrame F;
 		const FTransform HeadT = Rig.CS(CastBone::Head);
 		F.Head = HeadT.GetLocation();
 		F.HeadTurn = HeadT.GetRotation() * RefHeadCS.Inverse();
@@ -847,9 +847,9 @@ void FCastAnimProxy::ApplyLayers(FCompactPose& Pose)
 		F.ActorToCS = A.ActorToComponent;
 		return F;
 	};
-	FFrame F = MakeFrame();
+	FRigFrame F = MakeFrame();
 
-	FLayer Act, Band, Hold;
+	FRigLayer Act, Band, Hold;
 	if (bActProc)
 	{
 		BuildAct(CurAct, ActT, ActLen, F, Act);
@@ -868,7 +868,7 @@ void FCastAnimProxy::ApplyLayers(FCompactPose& Pose)
 				V(1.f, 0.f, -0.2f), V(0.f, 1.f, 0.f));
 		}
 	}
-	FLayer Body;
+	FRigLayer Body;
 	Body.AddBody(Hold);
 	Body.AddBody(Band);
 	Body.AddBody(Act);
@@ -912,24 +912,24 @@ void FCastAnimProxy::ApplyLayers(FCompactPose& Pose)
 		F = MakeFrame();	// the shoulders after the lean
 		if (bActProc)
 		{
-			Act = FLayer();
+			Act = FRigLayer();
 			BuildAct(CurAct, ActT, ActLen, F, Act);
 			Act.Scale(ActW);
 		}
 		if (A.bPlayInstrument)
 		{
-			Band = FLayer();
+			Band = FRigLayer();
 			BuildBand(A.Instrument, A.Beat, F, Band);
 		}
 		if (A.Hold != ECastHold::None && A.Hold != ECastHold::Podium)
 		{
-			Hold = FLayer();
+			Hold = FRigLayer();
 			BuildHold(A.Hold, F, Hold);
 		}
 		for (int32 Side = 0; Side < 2; ++Side)
 		{
 			const bool bRight = Side == 0;
-			const FGoal* Goals[3] = {bRight ? &Hold.R : &Hold.L, bRight ? &Band.R : &Band.L, bRight ? &Act.R : &Act.L};
+			const FRigGoal* Goals[3] = {bRight ? &Hold.R : &Hold.L, bRight ? &Band.R : &Band.L, bRight ? &Act.R : &Act.L};
 			const int32 HandBone = bRight ? CastBone::HandR : CastBone::HandL;
 			if (!Rig.Has(HandBone))
 			{
@@ -940,7 +940,7 @@ void FCastAnimProxy::ApplyLayers(FCompactPose& Pose)
 			float Total = 0.f;
 			// An act's clip moves the arms itself: the held postures and the built playing yield to it.
 			const float Yield = CurClip ? 1.f - ActW : 1.f;
-			for (const FGoal* G : Goals)
+			for (const FRigGoal* G : Goals)
 			{
 				const float W = FMath::Clamp(G->W, 0.f, 1.f) * (G == Goals[2] ? 1.f : Yield);
 				if (W <= 0.001f)

@@ -481,7 +481,7 @@ struct FCastWorld
 		for (const TWeakObjectPtr<ACastMember>& P : All())
 		{
 			ACastMember* M = P.Get();
-			if (!M || M->bDressParent || M->bWalker || M->bBandKit)
+			if (!M || M->bDressParent || M->bWalker || M->bBandKit || (!M->bSeated && M->Kit == ECastKit::Staff))
 			{
 				continue;
 			}
@@ -793,7 +793,7 @@ void ACastMember::SetupBody()
 	const float Rate = bStill ? 0.f : 1.f + (2.f * Draw(2) - 1.f) * IdleRateSpread;
 	PlayBase(RestBase, true, Rate, Start);
 	bOnWalkSpace = RestBase == WalkBlendSpace;
-	Body->bEnableUpdateRateOptimizations = !bWalker;	// far ones update less often
+	Body->bEnableUpdateRateOptimizations = !bWalker && !bBandKit;	// far guests update less often
 	FitSeat();
 	FramesAlive = 0;
 	bFrozen = false;
@@ -1365,7 +1365,7 @@ void ACastMember::PlayGestureAt(FName Gesture, const FVector& WorldPoint)
 	StartAct(Act, Act == ECastAct::Applaud ? ApplauseSeconds * (0.8f + 0.4f * FMath::FRand()) : 0.f, bPoint, WorldPoint);
 	if (bPoint)
 	{
-		LookAtPoint(WorldPoint, FMath::Max(ActUntil - GetWorld()->GetTimeSeconds(), 1.f));
+		LookAtPoint(WorldPoint, FMath::Max(ActUntil - static_cast<float>(GetWorld()->GetTimeSeconds()), 1.f));
 	}
 }
 
