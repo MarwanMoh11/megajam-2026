@@ -154,6 +154,111 @@ namespace TakeClockD
 	}
 }
 
+namespace TakeClockStep3
+{
+	/** A harsh square-ish tone: the odd partials 1, 3, 5... (each 1/k), a fast attack, a flat sustain and a short
+	 *  linear release, so tones on consecutive beats stay distinct. The raw odd-partial sum peaks near 0.93. */
+	void AppendOddTone(TArray<uint8>& Out, int32 Rate, float Freq, float Seconds, float Amp, int32 OddPartials,
+		float AttackSeconds, float ReleaseSeconds)
+	{
+		const int32 NumSamples = FMath::Max(1, FMath::RoundToInt(static_cast<float>(Rate) * Seconds));
+		const float AttackSamples = FMath::Max(1.f, static_cast<float>(Rate) * AttackSeconds);
+		const float ReleaseSamples = FMath::Max(1.f, static_cast<float>(Rate) * ReleaseSeconds);
+		const int32 Partials = FMath::Max(1, OddPartials);
+		const float Nyquist = 0.5f * static_cast<float>(Rate);
+		for (int32 Index = 0; Index < NumSamples; ++Index)
+		{
+			const float T = static_cast<float>(Index) / static_cast<float>(Rate);
+			float Wave = 0.f;
+			for (int32 P = 0; P < Partials; ++P)
+			{
+				const float K = static_cast<float>(2 * P + 1);
+				if (Freq * K >= Nyquist)
+				{
+					break;
+				}
+				Wave += FMath::Sin(static_cast<float>(UE_TWO_PI) * Freq * K * T) / K;
+			}
+			const float Attack = FMath::Min(1.f, static_cast<float>(Index) / AttackSamples);
+			const float Release = FMath::Min(1.f, static_cast<float>(NumSamples - 1 - Index) / ReleaseSamples);
+			TakeClockA::AppendSample(Out, Wave * Attack * Release * Amp);
+		}
+	}
+
+	/** The clapper: Seconds of noise (half white, half differenced for the bite), a near-instant attack and a fast
+	 *  exponential decay. Dry: no tail. */
+	void BuildClack(TArray<uint8>& Out, int32 Rate, float Seconds, float Amp, float DecayPerSecond)
+	{
+		const int32 NumSamples = FMath::Max(1, FMath::RoundToInt(static_cast<float>(Rate) * Seconds));
+		const float AttackSamples = FMath::Max(1.f, static_cast<float>(Rate) * 0.0003f);
+		const float ReleaseSamples = FMath::Max(1.f, static_cast<float>(Rate) * 0.003f);
+		FRandomStream Rng(2203);
+		float Previous = 0.f;
+		Out.Reset(NumSamples * 2);
+		for (int32 Index = 0; Index < NumSamples; ++Index)
+		{
+			const float T = static_cast<float>(Index) / static_cast<float>(Rate);
+			const float Noise = Rng.FRandRange(-1.f, 1.f);
+			const float Wave = 0.5f * Noise + 0.5f * (Noise - Previous);
+			Previous = Noise;
+			const float Attack = FMath::Min(1.f, static_cast<float>(Index) / AttackSamples);
+			const float Release = FMath::Min(1.f, static_cast<float>(NumSamples - 1 - Index) / ReleaseSamples);
+			const float Env = FMath::Exp(-T * DecayPerSecond) * Attack * Release;
+			TakeClockA::AppendSample(Out, Wave * Env * Amp);
+		}
+	}
+
+	/** A low thud: a sine falling fast from StartHz to EndHz (plus a touch of its second partial so small speakers
+	 *  carry it), a 2 ms attack and an exponential decay to a short release. */
+	void BuildThud(TArray<uint8>& Out, int32 Rate, float StartHz, float EndHz, float Seconds, float Amp)
+	{
+		const int32 NumSamples = FMath::Max(1, FMath::RoundToInt(static_cast<float>(Rate) * Seconds));
+		const float AttackSamples = FMath::Max(1.f, static_cast<float>(Rate) * 0.002f);
+		const float ReleaseSamples = FMath::Max(1.f, static_cast<float>(Rate) * 0.02f);
+		double Phase = 0.0;
+		Out.Reset(NumSamples * 2);
+		for (int32 Index = 0; Index < NumSamples; ++Index)
+		{
+			const float T = static_cast<float>(Index) / static_cast<float>(Rate);
+			const float Freq = EndHz + (StartHz - EndHz) * FMath::Exp(-T * 30.f);
+			Phase += static_cast<double>(UE_TWO_PI) * static_cast<double>(Freq) / static_cast<double>(Rate);
+			const float Wave = (FMath::Sin(static_cast<float>(Phase)) + 0.25f * FMath::Sin(static_cast<float>(Phase * 2.0))) / 1.25f;
+			const float Attack = FMath::Min(1.f, static_cast<float>(Index) / AttackSamples);
+			const float Release = FMath::Min(1.f, static_cast<float>(NumSamples - 1 - Index) / ReleaseSamples);
+			const float Env = FMath::Exp(-T * 9.f) * Attack * Release;
+			TakeClockA::AppendSample(Out, Wave * Env * Amp);
+		}
+	}
+
+	/** The pyro's crackle: Bursts short noise pops (1.5-6 ms each, random level) scattered over Seconds, fading a
+	 *  little towards the end. */
+	void BuildCrackle(TArray<uint8>& Out, int32 Rate, float Seconds, float Amp, int32 Bursts)
+	{
+		const int32 NumSamples = FMath::Max(1, FMath::RoundToInt(static_cast<float>(Rate) * Seconds));
+		TArray<float> Mix;
+		Mix.SetNumZeroed(NumSamples);
+		FRandomStream Rng(9187);
+		for (int32 Burst = 0; Burst < FMath::Max(1, Bursts); ++Burst)
+		{
+			const int32 Start = Rng.RandRange(0, NumSamples - 1);
+			const int32 Length = FMath::Max(1, FMath::RoundToInt(static_cast<float>(Rate) * Rng.FRandRange(0.0015f, 0.006f)));
+			const float Level = Rng.FRandRange(0.3f, 1.f);
+			const float Decay = 1.f / FMath::Max(1.f, static_cast<float>(Length) * 0.35f);
+			for (int32 Offset = 0; Offset < Length && Start + Offset < NumSamples; ++Offset)
+			{
+				Mix[Start + Offset] += Rng.FRandRange(-1.f, 1.f) * Level * FMath::Exp(-static_cast<float>(Offset) * Decay);
+			}
+		}
+		Out.Reset(NumSamples * 2);
+		for (int32 Index = 0; Index < NumSamples; ++Index)
+		{
+			const float Alpha = static_cast<float>(Index) / static_cast<float>(NumSamples);
+			const float Fade = Alpha < 0.7f ? 1.f : FMath::Lerp(1.f, 0.35f, (Alpha - 0.7f) / 0.3f);
+			TakeClockA::AppendSample(Out, FMath::Clamp(Mix[Index], -1.f, 1.f) * Fade * Amp);
+		}
+	}
+}
+
 UBarClockComponent::UBarClockComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
@@ -291,6 +396,15 @@ void UBarClockComponent::Advance(float DeltaSeconds)
 		bClickDownbeat = bClickDownbeat || bBarCrossed;
 	}
 
+	// Step 3: the alarm replaces the click on every beat (high on beats 1 and 3, low on 2 and 4) and never rests:
+	// it plays through break bars, mutes and a switched-off metronome.
+	if (bClick && bAlarm)
+	{
+		const bool bHigh = (GetBeatInBar() % 2) == 1;
+		PlayPcm(bHigh ? PcmAlarmHigh : PcmAlarmLow);
+		return;
+	}
+
 	// One click per frame even if a hitch crossed several lines (stacked clicks would smear). A band break or a
 	// MuteMetronome silences it; the beat events and the pulse above still happen.
 	if (bClick && bMetronome && !IsMetronomeMuted())
@@ -416,6 +530,30 @@ void UBarClockComponent::BuildPcm()
 	PcmChime.Reset();
 	TakeClockD::AppendTone(PcmChime, SampleRate, 1318.5f, 0.12f, Level * 0.7f, 6.f, 3, 0.35f);
 	TakeClockD::AppendTone(PcmChime, SampleRate, 1760.f, 0.32f, Level * 0.7f, 7.f, 3, 0.35f);
+
+	// Step 3. The alarm: a harsh two-tone, 880 and 660 Hz, 0.18 s each (a 0.5 s beat leaves a clear gap), at
+	// AlarmVolume. It replaces the click on the click voice.
+	const float AlarmLevel = FMath::Clamp(AlarmVolume, 0.f, 1.f);
+	PcmAlarmHigh.Reset();
+	TakeClockStep3::AppendOddTone(PcmAlarmHigh, SampleRate, 880.f, 0.18f, AlarmLevel, 7, 0.003f, 0.025f);
+	PcmAlarmLow.Reset();
+	TakeClockStep3::AppendOddTone(PcmAlarmLow, SampleRate, 660.f, 0.18f, AlarmLevel, 7, 0.003f, 0.025f);
+
+	// PRINT IT: a bright rising four-note sting (G5 B5 D6, then a ringing G6), 0.9 s in all.
+	PcmSting.Reset();
+	TakeClockD::AppendTone(PcmSting, SampleRate, 784.f, 0.14f, Level * 0.75f, 3.f, 6, 0.6f);
+	TakeClockD::AppendTone(PcmSting, SampleRate, 987.8f, 0.14f, Level * 0.75f, 3.f, 6, 0.6f);
+	TakeClockD::AppendTone(PcmSting, SampleRate, 1174.7f, 0.14f, Level * 0.75f, 3.f, 6, 0.6f);
+	TakeClockD::AppendTone(PcmSting, SampleRate, 1568.f, 0.48f, Level * 0.8f, 3.5f, 6, 0.6f);
+
+	// The clapper: one dry 30 ms clack.
+	TakeClockStep3::BuildClack(PcmClap, SampleRate, 0.03f, Level, 110.f);
+
+	// The curtain or a shutter landing: a 0.25 s thud falling from about 110 Hz to 55 Hz (about 60 Hz most of it).
+	TakeClockStep3::BuildThud(PcmThud, SampleRate, 110.f, 55.f, 0.25f, Level);
+
+	// The pyro: 0.5 s of crackle.
+	TakeClockStep3::BuildCrackle(PcmCrackle, SampleRate, 0.5f, Level * 0.8f, 45);
 }
 
 void UBarClockComponent::PlayPcm(const TArray<uint8>& Pcm)
@@ -495,6 +633,11 @@ bool UBarClockComponent::IsBreakBar(int32 Bar) const
 
 bool UBarClockComponent::IsMetronomeMuted() const
 {
+	// Step 3: the alarm never rests, so no band break (and no "BAND BREAK" on the HUD) while it sounds.
+	if (bAlarm)
+	{
+		return false;
+	}
 	return IsBreakBar(GetBar()) || TotalBeats < MutedUntilBeats;
 }
 
@@ -535,4 +678,39 @@ void UBarClockComponent::PlayPhrase(const TArray<uint8>& Pcm)
 		PhraseAudios[Best]->Play();
 	}
 	PhraseWaves[Best]->QueueAudio(Pcm.GetData(), Pcm.Num());
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Step 3 (BODY: D)
+// ---------------------------------------------------------------------------------------------------------------------
+
+void UBarClockComponent::SetAlarm(bool bOn)
+{
+	const bool bWasOn = bAlarm;
+	bAlarm = bOn;
+	// The frame it is switched on: one high tone at once, on the click voice (the band stops dead under it).
+	if (bOn && !bWasOn)
+	{
+		PlayPcm(PcmAlarmHigh);
+	}
+}
+
+void UBarClockComponent::PlaySting()
+{
+	PlayPhrase(PcmSting);
+}
+
+void UBarClockComponent::PlayClap()
+{
+	PlayPhrase(PcmClap);
+}
+
+void UBarClockComponent::PlayThud()
+{
+	PlayPhrase(PcmThud);
+}
+
+void UBarClockComponent::PlayCrackle()
+{
+	PlayPhrase(PcmCrackle);
 }

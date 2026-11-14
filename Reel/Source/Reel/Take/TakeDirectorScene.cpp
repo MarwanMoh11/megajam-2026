@@ -10,12 +10,14 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Julian.h"
 #include "Mark.h"
+#include "PyroDevice.h"
 #include "SceneTrigger.h"
 #include "ScannerWatcher.h"
 #include "TakeCharacter.h"
 #include "TakeGameInstance.h"
 #include "TakePlayerController.h"
 #include "Watcher.h"
+#include "WinchDevice.h"
 
 namespace TakeSceneLocal
 {
@@ -94,32 +96,56 @@ void ATakeDirector::FireTrigger(FName Name)
 	FiredTriggers.Add(Name, Bar);
 	TAKE_LOG(TEXT("TRIGGER %s bar %d"), *Name.ToString(), Bar);
 
-	// Watchers that arrive on it: on the next arrival line (plus their own extra bars).
+	// Watchers that arrive on it: on the next arrival line (the case: as the alarm goes live), plus their own extra
+	// bars. The guards who walk in at the alarm get no line each: the alarm speaks for them.
+	const bool bCase = (Name == FName(TakeTriggers::Case));
 	for (AWatcher* EachWatcher : Watchers)
 	{
 		if (EachWatcher && EachWatcher->ArriveOn == Name)
 		{
-			const int32 ArriveBar = GetArrivalLine(Bar) + FMath::Max(0, EachWatcher->ArriveExtraBars);
+			const int32 ArriveBar = GetArrivalBarFor(Name, Bar) + FMath::Max(0, EachWatcher->ArriveExtraBars);
 			EachWatcher->ScheduleArrival(ArriveBar);
-			Flash(FString::Printf(TEXT("%s - arrives on bar %d"), *EachWatcher->GetLabel(), ArriveBar), TakeColors::Red, 3.f);
+			if (!bCase)
+			{
+				Flash(FString::Printf(TEXT("%s - arrives on bar %d"), *EachWatcher->GetLabel(), ArriveBar), TakeColors::Red, 3.f);
+			}
 		}
 	}
 
 	// The scene script's own reactions.
 	if (Name == FName(TakeTriggers::Keycard))
 	{
+		// The lift mark's ActionScene / ActionTitle start Scene 3 (StepMarkActions).
 		Flash(TEXT("KEYCARD LIFTED"), TakeColors::Gold, 3.f);
 		if (Clock)
 		{
 			Clock->PlayChime();
 		}
-		if (Phase != ETakePhase::Cleared)
-		{
-			SetPhase(ETakePhase::Cleared);
-		}
-		ShowTitle(TEXT("SCENE 2 CLEARED"));
-		TAKE_LOG(TEXT("CLEARED keycard"));
 	}
+	else if (bCase)
+	{
+		StartAlarm(Bar, false);
+		Flash(TEXT("HE HAS THE REEL"), TakeColors::Gold, 3.f);
+	}
+	else if (Name == FName(TakeTriggers::Winch))
+	{
+		Flash(TEXT("THE STAGE TRAP IS OPEN"), TakeColors::Gold, 3.f);
+	}
+	else if (Name == FName(TakeTriggers::Bow))
+	{
+		RestoreDeletedScene(Name);
+	}
+	else if (Name == FName(TakeTriggers::ExitTrap))
+	{
+		PrintIt(false);
+	}
+	else if (Name == FName(TakeTriggers::ExitSide))
+	{
+		PrintIt(true);
+	}
+
+	// A mark that appears on this trigger shows from this frame.
+	SyncMarksAppeared();
 }
 
 bool ATakeDirector::HasFired(FName Name) const
@@ -167,8 +193,14 @@ void ATakeDirector::StepWarnings()
 			continue;
 		}
 		const int32 ArriveBar = EachWatcher->GetArriveBar();
+		// The guards who walk in at the alarm: no solo, no line, no mute, no chime (the alarm speaks for them).
+		const bool bAlarmGuard = (EachWatcher->ArriveOn == FName(TakeTriggers::Case));
 
-		if (ArriveBar > 0 && ArriveBar == B + 1)
+		if (bAlarmGuard)
+		{
+			// Nothing for its arrival.
+		}
+		else if (ArriveBar > 0 && ArriveBar == B + 1)
 		{
 			// It arrives on the next bar line: its instrument plays solo for one bar.
 			PlayOnce(EachWatcher->Instrument);
@@ -263,11 +295,38 @@ void ATakeDirector::StepMarkActions(float DeltaSeconds)
 		{
 			continue;
 		}
-		const bool bRunning = (Standing == EachMark) && !bJulianSeen;
-		if (EachMark->StepAction(DeltaSeconds, bRunning))
+		const bool bRunning = (Standing == EachMark)
+			&& (EachMark->bActionWhileSeen || !bJulianSeen)
+			&& (EachMark->ActionNeeds.IsNone() || HasFired(EachMark->ActionNeeds))
+			&& (!EachMark->bNeedsBlindDrone || IsDroneBlinded());
+		if (!EachMark->StepAction(DeltaSeconds, bRunning))
 		{
-			TAKE_LOG(TEXT("ACTION done on %s -> %s"), *EachMark->MarkName, *EachMark->ActionTrigger.ToString());
-			FireTrigger(EachMark->ActionTrigger);
+			continue;
+		}
+
+		TAKE_LOG(TEXT("ACTION done on %s -> %s"), *EachMark->MarkName, *EachMark->ActionTrigger.ToString());
+		FireTrigger(EachMark->ActionTrigger);
+		if (Phase != ETakePhase::Rolling)
+		{
+			// An exit printed the take: nothing more this frame.
+			return;
+		}
+
+		// The order matters: the trigger, then the new scene, then the checkpoint (so the case's checkpoint already
+		// holds the Case trigger and Scene 3).
+		if (EachMark->ActionScene > 0 && EachMark->ActionScene != Scene)
+		{
+			TAKE_LOG(TEXT("SCENE %d -> %d (%s)"), Scene, EachMark->ActionScene, *EachMark->MarkName);
+			Scene = EachMark->ActionScene;
+			if (!EachMark->ActionTitle.IsEmpty())
+			{
+				ShowTitle(EachMark->ActionTitle);
+			}
+		}
+		if (!EachMark->ActionCheckpointName.IsEmpty())
+		{
+			AMark* const CheckpointAt = EachMark->ActionCheckpointMark ? EachMark->ActionCheckpointMark.Get() : EachMark;
+			SaveCheckpoint(CheckpointAt, EachMark->ActionCheckpointName);
 		}
 	}
 }
@@ -278,6 +337,14 @@ void ATakeDirector::StepMarkActions(float DeltaSeconds)
 
 void ATakeDirector::UpdateObjective()
 {
+	// The title card and the end sequence: the HUD draws those screens, no goal line.
+	if (Phase == ETakePhase::Title || Phase == ETakePhase::Printed)
+	{
+		Objective.Reset();
+		LastLoggedObjective.Reset();
+		return;
+	}
+
 	// A flight keeps the line it started with.
 	if (PC && PC->IsInFlight())
 	{
@@ -289,7 +356,83 @@ void ATakeDirector::UpdateObjective()
 
 	if (Phase == ETakePhase::Cleared)
 	{
-		NewObjective = TEXT("CLEARED. Scene 3, the getaway, comes next.   [R] new take");
+		NewObjective = TEXT("CLEARED.   [R] new take");
+	}
+	else if (HasFired(FName(TakeTriggers::Keycard)))
+	{
+		// Scene 3, the getaway. The crew's boards: "at the board" is the board being the use target right now.
+		const AWinchDevice* Winch = nullptr;
+		const APyroDevice* Pyro = nullptr;
+		for (ADevice* EachDevice : Devices)
+		{
+			if (!Winch)
+			{
+				Winch = Cast<AWinchDevice>(EachDevice);
+			}
+			if (!Pyro)
+			{
+				Pyro = Cast<APyroDevice>(EachDevice);
+			}
+		}
+		const ADevice* const InReach = CurrentUse.Device.Get();
+		const bool bAtWinch = Winch && InReach == static_cast<const ADevice*>(Winch);
+		const bool bAtPyro = Pyro && InReach == static_cast<const ADevice*>(Pyro);
+
+		if (!HasFired(FName(TakeTriggers::Case)))
+		{
+			if (CurrentCamera == ETakeCamera::A)
+			{
+				NewObjective = bJulianExposed
+					? FString(TEXT("He has the keycard. Get JULIAN off the red tape."))
+					: FString::Printf(TEXT("The case trips the alarm: %d bars to get out. Post the crew first: [3] VEX at the curtain winch, [2] MAYA at the pyro board. Then stand JULIAN on the gold mark at the case."), FinaleBars);
+			}
+			else if (CurrentCamera == ETakeCamera::B)
+			{
+				NewObjective = bAtPyro
+					? TEXT("MAYA is at the pyro board. It unlocks with the alarm.   [3] VEX   [1] JULIAN")
+					: TEXT("Walk MAYA to the pyro board, on her platform beside the follow spot");
+			}
+			else
+			{
+				NewObjective = bAtWinch
+					? TEXT("VEX is at the curtain winch. It unlocks with the alarm.   [2] MAYA   [1] JULIAN")
+					: TEXT("Walk VEX east along the corridor to the curtain winch at its far end. (His sound desk buys the gold side exit instead.)");
+			}
+		}
+		else if (!HasFired(FName(TakeTriggers::Winch)) && Winch && Winch->UsesLeft > 0)
+		{
+			if (CurrentCamera == ETakeCamera::C)
+			{
+				NewObjective = bAtWinch
+					? TEXT("[E]  Let the counterweight go: the curtain hides him from the guards and opens the stage trap")
+					: TEXT("Run VEX to the curtain winch at the east end of the corridor");
+			}
+			else
+			{
+				NewObjective = TEXT("ALARM.   [3] VEX: the winch drops the curtain and opens the stage trap.   [2] MAYA: the pyro blinds the stage.");
+			}
+		}
+		else if (Pyro && Pyro->UsesLeft > 0)
+		{
+			if (CurrentCamera == ETakeCamera::B)
+			{
+				NewObjective = bAtPyro
+					? FString::Printf(TEXT("[E]  Fire the pyro: everything on the stage is blind for %.0f s"), Pyro->Duration)
+					: FString(TEXT("Walk MAYA to the pyro board"));
+			}
+			else
+			{
+				NewObjective = TEXT("The curtain is down. [2] MAYA: the pyro blinds the drone and the stage.   Then [1] JULIAN: the gold mark on the open trap.");
+			}
+		}
+		else if (CurrentCamera == ETakeCamera::A)
+		{
+			NewObjective = TEXT("RUN. The open trap: the gold mark upstage, behind the lots table.");
+		}
+		else
+		{
+			NewObjective = TEXT("[1]  JULIAN: get him to the open trap");
+		}
 	}
 	else if (Scene <= 1)
 	{
@@ -481,6 +624,7 @@ void ATakeDirector::SaveCheckpoint(AMark* Mark, const FString& Name)
 	}
 	GI->CheckpointTriggers = FiredTriggers;
 	GI->BloopersAtCheckpoint = 0;
+	GI->CheckpointCuts = GI->Cuts;
 
 	Flash(FString::Printf(TEXT("CHECKPOINT - %s"), *Name), TakeColors::Gold, 3.f);
 	if (Clock)
@@ -493,7 +637,7 @@ void ATakeDirector::SaveCheckpoint(AMark* Mark, const FString& Name)
 
 void ATakeDirector::RestoreCheckpoint()
 {
-	const UTakeGameInstance* GI = GetTakeGameInstance();
+	UTakeGameInstance* GI = GetTakeGameInstance();
 	if (!GI || GI->CheckpointMark.IsEmpty())
 	{
 		return;
@@ -510,9 +654,18 @@ void ATakeDirector::RestoreCheckpoint()
 		}
 		if (const int32* FiredBar = FiredTriggers.Find(EachWatcher->ArriveOn))
 		{
-			EachWatcher->ScheduleArrival(GetArrivalLine(*FiredBar) + FMath::Max(0, EachWatcher->ArriveExtraBars));
+			EachWatcher->ScheduleArrival(GetArrivalBarFor(EachWatcher->ArriveOn, *FiredBar) + FMath::Max(0, EachWatcher->ArriveExtraBars));
 			EachWatcher->MarkArrivedIfDue(Clock);
 		}
+	}
+
+	// The bloopers are spliced out: the cut count goes back to the checkpoint's (rule 11).
+	GI->Cuts = GI->CheckpointCuts;
+
+	// The case was open at the checkpoint: the alarm again, from the bar it was opened on (no title, no line).
+	if (const int32* CaseBar = FiredTriggers.Find(FName(TakeTriggers::Case)))
+	{
+		StartAlarm(*CaseBar, true);
 	}
 
 	// The device uses as they were.
@@ -567,7 +720,8 @@ void ATakeDirector::RestoreCheckpoint()
 	// The crew hint over the earpiece after enough bloopers here.
 	if (GI->BloopersAtCheckpoint >= HintAfterBloopers)
 	{
-		const int32 HintIndex = HasFired(FName(TakeTriggers::PastRope)) ? 2 : Scene - 1;
+		const int32 HintIndex = HasFired(FName(TakeTriggers::Keycard)) ? 3
+			: (HasFired(FName(TakeTriggers::PastRope)) ? 2 : Scene - 1);
 		if (SceneHints.IsValidIndex(HintIndex) && !SceneHints[HintIndex].IsEmpty())
 		{
 			Flash(SceneHints[HintIndex], TakeColors::White, 6.f);

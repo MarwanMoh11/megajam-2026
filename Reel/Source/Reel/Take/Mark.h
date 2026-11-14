@@ -72,6 +72,47 @@ public:
 	/** The checkpoint restore: an action whose trigger had already fired is done (no second lift). */
 	void SetActionDone() { bActionDone = true; ActionProgress = ActionSeconds; }
 
+	// --- step 3: marks that appear, and what an action can ask for and do (BODY: S) ---------------------------------
+
+	/** Set: the mark is hidden and cannot be stood on until this trigger has fired (the case mark appears with the
+	 *  keycard, the trap's mark when the winch lands). ATakeDirector calls SetAppeared from FireTrigger and from the
+	 *  first tick (after the checkpoint restore). None: it is there from the start. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Mark")
+	FName AppearOn;
+
+	/** Shows or hides the whole mark (SetActorHiddenInGame) and sets bAppeared, this frame. */
+	void SetAppeared(bool bInAppeared);	// BODY: S
+
+	/** False only for an AppearOn mark whose trigger has not fired: AJulian::StepMarks skips it. */
+	bool HasAppeared() const { return bAppeared; }
+
+	/** Set: the action only runs once this trigger has fired (the exits and the bow need the Case trigger). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Mark")
+	FName ActionNeeds;
+
+	/** The action runs even while Julian is SEEN (the exits: he is leaving anyway). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Mark")
+	bool bActionWhileSeen = false;
+
+	/** The action only runs while the broadcast drone (a watcher with ExposesOffMark) is blinded (The Bow). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Mark")
+	bool bNeedsBlindDrone = false;
+
+	/** > 0: the finished action starts this scene (the keycard starts Scene 3), with ActionTitle as the big title. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Mark")
+	int32 ActionScene = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Mark")
+	FString ActionTitle;
+
+	/** Not empty: the finished action saves a checkpoint with this name ("THE CASE"). Julian restarts on
+	 *  ActionCheckpointMark, or on this mark when that is not set. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Mark")
+	FString ActionCheckpointName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Mark")
+	TObjectPtr<AMark> ActionCheckpointMark;
+
 	/** Julian's feet within this 2D distance of the stand point, standing still, counts as on the mark, cm. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Mark")
 	float StandRadius = 60.f;
@@ -98,6 +139,9 @@ protected:
 
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
 	bool bActionDone = false;
+
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	bool bAppeared = true;
 
 private:
 	/** Disc and X colours, X visibility from the occupied state. This frame. */

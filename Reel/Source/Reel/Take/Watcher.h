@@ -126,6 +126,28 @@ public:
 	 *  them with the frame. No far corners: no lines. */
 	void BuildFrameLines();	// BODY: W
 
+	// --- step 3 (BODY: W) ------------------------------------------------------------------------------------------
+
+	/** The alarm (ATakeDirector, when the alarm goes live, and again after a restore): the frame pulses to white on
+	 *  the beat so it still reads when the picture bleeds to colour: the pulse uses AlarmPulseBrightness in place of
+	 *  PulseBrightness while it is on. */
+	void SetAlarmLook(bool bOn);
+
+	bool HasAlarmLook() const { return bAlarmLook; }
+
+	/** Its whole actor is hidden until it arrives (the guards who walk in at the alarm): SetActorHiddenInGame(true)
+	 *  in BeginPlay when ArriveOn is set, shown again on the frame it arrives (StepArrival, MarkArrivedIfDue). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Arrival")
+	bool bHideUntilArrived = false;
+
+	/** Flashed (red) on the frame it arrives ("GUARD 3: \"Nobody leaves!\""). Empty: none. Not flashed by a restore. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Arrival")
+	FString ArriveLine;
+
+	/** The beat pulse toward white while the alarm look is on (0..1). */
+	UPROPERTY(EditAnywhere, Category = "Take|Watcher", meta = (ClampMin = "0", ClampMax = "1"))
+	float AlarmPulseBrightness = 1.f;
+
 	// --- tunables ---------------------------------------------------------------------------------------------------
 
 	/** The trigger this watcher arrives on (ATakeDirector::FireTrigger). None: it is there from the take's start. */
@@ -274,6 +296,8 @@ protected:
 	int32 ArriveBar = 0;
 
 	float ArrivalBlinkSecondsLeft = 0.f;
+
+	bool bAlarmLook = false;
 
 	/** The frame lines BuildFrameLines made. */
 	UPROPERTY(Transient)

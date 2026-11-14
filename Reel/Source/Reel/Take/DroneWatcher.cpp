@@ -7,6 +7,8 @@
 #include "Components/StaticMeshComponent.h"
 #include "Julian.h"
 #include "PatrolPoint.h"
+#include "TakeCharacter.h"
+#include "TakeDirector.h"
 #include "TakeShapes.h"
 
 namespace TakeDroneLocal
@@ -79,7 +81,32 @@ void ADroneWatcher::StepWatcher(float DeltaSeconds, UBarClockComponent* Clock)
 {
 	// The flight is a pure function of the clock (it hovers over the first point until its arrival bar). Moved
 	// before the base step, so the cone is tested this frame where it is drawn.
-	SetActorLocation(EvaluatePath(Clock));
+	if (const AActor* Target = ChaseTarget.Get())
+	{
+		// Step 3, the lock-on: no path; the floor point closes on the target's feet (2D) at ChaseSpeed, takes the
+		// feet's height, and then stays over them. Blinded, it still follows.
+		const ATakeCharacter* Character = Cast<const ATakeCharacter>(Target);
+		const FVector Feet = Character ? Character->GetFeetLocation() : Target->GetActorLocation();
+		FVector Here = GetActorLocation();
+		const FVector ToFeet(Feet.X - Here.X, Feet.Y - Here.Y, 0.0);
+		const double Remaining = ToFeet.Size();
+		const double Step = static_cast<double>(FMath::Max(ChaseSpeed, 0.f)) * static_cast<double>(FMath::Max(DeltaSeconds, 0.f));
+		if (Remaining <= Step || Remaining < KINDA_SMALL_NUMBER)
+		{
+			Here.X = Feet.X;
+			Here.Y = Feet.Y;
+		}
+		else
+		{
+			Here += ToFeet / Remaining * Step;
+		}
+		Here.Z = Feet.Z;
+		SetActorLocation(Here);
+	}
+	else
+	{
+		SetActorLocation(EvaluatePath(Clock));
+	}
 	Super::StepWatcher(DeltaSeconds, Clock);
 }
 
@@ -115,7 +142,7 @@ bool ADroneWatcher::ApplyEffect(EDeviceEffect Effect, float Duration, const FVec
 
 bool ADroneWatcher::ChangesAtBar(int32 Bar, const UBarClockComponent* Clock) const
 {
-	if (!HasArrived())
+	if (!HasArrived() || IsChasing())
 	{
 		return false;
 	}
@@ -238,4 +265,31 @@ void ADroneWatcher::LayoutDrone()
 	FTakeShapes::SetColour(FrameMesh, TakeColors::Red);
 	FTakeShapes::SetColour(Body, TakeColors::DarkGrey);
 	FTakeShapes::SetColour(Tally, TakeColors::DarkGrey);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Step 3: the lock-on (W)
+// ---------------------------------------------------------------------------------------------------------------------
+
+void ADroneWatcher::SetChaseTarget(const AActor* Target)
+{
+	const bool bNewTarget = Target != nullptr && ChaseTarget.Get() != Target;
+	const bool bWasChasing = ChaseTarget.IsValid();
+	ChaseTarget = Target;
+
+	if (bNewTarget)
+	{
+		TAKE_LOG(TEXT("%s locks on"), *Label);
+		if (!ChaseLine.IsEmpty())
+		{
+			if (ATakeDirector* Director = ATakeDirector::Get(this))
+			{
+				Director->Flash(ChaseLine, TakeColors::Red, 3.f);
+			}
+		}
+	}
+	else if (Target == nullptr && bWasChasing)
+	{
+		TAKE_LOG(TEXT("%s back to its loop"), *Label);
+	}
 }

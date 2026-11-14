@@ -93,6 +93,28 @@ public:
 	 *  (clamped to 0..Uses), and the device looks spent if it is (pips, body). Free devices (Uses 0) ignore it. */
 	virtual void RestoreUses(int32 InUsesLeft);	// BODY: D
 
+	// --- step 3 (BODY: W) ------------------------------------------------------------------------------------------
+
+	/** Set: CanFire is false until the director's HasFired(LockedUntil), with the reason DeviceName + " - " +
+	 *  LockedWhy ("PYRO - locked until the alarm"). The pyro and the winch are locked until the Case trigger. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Device")
+	FName LockedUntil;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Device")
+	FString LockedWhy = TEXT("locked until the alarm");
+
+	/** True while LockedUntil is set and has not fired (no director: not locked). CanFire asks it first. */
+	bool IsLocked() const;
+
+	/** Set: ATakeDirector::StepDevices fires this trigger on the frame the device lands (the winch: "Winch", which
+	 *  makes the trap's mark appear). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Device")
+	FName LandTrigger;
+
+	/** Flashed (white) by ATakeDirector::FireDevice on the frame it fires ("VEX: \"Curtain coming down!\""). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Device")
+	FString FireLine;
+
 	// --- tunables ---------------------------------------------------------------------------------------------------
 
 	/** HUD and log name ("SPOT", "CART", "BANNER"). */

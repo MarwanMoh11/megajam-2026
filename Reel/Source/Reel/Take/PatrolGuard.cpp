@@ -137,9 +137,17 @@ void APatrolGuard::StepWatcher(float DeltaSeconds, UBarClockComponent* Clock)
 	// the frame.
 	Super::StepWatcher(DeltaSeconds, Clock);
 
-	// Not arrived yet: he stays where he was placed, Off.
+	// Not arrived yet: he stays where he was placed, Off (a guard who patrols from his arrival waits at his first
+	// point, step 3).
 	if (!HasArrived())
 	{
+		if (bPatrolFromArrival && !ArriveOn.IsNone())
+		{
+			FVector WaitLocation = FVector::ZeroVector;
+			float WaitYaw = 0.f;
+			EvaluatePatrol(Clock, WaitLocation, WaitYaw);
+			SetActorLocationAndRotation(WaitLocation, FRotator(0.f, WaitYaw, 0.f));
+		}
 		return;
 	}
 
@@ -351,9 +359,27 @@ void APatrolGuard::EvaluatePatrol(const UBarClockComponent* Clock, FVector& OutL
 	// bar line: he walks in from the previous point (from his placed pose on the very first slot), turns to the
 	// point's yaw, and holds it until the slot ends.
 	const double SecondsPerBar = FMath::Max(static_cast<double>(Clock->GetSecondsPerBar()), 0.001);
-	const double BarsElapsed = FMath::Max(0.0, Clock->GetTotalBeats() / static_cast<double>(FMath::Max(1, Clock->BeatsPerBar))
-		+ static_cast<double>(PatrolOffsetBars));
-	const int64 Cycle = static_cast<int64>(BarsElapsed / static_cast<double>(CycleBars));
+	const double BarsOnClock = Clock->GetTotalBeats() / static_cast<double>(FMath::Max(1, Clock->BeatsPerBar));
+
+	// Step 3: a guard who walks in at the alarm counts his patrol from his arrival bar; before it he stands at the
+	// first point (and on the bar he arrives he is there, whatever bar that is).
+	const bool bFromArrival = bPatrolFromArrival && !ArriveOn.IsNone();
+	double PatrolBars = BarsOnClock;
+	if (bFromArrival)
+	{
+		const int32 StartBar = GetArriveBar();
+		if (StartBar <= 0 || BarsOnClock < static_cast<double>(StartBar - 1))
+		{
+			OutLocation = Points[0]->GetActorLocation();
+			OutYaw = static_cast<float>(Points[0]->GetActorRotation().Yaw);
+			return;
+		}
+		PatrolBars = BarsOnClock - static_cast<double>(StartBar - 1);
+	}
+
+	const double BarsElapsed = FMath::Max(0.0, PatrolBars + static_cast<double>(PatrolOffsetBars));
+	// Step 3: bPatrolOnce never loops: the last point's slot runs on for good (he holds it once he is there).
+	const int64 Cycle = bPatrolOnce ? 0 : static_cast<int64>(BarsElapsed / static_cast<double>(CycleBars));
 	const double CyclePhase = BarsElapsed - static_cast<double>(Cycle) * static_cast<double>(CycleBars);
 
 	int32 Index = 0;
@@ -379,6 +405,12 @@ void APatrolGuard::EvaluatePatrol(const UBarClockComponent* Clock, FVector& OutL
 		const APatrolPoint* Prev = Points[(Index + Points.Num() - 1) % Points.Num()];
 		FromLocation = Prev->GetActorLocation();
 		FromYaw = static_cast<float>(Prev->GetActorRotation().Yaw);
+	}
+	else if (bFromArrival)
+	{
+		// He arrived standing at the first point: no walk in from his placed pose.
+		FromLocation = Points[0]->GetActorLocation();
+		FromYaw = static_cast<float>(Points[0]->GetActorRotation().Yaw);
 	}
 	const FVector ToLocation = Points[Index]->GetActorLocation();
 	const float ToYaw = static_cast<float>(Points[Index]->GetActorRotation().Yaw);
@@ -431,8 +463,23 @@ int32 APatrolGuard::GetPatrolIndexAtBar(int32 Bar) const
 		return -1;
 	}
 
-	const int32 BarsElapsed = FMath::Max(0, Bar - 1 + PatrolOffsetBars);
-	const int32 CyclePhase = BarsElapsed % CycleBars;
+	// Step 3: from his arrival bar (before it: the first point), and no loop with bPatrolOnce (past the last point's
+	// start the loop below returns the last point for good). Matches EvaluatePatrol.
+	int32 BarsElapsed = 0;
+	if (bPatrolFromArrival && !ArriveOn.IsNone())
+	{
+		const int32 StartBar = GetArriveBar();
+		if (StartBar <= 0 || Bar < StartBar)
+		{
+			return Indices[0];
+		}
+		BarsElapsed = FMath::Max(0, Bar - StartBar + PatrolOffsetBars);
+	}
+	else
+	{
+		BarsElapsed = FMath::Max(0, Bar - 1 + PatrolOffsetBars);
+	}
+	const int32 CyclePhase = bPatrolOnce ? BarsElapsed : BarsElapsed % CycleBars;
 	int32 SlotStart = 0;
 	for (int32 k = 0; k < Indices.Num(); ++k)
 	{

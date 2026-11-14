@@ -27,5 +27,10 @@ void UTakeGameInstance::NoteNewTake()
 	CrewPlaces.Reset();
 	BloopersAtCheckpoint = 0;
 	bReloadingFromBlooper = false;
+	// Step 3: the ends start over (the title card stays shown: once a session).
+	Cuts = 0;
+	CheckpointCuts = 0;
+	BlooperReel.Reset();
+	RestoredScenes.Reset();
 	TAKE_LOG(TEXT("GI NEW TAKE %d (bloopers so far %d)"), TakeNumber, BlooperCount);
 }

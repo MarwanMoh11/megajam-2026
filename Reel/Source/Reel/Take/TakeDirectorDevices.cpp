@@ -171,6 +171,11 @@ bool ATakeDirector::FireDevice(ADevice* Device)
 	FString WhyNot;
 	if (Device->CanFire(WhyNot) && Device->Fire())
 	{
+		// Step 3: the crew's call as it fires ("VEX: Curtain coming down!").
+		if (!Device->FireLine.IsEmpty())
+		{
+			Flash(Device->FireLine, TakeColors::White, 3.f);
+		}
 		return true;
 	}
 
@@ -260,6 +265,12 @@ void ATakeDirector::StepDevices(float DeltaSeconds)
 				Composure->Add(Refill);
 			}
 			TAKE_LOG(TEXT("STAMP x%d (%s): composure +%.0f"), Caught, *Device->DeviceName, Refill);
+		}
+
+		// Step 3: a landing that sets something else off (the winch's curtain opens the stage trap).
+		if (!Device->LandTrigger.IsNone())
+		{
+			FireTrigger(Device->LandTrigger);
 		}
 	}
 }

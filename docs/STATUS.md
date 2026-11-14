@@ -1,9 +1,9 @@
 # Status
 
-Last updated: 2026-11-14, about 04:00 Cairo. **Gate 1 is passed:** Marwan played the rework and the street-start
-build on Nov 13 and said to start step 2. **Step 2 is built and packaged** (Nov 14), without the parts written for
-fixed cameras and hard cuts (see "Step 2 as built" below). Next: step 3, Scene 3 and the ends. Theme:
-**Director's Cut**.
+Last updated: 2026-11-14, about 05:00 Cairo. **Gate 1 is passed:** Marwan played the rework and the street-start
+build on Nov 13 and said to start step 2. **Steps 2 and 3 are built** (Nov 14), without the parts written for
+fixed cameras and hard cuts (see "Step 3 as built" and "Step 2 as built" below): a whole take plays from the street
+to PRINT IT. Next: **gate 2**, Marwan plays a full take cold. Theme: **Director's Cut**.
 
 ## Gate 1 answer, Nov 13 about 18:15: Marwan changed three rules
 
@@ -54,6 +54,81 @@ inside ? the line is outside", and "add more props placeholders to make the plac
 **Not rethought yet, waiting for the next gate:** good cuts (rule 8), the shot list and the film and making-of split
 (rule 1), the monitor strip, "a crew cut takes about 2 s" (rule 4), The Long Take, the replay "cut where you cut"
 (rule 11), and the 1:45 clean run in a larger building.
+
+## Step 3 as built, Nov 14 (Scene 3 and the ends, for the walking game)
+
+Built on the same terms as step 2: everything written for fixed cameras, hard cuts or stills still waits for gate 2
+(the replay and its edit suite, good cuts, the contact sheet, the film and making-of split, The Cold Open, The Long
+Take, The Insert). **Everything in this section that the spec did not settle was filled in by Claude with the
+smallest thing that works; Marwan can overrule any of it.** Marwan's Nov 14 direction is applied the same way as in
+step 2: the crew's places make sense in the story, nobody teleports, Julian has no straight clear line out, and the
+immersion is text only.
+
+**The story of the finale.** The stage has a house curtain on a counterweight winch, in the wings at the east end
+of Vex's corridor. Maya's pyro board is on her lighting platform beside the follow spot: the gala's own finale
+charges, standing along the front of the dais. The crew's lorry is backed up to the loading dock where Vex started.
+So the free way out is the stage's own machinery: the curtain comes down, the pyro goes off, and Julian drops
+through the stage trap to the lorry. The paid way out is the gold side exit past the band, to the street.
+
+**Scene 3, The Getaway.**
+- **The keycard starts Scene 3** (title, and a checkpoint: a blooper before the case puts Julian back on the dais
+  mark, still holding the keycard). The gold mark at the case appears. The goal line says to post the crew first:
+  Vex walks east along his corridor to the winch (about 7 s from his cart), Maya four metres along her platform to
+  the pyro board. The north half of the dais is safe ground until the alarm.
+- **The case:** stand on its mark for 1.2 s. Julian has the reel, **the alarm** sounds, and **the case is Scene 3's
+  checkpoint**. The alarm tone replaces the band and keeps the beat. Shutters fall across the aisle and the hall's
+  side doors.
+- **The hold:** the rest of that bar and one more bar. Nothing sees him. *Filled in:* the spec holds "that first
+  bar"; a case opened late in a bar would have left almost no hold, so it is the rest of the bar plus one.
+- **Live:** the whole floor is red tape, four guards come in through the two doors in the end wall (two hold the
+  doors, two walk out along the flanks), the drone leaves the aisle and follows Julian, the frames pulse white on
+  the beat, the picture bleeds to full colour, and the HUD counts **8 bars**. At the end of the eighth the clock
+  runs out: a blooper, "THE CLOCK RAN OUT", again from the case with the clock back on the bar the case was opened.
+- **The free exit, the stage trap** (10 m from the case, round the lots table that stands in the straight line):
+  Vex's **winch** drops the curtain across the front of the dais and down both its sides, for good: the guards on
+  both flanks lose the dais, and the trap opens (its gold mark appears). Maya's **pyro** blinds everything on the
+  stage for 6 s, the drone included once it has locked on. Julian stands on the trap's mark and is out. *Filled
+  in:* the spec's "hatch under the stage" is called the stage trap on screen, because "hatch" already means the
+  service hatches Vex kicks his carts through.
+- **The paid exit, the gold side exit** (14 m, round the lots table and the band's PA stacks): two of the guards
+  hold that door, so the follow spot cannot take both. The PA stacks are the only cover from them. The answer is
+  Vex's **sound desk**, if it was saved: everything in the hall is blind. *Filled in:* neither cart reaches that
+  door and the one banner hangs over the rope, so of the spec's three saved answers only the desk works here.
+- **The Bow** (the one deleted scene that is built): the gold mark in the lane before the gold door. Stand on it
+  while the drone is blinded: "DELETED SCENE RESTORED: THE BOW", "Keep that in!".
+- *Filled in:* **the sound desk blinds for 6 s, not the spec's 4** (the band still drops out for 2 bars). A flight
+  back from Vex costs 1.6 s of it, and 2.4 s was not enough to reach the door; it is the same change the arrivals
+  searchlight got in step 2. It also makes the paid lift in Scene 2 easier.
+- *Filled in:* an exit works even while he is seen (he is leaving anyway), except the gold door, which needs the
+  two guards off him for a third of a second: that is what makes it cost the desk.
+- A blooper in Scene 3 keeps the crew where the player walked them, as in Scene 2.
+
+**The ends.**
+- **The title card,** once a session, before the first take: the name (*Print It*, still the working title), the
+  pitch in two lines, the controls, the goal. Enter, Space or E starts the take; nothing moves behind it.
+- **PRINT IT:** a snap to black, the clapper and a sting (synthesised stand-ins), the slate, and one line for how he
+  left. Then **the stats** (take, time on the band's clock with the bloopers spliced out, cuts, bloopers, the exit,
+  deleted scenes) and **the grade**. Then **the blooper reel** rolling over the credits. Enter turns a page, R
+  shoots a new take, ESC quits.
+- *Filled in:* the blooper reel is text (take, bar, where it went again from, why, who caught him): the freeze
+  frames need stills, which wait for gate 2.
+- *Filled in:* **the grade.** Only The Bow can be restored in this build, so the stats count and name only the
+  built scenes ("DELETED SCENES 0 / 1", "MISSED THE BOW: at the gold side exit, bow to the blinded drone").
+  ROUGH CUT: out by the trap. FINAL CUT: out by the gold side exit. DIRECTOR'S CUT: every built deleted scene
+  restored. When the other three are built, `bSideExitIsFinalCut` goes off and the spec's rule (2 or 3 restored) is
+  what is left.
+- *Filled in:* **the colour bleed.** The noir film look waits for gate 2, so there was nothing to bleed from. The
+  picture now runs at 60% saturation until the alarm goes live and rises to 125% over two seconds. Red and gold
+  still read before it. `FilmSaturation = 1` on the director puts the old look back.
+- GOOD CUTS is not in the stats (good cuts wait for gate 2).
+
+**Only Marwan can judge (step 3):**
+- Whether the finale is fair cold: the prompts, the 8 bars, how fast the drone arrives, how hard the pyro's flash is.
+- The 60% saturation before the alarm, and the bleed.
+- The desk at 6 s, and whether the gold side exit and The Bow feel worth saving it for.
+- The alarm tone, the sting and the clapper as stand-ins, and every line of text (the title card, the slate, the
+  stats, the credits, the guards).
+- The name on the title card and in the credits.
 
 ## Step 2 as built, Nov 14 (Scenes 1 and 2 for the walking game)
 
@@ -193,11 +268,12 @@ K's spec is archived in `docs/ideas/k-meanwhile-spec.md`, and nothing in `protot
 `docs/ART_STYLE.md` was written for K: only the parts named under "Look" apply, and where it differs from this file,
 this file wins.
 
-State: **step 2 is built** (Nov 14, about 04:00). The C++ is in `Reel/Source/Reel/Take/`, the map is
+State: **step 3 is built** (Nov 14, about 05:00). The C++ is in `Reel/Source/Reel/Take/`, the map is
 `/Game/Take/Lvl_Auction` (the project starts in it), and `tools/build_auction.py` rebuilds the map from its numbers
 (`Lvl_TestBox` and `tools/build_testbox.py` are the old step 1 and no longer load cleanly). From the street start
-the take plays through Scene 1 (The Door) and Scene 2 (The Floor) to the keycard lift, with a checkpoint at each
-scene, at the rope and on the dais. Next: **step 3**, Scene 3 and the ends. Nothing past step 2 is built.
+the take plays through Scene 1 (The Door), Scene 2 (The Floor) and Scene 3 (The Getaway) to PRINT IT, the stats
+and grade and the blooper reel, with a checkpoint at each scene, at the rope, on the dais and at the case. Next:
+**gate 2**. Nothing past step 3 is built.
 
 ## The pitch
 
@@ -740,7 +816,7 @@ characters, audio and polish. Every step ends playable, and the Windows package 
 | Fri 17:00-22:00 | **1. Core loop in a test box.** See "Step 1" below | In play-in-editor, Julian gets past the guard and the beam two ways, by a cue plus a device timed to his arrival. **Built Nov 13, 17:30. Rebuilt to the gate 1 answer (walk, flights, the two-floor auction building) Nov 13, 19:40** |
 | Fri about 22:30 | **Gate 1.** Marwan plays for 5 minutes. If they don't want another go, change a rule (windows, drain, uses), not the art | A yes, or the rule changed. **First answer Nov 13, 18:15: three rules changed (top of this file). Passed Nov 13, about 23:45: Marwan played the rework and the street-start build and said to start step 2** |
 | Fri night to Sat morning | **2. The set, its look, Scenes 1 and 2.** See "Step 2" below. Package | Scenes 1-2 play in the package, and screenshots show the film and the making-of. **Built Nov 14, about 04:00, for the walking game: see "Step 2 as built". The film and making-of split waits for gate 2** |
-| Sat (midterm 12:30) | **3. Scene 3 and the ends.** See "Step 3" below. Package | Title card to blooper reel in the package |
+| Sat (midterm 12:30) | **3. Scene 3 and the ends.** See "Step 3" below. Package | Title card to blooper reel in the package. **Built Nov 14, about 05:00, for the walking game: see "Step 3 as built". The replay, the edit suite and the contact sheet wait for gate 2** |
 | Sat evening | **Gate 2.** Marwan plays a full take cold | They want another go |
 | Sat evening and night | **4. Look.** Dressing the fronts and backs, the film burn, the letterbox HUD, the stamps | Screenshots pass ART_STYLE §14 |
 | Sat night to Sun 10:00 | **5. Characters and props.** Tinted mannequins, costume props, the band's instruments, the bob on the beat, the bow. Fab free packs, or generated props if the codes arrive. Niagara (Unreal's particle system) sparks, glass and smoke | Credited in docs/CREDITS.md |

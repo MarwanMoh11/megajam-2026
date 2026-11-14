@@ -6,6 +6,7 @@
 #include "FollowSpot.h"
 #include "Julian.h"
 #include "TakeCharacter.h"
+#include "TakeGameInstance.h"
 #include "TakePlayerController.h"
 #include "Watcher.h"
 
@@ -36,6 +37,15 @@ void ATakeDirector::StepPresses()
 		if (QueuedPress.Type == ETakePressType::Use)
 		{
 			HandleUse(QueuedPress);
+		}
+	}
+	// Step 3: Confirm starts the title card and turns the end pages; while the take runs it says how to play.
+	for (const FTakePress& QueuedPress : Presses)
+	{
+		if (QueuedPress.Type == ETakePressType::Confirm)
+		{
+			Flash(TEXT("WASD walk   E use   1 2 3 cut   R new take"), TakeColors::Grey, 2.f);
+			TAKE_LOG(TEXT("CONFIRM (%s): the controls line"), *QueuedPress.Source);
 		}
 	}
 	const bool bNewTakeAsked = Presses.ContainsByPredicate([](const FTakePress& QueuedPress)
@@ -79,7 +89,17 @@ void ATakeDirector::HandleCut(ETakeCamera Camera, const FTakePress& Press)
 
 	// The view leaves the old character inside this call.
 	PC->StartFlight(To);
-	TAKE_LOG(TEXT("CUT -> %s (%s)"), Letter, *Press.Source);
+	int32 CutsThisTake = 0;
+	if (UTakeGameInstance* GI = GetTakeGameInstance())
+	{
+		// Only a flight that really started counts (rule 11's stats).
+		if (PC->IsInFlight())
+		{
+			++GI->Cuts;
+		}
+		CutsThisTake = GI->Cuts;
+	}
+	TAKE_LOG(TEXT("CUT -> %s (%s) cuts=%d"), Letter, *Press.Source, CutsThisTake);
 }
 
 void ATakeDirector::HandleUse(const FTakePress& Press)

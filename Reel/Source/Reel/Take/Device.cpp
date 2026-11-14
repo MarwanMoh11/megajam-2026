@@ -7,6 +7,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "CoreGlobals.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "TakeDirector.h"
 #include "TakeShapes.h"
 #include "Watcher.h"
 
@@ -106,6 +107,12 @@ void ADevice::SetHovered(bool bInHovered)
 
 bool ADevice::CanFire(FString& OutWhyNot) const
 {
+	// Step 3: locked until its trigger (the pyro and the winch: the alarm).
+	if (IsLocked())
+	{
+		OutWhyNot = DeviceName + TEXT(" - ") + LockedWhy;
+		return false;
+	}
 	if (Uses > 0 && UsesLeft <= 0)
 	{
 		OutWhyNot = DeviceName + TEXT(" - used");
@@ -241,4 +248,18 @@ void ADevice::RestoreUses(int32 InUsesLeft)
 	UsesLeft = FMath::Clamp(InUsesLeft, 0, Uses);
 	RefreshBodyLook();	// the pips read UsesLeft; the body dims when spent
 	TAKE_LOG(TEXT("RESTORE %s uses=%d"), *DeviceName, UsesLeft);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Step 3 (W)
+// ---------------------------------------------------------------------------------------------------------------------
+
+bool ADevice::IsLocked() const
+{
+	if (LockedUntil.IsNone())
+	{
+		return false;
+	}
+	const ATakeDirector* Director = ATakeDirector::Get(this);
+	return Director && !Director->HasFired(LockedUntil);
 }

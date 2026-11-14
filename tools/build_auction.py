@@ -98,6 +98,24 @@ MARK_LIFT = (4010.0, -480.0)
 BODYGUARD = (3830.0, -330.0)
 BODYGUARD_YAW, BODYGUARD_RANGE, BODYGUARD_HALF_ANGLE = -44.6, 330.0, 22.0   # its north edge passes 75 cm from the mark
 DAIS_TAPE = (3620.0, 4380.0, -1150.0, -150.0)  # red tape on the dais's south half (x0, x1, y0, y1)
+# Scene 3, The Getaway. The case trips the alarm; two ways out, both at the north end of the dais, neither straight.
+MARK_CASE = (4060.0, 0.0)         # the gold mark at the case (it appears with the keycard): Scene 3's checkpoint
+LOTS = (4190.0, 4350.0, 600.0, 800.0)   # the lots table upstage: the straight line from the case to the trap
+TRAP = (4300.0, 950.0)            # the stage trap, 10 m from the case: Vex's winch opens it
+PA = (4080.0, 4275.0, 1210.0, 1290.0)   # the band's PA stacks, just off the dais: the only cover from the door
+BAND = (3640.0, 3920.0, 1320.0, 1600.0) # the band's riser, on the north flank
+SIDE_DOOR_Y = 1400.0              # the gold side exit, in the east wall past the band
+LANE_X = 4338.0                   # the lane to it, between the PA stacks and the east wall
+MARK_BOW = (LANE_X, 1265.0)       # The Bow: stand here while the drone is blinded
+MARK_SIDE = (LANE_X, 1400.0)      # the gold door: 14 m from the case round the lots table and the PA
+SEC_DOOR_Y = -1500.0              # the security door, in the east wall on the south flank (the vault corridor)
+# Four guards walk in at the alarm, two through each door: one holds the door, one walks out along the flank.
+SEC_N_DOOR, SEC_N_POST = (LANE_X, 1560.0), ((4300.0, 1500.0), (4130.0, 1545.0))
+SEC_S_DOOR, SEC_S_POST = (LANE_X, -1640.0), ((4300.0, -1540.0), (3900.0, -1450.0))
+DOOR_RANGE, DOOR_HALF_ANGLE = 800.0, 22.0
+FLANK_RANGE, FLANK_HALF_ANGLE = 900.0, 30.0
+CURTAIN_H = 600.0                 # the curtain: across the front of the dais and down both its sides
+AISLE_SHUTTER_X = AISLE_X1 + 15.0 # a shutter closes the aisle at the dais end: no way back
 
 # --- the crew --------------------------------------------------------------------------------------------------------
 # Nobody teleports (Marwan, Nov 14): each of the crew starts where the job would be and walks to the next place.
@@ -107,10 +125,16 @@ SEARCHLIGHT = (TERRACE_X0 + 25.0, SCAN_Y + 150.0, F2 + 150.0)   # on a stand at 
 # along a catwalk to the lighting platform over the benches (about 20 s). The follow spot and the banner's winch
 # are on the platform.
 CAT_Y0, CAT_Y1 = -420.0, -260.0   # the catwalk, from the west gallery (GALLERY_X1) to the platform
-PLAT = (450.0, 760.0, -600.0, -200.0)   # the platform: x0, x1, y0, y1
+PLAT = (450.0, 760.0, -830.0, -200.0)   # the platform: x0, x1, y0, y1 (step 3: 2.3 m longer, for the pyro board)
 SPOT = (735.0, -280.0)            # the follow spot, at the platform's east rail
 SPOT_USE = (650.0, -290.0)        # where Maya stands to work it
 BANNER_USE = (650.0, -510.0)      # the banner's winch, on the platform
+PYRO = (735.0, -745.0)            # the pyro's firing board, at the platform's south end
+PYRO_USE = (650.0, -730.0)
+PYRO_POINT = (3950.0, 0.0)        # where the charges go off: the middle of the dais
+PYRO_CD = 420.0                   # the flare light: bright enough to read as a flash, not a white screen
+PYRO_RANGE = 1300.0               # the whole dais and the trap; not the guards at the two doors (17 m)
+PYRO_FLARES = ((3640.0, -900.0), (3640.0, -450.0), (3640.0, 0.0), (3640.0, 450.0), (3640.0, 900.0))
 BATTEN = (ROPE_X - 40.0, 0.0, 560.0)   # the banner hangs over the gap
 VEX_START = (3650.0, -3100.0)     # on the loading dock, by the shutter the lorry is backed up to, with his kit
 VEX = (3000.0, -2230.0)           # his first post: backstage at the second hatch (5 s from the dock)
@@ -122,6 +146,9 @@ CART2_ROLL = 700.0                # it crashes into the dais's south edge: Vance
 CART2_USE = (4150.0, -2080.0)
 DESK = (3550.0, -2460.0)          # the sound desk, against the corridor's back wall between the two hatches
 DESK_USE = (3550.0, -2340.0)
+DESK_SECONDS = 6.0                # the spec says 4 s; a flight back costs 1.6 s of it (STATUS.md, step 3)
+WINCH = (4330.0, -2510.0)         # the curtain's counterweight winch, at the east end of the corridor (the wings)
+WINCH_USE = (4300.0, -2390.0)
 
 # --- the look (lighting only: the dressing pass is step 4) -------------------------------------------------------------
 EXPOSURE_EV = 0.3                 # fixed exposure (EV100): a night interior
@@ -623,7 +650,7 @@ rail(PLAT[0], CAT_Y1, PLAT[0], PLAT[3])
 rail(PLAT[0], PLAT[2], PLAT[1], PLAT[2])
 rail(PLAT[0], PLAT[3], PLAT[1], PLAT[3])
 rail(PLAT[1], PLAT[2], PLAT[1], PLAT[3])
-for (lx, ly) in ((0.0, -340.0), (400.0, -340.0), (600.0, -590.0), (750.0, -590.0)):
+for (lx, ly) in ((0.0, -340.0), (400.0, -340.0), (600.0, -590.0), (750.0, -590.0), (460.0, -820.0), (750.0, -820.0)):
     box("Catwalk_Leg", lx - 8, lx + 8, ly - 8, ly + 8, 0, F2 - SLAB, m_trim, folder="Set/Catwalk")
 # The broadcast's camera riser fills the centre aisle between the bench rows.
 box("Broadcast_Riser", RISER[0], RISER[1], RISER[2], RISER[3], 0, 80, m_trim)
@@ -653,6 +680,18 @@ box("Podium", 3780, 3840, -520, -440, DAIS_H, DAIS_H + 120, m_trim)
 box("Case_Plinth", 4130, 4190, -30, 30, DAIS_H, DAIS_H + 90, m_trim)
 box("Case_Reel", 4140, 4180, -20, 20, DAIS_H + 90, DAIS_H + 130, m_gold)
 box("Screen", HX1 - 10, HX1, -700, 700, 300, 900, m_floor)
+
+# Scene 3's set. The lots table stands between the case and the stage trap; the band's PA stacks stand between
+# the dais and the gold side exit and are the only cover from the guards at that door; a shutter frame closes the
+# aisle; the two doors in the end wall are where security comes in.
+box("Lots_Table", LOTS[0], LOTS[1], LOTS[2], LOTS[3], DAIS_H, DAIS_H + 95, m_trim)
+box("PA_Stack", PA[0], PA[1], PA[2], PA[3], 0, 250, m_floor)
+box("Band_Riser", BAND[0], BAND[1], BAND[2], BAND[3], 0, 30, m_dais)
+for sy in (-GAP - 30.0, GAP + 30.0):
+    box("Shutter_Post", AISLE_SHUTTER_X - 8, AISLE_SHUTTER_X + 8, sy - 8, sy + 8, 110, 330, m_trim)
+box("Shutter_Housing", AISLE_SHUTTER_X - 14, AISLE_SHUTTER_X + 14, -GAP - 40, GAP + 40, 330, 372, m_trim)
+box("Side_Exit", HX1 - 8, HX1, SIDE_DOOR_Y - 65, SIDE_DOOR_Y + 65, 0, 235, m_gold)
+box("Security_Door", HX1 - 8, HX1, SEC_DOOR_Y - 65, SEC_DOOR_Y + 65, 0, 235, m_door)
 
 # --- the lobby block (two storeys) -----------------------------------------------------------------------------------
 # The shell: the front with the entrance doors standing open, and the block's north and south faces.
@@ -974,9 +1013,25 @@ for cx in (-500.0, 400.0, 1300.0, 2200.0, 3100.0, 4000.0):   # a banner on every
     for s in (1, -1):
         deco("Column_Banner", cx - 45, cx + 45, s * 1232, s * 1238, 600, 1150, m_carpet)
         deco("Column_Banner_Hem", cx - 45, cx + 45, s * 1231, s * 1239, 588, 600, m_gold)
+plant(4330.0, -1100.0, DAIS_H)
 for s in (1, -1):
-    plant(4330.0, s * 1100.0, DAIS_H)
     easel(4230.0, s * 480.0, DAIS_H)
+# Scene 3's dressing: lots on the table, the closed trap, the band on its riser, signs at the two doors.
+for i, m in enumerate((m_gold, m_case, m_head)):
+    deco("Lot", LOTS[0] + 30 + i * 45, LOTS[0] + 60 + i * 45, LOTS[2] + 40 + i * 30, LOTS[2] + 80 + i * 30,
+         DAIS_H + 95, DAIS_H + 125 + i * 12, m)
+flat("Stage_Trap", TRAP[0] - 75, TRAP[0] + 75, TRAP[1] - 75, TRAP[1] + 75, m_floor, z=DAIS_H)
+sign("STAGE TRAP", HX1 - 14.0, TRAP[1], DAIS_H + 150.0, 180.0, size=20.0)
+for i, (bx, by) in enumerate(((3700.0, 1400.0), (3780.0, 1520.0), (3860.0, 1400.0), (3700.0, 1540.0), (3880.0, 1540.0))):
+    ghost(shape(CYL, "Band", bx, by, 30.0 + 75.0, 26.0, 48.0, 150.0, GUEST_MATS[1], yaw=-90.0, folder="Set/Guests"))
+    ghost(shape(SPHERE, "Band_Head", bx, by, 30.0 + 162.0, 24.0, 24.0, 26.0, m_head, folder="Set/Guests"))
+    deco("Instrument", bx - 10, bx + 10, by - 34, by - 22, 30 + 70, 30 + 130 + i * 8, m_gold)
+sign("THE AURELIA QUINTET", (BAND[0] + BAND[1]) / 2, BAND[2] - 4.0, 60.0, -90.0, size=16.0)
+for py in (PA[2] - 3.0,):
+    deco("PA_Grille", PA[0] + 15, PA[1] - 15, py, py + 3, 30, 235, m_trim)
+sign("EXIT", HX1 - 14.0, SIDE_DOOR_Y, 262.0, 180.0, size=26.0, rgb=(1.0, 0.72, 0.15))
+sign("SECURITY", HX1 - 14.0, SEC_DOOR_Y, 262.0, 180.0, size=22.0, rgb=(1.0, 0.25, 0.2))
+sign("CURTAIN WINCH", WINCH[0] - 30.0, BY0 + 6.0, 215.0, 90.0, size=20.0)
 tripod((RISER[0] + RISER[1]) / 2 + 60.0, 0.0, 80.0)
 ghost(shape(CYL, "Guest", (RISER[0] + RISER[1]) / 2 - 20.0, 40.0, 80.0 + 75.0, 26.0, 48.0, 150.0, GUEST_MATS[1],
             folder="Set/Guests"))
@@ -1274,6 +1329,10 @@ m_dais_mark = mark("Mark_Dais", "THE DAIS", MARK_DAIS, DAIS_H)
 m_lift = mark("Mark_Lift", "LIFT", MARK_LIFT, DAIS_H)
 # The spec says 1.5 s. A flight back from Maya costs 1.6 s of the spot's 4 s, so 1.0 s is what fits (STATUS.md).
 setp(m_lift, action_seconds=1.0, action_trigger="Keycard", action_verb="LIFTING THE KEYCARD")
+# The keycard starts Scene 3 and is a checkpoint: a blooper before the case puts him back on the dais mark (no
+# frame covers it), still holding the keycard.
+setp(m_lift, action_scene=3, action_title="SCENE 3 - THE GETAWAY", action_checkpoint_name="THE KEYCARD",
+     action_checkpoint_mark=m_dais_mark)
 
 # Walking onto the hall floor starts Scene 2 (a checkpoint); the rope mark and the dais are checkpoints too. Stepping
 # into the aisle brings Vance and the bodyguard on: 8.5 s of walking from there to the end of a lift, and they
@@ -1356,9 +1415,93 @@ setp(cart2, device_name="DAIS CART", effect=unreal.DeviceEffect.LURE, range=1200
 setp(cart2, use_offset=use_offset(cart2, (CART2_USE[0], CART2_USE[1], 0)))
 desk = spawn(unreal.SoundDesk, (DESK[0], DESK[1], 0), yaw=90.0, label="Sound_Desk", folder="Take")
 # Its range covers the hall's far corner (64 m) and stops short of the scanner on the street (73 m).
-setp(desk, device_name="DESK", effect=unreal.DeviceEffect.BLIND, range=6500.0, duration=4.0, uses=1,
+setp(desk, device_name="DESK", effect=unreal.DeviceEffect.BLIND, range=6500.0, duration=DESK_SECONDS, uses=1,
      fired_from=C, use_verb="Push feedback through the band's PA")
 setp(desk, use_offset=use_offset(desk, (DESK_USE[0], DESK_USE[1], 0)))
+
+# --- Scene 3, The Getaway ---------------------------------------------------------------------------------------------
+# The case: its gold mark appears with the keycard. Standing on it takes the reel, trips the alarm and saves the
+# scene's checkpoint. The rest of that bar and one more are held; then the floor is red tape, security walks in
+# through both doors, the drone follows him, and 8 bars later the clock runs out.
+m_case_mark = mark("Mark_Case", "THE CASE", MARK_CASE, DAIS_H)
+setp(m_case_mark, appear_on="Keycard", action_seconds=1.2, action_trigger="Case", action_verb="OPENING THE CASE",
+     action_checkpoint_name="THE CASE")
+# The free way out: Vex's winch drops the curtain (the guards at both doors lose the dais) and opens the trap.
+m_trap = mark("Mark_Trap", "THE TRAP", TRAP, DAIS_H)
+setp(m_trap, appear_on="Winch", action_needs="Case", action_seconds=0.4, action_trigger="ExitTrap",
+     action_verb="DROPPING THROUGH THE TRAP", action_while_seen=True, stand_radius=85.0)
+# The paid way out: the gold door past the band. Two guards hold it; something saved has to take them both.
+m_bow = mark("Mark_Bow", "THE BOW", MARK_BOW)
+setp(m_bow, action_needs="Case", action_seconds=0.5, action_trigger="Bow", action_verb="TAKING A BOW",
+     needs_blind_drone=True)
+m_side = mark("Mark_Side", "THE GOLD DOOR", MARK_SIDE)
+setp(m_side, action_needs="Case", action_seconds=0.3, action_trigger="ExitSide", action_verb="OUT THE GOLD DOOR")
+
+
+def security(label, name, door, post, facing, line=""):
+    """A guard who walks in at the alarm. door: where he stands and keeps standing. post: (start, end) for the one
+    who walks out along the flank instead."""
+    if post is None:
+        g = spawn(unreal.PatrolGuard, (door[0], door[1], 0), yaw=facing, label=label, folder="Take")
+        setp(g, frame_range=DOOR_RANGE, frame_half_angle=DOOR_HALF_ANGLE)
+    else:
+        a = spawn(unreal.PatrolPoint, (post[0][0], post[0][1], 0), yaw=facing, label=label + "_In", folder="Take")
+        setp(a, bars=1)
+        b = spawn(unreal.PatrolPoint, (post[1][0], post[1][1], 0), yaw=facing, label=label + "_Post", folder="Take")
+        setp(b, bars=1)
+        g = spawn(unreal.PatrolGuard, (post[0][0], post[0][1], 0), yaw=facing, label=label, folder="Take")
+        setp(g, frame_range=FLANK_RANGE, frame_half_angle=FLANK_HALF_ANGLE, patrol_points=[a, b],
+             patrol_from_arrival=True, patrol_once=True)
+    setp(g, label=name, arrive_on="Case", hide_until_arrived=True, arrive_line=line,
+         seen_line='SECURITY: "There! The man in white!"')
+    return g
+
+
+security("Security_N_Door", "SECURITY 4", SEC_N_DOOR, None, -90.0, 'SECURITY: "Nobody leaves!"')
+security("Security_N_Flank", "SECURITY 3", None, SEC_N_POST, -90.0)
+security("Security_S_Door", "SECURITY 2", SEC_S_DOOR, None, 90.0)
+security("Security_S_Flank", "SECURITY 1", None, SEC_S_POST, 90.0)
+
+# Maya's pyro board, at the south end of her platform. The charges stand along the front of the dais.
+pyro = spawn(unreal.PyroDevice, (PYRO[0], PYRO[1], F2), label="Pyro", folder="Take")
+setp(pyro, device_name="PYRO", effect=unreal.DeviceEffect.BLIND, range=PYRO_RANGE, duration=6.0, uses=1,
+     fired_from=B, use_verb="Fire the pyro along the stage", locked_until="Case",
+     fire_line='MAYA: "Pyro! Eyes shut!"', flare_candelas=PYRO_CD)
+setp(pyro, use_offset=use_offset(pyro, (PYRO_USE[0], PYRO_USE[1], F2)),
+     effect_offset=use_offset(pyro, (PYRO_POINT[0], PYRO_POINT[1], DAIS_H)),
+     flare_offsets=[use_offset(pyro, (fx, fy, DAIS_H)) for (fx, fy) in PYRO_FLARES])
+
+# Vex's counterweight winch, in the wings at the east end of the corridor. The curtain: across the front of the
+# dais and down both its sides.
+winch = spawn(unreal.WinchDevice, (WINCH[0], WINCH[1], 0), yaw=90.0, label="Winch", folder="Take")
+panels = []
+for (ax, ay, bx, by) in ((DAIS_X0 + 6.0, -1200.0, DAIS_X0 + 6.0, 1200.0), (DAIS_X0, 1200.0, HX1, 1200.0),
+                         (DAIS_X0, -1200.0, HX1, -1200.0)):
+    p = unreal.TakeCurtainPanel()
+    p.set_editor_property("a", unreal.Vector(ax, ay, DAIS_H))
+    p.set_editor_property("b", unreal.Vector(bx, by, DAIS_H))
+    panels.append(p)
+setp(winch, device_name="WINCH", effect=unreal.DeviceEffect.MASK, range=0.0, duration=0.0, uses=1, fired_from=C,
+     use_verb="Let the counterweight go: the curtain drops", locked_until="Case", land_trigger="Winch",
+     fire_line='VEX: "Curtain coming down. The trap is yours."', panels=panels, curtain_height=CURTAIN_H,
+     raised_height=HALL_H - CURTAIN_H - 60.0)
+setp(winch, use_offset=use_offset(winch, (WINCH_USE[0], WINCH_USE[1], 0)))
+
+
+def shutter(label, x, y, yaw, width, height, walkers=False):
+    a = spawn(unreal.Shutter, (x, y, 0), yaw=yaw, label=label, folder="Take")
+    setp(a, size=unreal.Vector(12.0, width, height), open_height=height, blocks_walkers=walkers)
+    return a
+
+
+# The shutters: the aisle at the dais end (no way back), and the hall's side doors.
+shutter("Shutter_Aisle", AISLE_SHUTTER_X, 0.0, 0.0, 2 * GAP + 40.0, 330.0, walkers=True)
+shutter("Shutter_North_1", 150.0, HY1 + 10.0, 90.0, 200.0, D_H)
+shutter("Shutter_North_2", 1900.0, HY1 + 10.0, 90.0, 200.0, D_H)
+shutter("Shutter_Staff", -300.0, HY0 - 10.0, 90.0, 2 * D_HALF, D_H)
+lamp(HX1 - 90.0, SIDE_DOOR_Y, z=250.0, cd=30.0, radius=700.0, rgb=GOLDL)
+lamp(HX1 - 90.0, SEC_DOOR_Y, z=250.0, cd=8.0, radius=500.0, rgb=REDL)
+lamp(TRAP[0], TRAP[1], z=DAIS_H + 260.0, cd=10.0, radius=420.0, rgb=GOLDL)
 
 # The level's game mode.
 world = ues.get_editor_world()

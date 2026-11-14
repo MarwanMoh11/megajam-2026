@@ -71,6 +71,18 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Guard")
 	int32 PatrolOffsetBars = 0;
 
+	// --- step 3 (BODY: W): the guards who walk in at the alarm -------------------------------------------------------
+
+	/** The patrol's clock starts at his arrival bar (GetArriveBar) and not at bar 1: he is at PatrolPoints[0] on the
+	 *  bar he arrives, whatever bar that is. PatrolOffsetBars still adds. Only meaningful with ArriveOn set. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Guard")
+	bool bPatrolFromArrival = false;
+
+	/** The patrol does not loop: he goes through PatrolPoints once (holding each for its Bars, walking between them)
+	 *  and then holds the last point for good. ChangesAtBar is false once he is there. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Guard")
+	bool bPatrolOnce = false;
+
 	/** Vance: a Lure only turns him to the point for its duration, he does not walk (rule 6). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Guard")
 	bool bTurnsOnly = false;

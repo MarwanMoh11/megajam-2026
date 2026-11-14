@@ -14,6 +14,8 @@
 #include "Mark.h"
 #include "RedTapeZone.h"
 #include "SceneTrigger.h"
+#include "Shutter.h"
+#include "Engine/PostProcessVolume.h"
 #include "TakeCharacter.h"
 #include "TakeGameInstance.h"
 #include "TakePlayerController.h"
@@ -169,6 +171,37 @@ void ATakeDirector::BeginPlay()
 		SceneHints.Add(TEXT("MAYA: \"Cut to me with 2. My searchlight blinds the scanner.\""));
 		SceneHints.Add(TEXT("MAYA: \"Banner on the beam, my spot on the guard. Or Vex's cart pulls him away.\""));
 		SceneHints.Add(TEXT("VEX: \"My desk blinds the whole room for two bars. Then lift it.\""));
+		SceneHints.Add(TEXT("VEX: \"Winch first: the curtain hides him from the guards and opens the trap. Then Maya's pyro. Then run.\""));
+	}
+
+	// Step 3: the alarm and the ends start over; the restore (first tick) starts the alarm again if the checkpoint
+	// holds the case.
+	bAlarm = false;
+	bAlarmLive = false;
+	AlarmLiveBar = 0;
+	AlarmDeadlineBar = 0;
+	bSideExit = false;
+	Grade = ETakeGrade::RoughCut;
+	FinishSeconds = 0.f;
+	FinishBar = 0;
+	PrintLine.Reset();
+	EndPage = 0;
+	EndPageSeconds = 0.f;
+	if (DeletedScenes.Num() == 0)
+	{
+		auto AddDeletedScene = [this](const TCHAR* Id, const TCHAR* Name, const TCHAR* SlateLine, bool bBuilt)
+		{
+			FTakeDeletedScene Deleted;
+			Deleted.Id = FName(Id);
+			Deleted.Name = Name;
+			Deleted.SlateLine = SlateLine;
+			Deleted.bBuilt = bBuilt;
+			DeletedScenes.Add(Deleted);
+		};
+		AddDeletedScene(TEXT("ColdOpen"), TEXT("THE COLD OPEN"), TEXT("the searchlight lands on the beat he reaches the scanner"), false);
+		AddDeletedScene(TEXT("LongTake"), TEXT("THE LONG TAKE"), TEXT("cross the floor without cutting"), false);
+		AddDeletedScene(TEXT("Insert"), TEXT("THE INSERT"), TEXT("one cart catches Vance and the bodyguard as the lift lands"), false);
+		AddDeletedScene(TakeTriggers::Bow, TEXT("THE BOW"), TEXT("at the gold side exit, bow to the blinded drone"), true);
 	}
 
 	CurrentCamera = ETakeCamera::A;
@@ -211,6 +244,8 @@ void ATakeDirector::GatherActors()
 	SceneTriggers.Reset();
 	CrewPosts.Reset();
 	SightIgnore.Reset();
+	Shutters.Reset();
+	LookVolume = nullptr;
 	if (!World)
 	{
 		return;
@@ -254,6 +289,20 @@ void ATakeDirector::GatherActors()
 	for (TActorIterator<ACrewPost> It(World); It; ++It)
 	{
 		CrewPosts.Add(*It);
+	}
+	// Step 3: the shutters (they block sight when down, so they are NOT in SightIgnore) and the look volume.
+	for (TActorIterator<AShutter> It(World); It; ++It)
+	{
+		Shutters.Add(*It);
+	}
+	for (TActorIterator<APostProcessVolume> It(World); It; ++It)
+	{
+		APostProcessVolume* const Volume = *It;
+		if (Volume && Volume->bUnbound)
+		{
+			LookVolume = Volume;
+			break;
+		}
 	}
 
 	// Every take actor a sight trace ignores (IsSightBlocked).
@@ -353,12 +402,23 @@ void ATakeDirector::Tick(float DeltaSeconds)
 	if (!bCheckpointRestored)
 	{
 		bCheckpointRestored = true;
-		const UTakeGameInstance* GI = GetTakeGameInstance();
+		UTakeGameInstance* GI = GetTakeGameInstance();
 		if (GI && GI->CheckpointMark.IsEmpty() && GI->BloopersAtCheckpoint == 0)
 		{
-			// A fresh take (the first, or R): the opening slate.
-			ShowTitle(VenueLine, 4.f);
-			Flash(FString::Printf(TEXT("%s   TAKE %d"), *Scene1Title, GI->TakeNumber), TakeColors::GoldBright, 4.f);
+			if (bShowTitleCard && !GI->bTitleShown)
+			{
+				// The session's first take: the title card first (StepTitleCard shows the opening slate when it goes).
+				GI->bTitleShown = true;
+				Flashes.Reset();
+				SetPhase(ETakePhase::Title);
+				TAKE_LOG(TEXT("TITLE CARD"));
+			}
+			else
+			{
+				// A fresh take (the first, or R): the opening slate.
+				ShowTitle(VenueLine, 4.f);
+				Flash(FString::Printf(TEXT("%s   TAKE %d"), *Scene1Title, GI->TakeNumber), TakeColors::GoldBright, 4.f);
+			}
 		}
 		if (GI && !GI->CheckpointMark.IsEmpty())
 		{
@@ -370,12 +430,32 @@ void ATakeDirector::Tick(float DeltaSeconds)
 			// No checkpoint yet (Scene 1 from the start): the crew hint still comes after the bloopers here.
 			Flash(SceneHints[0], TakeColors::White, 6.f);
 		}
+		if (GI && GI->CheckpointMark.IsEmpty())
+		{
+			// A blooper before any checkpoint: its cuts are spliced out too (RestoreCheckpoint does it otherwise).
+			GI->Cuts = GI->CheckpointCuts;
+		}
 		// After a blooper the crew are where the player had walked them (nobody watches the crew).
 		RestoreCrewPlaces();
 		if (Julian)
 		{
 			JulianFeetBeforeWalk = Julian->GetFeetLocation();
 		}
+		// Step 3: the marks that appear on a trigger, and the picture's saturation, from the restored state.
+		SyncMarksAppeared();
+		StepLook(0.f, true);
+	}
+
+	// Step 3: the title card and the end sequence run in place of steps 1-6.
+	if (Phase == ETakePhase::Title)
+	{
+		StepTitleCard(DeltaSeconds);
+		return;
+	}
+	if (Phase == ETakePhase::Printed)
+	{
+		StepEnd(DeltaSeconds);
+		return;
 	}
 
 	if (Phase == ETakePhase::BlooperFreeze)
@@ -409,6 +489,7 @@ void ATakeDirector::Tick(float DeltaSeconds)
 		Clock->Advance(DeltaSeconds);
 	}
 	StepWarnings();
+	StepAlarm();
 
 	// 2. The flight, the use target, then presses: cuts first, then uses.
 	if (PC)
@@ -429,6 +510,13 @@ void ATakeDirector::Tick(float DeltaSeconds)
 
 	// 3. Devices.
 	StepDevices(DeltaSeconds);
+	for (AShutter* EachShutter : Shutters)
+	{
+		if (EachShutter)
+		{
+			EachShutter->StepShutter(DeltaSeconds);
+		}
+	}
 
 	// 4. Julian's marks (he has already walked this frame), the watchers (so a moving frame is tested where it is
 	// drawn), the exposure test, then the sight tests.
@@ -454,6 +542,7 @@ void ATakeDirector::Tick(float DeltaSeconds)
 	StepMarkActions(DeltaSeconds);
 	StepScene(DeltaSeconds);
 	UpdateObjective();
+	StepLook(DeltaSeconds);
 
 	// For next frame's swept beam test.
 	if (Julian)

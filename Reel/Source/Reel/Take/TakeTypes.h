@@ -51,7 +51,9 @@ enum class ETakePhase : uint8
 {
 	Rolling,
 	BlooperFreeze,
-	Cleared
+	Cleared,
+	Title,		// step 3: the title card before the session's first take; nothing steps until Confirm or Use
+	Printed		// step 3: Julian is out with the reel: PRINT IT, the stats and grade, the blooper reel; R: a new take
 };
 
 /** Why a blooper fired. None = no blooper (pending slot empty / no blooper yet this session). */
@@ -60,7 +62,17 @@ enum class EBlooperReason : uint8
 {
 	None,
 	ComposureZero,
-	BeamTouched
+	BeamTouched,
+	ClockRanOut		// step 3: the finale's 8 bars ran out (rule 9)
+};
+
+/** The cut the take earns (rule 11, the grade). */
+UENUM(BlueprintType)
+enum class ETakeGrade : uint8
+{
+	RoughCut,
+	FinalCut,
+	DirectorsCut
 };
 
 /** What a clickable actor is, for the press routing in rules 3 and 4. */
@@ -79,7 +91,8 @@ enum class ETakePressType : uint8
 {
 	Cut,		// keys 1/2/3 or TakeCut: switch to Julian / Maya / Vex (a flight)
 	Use,		// E, left mouse button or TakeUse: fire the device in reach (the director's CurrentUse)
-	NewTake		// R or TakeNewTake
+	NewTake,	// R or TakeNewTake
+	Confirm		// step 3: Enter, Space or TakeConfirm: starts the take from the title card, turns the end sequence's page
 };
 
 /** A watcher's state, shown on its tape label on B and C ("GUARD - LURED"). */
@@ -113,7 +126,13 @@ namespace TakeTriggers
 	inline const TCHAR* const Door = TEXT("Door");			// Julian is through the scanner and inside the front doors
 	inline const TCHAR* const Scene2 = TEXT("Scene2");		// he is on the hall floor: Scene 2 starts
 	inline const TCHAR* const PastRope = TEXT("PastRope");	// he is past the rope, on the dais
-	inline const TCHAR* const Keycard = TEXT("Keycard");	// he lifted Vance's keycard: step 2's end
+	inline const TCHAR* const Keycard = TEXT("Keycard");	// he lifted Vance's keycard: Scene 3 starts
+	// Step 3, Scene 3 (The Getaway).
+	inline const TCHAR* const Case = TEXT("Case");			// he opened the case and has the reel: the alarm
+	inline const TCHAR* const Winch = TEXT("Winch");		// Vex's winch landed: the curtain is down, the stage trap is open
+	inline const TCHAR* const Bow = TEXT("Bow");			// the deleted scene The Bow (also its Id in DeletedScenes)
+	inline const TCHAR* const ExitTrap = TEXT("ExitTrap");	// out through the stage trap: PRINT IT
+	inline const TCHAR* const ExitSide = TEXT("ExitSide");	// out through the gold side exit: PRINT IT
 }
 
 /**
@@ -257,6 +276,7 @@ namespace TakeText
 		{
 		case EBlooperReason::ComposureZero: return TEXT("COMPOSURE ZERO");
 		case EBlooperReason::BeamTouched: return TEXT("BEAM TOUCHED");
+		case EBlooperReason::ClockRanOut: return TEXT("THE CLOCK RAN OUT");
 		default: return TEXT("NONE");
 		}
 	}
@@ -267,7 +287,19 @@ namespace TakeText
 		{
 		case ETakePhase::Rolling: return TEXT("ROLLING");
 		case ETakePhase::BlooperFreeze: return TEXT("BLOOPER_FREEZE");
+		case ETakePhase::Title: return TEXT("TITLE");
+		case ETakePhase::Printed: return TEXT("PRINTED");
 		default: return TEXT("CLEARED");
+		}
+	}
+
+	inline const TCHAR* GradeName(ETakeGrade G)
+	{
+		switch (G)
+		{
+		case ETakeGrade::DirectorsCut: return TEXT("DIRECTOR'S CUT");
+		case ETakeGrade::FinalCut: return TEXT("FINAL CUT");
+		default: return TEXT("ROUGH CUT");
 		}
 	}
 }

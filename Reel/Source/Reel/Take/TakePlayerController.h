@@ -169,6 +169,13 @@ public:
 	UFUNCTION(Exec)
 	void TakeBlooper();	// BODY: D
 
+	// --- step 3 (BODY: D) ------------------------------------------------------------------------------------------
+
+	/** "TakeConfirm": queues a Confirm press exactly like Enter or Space (starts the take from the title card, turns
+	 *  the end sequence's page). */
+	UFUNCTION(Exec)
+	void TakeConfirm();
+
 	// --- tunables ---------------------------------------------------------------------------------------------------
 
 	/** The whole flight, s (under 2 s: STATUS.md). */
@@ -235,6 +242,9 @@ protected:
 	float FlightStepJumpShare = 0.4f;
 	void OnKeyR();	// BODY: (s)
 	void OnEscape();	// BODY: (s)
+
+	/** Enter or the space bar: queues a Confirm press ("key"). Bound in SetupInputComponent (step 3, D). */
+	void OnConfirm();
 
 	/** Builds and queues a Cut press. */
 	void QueueCut(ETakeCamera Camera, const TCHAR* Source);	// BODY: (s)

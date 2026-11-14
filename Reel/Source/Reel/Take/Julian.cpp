@@ -56,7 +56,7 @@ void AJulian::StepMarks()
 		for (const TObjectPtr<AMark>& MarkPtr : Director->Marks)
 		{
 			AMark* const EachMark = MarkPtr.Get();
-			if (!EachMark)
+			if (!EachMark || !EachMark->HasAppeared())
 			{
 				continue;
 			}

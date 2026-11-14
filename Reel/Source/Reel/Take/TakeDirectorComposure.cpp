@@ -28,6 +28,12 @@ bool ATakeDirector::IsJulianExposed() const
 		return false;
 	}
 
+	// Step 3: once the case is open, the hold hides him everywhere; live, the whole floor is red tape.
+	if (bAlarm)
+	{
+		return bAlarmLive;
+	}
+
 	const FVector Feet = Julian->GetFeetLocation();
 	for (const TObjectPtr<ARedTapeZone>& Zone : TapeZones)
 	{

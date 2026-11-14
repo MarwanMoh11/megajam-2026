@@ -448,3 +448,48 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
      the use and the cut on one frame once (the cut wins, the use is refused), which read as a failed lift.
 - **Still open:** route 1 is tight (about 20 composure left on the dais). The band-break checkpoints of rule 9 are
   not built. Labels overlap on Maya's camera when several watchers line up.
+
+### 05:05, Sat Nov 14: step 3 built and proven in the editor (Scene 3 and the ends), not yet packaged
+- **What changed:** the take no longer stops at the keycard. Lifting it starts Scene 3, The Getaway: the case, the
+  alarm with its hold and its 8-bar clock, shutters, four guards through two doors, the drone locking on, the
+  colour bleed; two ways out (the stage trap by Vex's winch and Maya's pyro, the gold side exit by the saved sound
+  desk), The Bow, then PRINT IT, the stats and grade, the blooper reel over the credits, and R. A title card opens
+  the session. Two new checkpoints (the keycard, the case). `docs/STATUS.md` has a new section, "Step 3 as built",
+  with every gap Claude filled.
+- **What the agents did:** the same pattern as steps 1 and 2, and it held a third time.
+  - The orchestrator (Fable) read the spec and the code, designed Scene 3 for the walking game, and wrote the
+    header pass alone: three new classes (the pyro, the winch with its curtain, a shutter), two new phases (the
+    title card, PRINT IT), and about 30 new functions and 40 tunables, each with a comment saying what it must do,
+    with stub bodies. It built clean in 28 s.
+  - Three Opus builders then wrote the bodies at once on files nobody else touched: S, the director's scene logic,
+    the alarm and the ends (7.5 min, 71 tool calls); W, watchers, devices and shutters (7.4 min, 66); D, the HUD,
+    the synthesised sounds and the input (9.4 min, 50). None of them could compile. The one build at the end was
+    clean on the first try, with no warnings, for the third step running.
+  - While they wrote, the orchestrator added Scene 3 to the map script (the lots table, the trap, the band and its
+    PA stacks, two doors, the guards, the winch, the pyro board, the shutters) and wrote the test scripts.
+  - One fresh Opus reviewer read the whole diff for bugs only (73 tool calls, 29 min, beside the tests). No crash
+    and no break in Scenes 1 and 2. Two confirmed defects: floating "OFF" labels for the hidden guards, and a
+    shutter that would drop onto a crew member parked in a doorway and trap them. Both fixed.
+- **The proof (scripted play-in-editor runs, read from the log's frame numbers):**
+  - The whole take from the back of the queue to PRINT IT: 163.6 s on the band's clock, 16 cuts, no bloopers,
+    ROUGH CUT by the trap, both crew walked to their finale posts.
+  - A blooper after the keycard: back on the dais mark with the keycard, Scene 3, bar 18.
+  - The clock running out: "THE CLOCK RAN OUT" on bar 30, again from the case with the clock back on bar 20, the
+    alarm in its hold again, the crew still posted.
+  - The gold side exit: behind the PA stacks unseen, the desk (everything blind, x9), The Bow restored, out:
+    DIRECTOR'S CUT.
+  - The step 2 tests again (the carpet blooper, the beam blooper back to the rope, route 1, the desk lift): pass.
+  - Screenshots: `docs/shots/step3_*.png`.
+- **What went wrong:**
+  - The first whole-take run died a quarter of a second short of the trap. The pyro had been fired the moment the
+    prompt said to, while the drone was still flying in from the aisle, so it missed the drone; the drone then
+    arrived unblinded and drained him for the whole walk. A player doing exactly what the goal line says would
+    have lost. The pyro now whites out a drone that is locked on him, wherever the drone is.
+  - The first pyro was a white screen: 9000 candelas under a fixed exposure. It is 420 now.
+  - "ALARM" showed twice (a title and the HUD's clock), and the last line of the take stayed on the PRINT IT slate.
+  - The orchestrator's own test assumed the clock would run out if Julian stood still. It does not: the drone
+    kills him first, the take restarts, and the test script kept walking a character that no longer existed while
+    the game looped 28 bloopers by itself. The test now hides him under the walkway to reach the clock.
+  - The spec's sound desk (4 s) left 2.4 s after the flight back, not enough to reach the gold door. It is 6 s
+    now, noted in STATUS.md for Marwan.
+

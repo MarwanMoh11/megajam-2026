@@ -35,6 +35,13 @@ void AMark::BeginPlay()
 	Super::BeginPlay();
 	// No reset of bIsOccupied (false from construction): Julian's BeginPlay may already have claimed this mark, and
 	// actors begin play in no fixed order.
+	// Step 3: a mark that appears on a trigger starts hidden; the director syncs it on its first tick (after the
+	// checkpoint restore), so a restore past the trigger shows it before the first rendered frame.
+	if (!AppearOn.IsNone())
+	{
+		SetAppeared(false);
+		return;
+	}
 	ApplyLook();
 }
 
@@ -124,4 +131,18 @@ float AMark::GetActionAlpha() const
 		return 1.f;
 	}
 	return FMath::Clamp(ActionProgress / ActionSeconds, 0.f, 1.f);
+}
+
+// --- step 3 stubs (header pass): the builder replaces these bodies -------------------------------------------------
+
+void AMark::SetAppeared(bool bInAppeared)
+{
+	bAppeared = bInAppeared;
+	SetActorHiddenInGame(!bInAppeared);
+	if (!bInAppeared && bIsOccupied)
+	{
+		// Hidden under him: the X goes with it (AJulian::StepMarks lets go of it on its next step).
+		bIsOccupied = false;
+	}
+	ApplyLook();
 }

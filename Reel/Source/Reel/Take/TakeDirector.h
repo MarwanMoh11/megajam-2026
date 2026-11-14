@@ -50,6 +50,8 @@ class AFollowSpot;
 class ARedTapeZone;
 class ASceneTrigger;
 class ACrewPost;
+class AShutter;
+class APostProcessVolume;
 class ATakeCharacter;
 class ATakePlayerController;
 class UBarClockComponent;
@@ -86,6 +88,29 @@ struct FTakeFlash
 	/** Seconds it was shown for (the HUD may fade over the last part). */
 	UPROPERTY()
 	float Seconds = 0.f;
+};
+
+/** One deleted scene (rule 10): what the stats name and the grade counts. */
+USTRUCT(BlueprintType)
+struct FTakeDeletedScene
+{
+	GENERATED_BODY()
+
+	/** Its id: the name RestoreDeletedScene is called with ("Bow"). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Take")
+	FName Id;
+
+	/** "THE BOW". */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Take")
+	FString Name;
+
+	/** Its slate line, shown in the stats when it was missed: "at the gold side exit, bow to the blinded drone". */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Take")
+	FString SlateLine;
+
+	/** It can be restored in this build. The stats and the grade count only built scenes. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Take")
+	bool bBuilt = false;
 };
 
 UCLASS()
@@ -263,8 +288,10 @@ public:
 	 *  FiredTriggers[Name] = the clock's bar; every watcher whose ArriveOn == Name gets
 	 *  ScheduleArrival(GetArrivalLine(bar) + its ArriveExtraBars) and a red Flash("<LABEL> - arrives on bar N");
 	 *  TAKE_LOG("TRIGGER <name> bar N"). The scene script's own reaction lives here too:
-	 *   - Keycard: Flash("KEYCARD LIFTED", gold), Clock->PlayChime(), and the take is CLEARED: SetPhase(Cleared),
-	 *     ShowTitle("SCENE 2 CLEARED"), TAKE_LOG("CLEARED keycard"). */
+	 *   - Keycard: Flash("KEYCARD LIFTED", gold), Clock->PlayChime() (step 3: the lift mark's ActionScene starts
+	 *     Scene 3; the take is no longer cleared here).
+	 *   - Step 3: Case -> StartAlarm; Winch -> the trap's flash; Bow -> RestoreDeletedScene; ExitTrap / ExitSide ->
+	 *     PrintIt. Every trigger ends with SyncMarksAppeared. */
 	void FireTrigger(FName Name);	// BODY: S
 
 	/** The trigger has fired this take (or before the checkpoint this take restarted from). */
@@ -345,6 +372,84 @@ public:
 	bool IsSightBlocked(const FVector& From, const FVector& To) const;	// BODY: W
 
 	// ---------------------------------------------------------------------------------------------------------------
+	// Step 3: Scene 3 (the alarm), the ends, the title card. BODY: S, in TakeDirectorFinale.cpp. The full contract
+	// (who calls what, the order in Tick) is in the orchestrator's brief to S; the comments here are the summary.
+	// ---------------------------------------------------------------------------------------------------------------
+
+	/** The mark with this MarkName (the first found), or null. */
+	AMark* FindMark(const FString& MarkName) const;
+
+	/** Every mark with AppearOn set: SetAppeared(HasFired(AppearOn)) when that differs from HasAppeared(). Called at
+	 *  the end of FireTrigger and in the first tick after the restore. */
+	void SyncMarksAppeared();
+
+	/** The bar line the alarm goes live on when the case was opened during CaseBar: CaseBar + 1 + AlarmHoldBars (the
+	 *  rest of that bar and AlarmHoldBars whole bars are held: nothing sees him). */
+	int32 GetAlarmLiveBar(int32 CaseBar) const;
+
+	/** The bar a watcher with ArriveOn == Trigger arrives on when the trigger fired during FiredBar: for the Case
+	 *  trigger GetAlarmLiveBar(FiredBar) (the guards walk in as the alarm goes live), for every other trigger
+	 *  GetArrivalLine(FiredBar). The caller adds the watcher's ArriveExtraBars. FireTrigger and RestoreCheckpoint. */
+	int32 GetArrivalBarFor(FName Trigger, int32 FiredBar) const;
+
+	/** The case is open (FireTrigger(Case), or the restore of a checkpoint that has it): bAlarm = true,
+	 *  AlarmLiveBar = GetAlarmLiveBar(CaseBar), AlarmDeadlineBar = AlarmLiveBar + FinaleBars, bAlarmLive = false,
+	 *  Clock->SetAlarm(true), every shutter with DropOn == Case StartDrop (bFromRestore: SetDown). Not from a
+	 *  restore: ShowTitle(AlarmTitle) and Flash(AlarmLine, red). TAKE_LOG("ALARM case bar N live N deadline N"). */
+	void StartAlarm(int32 CaseBar, bool bFromRestore);
+
+	/** Step 1c, after StepWarnings, while Rolling and bAlarm. The clock's bar >= AlarmLiveBar and !bAlarmLive: the
+	 *  alarm goes live (bAlarmLive = true, every watcher SetAlarmLook(true), every ADroneWatcher
+	 *  SetChaseTarget(Julian), Flash(AlarmLiveLine, red), TAKE_LOG("ALARM LIVE bar N")). The clock's bar >=
+	 *  AlarmDeadlineBar: RequestBlooper(ClockRanOut) (TAKE_LOG("ALARM clock ran out") once). */
+	void StepAlarm();
+
+	/** Bars left before the deadline, the running one included (FinaleBars during the hold; 0 with no alarm). */
+	int32 GetAlarmBarsLeft() const;
+
+	/** Seconds until the deadline's bar line (0 with no alarm). */
+	float GetAlarmSecondsLeft() const;
+
+	/** The broadcast drone (a watcher with ExposesOffMark) has arrived and is Blinded right now. */
+	bool IsDroneBlinded() const;
+
+	/** Rule 10: restores the deleted scene Id, once per take (the game instance's RestoredScenes). On this frame:
+	 *  Flash("DELETED SCENE RESTORED: " + its Name, GoldBright, 4 s), Flash(KeepThatInLine, white), the chime,
+	 *  TAKE_LOG("DELETED SCENE RESTORED <id>"). Unknown or unbuilt id, or already restored: nothing. */
+	void RestoreDeletedScene(FName Id);
+
+	/** Rule 11. Built = the DeletedScenes with bBuilt, Restored = those of them in RestoredScenes. DIRECTOR'S CUT:
+	 *  Built > 0 and Restored == Built. FINAL CUT: Restored >= FinalCutScenes, or bBySideExit when
+	 *  bSideExitIsFinalCut. Else ROUGH CUT. */
+	ETakeGrade ComputeGrade(bool bBySideExit) const;
+
+	/** Julian is out with the reel (FireTrigger(ExitTrap / ExitSide)), only while Rolling. On this frame:
+	 *  bSideExit, Grade = ComputeGrade, FinishSeconds = the clock's time since bar 1 beat 1, FinishBar, PrintLine =
+	 *  PrintLineSide or PrintLineTrap, SetPhase(Printed), EndPage = 0, EndPageSeconds = 0, Clock->SetAlarm(false),
+	 *  PlayClap and PlaySting, every character stopped (as the blooper does). TAKE_LOG("PRINT IT exit=TRAP grade=ROUGH
+	 *  CUT time=132.0 cuts=14 bloopers=2 restored=0/1"). */
+	void PrintIt(bool bBySideExit);
+
+	/** Runs in place of steps 1-6 while Printed. EndPageSeconds += Dt. Pages: 0 the PRINT IT slate, 1 the stats and
+	 *  the grade, 2 the blooper reel and the credits (it stays). Page 0 turns by itself after EndSlateSeconds, page 1
+	 *  after EndStatsSeconds. Presses (drained here): NewTake -> NewTake(); Confirm or Use -> the next page at once
+	 *  (on page 2: Flash("[R] another take")); Cut -> Flash("That is a print.  [R] another take"). A page turn sets
+	 *  EndPageSeconds = 0 and TAKE_LOGs "END PAGE n". */
+	void StepEnd(float DeltaSeconds);
+
+	/** Runs in place of steps 1-6 while Title (the clock holds on bar 1, nothing moves). Presses (drained here):
+	 *  Confirm or Use -> SetPhase(Rolling), the opening slate (ShowTitle(VenueLine, 4 s) and the Scene1Title flash
+	 *  with the take number, as the first tick does today), Clock->PlayClap(), TAKE_LOG("TITLE CARD dismissed");
+	 *  NewTake -> NewTake(); Cut -> Flash(TitleCardPrompt). */
+	void StepTitleCard(float DeltaSeconds);
+
+	/** The colour bleed (docs/STATUS.md, "Look"): the picture's saturation is FilmSaturation until the alarm goes
+	 *  live, then moves to AlarmSaturation over BleedSeconds. Called at the end of step 6 every frame and once in
+	 *  the first tick with bSnap (a restore lands on the right value). Writes LookVolume's ColorSaturation
+	 *  (bOverride_ColorSaturation = true, FVector4(S, S, S, 1)). No LookVolume: nothing. */
+	void StepLook(float DeltaSeconds, bool bSnap = false);
+
+	// ---------------------------------------------------------------------------------------------------------------
 	// Components and tunables
 	// ---------------------------------------------------------------------------------------------------------------
 
@@ -405,6 +510,77 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Scene")
 	float DoorPromptDistance = 450.f;
 
+	// --- step 3 tunables ---------------------------------------------------------------------------------------------
+
+	/** The title card shows before the session's first take. Off: the take starts at once (tests). */
+	UPROPERTY(EditAnywhere, Category = "Take|Ends")
+	bool bShowTitleCard = true;
+
+	/** Flashed when a cut key is pressed on the title card. */
+	UPROPERTY(EditAnywhere, Category = "Take|Ends")
+	FString TitleCardPrompt = TEXT("[ENTER] or [E]: action");
+
+	/** Whole bars held after the bar the case is opened in, before the alarm goes live (rule: "that first bar is
+	 *  held: nothing sees him until the next bar line"). */
+	UPROPERTY(EditAnywhere, Category = "Take|Finale", meta = (ClampMin = "0"))
+	int32 AlarmHoldBars = 1;
+
+	/** The finale's clock: bars from the alarm going live to the blooper (rule 9, Scene 3: "the last 8 bars"). */
+	UPROPERTY(EditAnywhere, Category = "Take|Finale", meta = (ClampMin = "1"))
+	int32 FinaleBars = 8;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Finale")
+	FString AlarmTitle;	// empty: the HUD's alarm clock already says ALARM
+
+	UPROPERTY(EditAnywhere, Category = "Take|Finale")
+	FString AlarmLine = TEXT("VANCE: \"The reel! Seal the hall!\"");
+
+	UPROPERTY(EditAnywhere, Category = "Take|Finale")
+	FString AlarmLiveLine = TEXT("Shutters down. The whole floor is red tape. Get him out.");
+
+	UPROPERTY(EditAnywhere, Category = "Take|Finale")
+	FString KeepThatInLine = TEXT("DIRECTOR: \"Keep that in!\"");
+
+	/** The line under PRINT IT, by exit. */
+	UPROPERTY(EditAnywhere, Category = "Take|Ends")
+	FString PrintLineTrap = TEXT("Julian drops through the stage trap. Under the stage, the crew's lorry is already rolling.");
+
+	UPROPERTY(EditAnywhere, Category = "Take|Ends")
+	FString PrintLineSide = TEXT("Julian walks out past the band through the gold door, the Director's Cut under his arm.");
+
+	/** How long the PRINT IT slate holds before the stats, s. */
+	UPROPERTY(EditAnywhere, Category = "Take|Ends")
+	float EndSlateSeconds = 3.f;
+
+	/** How long the stats and the grade hold before the blooper reel, s. */
+	UPROPERTY(EditAnywhere, Category = "Take|Ends")
+	float EndStatsSeconds = 9.f;
+
+	/** The deleted scenes (rule 10). Empty at BeginPlay: filled with the four of the spec, only The Bow built. */
+	UPROPERTY(EditAnywhere, Category = "Take|Ends")
+	TArray<FTakeDeletedScene> DeletedScenes;
+
+	/** FINAL CUT needs this many deleted scenes restored (rule 11: "2 or 3"). */
+	UPROPERTY(EditAnywhere, Category = "Take|Ends", meta = (ClampMin = "1"))
+	int32 FinalCutScenes = 2;
+
+	/** Filled in by Claude while three of the four deleted scenes wait for gate 2: leaving by the gold side exit
+	 *  earns FINAL CUT by itself. Off: the spec's rule only. */
+	UPROPERTY(EditAnywhere, Category = "Take|Ends")
+	bool bSideExitIsFinalCut = true;
+
+	/** The picture's saturation before the alarm (1 = untouched). */
+	UPROPERTY(EditAnywhere, Category = "Take|Look", meta = (ClampMin = "0", ClampMax = "2"))
+	float FilmSaturation = 0.6f;
+
+	/** ...and once the alarm is live: the bleed to full colour. */
+	UPROPERTY(EditAnywhere, Category = "Take|Look", meta = (ClampMin = "0", ClampMax = "2"))
+	float AlarmSaturation = 1.25f;
+
+	/** How long the bleed takes, s. */
+	UPROPERTY(EditAnywhere, Category = "Take|Look", meta = (ClampMin = "0"))
+	float BleedSeconds = 2.f;
+
 	// ---------------------------------------------------------------------------------------------------------------
 	// The level's actors (gathered at BeginPlay)
 	// ---------------------------------------------------------------------------------------------------------------
@@ -446,6 +622,14 @@ public:
 
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|Level")
 	TObjectPtr<ATakePlayerController> PC;
+
+	/** Step 3: gathered in GatherActors (S). */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|Level")
+	TArray<TObjectPtr<AShutter>> Shutters;
+
+	/** The level's first unbound post-process volume (GatherActors): StepLook writes its saturation. */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|Level")
+	TObjectPtr<APostProcessVolume> LookVolume;
 
 	// ---------------------------------------------------------------------------------------------------------------
 	// State (read by the HUD and TakeDump; written by the steps named)
@@ -526,6 +710,53 @@ public:
 	/** The HUD's flash lines, oldest first. */
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
 	TArray<FTakeFlash> Flashes;
+
+	// --- step 3 state (read by the HUD) -------------------------------------------------------------------------------
+
+	/** The case is open: the alarm sounds (StartAlarm). */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	bool bAlarm = false;
+
+	/** The hold is over: the whole floor is red tape, the guards are in, the drone follows him, the clock runs. */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	bool bAlarmLive = false;
+
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	int32 AlarmLiveBar = 0;
+
+	/** The bar line that is the blooper. */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	int32 AlarmDeadlineBar = 0;
+
+	/** Printed: he left by the gold side exit (false: the stage trap). */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	bool bSideExit = false;
+
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	ETakeGrade Grade = ETakeGrade::RoughCut;
+
+	/** Printed: the take's length on the band's clock, s (the bloopers are spliced out of it), and its last bar. */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	float FinishSeconds = 0.f;
+
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	int32 FinishBar = 0;
+
+	/** Printed: the line under the slate (PrintLineTrap or PrintLineSide). */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	FString PrintLine;
+
+	/** Printed: 0 the PRINT IT slate, 1 the stats and the grade, 2 the blooper reel and the credits. */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	int32 EndPage = 0;
+
+	/** Seconds on the current end page. */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	float EndPageSeconds = 0.f;
+
+	/** The saturation StepLook last wrote. */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	float CurrentSaturation = 1.f;
 
 	/** Sets Phase and zeroes PhaseSeconds, logs "PHASE -> X". */
 	void SetPhase(ETakePhase NewPhase);

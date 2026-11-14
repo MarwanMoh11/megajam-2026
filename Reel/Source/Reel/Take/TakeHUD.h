@@ -103,6 +103,42 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|HUD")
 	FVector2D ActionBarSize = FVector2D(260.f, 10.f);
 
+	// --- step 3 (BODY: D; the layers are listed in the orchestrator's brief to D) ------------------------------------
+
+	/** The title card and the credits: the game's name (a working title until Marwan picks one). */
+	UPROPERTY(EditAnywhere, Category = "Take|Ends")
+	FString GameTitle = TEXT("PRINT IT");
+
+	UPROPERTY(EditAnywhere, Category = "Take|Ends")
+	FString TitleTagline = TEXT("a heist shot in one take");
+
+	/** How to play, on the title card (one line each). Empty at BeginPlay: filled with the default lines. */
+	UPROPERTY(EditAnywhere, Category = "Take|Ends")
+	TArray<FString> TitleLines;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Ends")
+	FString TitlePrompt = TEXT("[ENTER]  ACTION");
+
+	/** The credits under the blooper reel (one line each). Empty at BeginPlay: filled with the default lines. */
+	UPROPERTY(EditAnywhere, Category = "Take|Ends")
+	TArray<FString> CreditLines;
+
+	/** The title card's and the PRINT IT slate's name scale (LargeFont). */
+	UPROPERTY(EditAnywhere, Category = "Take|Ends")
+	float BigTitleScale = 4.f;
+
+	/** The blooper reel rolls up this many px (on a 900 px tall screen) a second. */
+	UPROPERTY(EditAnywhere, Category = "Take|Ends")
+	float ReelScrollSpeed = 28.f;
+
+	/** The alarm's red wash at the screen's edges: its strongest alpha, on the beat. */
+	UPROPERTY(EditAnywhere, Category = "Take|HUD", meta = (ClampMin = "0", ClampMax = "1"))
+	float AlarmEdgeAlpha = 0.45f;
+
+	/** The alarm clock's text scale ("ALARM  5 BARS"). */
+	UPROPERTY(EditAnywhere, Category = "Take|HUD")
+	float AlarmClockScale = 2.4f;
+
 protected:
 	/** The director, cached (ATakeDirector::Get). */
 	ATakeDirector* GetDirector();	// BODY: (u)

@@ -2,11 +2,13 @@
 
 #include "TakeDirector.h"
 
+#include "BarClockComponent.h"
 #include "ComposureComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "TakeCharacter.h"
 #include "TakeGameInstance.h"
+#include "Watcher.h"
 
 void ATakeDirector::RequestBlooper(EBlooperReason Reason)
 {
@@ -56,6 +58,25 @@ void ATakeDirector::StepBlooperCheck(float DeltaSeconds)
 	SaveCrewPlaces();
 	if (UTakeGameInstance* GI = GetTakeGameInstance())
 	{
+		// The blooper reel (rule 11): recorded before NoteBlooper, so it names the checkpoint it goes again from.
+		FTakeBlooperRecord Record;
+		Record.Take = GI->TakeNumber;
+		Record.Bar = Clock ? Clock->GetBar() : 1;
+		Record.Scene = Scene;
+		Record.Reason = Reason;
+		Record.CheckpointName = GI->CheckpointName;
+		if (Reason == EBlooperReason::ComposureZero)
+		{
+			for (const AWatcher* EachWatcher : Watchers)
+			{
+				if (EachWatcher && EachWatcher->HasTally())
+				{
+					Record.CaughtBy = EachWatcher->GetLabel();
+					break;
+				}
+			}
+		}
+		GI->BlooperReel.Add(Record);
 		GI->NoteBlooper(Reason);
 	}
 	TAKE_LOG(TEXT("BLOOPER %s"), TakeText::BlooperReasonName(Reason));

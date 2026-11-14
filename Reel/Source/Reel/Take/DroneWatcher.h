@@ -62,6 +62,23 @@ public:
 	 *  arrived: the first point (or the placed location). */
 	FVector EvaluatePath(const UBarClockComponent* Clock) const;	// BODY: W
 
+	// --- step 3 (BODY: W): the lock-on -------------------------------------------------------------------------------
+
+	/** The alarm (ATakeDirector, when it goes live): the drone leaves its loop and follows Target (Julian): every
+	 *  StepWatcher its floor point moves toward Target's feet (2D, at the feet's height) at ChaseSpeed and stays over
+	 *  them. Null: back to the loop. On the frame it is set to a target: Flash(ChaseLine, red) through the director.
+	 *  Blinded, it still follows. ChangesAtBar is false while it chases. */
+	void SetChaseTarget(const AActor* Target);
+
+	bool IsChasing() const { return ChaseTarget.IsValid(); }
+
+	/** How fast it closes on its target, cm/s. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Drone")
+	float ChaseSpeed = 700.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Drone")
+	FString ChaseLine = TEXT("BROADCAST: \"Stay on the man in white!\"");
+
 	/** The loop, in order; it closes back to the first. Each point's Bars = the bars the leg FROM it takes. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Drone")
 	TArray<TObjectPtr<APatrolPoint>> PathPoints;
@@ -81,6 +98,9 @@ public:
 	/** The drone's body: a flat dark box with the tally under it. */
 	UPROPERTY(VisibleAnywhere, Category = "Take")
 	TObjectPtr<UStaticMeshComponent> Body;
+
+protected:
+	TWeakObjectPtr<const AActor> ChaseTarget;
 
 private:
 	/** Disc size, body height, tally and click volume at the body; colours. From OnConstruction and BeginPlay. */

@@ -77,6 +77,12 @@ void AWatcher::BeginPlay()
 	bArrived = ArriveOn.IsNone();
 	ArrivalBlinkSecondsLeft = 0.f;
 
+	// Step 3: the guards who walk in at the alarm are not on set until they arrive.
+	if (!ArriveOn.IsNone() && bHideUntilArrived && !bArrived)
+	{
+		SetActorHiddenInGame(true);
+	}
+
 	FrameMID = FTakeShapes::SetColour(FrameMesh, TakeColors::Red);
 	TallyMID = FTakeShapes::SetColour(Tally, TakeColors::DarkGrey);
 
@@ -231,7 +237,8 @@ void AWatcher::RefreshFrameLook()
 	{
 		Colour = bTally ? HoldingColour : TakeColors::Red;
 		// The beat: brighter on the beat, decaying with the clock's pulse. The footprint never changes.
-		const float BeatLift = FMath::Clamp(PulseBrightness * LastPulse, 0.f, 1.f);
+		const float PulseTowardWhite = bAlarmLook ? AlarmPulseBrightness : PulseBrightness;
+		const float BeatLift = FMath::Clamp(PulseTowardWhite * LastPulse, 0.f, 1.f);
 		Colour = Colour + (TakeColors::White - Colour) * BeatLift;
 	}
 	if (bHovered)
@@ -304,6 +311,19 @@ void AWatcher::StepArrival(float DeltaSeconds, const UBarClockComponent* Clock)
 		const float SecondsPerBar = Clock ? Clock->GetSecondsPerBar() : 0.f;
 		ArrivalBlinkSecondsLeft = static_cast<float>(FMath::Max(0, ArrivalBlinkBars)) * SecondsPerBar;
 		TAKE_LOG(TEXT("%s ARRIVES"), *Label);
+
+		// Step 3: a hidden walker steps on set, and says his line, this frame.
+		if (bHideUntilArrived)
+		{
+			SetActorHiddenInGame(false);
+		}
+		if (!ArriveLine.IsEmpty())
+		{
+			if (ATakeDirector* Director = ATakeDirector::Get(this))
+			{
+				Director->Flash(ArriveLine, TakeColors::Red, 3.f);
+			}
+		}
 	}
 	else if (ArrivalBlinkSecondsLeft > 0.f)
 	{
@@ -394,7 +414,21 @@ void AWatcher::MarkArrivedIfDue(const UBarClockComponent* Clock)
 	{
 		bArrived = true;
 		ArrivalBlinkSecondsLeft = 0.f;
+		if (bHideUntilArrived)
+		{
+			SetActorHiddenInGame(false);
+		}
 		SyncState();
 		RefreshFrameLook();
 	}
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Step 3: the alarm look (W)
+// ---------------------------------------------------------------------------------------------------------------------
+
+void AWatcher::SetAlarmLook(bool bOn)
+{
+	bAlarmLook = bOn;
+	RefreshFrameLook();
 }

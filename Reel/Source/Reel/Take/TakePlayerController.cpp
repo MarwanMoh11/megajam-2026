@@ -103,6 +103,9 @@ void ATakePlayerController::SetupInputComponent()
 	InputComponent->BindKey(EKeys::Escape, IE_Pressed, this, &ATakePlayerController::OnEscape);
 	InputComponent->BindKey(EKeys::E, IE_Pressed, this, &ATakePlayerController::OnUse);
 	InputComponent->BindKey(EKeys::LeftMouseButton, IE_Pressed, this, &ATakePlayerController::OnUseMouse);
+	// Step 3: Enter or Space confirms (the title card's ACTION, the end sequence's next page).
+	InputComponent->BindKey(EKeys::Enter, IE_Pressed, this, &ATakePlayerController::OnConfirm);
+	InputComponent->BindKey(EKeys::SpaceBar, IE_Pressed, this, &ATakePlayerController::OnConfirm);
 }
 
 void ATakePlayerController::PlayerTick(float DeltaTime)
@@ -115,10 +118,11 @@ void ATakePlayerController::PlayerTick(float DeltaTime)
 		return;
 	}
 
-	// Nothing steps under the blooper slate: no walking or looking either.
+	// Nothing steps under the blooper slate, the title card or the end screens: no walking, looking or test walk.
 	if (const ATakeDirector* Director = ATakeDirector::Get(this))
 	{
-		if (Director->Phase == ETakePhase::BlooperFreeze)
+		if (Director->Phase == ETakePhase::BlooperFreeze || Director->Phase == ETakePhase::Title
+			|| Director->Phase == ETakePhase::Printed)
 		{
 			return;
 		}
@@ -178,6 +182,11 @@ void ATakePlayerController::QueuePress(const FTakePress& Press)
 		break;
 	case ETakePressType::NewTake:
 		TAKE_LOG(TEXT("PRESS new take (%s)"), *Added.Source);
+		break;
+	case ETakePressType::Confirm:
+		TAKE_LOG(TEXT("PRESS confirm (%s)"), *Added.Source);
+		break;
+	default:
 		break;
 	}
 }
@@ -554,6 +563,18 @@ void ATakePlayerController::TakeDump()
 
 	// Step 2: the scene, the objective, the fired triggers (with their bars) and the game instance's checkpoint.
 	Line += FString::Printf(TEXT(" scene=%d objective=\"%s\""), Director->Scene, *Director->Objective);
+
+	// Step 3: the alarm, and the end page while Printed.
+	{
+		const TCHAR* AlarmState = !Director->bAlarm ? TEXT("off") : (Director->bAlarmLive ? TEXT("live") : TEXT("hold"));
+		Line += FString::Printf(TEXT(" alarm=%s barsLeft=%d secLeft=%.1f"), AlarmState, Director->GetAlarmBarsLeft(),
+			Director->GetAlarmSecondsLeft());
+	}
+	if (Director->Phase == ETakePhase::Printed)
+	{
+		Line += FString::Printf(TEXT(" end page %d grade %s exit %s"), Director->EndPage,
+			TakeText::GradeName(Director->Grade), Director->bSideExit ? TEXT("side") : TEXT("trap"));
+	}
 	{
 		FString Fired;
 		for (const TPair<FName, int32>& Fire : Director->FiredTriggers)
@@ -796,4 +817,24 @@ void ATakePlayerController::TakeBlooper()
 	}
 	TAKE_LOG(TEXT("TAKEBLOOPER (exec)"));
 	Director->RequestBlooper(EBlooperReason::ComposureZero);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Step 3 (BODY: D)
+// ---------------------------------------------------------------------------------------------------------------------
+
+void ATakePlayerController::TakeConfirm()
+{
+	FTakePress Press;
+	Press.Type = ETakePressType::Confirm;
+	Press.Source = TEXT("exec");
+	QueuePress(Press);
+}
+
+void ATakePlayerController::OnConfirm()
+{
+	FTakePress Press;
+	Press.Type = ETakePressType::Confirm;
+	Press.Source = TEXT("key");
+	QueuePress(Press);
 }

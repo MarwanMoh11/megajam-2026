@@ -116,6 +116,31 @@ public:
 	/** The clicks are silent right now (a break bar, or MuteMetronome is running). The HUD shows "BAND BREAK". */
 	bool IsMetronomeMuted() const;	// BODY: D
 
+	// --- step 3 (BODY: D) ------------------------------------------------------------------------------------------
+
+	/** The alarm (ATakeDirector::StartAlarm): the band stops dead. While on, the metronome's click on every beat is
+	 *  replaced by an alarm tone, high on beats 1 and 3 and low on 2 and 4 (two-tone, about 880 and 660 Hz, harsh),
+	 *  at AlarmVolume, and it plays through break bars and mutes. The clock, the beat events and the pulse carry on.
+	 *  On the frame it is switched on one high tone plays at once. */
+	void SetAlarm(bool bOn);
+
+	bool IsAlarm() const { return bAlarm; }
+
+	/** PRINT IT: a bright rising four-note sting, about 0.9 s. */
+	void PlaySting();
+
+	/** The clapper: one sharp dry clack (a 30 ms noise burst with a hard attack). PRINT IT and the title card. */
+	void PlayClap();
+
+	/** The curtain or a shutter landing: a low thud (about 60 Hz, 0.25 s). */
+	void PlayThud();
+
+	/** The pyro: a 0.5 s crackle of noise bursts. */
+	void PlayCrackle();
+
+	UPROPERTY(EditAnywhere, Category = "Take|Clock", meta = (ClampMin = "0", ClampMax = "1"))
+	float AlarmVolume = 0.6f;
+
 	/** The band takes a one-bar break every this many bars (0 = never). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Clock")
 	int32 BreakEveryBars = 8;
@@ -134,6 +159,16 @@ private:
 	TArray<uint8> PcmDrumRoll;
 	TArray<uint8> PcmFeedback;
 	TArray<uint8> PcmChime;
+
+	/** Step 3, built in BuildPcm. */
+	TArray<uint8> PcmAlarmHigh;
+	TArray<uint8> PcmAlarmLow;
+	TArray<uint8> PcmSting;
+	TArray<uint8> PcmClap;
+	TArray<uint8> PcmThud;
+	TArray<uint8> PcmCrackle;
+
+	bool bAlarm = false;
 
 	/** Fills the PCM buffers below (16-bit mono at SampleRate): short decaying sine clicks and a noise burst. */
 	void BuildPcm();	// BODY: (a)
