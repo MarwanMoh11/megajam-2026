@@ -39,6 +39,9 @@
 #include "HouseDimmer.generated.h"
 
 class ULightComponent;
+class UMaterialInstanceDynamic;
+class UMaterialInterface;
+class URectLightComponent;
 class USpotLightComponent;
 class UStaticMeshComponent;
 
@@ -81,6 +84,12 @@ public:
 	/** The preview is on: the house is down (or going down) and every hall watcher is on the screen. */
 	bool IsHouseDark() const { return bRunning && DarkSecondsLeft > 0.f; }
 
+	/** The seated room cannot see the front: the house is dark, or still under half way on the way up. */
+	bool IsRoomBlind() const { return IsHouseDark() || (bRunning && HouseLevel < RoomSeesAboveLevel); }
+
+	/** The house light's share (1 up, DimLevel dark). */
+	float GetHouseLevel() const { return HouseLevel; }
+
 	/** Seconds of dark left (0 when the house is up or coming up). */
 	float GetDarkSecondsLeft() const { return IsHouseDark() ? DarkSecondsLeft : 0.f; }
 
@@ -96,13 +105,18 @@ public:
 
 	// --- the preview -----------------------------------------------------------------------------------------------
 
-	/** How long the house stays down when nobody swaps, s. Enough for a cut back to Julian and a walk to the case. */
+	/** How long the house stays down when nobody swaps, s. Enough for a cut back to Julian, the walk up, the keycard
+	 *  and the case (Maya holds the house while his hands are on either). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Dimmer", meta = (ClampMin = "1"))
-	float PreviewSeconds = 12.f;
+	float PreviewSeconds = 14.f;
 
 	/** The house lights' share of their own intensity while the preview runs (0 black, 1 untouched). */
 	UPROPERTY(EditAnywhere, Category = "Take|Dimmer", meta = (ClampMin = "0", ClampMax = "1"))
 	float DimLevel = 0.08f;
+
+	/** Coming back up, the room sees the front again from this share of the house light. */
+	UPROPERTY(EditAnywhere, Category = "Take|Dimmer", meta = (ClampMin = "0", ClampMax = "1"))
+	float RoomSeesAboveLevel = 0.5f;
 
 	/** The house drops to this share on the fire frame itself (the lever's clunk), then eases on to DimLevel. */
 	UPROPERTY(EditAnywhere, Category = "Take|Dimmer", meta = (ClampMin = "0", ClampMax = "1"))
@@ -158,10 +172,33 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Dimmer")
 	FVector2D ScreenSize = FVector2D(1400.f, 600.f);
 
-	/** The picture's yaw relative to the actor: 0 lays it across the actor's Y axis (the east wall, with the actor at
-	 *  yaw 0). */
+	/** The way the screen faces (world, into the hall; from hall_zones.json "screen.normal"). */
 	UPROPERTY(EditAnywhere, Category = "Take|Dimmer")
-	float ScreenYaw = 0.f;
+	FVector ScreenNormal = FVector(-1.f, 0.f, 0.f);
+
+	/** The old film on the screen (package pictures: scalars Play 0/1 and Brightness). Loaded by soft path: missing,
+	 *  the picture is a plain pale panel lit by the projector, dimmed by the same two numbers. */
+	UPROPERTY(EditAnywhere, Category = "Take|Dimmer")
+	TSoftObjectPtr<UMaterialInterface> FilmMaterial = TSoftObjectPtr<UMaterialInterface>(FSoftObjectPath(TEXT("/Game/Take/Pictures/M_OldFilm.M_OldFilm")));
+
+	/** The film's Brightness scalar (and the stand-in's). */
+	UPROPERTY(EditAnywhere, Category = "Take|Dimmer", meta = (ClampMin = "0"))
+	float FilmBrightness = 1.f;
+
+	/** Turns the picture about the screen's normal, degrees (if the film comes out on its side). */
+	UPROPERTY(EditAnywhere, Category = "Take|Dimmer")
+	float ScreenPictureRoll = 0.f;
+
+	/** Mirrors the picture left to right (if the film comes out back to front). */
+	UPROPERTY(EditAnywhere, Category = "Take|Dimmer")
+	bool bScreenMirror = false;
+
+	/** The screen's glow on the front rows while the film runs, candelas (0: none). The room is lit by the film. */
+	UPROPERTY(EditAnywhere, Category = "Take|Dimmer", meta = (ClampMin = "0"))
+	float ScreenGlowCandelas = 300.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Dimmer")
+	FLinearColor ScreenGlowColour = FLinearColor(0.75f, 0.80f, 0.95f);
 
 	/** The picture's colour (a pale silver: the projector's light makes it glow). */
 	UPROPERTY(EditAnywhere, Category = "Take|Dimmer")
@@ -188,7 +225,8 @@ public:
 
 	// --- what the scene says (subtitles; listed in C:\Jam\Builds\qa\lines\heist.json for the voices) -------------
 
-	/** As the keycard lands (the spoken half of the lesson). */
+	/** As the keycard lands (the spoken half of the lesson) when the room does not watch (ARoomWatch off or absent);
+	 *  with the room watching, its first murmur teaches instead. */
 	UPROPERTY(EditAnywhere, Category = "Take|Dimmer|Lines")
 	FString TeachLine = TEXT("VEX: \"Not with the whole room watching. Maya: house lights down, roll the preview. Every eye goes to the screen.\"");
 
@@ -206,7 +244,7 @@ public:
 
 	/** The preview ended with no swap. */
 	UPROPERTY(EditAnywhere, Category = "Take|Dimmer|Lines")
-	FString NoSwapLine = TEXT("MAYA: \"House is up. Get him beside the case and I'll roll it again.\"");
+	FString NoSwapLine = TEXT("MAYA: \"House is coming up. Get him back in the crowd, I'll roll it again.\"");
 
 	/** The room sees him at the case with the house up (the blooper follows). */
 	UPROPERTY(EditAnywhere, Category = "Take|Dimmer|Lines")
@@ -214,7 +252,7 @@ public:
 
 	/** The crew hint after two bloopers at the keycard's checkpoint. */
 	UPROPERTY(EditAnywhere, Category = "Take|Dimmer|Lines")
-	FString HintLine = TEXT("MAYA: \"Not in the light. Get him beside the case, cut to me, I take the house down, then swap it.\"");
+	FString HintLine = TEXT("MAYA: \"Not in the light. Get him to the front row, cut to me, I take the house down. Then he goes up.\"");
 
 	/** The case mark's word over its progress bar while the trick is on. */
 	UPROPERTY(EditAnywhere, Category = "Take|Dimmer|Lines")
@@ -225,6 +263,10 @@ public:
 	/** The preview's beam: from the projector to the screen. Movable, no shadows, visible only while dark. */
 	UPROPERTY(VisibleAnywhere, Category = "Take")
 	TObjectPtr<USpotLightComponent> ProjectorLight;
+
+	/** The screen's light on the room: a rect light on the screen's face, facing the hall, while the film runs. */
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<URectLightComponent> ScreenGlow;
 
 	/** The projector itself: a plain box for now (the model is package devices'). */
 	UPROPERTY(VisibleAnywhere, Category = "Take")
@@ -243,8 +285,15 @@ protected:
 	/** The beam and the picture on or off, this frame. */
 	void SetPreviewVisible(bool bVisible);
 
-	/** The beam's intensity for RunSeconds (the film's flicker). */
+	/** The beam's intensity for RunSeconds (the film's flicker) and the screen's glow. */
 	void ApplyProjectorFlicker();
+
+	/** The film's Play and Brightness (or the stand-in panel's colour), this frame. */
+	void SetFilm(float Play);
+
+	/** The screen's world centre and facing (from ScreenOffset and ScreenNormal). */
+	FVector GetScreenCentre() const;
+	FVector GetScreenFacing() const;
 
 	/** Every hall watcher looks at the screen for Duration (ApplyEffect Blind). Returns how many it caught. */
 	int32 Glance();
@@ -257,6 +306,12 @@ protected:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UStaticMeshComponent> ScreenPanel;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> FilmMID;
+
+	/** FilmMID is the old film (not the stand-in). */
+	bool bHasFilm = false;
 
 	TArray<TWeakObjectPtr<ULightComponent>> HouseLights;
 	TArray<float> HouseBaseIntensity;

@@ -848,3 +848,108 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   the patterns off in the same session changed nothing, so it is the machine warming up between runs, not the props. The
   prop textures were still taken down one mip (VRAM about 0.4 GB more before). The device bodies are recoloured flat at
   runtime, so the carts and the desk show the Rodin shape without its texture. The bar came out as a round ribbed block.
+
+## Sat Nov 14, 20:45 - Sun Nov 15, 01:40 (Cairo): the QA pass
+
+- **What changed:** Marwan played the build and wrote 22 QA notes (the one-line queue, slow time for the tutorial, all
+  animations, every person different, no sight cones, a smart trick for the reel, a minimal HUD, colour allowed, the
+  repeating trumpet, props that read as real, rooms with a purpose, full models for the characters). The notes were
+  split into packages (below); the work is written and committed (local only, nothing pushed) and partly in the level. Nothing new
+  has been seen running yet (see "How it was checked").
+- **How the agents were used:** an orchestrator session (Claude Fable) split the notes into packages and ran 13 Claude
+  Opus agents in parallel plus an integrator. Each agent owned its own files (the table is in
+  `C:\Jam\Builds\qa\COMMON.md`), and the packages talked through written contracts (function names and switches the
+  next package could rely on). One Unreal editor was shared through a lock file (`tools/editor_lock.py`). Level
+  changes were written as re-runnable overlay scripts (`tools/sets/*.py`, run by `tools/sets/run_all.py`) so a rebuild
+  could replay them. Each agent kept a progress log, so a stopped agent could be replaced. Most packages got a switch
+  to turn their change off.
+- **The packages:**
+  - **found** (enabler): `tools/sets/common.py` (clear, spawn, scatter, fit, place, shoot) and `run_all.py`; a survey of
+    the whole set (20 plans, 50 lit and 50 unlit shots). Found the causes of notes 13 and 15: 22 glasses floating 16 cm
+    over the Rodin cocktail tables, rope bars higher than the stanchion tops, the "cone chairs" were the skirt cones on
+    seated women, and 22 of 36 guests sat off their chairs.
+  - **scene1** (notes 1, 2, 10): a moving queue, Julian's turn at the scanner and its refusal, the first switch taught
+    with slow time and a camera glance to Maya (`QueueLine`, `TakePlayerController`, `TakeDirectorScene`). Flight now
+    runs on real time.
+  - **time** (notes 9, 2): turn warnings only play when their watcher is in range, with a cooldown, 8 new band variants
+    (bass, trumpet, drum roll, hi-hat, two each) and small level, pitch and timing jitter, so no phrase repeats twice
+    running. The slow-time mechanism holds the music (low-passed, ducked) and rejoins it on a beat. 340 ElevenLabs
+    credits used.
+  - **sight** (notes 5, 18, 19): the red frames, T marks and tape lines are replaced by light: a torch pool on each
+    guard that swings onto Julian when he is held, haze and a lens glint on the drone, red and green lamps on the
+    scanner, warm pools on the marks. The old frames stay behind a switch (`bDrawnSightOverlays`).
+  - **hud** (note 7): a minimal HUD with one prompt lane and a goal line that fades. The composure meter is gone;
+    stress shows as a screen wash, a closing vignette and a pulse, with a side glow toward the watcher who holds him
+    (`TakeHUDStress.cpp`).
+  - **look** (note 8): the film filter keeps colour (saturation 0.62, a split tone, a muted period palette: walnut,
+    burgundy, bottle green, navy, cream, brass) and stays grainy; `FilmColour 0` brings the old monochrome back. Seen
+    in the editor viewport.
+  - **heist** (note 6): "the preview". After the keycard Maya throws a house dimmer, the hall goes dark, a projector
+    lights the screen and Vance announces "a first glimpse of Lot 41". The room looks at it for 12 s while Julian swaps
+    the reel for a dummy. Lights up mid-swap is a blooper ("THE ROOM SAW HIM"); Vance finding the newsreel starts the
+    old alarm. 8 new lines. `bHeistTrick` turns it off.
+  - **cast** (notes 3, 4): a C++ animation instance for the whole cast (mocap clips when present, else the same acts
+    built from bones), seated guests fitted to the hall's seat list, a band built from bones, a lap-and-drape for
+    seated gowns instead of the cone, and variety (no two neighbours share kit and colour; heights, skin, hair, hats,
+    glasses). `Reel.Cast.Acting 0` freezes it as before.
+  - **heroes** (note 21): Julian, Maya and Vex as Rodin models skinned to the template mannequin's skeleton with
+    Geometry Script, so the template's clips play with no retarget (`tools/build_heroes.py`). Posed through the skin
+    weights and looked at from four views.
+  - **hall** (notes 12, 15, 16, 22): 141 gilt-and-burgundy chairs facing the dais, a bandstand (grand piano, drums,
+    upright bass, mic, trumpet stand), a TV riser with a period studio camera, monitor and ON AIR sign, a rebuilt bar,
+    a phone desk and the lots table; the old shape piano and the mid-air paddles are gone.
+  - **front** (notes 13, 11): the street (brass stanchions with sagging velvet, seven sedans in six paints, street
+    lamps, the marquee, press pen, newsstand, hydrant) and the lobby (reception desk, seating group, ten palms, the
+    stair, swags, signs); glasses set on the real table tops.
+  - **rooms** (notes 14, 11, 20): all 16 side rooms designed with a one-line story each (about 2,400 pieces in 180
+    instanced actors). Note 20's stacked film cans became a working projection booth; the stretched crates became mixed
+    sizes. The dock lorry boxes became a Rodin lorry.
+  - **devices** (notes 17, 10): every interactive device got a model slot, a pilot lamp and a warm pool, and a brass
+    lever, crank or rope that moves on the press; eight Rodin models (searchlight, follow spot, hand winch, pyro board,
+    ticket gate, dimmer, rope-lock rail, fresnel); the follow spot's drawn cylinder became a haze shaft. Seen in
+    stand-in mode only.
+  - **mocap** (note 3): 28 Mixamo clips and one skinned character (Y Bot, used only as the retarget source) were
+    downloaded through the Claude in Chrome extension after Marwan signed in to Mixamo. The import script
+    (`tools/build_mocap.py`) and the clip list (`tools/mocap_clips.json`) are written; the clips are not imported yet.
+- **How it was checked:** the C++ was written blind: with one shared tree nobody could compile while the others were
+  editing. Three compile checks of the game target, run with the editor still open, found the errors: cast's missing
+  `WalkTo`, `FaceYaw`, `IsWalking` and `PlayGesture` that scene1, sight and heist already called, a name clash in the
+  HUD (`Ink` hid a global), and cast's struct `FFrame` clashing with the engine's script frame type. After the fixes
+  the game target linked and the editor target built clean in 61 s. State at 01:40: the level rebuild and the first
+  look in play are in progress; nothing new has been seen running yet. The look, front, hall, rooms, devices and
+  heroes work was seen in editor shots only.
+- **What went wrong:**
+  - **look:** scene captures skip the film grade, so its shots were taken from the editor viewport. The old cool rim
+    lights made the colour hall a blue night.
+  - **time:** warnings fired every cycle in 2D because the gate lived in the director's bar-line loop. Two C++ writes
+    through a shell heredoc failed on apostrophes.
+  - **found:** the exposure override is ignored by scene captures. A `Prop_*` name prefix collision made import_props'
+    unplace delete the prop store's contents without a message.
+  - **heist:** written blind in wave 1; the scripted tests must now walk Maya to the dimmer first (or set
+    `bHeistTrick` off).
+  - **scene1:** written against contracts, not seen; the new lines are unvoiced until time's second pass; the guests'
+    blockers are untested.
+  - **devices:** the outdoor lineup shots came out black (re-shot unlit); the follow spot faced sideways and was sized
+    by its handle; the projector prop was refused twice by the permission system.
+  - **front:** import_props shrank the Rodin stanchion to 65 cm, under ropes at 76-82 cm; the Rodin sofa came in
+    facing +Y; the first rerun was not repeatable (posts read from instances already removed); a 9-minute wait for the
+    editor lock ran out; a helper lost an argument mid-run.
+  - **hall:** the "upside-down cone chairs" were seated women's skirt cones; the chairs sat sideways because Rodin's
+    front is +Y; removing two boxes would have renumbered later labels, so the counter steps on.
+  - **heroes:** the editor never ticks animation on placed actors, so test poses were skinned in Python from the
+    template clips. Inpainted weights alone left fingertips floating and smeared Vex; fix: keep them only where they
+    agree with the closest-point bone.
+  - **rooms:** a test light overexposed the lineup shot; lit shots were black, so rooms were judged unlit; the Rodin
+    desk came out small because its bounds include a tall lamp; the prop store was empty for the same `Prop_*` reason.
+  - **cast:** a mid-task switch to mocap-first; `Skirt()` cones read as chairs; `FFrame` clashed with the engine's.
+  - **Dates:** earlier dev-log entries dated "Nov 15" before Sat Nov 14, 21:00 are labelled 7 hours ahead. Git Bash
+    prints the PC's time zone as "EST" (Egypt Standard Time); earlier sessions read it as US Eastern and added 7 hours.
+    The PC clock was Cairo time all along.
+  - **Dark captures:** scene captures taken by agents come out near black because they ignore the game's exposure, so
+    several agents judged their work from unlit shots.
+  - **Rodin permission:** a Rodin generation for a film projector was refused by the permission system for a subagent
+    even after Marwan approved it; solved by reusing the projector the rooms agent had already generated.
+  - **Usage limit:** the session hit the account's usage limit at about 21:50 on Saturday and stopped for about four
+    hours with the integration half done (editor built, level not rebuilt).
+  - **Mixamo:** computer use could not drive Chrome (browsers are read-only for it), so the Claude in Chrome extension
+    was used instead.

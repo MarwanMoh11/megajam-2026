@@ -5,11 +5,13 @@
 #include "CastMember.h"
 #include "Components/LightComponent.h"
 #include "Components/LocalLightComponent.h"
+#include "Components/RectLightComponent.h"
 #include "Components/SpotLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/Light.h"
 #include "EngineUtils.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Materials/MaterialInterface.h"
 #include "TakeCharacter.h"
 #include "TakeDirector.h"
 #include "TakeShapes.h"
@@ -51,8 +53,8 @@ AHouseDimmer::AHouseDimmer()
 	FiredFrom = ETakeCamera::B;
 	UseVerb = TEXT("Bring the house lights down for the preview");
 	UseRadius = 100.f;	// small: the pyro board's ring is 1.4 m away
-	LockedUntil = FName(TakeTriggers::Keycard);
-	LockedWhy = TEXT("for the preview, after the keycard");
+	LockedUntil = FName(TakeTriggers::Scene2);	// W3 heist2: the dark is the only way to the dais, keycard included
+	LockedWhy = TEXT("for the preview, once Julian is in the hall");
 	FireLine = TEXT("MAYA: \"House lights down. Rolling the preview.\"");
 	BodyColour = FLinearColor(0.30f, 0.22f, 0.12f);	// walnut, until the board's model
 
@@ -75,6 +77,8 @@ AHouseDimmer::AHouseDimmer()
 	ProjectorLight->SetMobility(EComponentMobility::Movable);
 	ProjectorLight->SetCastShadows(false);
 	ProjectorLight->SetVisibility(false);
+
+	ScreenGlow = FTakeShapes::CreateCueRect(this, TEXT("ScreenGlow"), Root, ScreenOffset, FRotator::ZeroRotator, 3500.f);
 }
 
 void AHouseDimmer::OnConstruction(const FTransform& Transform)
@@ -109,12 +113,26 @@ void AHouseDimmer::BeginPlay()
 		Old->DestroyComponent();
 	}
 	ScreenPanel = nullptr;
-	const FVector PanelScale(0.02f, FMath::Max(ScreenSize.X, 1.f) / 100.f, FMath::Max(ScreenSize.Y, 1.f) / 100.f);
-	ScreenPanel = FTakeShapes::AddShapeAtRuntime(this, ETakeShape::Cube, Root, ScreenOffset, PanelScale, ScreenColour, false);
+	// W3 heist2: a plane on the screen's face (its +Z towards the hall, its X up), the old film on it when it exists.
+	const FVector Facing = GetScreenFacing();
+	const FVector PanelScale(FMath::Max(ScreenSize.Y, 1.f) / 100.f,
+		FMath::Max(ScreenSize.X, 1.f) / 100.f * (bScreenMirror ? -1.f : 1.f), 1.f);
+	ScreenPanel = FTakeShapes::AddShapeAtRuntime(this, ETakeShape::Plane, Root, ScreenOffset, PanelScale, ScreenColour, false);
+	FilmMID = nullptr;
+	bHasFilm = false;
 	if (ScreenPanel)
 	{
 		ScreenPanel->SetMobility(EComponentMobility::Movable);
-		ScreenPanel->SetRelativeRotation(FRotator(0.f, ScreenYaw, 0.f));
+		const FQuat Face = FRotationMatrix::MakeFromZX(Facing, FVector::UpVector).ToQuat();
+		const FQuat Roll(Facing, FMath::DegreesToRadians(ScreenPictureRoll));
+		ScreenPanel->SetWorldLocationAndRotation(GetScreenCentre() + Facing * 2.f, Roll * Face);
+		if (UMaterialInterface* const Film = FilmMaterial.LoadSynchronous())
+		{
+			FilmMID = ScreenPanel->CreateDynamicMaterialInstance(0, Film);
+			bHasFilm = FilmMID != nullptr;
+		}
+		TAKE_LOG(TEXT("%s: the screen shows %s"), *DeviceName,
+			bHasFilm ? *FilmMaterial.ToSoftObjectPath().ToString() : TEXT("the stand-in panel (no M_OldFilm)"));
 	}
 	SetPreviewVisible(false);
 }
@@ -160,6 +178,7 @@ bool AHouseDimmer::Fire()
 	HouseLevel = FMath::Clamp(FirstDropLevel, DimLevel, 1.f);
 	ApplyHouseLevel(HouseLevel);
 	SetPreviewVisible(true);
+	SetFilm(1.f);
 	ApplyProjectorFlicker();
 	if (Body)
 	{
@@ -289,6 +308,30 @@ void AHouseDimmer::RestoreHouseNow()
 	}
 }
 
+FVector AHouseDimmer::GetScreenCentre() const
+{
+	return GetActorTransform().TransformPosition(ScreenOffset);
+}
+
+FVector AHouseDimmer::GetScreenFacing() const
+{
+	const FVector Facing = ScreenNormal.GetSafeNormal();
+	return Facing.IsNearlyZero() ? -GetActorForwardVector() : Facing;
+}
+
+void AHouseDimmer::SetFilm(float Play)
+{
+	if (bHasFilm && FilmMID)
+	{
+		FilmMID->SetScalarParameterValue(TEXT("Play"), Play);
+		FilmMID->SetScalarParameterValue(TEXT("Brightness"), FilmBrightness);
+	}
+	else if (ScreenPanel && Play > 0.f)
+	{
+		FTakeShapes::SetColour(ScreenPanel, ScreenColour * FMath::Min(FilmBrightness * Play, 1.f));
+	}
+}
+
 void AHouseDimmer::PlaceProjector()
 {
 	const FTransform& Where = GetActorTransform();
@@ -312,6 +355,14 @@ void AHouseDimmer::PlaceProjector()
 		ProjectorLight->SetAttenuationRadius(FMath::Max(1000.f, static_cast<float>(ToScreen.Size()) * 1.25f));
 		ProjectorLight->SetVolumetricScatteringIntensity(ProjectorScattering);
 		ProjectorLight->SetCastShadows(false);
+	}
+	if (ScreenGlow)
+	{
+		// On the screen's face, facing the hall (a rect light shines along its +X), the screen's size.
+		const FVector Facing = GetScreenFacing();
+		ScreenGlow->SetWorldLocationAndRotation(Screen + Facing * 20.f, Facing.Rotation());
+		ScreenGlow->SetSourceWidth(FMath::Max(ScreenSize.X, 10.f));
+		ScreenGlow->SetSourceHeight(FMath::Max(ScreenSize.Y, 10.f));
 	}
 }
 
@@ -372,6 +423,10 @@ void AHouseDimmer::SetPreviewVisible(bool bVisible)
 	{
 		ScreenPanel->SetVisibility(bVisible);
 	}
+	if (ScreenGlow && !bVisible)
+	{
+		FTakeShapes::SetCueLight(ScreenGlow, 0.f, ScreenGlowColour);
+	}
 }
 
 void AHouseDimmer::ApplyProjectorFlicker()
@@ -379,6 +434,12 @@ void AHouseDimmer::ApplyProjectorFlicker()
 	if (ProjectorLight)
 	{
 		ProjectorLight->SetIntensity(ProjectorCandelas * TakeHouseDimmerLocal::FlickerScale(RunSeconds, FlickerAmount));
+	}
+	if (ScreenGlow)
+	{
+		// The film's light on the front rows: the same flicker, a little slower to settle.
+		FTakeShapes::SetCueLight(ScreenGlow,
+			ScreenGlowCandelas * TakeHouseDimmerLocal::FlickerScale(RunSeconds * 0.9f, FlickerAmount * 1.5f), ScreenGlowColour);
 	}
 }
 
@@ -411,6 +472,7 @@ void AHouseDimmer::TurnHeads()
 		return;
 	}
 	const FBox House = TakeHouseDimmerLocal::HouseBox(HouseMin, HouseMax);
+	const FVector Screen = GetScreenCentre();
 	int32 Turned = 0;
 	for (TActorIterator<ACastMember> It(World); It; ++It)
 	{
@@ -421,7 +483,8 @@ void AHouseDimmer::TurnHeads()
 		{
 			continue;
 		}
-		Guest->PlayGesture(FName(TEXT("LookAt")));	// the cast contract (package cast)
+		// W3 heist2: at the screen where stage put it, for the whole preview (cast2's ScreenPoint is a fixed guess).
+		Guest->LookAtPoint(Screen, FMath::Max(PreviewSeconds, 1.f) + RaiseSeconds);	// the cast contract (cast2)
 		++Turned;
 	}
 	TAKE_LOG(TEXT("%s: %d heads turn to the screen"), *DeviceName, Turned);
@@ -431,6 +494,7 @@ void AHouseDimmer::EndDark()
 {
 	DarkSecondsLeft = 0.f;
 	SetPreviewVisible(false);
+	SetFilm(0.f);
 	if (Body)
 	{
 		BodyMID = FTakeShapes::SetColour(Body, FMath::Lerp(BodyColour, TakeColors::White, TakeHouseDimmerLocal::RisingWhite));

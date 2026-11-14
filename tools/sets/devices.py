@@ -41,7 +41,24 @@ F2 = 450.0
 # The yaw that turns each imported mesh to face +X (its front: the lens, the panel, the gate's walkway, the rail's
 # lever side). From the lineup shot.
 FRONT = {n: 0.0 for n in MESHES}
-FRONT.update({"cart": 0.0, "desk": 0.0, "devices_pyro": 270.0, "devices_gate": 90.0, "devices_followspot": 270.0})
+FRONT.update({"cart": 0.0, "desk": 0.0, "devices_pyro": 270.0, "devices_gate": 90.0, "devices_followspot": 270.0,
+              "rooms_projector": 270.0})
+
+# --- W3 spot: positions come from the placed actors and stage's hall_zones.json, never hard-coded hall numbers ---------
+ZONES_FILE = r"C:\Jam\megajam\tools\sets\hall_zones.json"
+
+
+def zones():
+    try:
+        import json
+        with open(ZONES_FILE, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:                                               # noqa: BLE001
+        return {}
+
+
+ZONES = zones()
+CASE_XY = tuple(ZONES.get("case", (4000.0, 0.0, 0.0))[:2])        # the follow spot rests facing the lot
 
 BRASS = (0.42, 0.27, 0.08)
 AMBER = (1.0, 0.52, 0.16)
@@ -102,26 +119,27 @@ def device(label):
 
 # --- the devices --------------------------------------------------------------------------------------------------------
 # World cm. mesh: a MESHES name, or an existing prop ("cart", "desk"). at: the floor point under the model's middle
-# (None: the actor's own place). face: the world yaw the model's front turns to ("use": toward the use point). size:
+# (None: the actor's own place; ("actor", dx, dy) or ("use", dx, dy): offset in the actor's own frame from the actor or
+# from its use point, on the use point's floor; so the model follows wherever stage moves the device). face: the world yaw the model's front turns to ("use": toward the use point). size:
 # the model's fit along its front, across, up (uniform scale: the smallest ratio). Parts, in the model's own frame at
 # rest as fractions of its fitted size (forward, across, up), or cm where noted:
 #   pilot (+ pilot_size cm, pilot_colour), lens (follow spot: where the beam starts, and lens_face: the lens's yaw
 #   relative to face), lever: (pivot, rest (pitch, yaw rel. to face, roll), throw (pitch, yaw, roll), length, spin),
 #   rope: (from, to_z world).
 SPECS = [
-    dict(label="Searchlight", mesh="devices_searchlight", at=(-3358.0, 500.0, F2), face=150.0, size=(230, 160, 200),
+    dict(label="Searchlight", mesh="devices_searchlight", at=("actor", 67.0, 30.0), face=150.0, size=(230, 160, 200),
          lens=(0.5, 0.0, 0.75), pilot=(-0.22, 0.0, 0.42), pilot_size=4.0, hide_body=True,
          shot=((-3990.0, 120.0, 260.0), (-3390.0, 470.0, 540.0))),
     # The follow spot: its operator's handle sticks out the back toward Maya (SPOT_USE 650,-290), beside her.
-    dict(label="Spot", mesh="devices_followspot", at=(645.0, -372.0, F2), face=("toward", (4000.0, 0.0)),
+    dict(label="Spot", mesh="devices_followspot", at=("actor", -90.0, -92.0), face=("toward", CASE_XY),
          size=(240, 110, 170), lens=(0.9, 0.0, 0.8), pilot=(-0.3, 0.35, 0.45), pilot_size=3.5, hide_body=True,
          shot=((470.0, -560.0, 640.0), (680.0, -340.0, 540.0))),
-    dict(label="Banner", mesh="devices_winch", at=(718.0, -512.0, F2), face=0.0, size=(55, 85, 62),
+    dict(label="Banner", mesh="devices_winch", at=("use", 68.0, -2.0), face=0.0, size=(55, 85, 62),
          pilot=(0.0, -0.45, 0.95), pilot_size=3.5, hide_body=False,
          lever=((0.0, 0.5, 0.55), (0.0, 90.0, 0.0), (0.0, 0.0, 0.0), 22.0, 540.0),
          rope=((0.15, 0.0, 0.72), F2 + 420.0),
          shot=((470.0, -380.0, 660.0), (720.0, -512.0, 480.0))),
-    dict(label="Pyro", mesh="devices_pyro", at=(724.0, -752.0, F2), face="use", size=(50, 100, 85),
+    dict(label="Pyro", mesh="devices_pyro", at=("actor", -11.0, -7.0), face="use", size=(50, 100, 85),
          pilot=(0.52, 0.30, 0.86), pilot_size=4.0, pilot_colour=(1.0, 0.10, 0.04), hide_body=True,
          lever=((0.05, -0.40, 0.98), (20.0, 0.0, 0.0), (-70.0, 0.0, 0.0), 26.0, 0.0),
          shot=((470.0, -930.0, 650.0), (725.0, -750.0, 500.0))),
@@ -133,7 +151,7 @@ SPECS = [
          pilot=(0.05, -0.25, 0.93), pilot_size=6.0, pilot_colour=(1.0, 0.62, 0.22),
          lever=((0.30, 0.28, 0.80), (25.0, 0.0, 0.0), (-50.0, 0.0, 0.0), 16.0, 0.0),
          shot=((3330.0, -2180.0, 240.0), (3550.0, -2460.0, 90.0))),
-    dict(label="Winch", mesh="devices_rail", at=(4330.0, -2558.0, 0.0), face="use", size=(45, 85, 300),
+    dict(label="Winch", mesh="devices_rail", at=("actor", -48.0, 0.0), face="use", size=(45, 85, 300),
          pilot=(0.55, -0.35, 0.40), pilot_size=4.0, hide_body=True,
          lever=((0.55, 0.30, 0.36), (-15.0, 0.0, 0.0), (75.0, 0.0, 0.0), 40.0, 0.0),
          rope=((0.0, 0.0, 1.0), 495.0),
@@ -161,6 +179,10 @@ def frames(spec, dev, m):
     uo = dev.get_editor_property("use_offset")
     use = add(aloc, turn((uo.x, uo.y, uo.z), ayaw))
     at = spec["at"] or aloc
+    if isinstance(at[0], str):                                      # W3 spot: relative to the actor or its use point
+        base = aloc if at[0] == "actor" else use
+        off = turn((at[1], at[2], 0.0), ayaw)
+        at = (base[0] + off[0], base[1] + off[1], use[2])
     f = spec["face"]
     if f == "use":
         yaw = yaw_to(at, use)
@@ -322,7 +344,8 @@ def do_place():
     return "\n".join(out)
 
 
-PROJECTOR_MESH = "devices_followspot"   # stand-in: a lamp barrel on a pedestal (a projector mesh needs a 9th Rodin prop)
+PROJECTOR_MESH = "rooms_projector"      # W3 spot: rooms' 1940s 35 mm projector on its pedestal (was the follow spot's barrel)
+PROJECTOR_HEIGHT = (120.0, 230.0)       # the fitted model's height is kept between these, cm
 
 
 def projector():
@@ -340,12 +363,20 @@ def projector():
     screen = add(aloc, turn((so.x, so.y, so.z), ayaw))
     yaw = yaw_to(lens, screen)
     m = mesh(PROJECTOR_MESH)
+    if m is None:
+        return "projector: no mesh " + PROJECTOR_MESH
     front = FRONT.get(PROJECTOR_MESH, 0.0)
     x0, x1, y0, y1, z0, z1 = mbox(m)
     along = (x1 - x0) if int(round(front / 90.0)) % 2 == 0 else (y1 - y0)
-    s = (lens[2] - aloc[2]) / max(0.85 * (z1 - z0), 1e-3)      # the lens at about 85% of its height
+    # The floor under the lens: the dimmer's own floor (stage's catwalk_z when the dimmer stands on the catwalk).
+    floor = aloc[2]
+    cz = ZONES.get("catwalk_z")
+    if cz is not None and abs(float(cz) - aloc[2]) < 60.0:
+        floor = float(cz)
+    tall = min(max((lens[2] - floor) / 0.85, PROJECTOR_HEIGHT[0]), PROJECTOR_HEIGHT[1])   # the lens at ~85 % up
+    s = tall / max(z1 - z0, 1e-3)
     anchor = ((x0 + x1) * 0.5, (y0 + y1) * 0.5, z0)
-    at = add((lens[0], lens[1], aloc[2]), turn((-0.4 * along * s, 0.0, 0.0), yaw))
+    at = add((lens[0], lens[1], floor), turn((-0.4 * along * s, 0.0, 0.0), yaw))
     total = yaw + front
     C.spawn(m, sub(at, turn((anchor[0] * s, anchor[1] * s, anchor[2] * s), total)), total, s, tag=TAG,
             label="Set_Device_Projector")

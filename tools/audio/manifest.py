@@ -107,6 +107,34 @@ LINES = [
     ("vo_security_nobody", "SECURITY", "Nobody leaves!", "SECURITY|Nobody leaves!", "The guards come in at the alarm", None),
     ("vo_security_there", "SECURITY", "There! The man in white!", "SECURITY|There! The man in white!", "A guard sees him in the finale", None),
     ("vo_security_there_2", "SECURITY", "Stop that man!", "SECURITY|There! The man in white!", "The guards, second and later", None),
+    # --- QA time, wave 2 (Nov 15): the new lines (C:\Jam\Builds\qa\lines\*.json), keyed by the exact words in code.
+    # Scene 1, the taught switch (QueueLine.h): slow time holds until each has been said.
+    ("vo_julian_aside", "JULIAN", "Not on the list. Maya, I need a distraction.",
+     "JULIAN|Not on the list. Maya, I need a distraction.", "Scene 1: the scanner has refused him; the slow and the pan to Maya start", None),
+    ("vo_maya_teach_use", "MAYA", "Nobody watches the crew. Swing my light onto the scanner: E.",
+     "MAYA|Nobody watches the crew. Swing my light onto the scanner: E.", "Scene 1, first switch: the view has landed on Maya at the searchlight", None),
+    ("vo_maya_teach_back", "MAYA", "It's blind. Cut back to Julian with 1.",
+     "MAYA|It's blind. Cut back to Julian with 1.", "Scene 1, first switch: the scanner blinded", "It's blind. Cut back to Julian with one."),
+    # Scene 3, the house dimmer and the preview of Lot 41 (HouseDimmer.h / .cpp).
+    ("vo_vex_teach_dimmer", "VEX", "Not with the whole room watching. Maya: house lights down, roll the preview. Every eye goes to the screen.",
+     "VEX|Not with the whole room watching. Maya: house lights down, roll the preview. Every eye goes to the screen.",
+     "Scene 3, as the keycard lands (the lesson)", None),
+    ("vo_maya_dimmer", "MAYA", "House lights down. Rolling the preview.",
+     "MAYA|House lights down. Rolling the preview.", "Scene 3, HOUSE DIMMER fires (its FireLine)", None),
+    ("vo_vance_preview", "VANCE", "Ladies and gentlemen: a first glimpse of Lot 41.",
+     "VANCE|Ladies and gentlemen: a first glimpse of Lot 41.", "Scene 3, the house goes down",
+     "Ladies and gentlemen: a first glimpse of Lot forty-one."),
+    ("vo_maya_swap", "MAYA", "Clean swap. Bringing the house up.",
+     "MAYA|Clean swap. Bringing the house up.", "Scene 3, Julian swaps the reel in the dark", None),
+    ("vo_vance_discover", "VANCE", "And here it is... a newsreel?!",
+     "VANCE|And here it is... a newsreel?!", "Scene 3, the house comes up and Vance opens the dummy (the alarm's line follows)", None),
+    ("vo_maya_noswap", "MAYA", "House is up. Get him beside the case and I'll roll it again.",
+     "MAYA|House is up. Get him beside the case and I'll roll it again.", "Scene 3, the preview ends with no swap", None),
+    ("vo_vance_seen", "VANCE", "Sir! Step away from that case!",
+     "VANCE|Sir! Step away from that case!", "Scene 3, Julian at the case with the house up (THE ROOM SAW HIM follows)", None),
+    ("vo_maya_hint_case", "MAYA", "Not in the light. Get him beside the case, cut to me, I take the house down, then swap it.",
+     "MAYA|Not in the light. Get him beside the case, cut to me, I take the house down, then swap it.",
+     "Scene 3, the crew hint after two bloopers at the keycard's checkpoint", None),
 ]
 
 # id, event, seconds (target), prompt (ElevenLabs sound effects), loop

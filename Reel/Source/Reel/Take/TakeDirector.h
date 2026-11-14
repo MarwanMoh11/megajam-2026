@@ -937,6 +937,16 @@ public:
 	bool bHeistSwapHandled = false;
 	bool bHeistWasDark = false;
 	bool bHeistReaching = false;
+
+	// --- W3 heist2 --- the room watches (RoomWatch.h): the seated guests see Julian at the front in house light; the
+	// keycard's lift mark, like the case, is safe only in the dark. Found in BeginHeist; stepped in StepHeist.
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|Heist")
+	TObjectPtr<AActor> HeistRoom;
+
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|Heist")
+	TObjectPtr<AMark> HeistLiftMark;
+
+	bool bHeistLiftReaching = false;
 	// --- end QA heist ---
 
 protected:

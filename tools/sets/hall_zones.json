@@ -1,0 +1,33 @@
+{
+ "floor_z": 0.0,
+ "catwalk_z": 900.0,
+ "rows": {"x0": 1400.0, "x1": 3150.0, "aisle_half": 180.0},
+ "front_floor": {"min": [3185.0, -1200.0], "max": [3600.0, 1200.0]},
+ "dais": {"min": [3600.0, -1200.0], "max": [4400.0, 1200.0], "z": 20.0},
+ "case": [4160.0, 0.0, 110.0],
+ "case_mark": [4060.0, 0.0],
+ "podium": [3810.0, -480.0],
+ "screen": {"centre": [4388.0, 0.0, 600.0], "size": [1000.0, 730.0], "normal": [-1.0, 0.0, 0.0]},
+ "julian_place": [3150.0, -211.0],
+ "maya_post": [545.0, -640.0, 900.0],
+ "dimmer": [470.0, -640.0, 900.0],
+ "projector": [745.0, -600.0, 1060.0],
+ "followspots": [[735.0, -280.0, 900.0], [1550.0, -150.0, 900.0]],
+ "vex_post": [3000.0, -2230.0, 0.0],
+ "catwalk_access": [-940.0, 0.0, 450.0],
+ "notes": {
+  "units": "cm, Unreal world; X runs from the lobby doors (-1000) to the screen wall (4400); yaw 0 faces the dais",
+  "rows_front": "reserved bidders: 8 rows at x 3150, 3050 ... 2450 (pitch 100), 14 chairs a side, |y| 211..1017; row blockers |y| 180..1048",
+  "rows_rear": "general seats: 8 rows at x 2100 ... 1400, 12 chairs a side, |y| 211..893; row blockers |y| 180..924",
+  "cross_aisle": "x 2135..2400 between the two sections; the rope (x 2400, gap |y| < 150, beam across it) closes the reserved section; MARK_ROPE (2200, 0) is in the cross aisle",
+  "aisle": "the centre aisle |y| < 180 between the rows; RedTape_Aisle x 2450..3550 |y| < 140 unchanged; the guard moves to (3250, -450) at the front of the house, facing yaw 150 (down the aisle), away yaw -90",
+  "julian_place": "the front row's south aisle seat (seat top z 44.6, yaw 0); its stand point in the aisle is (3150, -120)",
+  "front_floor": "4.5 m between the front row and the dais edge, open from row end to row end; the aisle shutter moves to x 3200 (the aisle's front mouth)",
+  "screen": "box face at x 4388, z 235..965, y -500..500 (1.37:1, an old print's frame); was 14 x 6 m",
+  "catwalk": "deck top z 900, open rails to z 1000, hung from the roof trusses (z 1360) on rods, no legs; same X,Y as before: catwalk y -420..-260 from x -760 to the platform x 450..760 y -830..-200; north walkway y 1800..2000; bridge x 1400..1700 y -200..1800",
+  "catwalk_access": "the projection box over the lobby doors (x -1000..-760, y -200..800, z 430..1150): Maya comes through the gallery door (-1000, 0, z 450), climbs two flights inside (lane x -1000..-880 north to y 514, back south in lane x -880..-760 to z 900) and leaves by its east door at (-760, 0, 900) onto the catwalk head (x -760..-600, y -450..1800)",
+  "projector": "on Maya's platform's east rail, lens z 1060, throws 36 m onto the screen clear of the bridge (bridge ends at y -200)",
+  "followspots": "[0] is Maya's FollowSpot device (unchanged X,Y, now z 900); [1] is a dressing spot on the bridge (spot package decides)",
+  "vex_post": "unchanged: backstage at the second hatch"
+ }
+}

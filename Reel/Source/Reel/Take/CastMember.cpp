@@ -231,7 +231,8 @@ namespace CastKits
 		if (L.bSeated)
 		{
 			Out.Add({ETakeShape::Sphere, TEXT("thigh_l"), FVector(0.f, 9.5f, -21.f), FRotator::ZeroRotator, FVector(18.f, 38.f, 50.f), C});
-			Out.Add({ETakeShape::Cube, TEXT("calf_l"), FVector(5.f, 9.5f, -16.f - 4.f * L.SkirtLength), FRotator::ZeroRotator, FVector(4.f, 32.f, 32.f + 10.f * L.SkirtLength), C});
+			// --- W3 cast2 --- the skirt falls round both shins as soft cloth (an oval tube), not a board in front of them.
+			Out.Add({ETakeShape::Cylinder, TEXT("calf_l"), FVector(1.5f, 9.5f, -15.f - 5.f * L.SkirtLength), FRotator::ZeroRotator, FVector(19.f, 36.f, 30.f + 10.f * L.SkirtLength), C});
 		}
 		else
 		{
@@ -848,6 +849,12 @@ void ACastMember::FitSeat()
 	// The pose of this frame on the bones now, then the hip joints onto the seat (or the clip's hip height).
 	Body->TickAnimation(0.f, false);
 	Body->RefreshBoneTransforms();
+	// --- QA integrator --- no pose yet (construction script in the editor): GetBoneLocation would index an empty
+	// array and crash the editor. Leave bSeatFitted false so Tick fits the seat once the pose exists.
+	if (Body->GetComponentSpaceTransforms().Num() <= FMath::Max(Body->GetBoneIndex(TEXT("thigh_l")), Body->GetBoneIndex(TEXT("thigh_r"))))
+	{
+		return;
+	}
 	FVector Hip(0.f, 0.f, SeatedDrop);
 	bool bMeasured = false;
 	if (Body->GetBoneIndex(TEXT("thigh_l")) != INDEX_NONE && Body->GetBoneIndex(TEXT("thigh_r")) != INDEX_NONE)
@@ -868,6 +875,58 @@ void ACastMember::FitSeat()
 	const float S = BodyScale;
 	const float HipForward = static_cast<float>(Hip.Y) * S, HipRight = static_cast<float>(-Hip.X) * S;
 	Body->SetRelativeLocation(FVector(SeatHipForward - HipForward, -HipRight, -static_cast<float>(Hip.Z) * S + SeatOffsetZ));
+	// --- W3 cast2 --- the bent legs fitted to this body and this seat: the feet flat on the floor in front of it.
+	if (Acting.bBendSeat && bFitLegs)
+	{
+		const FReferenceSkeleton& Ref = Body->GetSkeletalMeshAsset()->GetRefSkeleton();
+		auto RefLoc = [&Ref](const TCHAR* Name, FVector& Out) {
+			const int32 Index = Ref.FindBoneIndex(FName(Name));
+			if (Index == INDEX_NONE)
+			{
+				return false;
+			}
+			Out = FAnimationRuntime::GetComponentSpaceTransformRefPose(Ref, Index).GetLocation();
+			return true;
+		};
+		FVector RHip, RKnee, RAnkle;
+		if (RefLoc(TEXT("thigh_l"), RHip) && RefLoc(TEXT("calf_l"), RKnee) && RefLoc(TEXT("foot_l"), RAnkle))
+		{
+			const float Thigh = static_cast<float>((RKnee - RHip).Size()) * S;
+			const float Shin = static_cast<float>((RAnkle - RKnee).Size()) * S;
+			const float Ankle = FMath::Max(static_cast<float>(RAnkle.Z), 4.f) * S;
+			const FVector Seat = GetActorLocation();
+			const FVector Probe = Seat + GetActorForwardVector() * (SeatHipForward + Thigh + 6.f);
+			float FloorZ = static_cast<float>(Seat.Z) - SeatDefaultHeight;
+			FHitResult Hit;
+			FCollisionQueryParams Query(SCENE_QUERY_STAT(CastSeatFloor), false, this);
+			if (GetWorld() && GetWorld()->LineTraceSingleByChannel(Hit, Probe + FVector(0.f, 0.f, 5.f), Probe - FVector(0.f, 0.f, 160.f), ECC_Visibility, Query)
+				&& Hit.ImpactPoint.Z < Seat.Z - 20.f)
+			{
+				FloorZ = static_cast<float>(Hit.ImpactPoint.Z);
+			}
+			// The knee is level with the hip joint when the thighs lie flat: the shin and the ankle must cover the rest.
+			const float HipZ = static_cast<float>(Seat.Z) + SeatThighRadius * S + SeatOffsetZ - FloorZ;
+			const float Need = HipZ - Ankle;
+			float Drop = 0.f, Lean = SeatShinForward;
+			const float Rest = Need - Shin * FMath::Cos(FMath::DegreesToRadians(Lean));
+			if (Rest >= 0.f)
+			{
+				// Short legs: the thighs slope down to the knee (the feet still short of the floor beyond the limit).
+				Drop = FMath::RadiansToDegrees(FMath::Asin(FMath::Clamp(Rest / FMath::Max(Thigh, 1.f), 0.f, FMath::Sin(FMath::DegreesToRadians(SeatMaxThighDrop)))));
+			}
+			else
+			{
+				// Long legs: the shins lean out first, then the knees rise.
+				const float C = Need / FMath::Max(Shin, 1.f);
+				Lean = C >= FMath::Cos(FMath::DegreesToRadians(SeatMaxShinForward)) ? FMath::RadiansToDegrees(FMath::Acos(FMath::Min(C, 1.f))) : SeatMaxShinForward;
+				Lean = FMath::Max(Lean, SeatShinForward);
+				const float Left = Need - Shin * FMath::Cos(FMath::DegreesToRadians(Lean));
+				Drop = Left < 0.f ? FMath::RadiansToDegrees(FMath::Asin(FMath::Clamp(Left / FMath::Max(Thigh, 1.f), -0.34f, 0.f))) : 0.f;
+			}
+			Acting.SeatHipDegrees = SeatedHipDegrees - Drop;
+			Acting.SeatKneeDegrees = Acting.SeatHipDegrees - Lean;
+		}
+	}
 	Acting.ActorToComponent = Body->GetRelativeTransform().Inverse();
 	PushActing();
 	bSeatFitted = true;

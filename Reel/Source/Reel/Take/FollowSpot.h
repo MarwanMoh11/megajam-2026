@@ -108,13 +108,66 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Spot")
 	FVector LensOffset = FVector(40.f, 0.f, 150.f);
 
-	/** How fast it swings, degrees a second. */
+	/** W3 spot: the swing's top speed, degrees a second (a heavy lamp: it never whips round). */
 	UPROPERTY(EditAnywhere, Category = "Take|Spot")
-	float SwingDegreesPerSecond = 320.f;
+	float SwingDegreesPerSecond = 240.f;
 
-	/** The share of the swing taken on the press frame itself. */
+	/** W3 spot: the shove on the press frame, as a share of the top speed: the lamp is already moving this frame,
+	 *  then the spring carries it the rest of the way. */
 	UPROPERTY(EditAnywhere, Category = "Take|Spot")
-	float SwingFirstStep = 0.4f;
+	float SwingFirstStep = 0.35f;
+
+	// --- W3 spot (Nov 15, item 3): weight, a beam that stops at what it hits -----------------------------------------
+
+	/** The swing is a spring: how quickly it settles, Hz (lower: heavier). */
+	UPROPERTY(EditAnywhere, Category = "Take|Spot")
+	float SwingFrequencyHz = 1.1f;
+
+	/** ...and its damping (1: no overshoot; 0.6: a slight overshoot and settle, about 8 %). */
+	UPROPERTY(EditAnywhere, Category = "Take|Spot")
+	float SwingDampingRatio = 0.62f;
+
+	/** The model tilts up or down toward the target about its trunnion, at most this much, degrees (the beam itself
+	 *  always reaches the target; the stand cannot tilt far). 0: the model only turns. */
+	UPROPERTY(EditAnywhere, Category = "Take|Spot")
+	float MaxModelPitch = 10.f;
+
+	/** The trunnion's height over the model's anchor, cm (the tilt's pivot). Below 0: the lens's height. */
+	UPROPERTY(EditAnywhere, Category = "Take|Spot")
+	float TrunnionHeight = -1.f;
+
+	/** Switch: the beam is traced from the lens; the shaft and the light end at the first solid thing (the light also
+	 *  casts shadows, so nothing glows through a wall). Off: the old straight beam to the target. */
+	UPROPERTY(EditAnywhere, Category = "Take|Spot")
+	bool bBeamStopsAtHit = true;
+
+	/** Switch: the beam light casts shadows and volumetric shadows (a hero light: the only shadowed device light). */
+	UPROPERTY(EditAnywhere, Category = "Take|Spot")
+	bool bBeamShadows = true;
+
+	/** How far past the beam's end the light still reaches, cm (the floor round and behind the lit person). */
+	UPROPERTY(EditAnywhere, Category = "Take|Spot")
+	float BeamSpill = 300.f;
+
+	/** A soft glow where the beam lands (no shadows, no haze), so the lit person or wall reads lit. 0: none. */
+	UPROPERTY(EditAnywhere, Category = "Take|Spot")
+	float HitGlowCandelas = 60.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Spot")
+	float HitGlowRadius = 260.f;
+
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<class UPointLightComponent> HitGlow;
+
+	/** Where the beam ends now: the first solid thing it meets, or the target (the lamp's lens while it is dark). */
+	FVector GetBeamEnd() const;
+
+	/** What the beam lands on now: the first solid actor it meets (the target watcher when nothing is in the way);
+	 *  null while it is dark. */
+	AActor* GetBeamHitActor() const;
+
+	/** Is the beam burning now? */
+	bool IsBeamOn() const { return bBeamOn; }
 
 protected:
 	UPROPERTY(Transient)
@@ -122,19 +175,39 @@ protected:
 
 	float BusySecondsLeft = 0.f;
 
-	/** The swing now and the swing that faces the target, degrees from rest. */
+	/** The swing now (degrees from rest: yaw about the actor's up, pitch of the beam) and its speed. */
 	float SwingYaw = 0.f;
 	float SwingAimYaw = 0.f;
+	float SwingPitch = 0.f;
+	float SwingAimPitch = 0.f;
+	float SwingYawSpeed = 0.f;
+	float SwingPitchSpeed = 0.f;
+
+	/** W3 spot: the beam as last traced. */
+	bool bBeamOn = false;
+	FVector BeamEndPoint = FVector::ZeroVector;
+	TWeakObjectPtr<AActor> BeamHitActor;
 
 private:
-	/** Stretches the beam from the lamp to the target and shows it (hides it if there is no target), this frame. */
+	/** Aims the beam (along the lamp, sweeping onto the target), traces it, lights what it hits, this frame. Hides it
+	 *  all when idle. */
 	void UpdateBeam();
 
-	/** The swing (degrees from rest) that points the lens at the target; the current swing if there is none. */
+	/** The swing (yaw from rest, and the beam's pitch) that points the lens at the target; the current one if none. */
 	float GetAimSwing() const;
+	float GetAimPitch() const;
 
-	/** Eases the swing toward the target (or back to rest when idle) and turns the model, this frame. */
+	/** The spring toward the target (or back to rest when idle), then turns the model and carries the handle. */
 	void StepSwing(float DeltaSeconds);
+
+	/** Turns the model (yaw, and pitch up to MaxModelPitch about the trunnion) and carries the lever with it. */
+	void PoseSwing();
+
+	/** The swing as a turn local to the actor, about the trunnion, with the model's pitch clamp. */
+	FQuat GetSwingTurn() const;
+
+	/** The trunnion (the tilt's pivot), local to the actor. */
+	FVector GetTrunnionLocal() const;
 
 	/** The lens in the world, turned with the swing. */
 	FVector GetLensPoint() const;

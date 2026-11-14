@@ -206,6 +206,27 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Cast|Seat")
 	float SeatOffsetZ = 0.f;
 
+	// --- W3 cast2 ---
+	/** The seated fallback's legs fitted per person: the thighs on the cushion, the feet flat on the floor (found by a
+	 *  trace in front of the seat), whatever the body's height. Off: SeatedHipDegrees / SeatedKneeDegrees for everyone. */
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Seat")
+	bool bFitLegs = true;
+
+	/** The shins' natural lean forward from vertical when they reach the floor, degrees. */
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Seat")
+	float SeatShinForward = 8.f;
+
+	/** At most this far the thighs slope down (short legs) or the shins lean forward (long legs), degrees. */
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Seat")
+	float SeatMaxThighDrop = 14.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Seat")
+	float SeatMaxShinForward = 32.f;
+
+	/** The seat top's height over the floor when the trace finds no floor, cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Seat")
+	float SeatDefaultHeight = 45.f;
+
 	/** The walk (watchers, WalkTo). */
 	UPROPERTY(EditAnywhere, Category = "Take|Cast|Pose")
 	TObjectPtr<UAnimationAsset> WalkBlendSpace;

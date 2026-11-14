@@ -1,0 +1,170 @@
+{
+ "SitIdle_A": {
+  "asset": "/Game/Take/Anim/Mocap/SitIdle_A",
+  "seconds": 6.4,
+  "loop": true,
+  "source": "Mixamo: Sitting Idle (Sitting In Chair Hands Resting On Thighs)"
+ },
+ "SitIdle_B": {
+  "asset": "/Game/Take/Anim/Mocap/SitIdle_B",
+  "seconds": 4.0,
+  "loop": true,
+  "source": "Mixamo: Sitting (Sitting Looking Side To Side)"
+ },
+ "SitClap": {
+  "asset": "/Game/Take/Anim/Mocap/SitClap",
+  "seconds": 6.5,
+  "loop": true,
+  "source": "Mixamo: Sitting Clap (Sitting Unethusiastic Clap)"
+ },
+ "SitTalk": {
+  "asset": "/Game/Take/Anim/Mocap/SitTalk",
+  "seconds": 44.97,
+  "loop": true,
+  "source": "Mixamo: Sitting Talking (Sitting And Talking To Another Person)"
+ },
+ "SitDrink": {
+  "asset": "/Game/Take/Anim/Mocap/SitDrink",
+  "seconds": 15.2,
+  "loop": false,
+  "source": "Mixamo: Sitting Drinking (Having A Seat And Drinking A Canned Beverage)"
+ },
+ "StandIdle_A": {
+  "asset": "/Game/Take/Anim/Mocap/StandIdle_A",
+  "seconds": 16.63,
+  "loop": true,
+  "source": "Mixamo: Idle (Weight Shift Idle)"
+ },
+ "StandIdle_B": {
+  "asset": "/Game/Take/Anim/Mocap/StandIdle_B",
+  "seconds": 9.93,
+  "loop": true,
+  "source": "Mixamo: Breathing Idle"
+ },
+ "StandIdle_C": {
+  "asset": "/Game/Take/Anim/Mocap/StandIdle_C",
+  "seconds": 8.77,
+  "loop": true,
+  "source": "Mixamo: Neutral Idle"
+ },
+ "Talk_A": {
+  "asset": "/Game/Take/Anim/Mocap/Talk_A",
+  "seconds": 10.27,
+  "loop": true,
+  "source": "Mixamo: Talking (General Conversation)"
+ },
+ "Talk_B": {
+  "asset": "/Game/Take/Anim/Mocap/Talk_B",
+  "seconds": 3.93,
+  "loop": true,
+  "source": "Mixamo: Talking (Asking A Question With Two Hands)"
+ },
+ "Talk_C": {
+  "asset": "/Game/Take/Anim/Mocap/Talk_C",
+  "seconds": 3.77,
+  "loop": true,
+  "source": "Mixamo: Talking (Asking A Question With One Hand)"
+ },
+ "Listen": {
+  "asset": "/Game/Take/Anim/Mocap/Listen",
+  "seconds": 1.83,
+  "loop": false,
+  "source": "Mixamo: Agreeing (Agreeing Yes)"
+ },
+ "Clap": {
+  "asset": "/Game/Take/Anim/Mocap/Clap",
+  "seconds": 1.17,
+  "loop": true,
+  "source": "Mixamo: Clapping (Clap While Standing)"
+ },
+ "Sip": {
+  "asset": "/Game/Take/Anim/Mocap/Sip",
+  "seconds": 8.87,
+  "loop": false,
+  "source": "Mixamo: Drinking (Male Drinking)"
+ },
+ "Laugh": {
+  "asset": "/Game/Take/Anim/Mocap/Laugh",
+  "seconds": 5.93,
+  "loop": true,
+  "source": "Mixamo: Talking (Talking Finding Something Funny)"
+ },
+ "LookAround": {
+  "asset": "/Game/Take/Anim/Mocap/LookAround",
+  "seconds": 6.33,
+  "loop": true,
+  "source": "Mixamo: Looking Around (Idle Stand Looking Around)"
+ },
+ "Wave": {
+  "asset": "/Game/Take/Anim/Mocap/Wave",
+  "seconds": 0.53,
+  "loop": true,
+  "source": "Mixamo: Waving (Waving)"
+ },
+ "Refuse": {
+  "asset": "/Game/Take/Anim/Mocap/Refuse",
+  "seconds": 2.57,
+  "loop": false,
+  "source": "Mixamo: Annoyed Head Shake (Shaking Head No Annoyed)"
+ },
+ "Speech_A": {
+  "asset": "/Game/Take/Anim/Mocap/Speech_A",
+  "seconds": 5.17,
+  "loop": true,
+  "source": "Mixamo: Talking (Asking A Question)"
+ },
+ "Speech_B": {
+  "asset": "/Game/Take/Anim/Mocap/Speech_B",
+  "seconds": 6.2,
+  "loop": true,
+  "source": "Mixamo: Rallying (Rallying The Crowd To Make Them Cheer)"
+ },
+ "Piano": {
+  "asset": "/Game/Take/Anim/Mocap/Piano",
+  "seconds": 22.83,
+  "loop": true,
+  "source": "Mixamo: Piano Playing (Playing Multiple Runs On A Piano)"
+ },
+ "Drums": {
+  "asset": "/Game/Take/Anim/Mocap/Drums",
+  "seconds": 4.7,
+  "loop": true,
+  "source": "Mixamo: Playing Drums (Basic Rock Beat)"
+ },
+ "Bass": {
+  "asset": "/Game/Take/Anim/Mocap/Bass",
+  "seconds": 6.23,
+  "loop": true,
+  "source": "Mixamo: Guitar Playing (Playing The Bass Guitar)"
+ },
+ "Bow": {
+  "asset": "/Game/Take/Anim/Mocap/Bow",
+  "seconds": 2.73,
+  "loop": false,
+  "source": "Mixamo: Quick Formal Bow"
+ },
+ "Lift": {
+  "asset": "/Game/Take/Anim/Mocap/Lift",
+  "seconds": 8.0,
+  "loop": false,
+  "source": "Mixamo: Pick Fruit (Picking Low Hanging Fruit)"
+ },
+ "Use": {
+  "asset": "/Game/Take/Anim/Mocap/Use",
+  "seconds": 3.23,
+  "loop": false,
+  "source": "Mixamo: Button Pushing (Pushing A Button With The Right Hand)"
+ },
+ "Shrug": {
+  "asset": "/Game/Take/Anim/Mocap/Shrug",
+  "seconds": 2.0,
+  "loop": false,
+  "source": "Mixamo: Shrugging (Shoulder Shrug)"
+ },
+ "Headset": {
+  "asset": "/Game/Take/Anim/Mocap/Headset",
+  "seconds": 37.23,
+  "loop": true,
+  "source": "Mixamo: Talking On A Cell Phone (Male Standing While Talking On A Cell Phone)"
+ }
+}
