@@ -70,7 +70,9 @@ def multipart(fields):
 
 
 def spec():
-    with open(os.path.join(HERE, "props.json"), encoding="utf-8") as f:
+    # RODIN_PROPS_FILE: another prop list with the same shape, so parallel agents each keep their own file
+    path = os.environ.get("RODIN_PROPS_FILE") or os.path.join(HERE, "props.json")
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
