@@ -62,15 +62,51 @@ recorder, and three deleted scenes (The Cold Open, The Long Take, The Insert). W
 step 2 list. **Everything in this section that the spec did not settle was filled in by Claude with the smallest
 thing that works; Marwan can overrule any of it.**
 
+**Marwan's note while step 2 was being built, Nov 14 about 01:00** (his words): "while the step 2 works I imagine
+the line with the npcs is outside the venue itself and also it should make sense in the narritive the side
+characters postiosn and how they control stuff also I dont want the character to just walk in a straight line it
+shouldnt be that easy these are all stuff that maybe are there because its just a greybox idk", and "there should
+be clever game design basically and narrative building and immersion". **What Claude made of it, the smallest form
+of each inside the rules already built (Marwan can overrule any of it); where it differs from the paragraphs below,
+this list wins:**
+1. **The Door is played on the street.** Three lanes lead to the doors. The red carpet in the middle is for invited
+   guests: it is red tape from the kerb to the doors, the doorman's frame runs straight down it ("Invitation,
+   sir?"), and a rope closes it at the doors. The queue lane north of it ends at the scanner. The south lane is
+   the crew's, roped off. Julian starts at the back of the queue, which has backed up along the kerb: he walks
+   down it and turns into the queue lane, so his first steps bend and the straight way to the doors is the one
+   with a red cone on it.
+2. **One cover story.** Aurelia hired a film crew to light and broadcast its gala, and that crew is the player's.
+   Maya and Vex wear crew passes, so nobody watches them. Julian is an actor playing a bidder with no invitation,
+   so every watcher is something that would check him. Each character says this in one line the first time the
+   player lands on them.
+3. **The crew start where the job would be and walk; nobody teleports.** Maya starts on a terrace over the front
+   doors at the arrivals searchlight, which looks straight down on the scanner. After The Door the player walks
+   her in through the door behind her, round the lobby balcony, through the gallery door and out along a catwalk
+   to a lighting platform over the benches, where the follow spot and the banner's winch are (about 20 s). Vex
+   starts on the loading dock by the lorry and walks up the corridor to the champagne cart at the hatch (about
+   5 s), then on to the sound desk and the dais cart. A blooper puts the crew back where the player had walked
+   them, not at their starts: nobody watches the crew, so their walk is not part of what a blooper costs. Each
+   Use prompt says what the hand does ("Swing the searchlight onto the SCANNER").
+4. **No straight clear line for Julian.** Each long axis is somebody's sight line: the carpet is the doorman's,
+   the carpet inside the lobby is the security chief's (he stands at the foot of the grand stair), the hall's
+   centre aisle is the broadcast drone's, and its camera riser blocks that aisle, so Julian slips out between the
+   bench rows and goes round by a side aisle. The marks are places a guest would stand: the queue, the scanner,
+   the registration desk, an aisle seat, a cocktail table, the rope.
+5. **Still for a judge playing cold:** the goal line names each step, The Door takes about 20 s done right, and
+   every blooper restarts at a checkpoint. The arrivals searchlight blinds for 6 s, not the follow spot's 4 s:
+   with 4 s the flight back left a third of a second to get through the gate.
+6. **Words:** an opening slate ("AURELIA AUCTION HOUSE - LOT 41: THE DIRECTOR'S CUT", then the scene and take), a
+   line from each watcher when it catches him, and lane signs in the world (QUEUE, INVITED GUESTS, PRESS, CREW
+   ONLY, LIVE BROADCAST).
+
 **Scene 1, The Door.**
 - The scanner arch at the front doors is a watcher with a gate. While the scanner is live the gate is shut and a red
   bar crosses it, and its frame (red tape on the ground in front of it) sees Julian. Blinded, the gate opens and the
   bar turns gold. *Filled in:* in the click-to-cue spec Julian waited on the scanner mark by himself; now the player
   walks him, so a gate is what makes him wait. The gold mark sits 90 cm outside the tape, so standing on it is safe.
-- *Filled in, the open point about Maya:* Maya starts Scene 1 on the street, just behind Julian at the foot of the
-  carpet, with a second follow spot on a stand. When Julian walks onto the hall floor she moves to her Scene 2 post
-  on the bridge ("Maya and Vex move to a new post between scenes" was already the rule). Julian only walks while
-  the player is on him, so she moves while the player is looking at Julian.
+- *Filled in, the open point about Maya:* she starts on the terrace over the doors with the arrivals searchlight
+  (item 3 above). The first version put her on the street behind Julian and moved her to the bridge when Scene 2
+  started; Marwan's note replaced that.
 - The loop it teaches, one line at a time in a goal line at the top of the screen: walk Julian to the gold mark,
   [2] cut to Maya, look at the scanner and press [E], [1] cut back, walk through. That goal line stays for the whole
   game and always names the next thing to do.
@@ -78,8 +114,9 @@ thing that works; Marwan can overrule any of it.**
 **Scene 2, The Floor.**
 - Walking onto the hall floor starts the scene (a title, a checkpoint).
 - **The drone** arrives on the next 4-bar line and flies down the centre aisle and back every 8 bars. Inside its red
-  circle Julian is exposed unless he stands on a gold mark (rule 5). Four marks run down the aisle, and the bridge's
-  deck hides him from it. It turns back short of the rope, so the rope encounter plays as before.
+  circle Julian is exposed unless he stands on a gold mark (rule 5). The mark at the hall's door is under it; from
+  there he has to leave the aisle between the bench rows (item 4 above). It turns back short of the rope, so the
+  rope encounter plays as before.
 - **The guard and the beam** at the rope are live from the start of the take, not on arrival lines: they are 34 m
   from the hall's door, and after a checkpoint restart an arrival line would have let Julian slip past before they
   came on. Both old routes work (banner plus spot, cart plus spot).

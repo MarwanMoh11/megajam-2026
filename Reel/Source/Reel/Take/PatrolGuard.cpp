@@ -149,13 +149,15 @@ void APatrolGuard::StepWatcher(float DeltaSeconds, UBarClockComponent* Clock)
 		const int32 HeldIndex = GetPatrolIndexAtBar(Clock->GetBar());
 		if (HeldIndex != LastPatrolIndex)
 		{
+			// The first point seen after BeginPlay (a take's start, a checkpoint restore) is not news: no line.
+			const bool bFirstSeen = LastPatrolIndex < 0;
 			LastPatrolIndex = HeldIndex;
 			const APatrolPoint* Held = PatrolPoints.IsValidIndex(HeldIndex) ? PatrolPoints[HeldIndex].Get() : nullptr;
 			if (Held)
 			{
 				TAKE_LOG(TEXT("%s holds point %d (%s)"), *Label, HeldIndex,
 					Held->StateText.IsEmpty() ? TEXT("WATCHING") : *Held->StateText);
-				if (!Held->ArriveLine.IsEmpty())
+				if (!bFirstSeen && !Held->ArriveLine.IsEmpty())
 				{
 					if (ATakeDirector* Director = ATakeDirector::Get(this))
 					{

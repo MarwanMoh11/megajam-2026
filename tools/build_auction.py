@@ -56,16 +56,30 @@ T = 20.0                          # wall thickness
 # --- the street front ------------------------------------------------------------------------------------------------
 PAVE_X0 = LX0 - 900.0             # the pavement in front of the building, level with its floors
 ROAD_X0 = LX0 - 2300.0            # the road beyond the kerb, and the street's west edge
-FRONT_DOOR_HALF, FRONT_DOOR_H = 300.0, 380.0   # the front doors stand open
+FRONT_DOOR_HALF, FRONT_DOOR_H = 450.0, 380.0   # the front doors stand open: three lanes wide
+TERRACE_X0 = LX0 - T - 230.0      # the terrace over the doors (the old canopy): Maya's searchlight stands on it
 
 # --- the route (Julian walks in from the street, then +X along Y = 0) -------------------------------------------------
-START = (LX0 - 700.0, 0.0)        # on the pavement at the foot of the red carpet, facing the doors
-SCAN_X = LX0 - T - 110.0          # Scene 1: the scanner's gate, just outside the front doors
+# Scene 1 is played on the street (Marwan, Nov 14). Three lanes lead to the doors: the red carpet in the middle is
+# for invited guests and the doorman looks straight down it; the queue lane north of it ends at the scanner; the
+# south lane is the crew's and is roped off. Julian has no invitation: he starts at the back of the queue, which
+# has backed up along the kerb, walks down it and turns into the queue lane.
+CARPET_HALF = 150.0               # the carpet: Y -150..150, from the kerb to the grand stair
+LANE_ROPE = 200.0                 # the ropes each side of the carpet
+LANE_Y0, LANE_Y1 = 210.0, 430.0   # the queue lane
+START = (PAVE_X0 + 130.0, 980.0)  # the back of the queue, on the kerb, facing south along it
+SCAN_X = LX0 - T - 300.0          # the scanner's gate: at the queue lane's head, clear of the terrace above
+SCAN_Y, SCAN_HALF = 320.0, 110.0
 SCAN_DEPTH = 180.0                # its frame (and its red tape) reaches this far out in front of the gate
-MARK_SCANNER = (SCAN_X - 270.0, 0.0)   # the gold mark at the scanner, 90 cm outside the tape
+MARK_SCANNER = (SCAN_X - 270.0, 300.0)   # the gold mark at the scanner, 90 cm outside the tape
+DOORMAN = (LX0 - T - 70.0, 0.0)   # at the doors, looking down the carpet
+CHIEF = (VOID_X0 + 20.0, 0.0)     # the security chief at the foot of the grand stair, looking at the doors
+MARK_DESK = (-2200.0, 740.0)      # the registration desk: a place to park Julian while the crew walk
 MARK_FLOOR = (-700.0, 0.0)        # Scene 2 starts here: the checkpoint just inside the hall
-MARK_AISLE = (100.0, 0.0)         # marks down the centre aisle: on one, the drone does not see him
-HALL_MARK = (900.0, 0.0)
+# The broadcast drone films the centre aisle, and its camera riser blocks the aisle: Julian goes round by a side aisle.
+RISER = (150.0, 450.0, -230.0, 230.0)   # x0, x1, y0, y1: between the bench rows, 80 cm high
+MARK_SEAT = (-300.0, 1090.0)      # an aisle seat at the end of a bench row
+MARK_COCKTAILS = (1100.0, 950.0)  # beside a cocktail table on the open floor
 MARK_ROPE = (2200.0, 0.0)         # the safe mark before the rope, and a checkpoint
 ROPE_X = 2400.0
 GAP = 150.0                       # half-width of the gap in the rope: the beam crosses it
@@ -86,14 +100,20 @@ BODYGUARD_YAW, BODYGUARD_RANGE, BODYGUARD_HALF_ANGLE = -44.6, 330.0, 22.0   # it
 DAIS_TAPE = (3620.0, 4380.0, -1150.0, -150.0)  # red tape on the dais's south half (x0, x1, y0, y1)
 
 # --- the crew --------------------------------------------------------------------------------------------------------
-MAYA_DOOR = (START[0] - 100.0, -110.0)   # Scene 1: Maya stands behind Julian at the foot of the carpet
-SPOT_DOOR = (START[0] - 140.0, -150.0, 150.0)   # her lamp there, on a stand
-MAYA = (1640.0, -100.0)           # Scene 2: on the bridge's end, facing the rope, within reach of the lamp
-SPOT = (1675.0, -230.0)           # the lamp, on the deck by the rail
-SPOT_USE = (1620.0, -230.0)       # where Maya stands to work it
+# Nobody teleports (Marwan, Nov 14): each of the crew starts where the job would be and walks to the next place.
+MAYA_START = (TERRACE_X0 + 55.0, SCAN_Y)        # on the terrace over the doors, at the arrivals searchlight
+SEARCHLIGHT = (TERRACE_X0 + 25.0, SCAN_Y + 150.0, F2 + 150.0)   # on a stand at the terrace's rail, over the scanner
+# Her way to the hall: in through the door behind her, round the lobby balcony, through the gallery door, and out
+# along a catwalk to the lighting platform over the benches (about 20 s). The follow spot and the banner's winch
+# are on the platform.
+CAT_Y0, CAT_Y1 = -420.0, -260.0   # the catwalk, from the west gallery (GALLERY_X1) to the platform
+PLAT = (450.0, 760.0, -600.0, -200.0)   # the platform: x0, x1, y0, y1
+SPOT = (735.0, -280.0)            # the follow spot, at the platform's east rail
+SPOT_USE = (650.0, -290.0)        # where Maya stands to work it
+BANNER_USE = (650.0, -510.0)      # the banner's winch, on the platform
 BATTEN = (ROPE_X - 40.0, 0.0, 560.0)   # the banner hangs over the gap
-BANNER_USE = (1620.0, 230.0)      # its winch, on the bridge
-VEX = (3000.0, -2230.0)           # backstage, at the second hatch, facing the hall
+VEX_START = (3650.0, -3100.0)     # on the loading dock, by the shutter the lorry is backed up to, with his kit
+VEX = (3000.0, -2230.0)           # his first post: backstage at the second hatch (5 s from the dock)
 CART = (3000.0, -1900.0)          # the mid-floor cart, in the hall just inside that hatch; it rolls +Y
 CART_ROLL = 350.0                 # ...and crashes 9.5 m from the guard, out of reach of Vance and the bodyguard
 CART_USE = (3000.0, -2080.0)      # its release, on Vex's side of the counter
@@ -590,7 +610,23 @@ box("Phone_Desk", 1800, 2200, -1560, -1480, 0, 100, m_trim)
 box("Gallery_West", HX0, GALLERY_X1, HY0, WALK_Y0, F2 - SLAB, F2, m_deck, folder="Set/Catwalk")
 box("Walkway", HX0, HX1, WALK_Y0, HY1, F2 - SLAB, F2, m_deck, folder="Set/Catwalk")
 box("Bridge", BRIDGE_X0, BRIDGE_X1, BRIDGE_Y0, WALK_Y0, F2 - SLAB, F2, m_deck, folder="Set/Catwalk")
-rail(GALLERY_X1, HY0, GALLERY_X1, WALK_Y0)
+rail(GALLERY_X1, HY0, GALLERY_X1, CAT_Y0)
+rail(GALLERY_X1, CAT_Y1, GALLERY_X1, WALK_Y0)
+# The catwalk and the lighting platform. Their decks stop a walker but not a sight line or a camera (open grating),
+# so the drone still sees the floor through them.
+soft(box("Catwalk", GALLERY_X1, PLAT[0], CAT_Y0, CAT_Y1, F2 - SLAB, F2, m_deck, folder="Set/Catwalk"))
+soft(box("Light_Platform", PLAT[0], PLAT[1], PLAT[2], PLAT[3], F2 - SLAB, F2, m_deck, folder="Set/Catwalk"))
+rail(GALLERY_X1, CAT_Y0, PLAT[0], CAT_Y0)
+rail(GALLERY_X1, CAT_Y1, PLAT[0], CAT_Y1)
+rail(PLAT[0], PLAT[2], PLAT[0], CAT_Y0)
+rail(PLAT[0], CAT_Y1, PLAT[0], PLAT[3])
+rail(PLAT[0], PLAT[2], PLAT[1], PLAT[2])
+rail(PLAT[0], PLAT[3], PLAT[1], PLAT[3])
+rail(PLAT[1], PLAT[2], PLAT[1], PLAT[3])
+for (lx, ly) in ((0.0, -340.0), (400.0, -340.0), (600.0, -590.0), (750.0, -590.0)):
+    box("Catwalk_Leg", lx - 8, lx + 8, ly - 8, ly + 8, 0, F2 - SLAB, m_trim, folder="Set/Catwalk")
+# The broadcast's camera riser fills the centre aisle between the bench rows.
+box("Broadcast_Riser", RISER[0], RISER[1], RISER[2], RISER[3], 0, 80, m_trim)
 rail(GALLERY_X1, WALK_Y0, BRIDGE_X0, WALK_Y0)
 rail(BRIDGE_X1, WALK_Y0, HX1, WALK_Y0)
 rail(BRIDGE_X0, BRIDGE_Y0, BRIDGE_X0, WALK_Y0)
@@ -620,7 +656,8 @@ box("Screen", HX1 - 10, HX1, -700, 700, 300, 900, m_floor)
 
 # --- the lobby block (two storeys) -----------------------------------------------------------------------------------
 # The shell: the front with the entrance doors standing open, and the block's north and south faces.
-wall("Front", "y", LX0 - T, HY0 - T, HY1 + T, 0, TOP, m_wall, [(0.0, FRONT_DOOR_HALF, 0.0, FRONT_DOOR_H)])
+wall("Front", "y", LX0 - T, HY0 - T, HY1 + T, 0, F2 - SLAB, m_wall, [(0.0, FRONT_DOOR_HALF, 0.0, FRONT_DOOR_H)])
+wall("Front", "y", LX0 - T, HY0 - T, HY1 + T, F2 - SLAB, TOP, m_wall, [(SCAN_Y, D_HALF + 15.0, F2, F2 + D_H)])
 box("Block_North", LX0, HX0 - T, HY1, HY1 + T, 0, TOP, m_wall)
 box("Block_South", LX0, HX0 - T, HY0 - T, HY0, 0, TOP, m_wall)
 for s in (1, -1):   # the two door leaves, swung out
@@ -645,9 +682,9 @@ for px in (VOID_X0, VOID_X1):
 # The grand stair: up the middle of the atrium to the east balcony, facing the door to the hall's gallery.
 stairs("Grand_Stair", VOID_X0 + 100, 0.0, 0, VOID_X1 - (VOID_X0 + 100), F2, 400.0, 0.0, 30, m_trim)
 box("Lobby_Desk", -2300, -2100, 900, 1300, 0, 110, m_trim)
-for bx in (-3050.0, -1200.0):
-    box("Lobby_Bench", bx - 30, bx + 30, -600, -200, 0, 50, m_trim)
-    box("Lobby_Bench", bx - 30, bx + 30, 200, 600, 0, 50, m_trim)
+for (bx, by0, by1) in ((-3050.0, 800.0, 1200.0), (-1200.0, 200.0, 600.0)):
+    box("Lobby_Bench", bx - 30, bx + 30, -by1, -by0, 0, 50, m_trim)
+    box("Lobby_Bench", bx - 30, bx + 30, by0, by1, 0, 50, m_trim)
 for (lx, ly) in ((-2950, -800), (-2950, 800), (-1260, -800), (-1260, 800), (-2100, 1100), (-2100, -1100)):
     lamp(lx, ly)
 
@@ -753,33 +790,78 @@ fire_door("y", EX1, -1800.0, -1)
 # =====================================================================================================================
 FRONT = LX0 - T                    # the facade's outer face
 
-# --- the street front: red carpet, the scanner arch (a placeholder for Scene 1), the queue, the press, cars -----------
-flat("Carpet", START[0] + 100, VOID_X0 + 80, -150, 150, m_carpet)
+# --- the street front: three lanes to the doors, the terrace over them, the queue, the press, signs, cars --------------
+def sign(text, x, y, z, yaw, size=32.0, rgb=(1.0, 0.85, 0.45), folder="Set/Signs"):
+    """Words in the world. The text faces the way yaw points (stand on that side to read it), on a dark board."""
+    N[0] += 1
+    a = spawn(unreal.TextRenderActor, (x, y, z), yaw=yaw, label="Sign_%03d" % N[0], folder=folder)
+    c = a.get_component_by_class(unreal.TextRenderComponent)
+    try:
+        c.set_text(text)
+    except Exception:
+        c.set_editor_property("text", text)
+    for (k, v) in (("world_size", size), ("text_render_color", tint(rgb)),
+                   ("horizontal_alignment", unreal.HorizTextAligment.EHTA_CENTER),
+                   ("vertical_alignment", unreal.VerticalTextAligment.EVRTA_TEXT_CENTER)):
+        try:
+            c.set_editor_property(k, v)
+        except Exception as e:
+            unreal.log_warning("sign: %s: %s" % (k, e))
+    r = math.radians(yaw)
+    board = shape(CUBE, "Sign_Board", x - 4.0 * math.cos(r), y - 4.0 * math.sin(r), z, 4.0,
+                  len(text) * size * 0.62 + 30.0, size * 1.7, m_floor, yaw=yaw, folder=folder)
+    ghost(board).static_mesh_component.set_editor_property("cast_shadow", False)
+    return a
+
+
+flat("Carpet", PAVE_X0 + 60.0, VOID_X0 + 80, -CARPET_HALF, CARPET_HALF, m_carpet)
+# The scanner arch at the head of the queue lane (the watcher itself is placed with the rules).
 for s in (1, -1):
-    prop("Scanner_Post", SCAN_X - 10, SCAN_X + 10, s * 160, s * 180, 0, 240, m_case, folder="Set/Street")
-    prop("Scanner_Wing", SCAN_X - 5, SCAN_X + 5, s * 180, s * 300, 0, 100, m_case, folder="Set/Street")
-deco("Scanner_Lintel", SCAN_X - 10, SCAN_X + 10, -180, 180, 240, 262, m_case, folder="Set/Street")
-box("Canopy", FRONT - 520, FRONT, -560, 560, 410, 430, m_trim, folder="Set/Street")
-deco("Canopy_Fascia", FRONT - 530, FRONT - 520, -560, 560, 395, 445, m_gold, folder="Set/Street")
+    prop("Scanner_Post", SCAN_X - 10, SCAN_X + 10, SCAN_Y + s * SCAN_HALF, SCAN_Y + s * (SCAN_HALF + 20), 0, 240, m_case,
+         folder="Set/Street")
+deco("Scanner_Lintel", SCAN_X - 10, SCAN_X + 10, SCAN_Y - SCAN_HALF - 20, SCAN_Y + SCAN_HALF + 20, 240, 262, m_case,
+     folder="Set/Street")
+# The terrace over the doors, with a rail: the arrivals searchlight stands on it, and a door leads in to the balcony.
+box("Terrace", TERRACE_X0, FRONT, -600, 600, F2 - SLAB, F2, m_trim, folder="Set/Street")
+deco("Terrace_Fascia", TERRACE_X0 - 10, TERRACE_X0, -600, 600, 395, 445, m_gold, folder="Set/Street")
+rail(TERRACE_X0, -600, TERRACE_X0, 600)
+rail(TERRACE_X0, -600, FRONT, -600)
+rail(TERRACE_X0, 600, FRONT, 600)
 for s in (1, -1):
-    prop("Canopy_Post", FRONT - 516, FRONT - 504, s * 540, s * 552, 0, 410, m_trim, folder="Set/Street")
-deco("Sign", FRONT - 6, FRONT, -700, 700, 520, 640, m_gold, folder="Set/Street")
+    prop("Terrace_Post", TERRACE_X0 + 4, TERRACE_X0 + 16, s * 578, s * 590, 0, F2 - SLAB, m_trim, folder="Set/Street")
+deco("Sign", FRONT - 6, FRONT, -700, 700, 730, 850, m_gold, folder="Set/Street")
 for c in (900.0, 1300.0, 1700.0):
     for s in (1, -1):
         for (z0, z1) in ((90.0, 300.0), (F2 + 70.0, F2 + 290.0)):
             deco("Window", FRONT - 4, FRONT, s * c - 120, s * c + 120, z0, z1, m_window, folder="Set/Street")
         prop("Planter", FRONT - 70, FRONT - 10, s * c - 110, s * c + 110, 0, 50, m_trim, folder="Set/Street")
         deco("Hedge", FRONT - 66, FRONT - 14, s * c - 104, s * c + 104, 50, 95, m_plant, folder="Set/Street")
-# The queue north of the carpet, behind ropes; the doorman at its head; the press behind a rope to the south.
-QX = (PAVE_X0 + 60.0, -3880.0, -3710.0, -3540.0)
-for qy in (200.0, 440.0, -200.0):
-    rope_line([(qx, qy) for qx in QX])
-for qx in (-3990.0, -3890.0, -3790.0, -3690.0, -3600.0):
-    guest(qx, 320.0 + rnd.uniform(-25, 25), facing=rnd.uniform(-15, 15))
-guest(-3450.0, 235.0, facing=180.0, mat=GUEST_MATS[1])
+# Ropes: both sides of the carpet from the kerb to the doors (and a little way inside), the queue lane's north side,
+# a rope across the carpet at the doors (the doorman lifts it for an invitation), a rope across the crew lane.
+CARPET_X = (PAVE_X0 + 150.0, -3760.0, -3560.0, -3330.0, FRONT - 6.0)   # the carpet's foot is open: 1.5 m of it
+for ry in (LANE_ROPE, -LANE_ROPE):
+    rope_line([(rx, ry) for rx in CARPET_X])
+    rope_line([(LX0 + 12.0, ry), (LX0 + 250.0, ry)])
+rope_line([(-3900.0, LANE_Y1 + 10.0), (-3710.0, LANE_Y1 + 10.0), (SCAN_X, LANE_Y1 + 10.0)])
+prop("Rope", FRONT - 22, FRONT - 18, -LANE_ROPE, LANE_ROPE, 76, 82, m_rope, folder="Set/Street")
+blocker("Carpet_Rope_Block", FRONT - 26, FRONT - 14, -LANE_ROPE, LANE_ROPE, 0, 260)
+prop("Rope", SCAN_X - 2, SCAN_X + 2, -FRONT_DOOR_HALF, -LANE_ROPE, 76, 82, m_rope, folder="Set/Street")
+blocker("Crew_Lane_Block", SCAN_X - 6, SCAN_X + 6, -FRONT_DOOR_HALF, -LANE_ROPE, 0, 260)
+# The queue: two in the lane against its north rope, the rest backed up along the kerb to Julian's start.
+for qx in (-3880.0, -3800.0):
+    guest(qx, LANE_Y1 - 35.0, facing=0.0)
+for qy in (500.0, 580.0, 660.0, 740.0, 820.0, 900.0):
+    guest(PAVE_X0 + 50.0, qy + rnd.uniform(-10, 10), facing=270.0)
+# The press, behind the carpet's south rope.
 for px in (-3950.0, -3800.0, -3650.0):
     guest(px, -300.0, facing=90.0 + rnd.uniform(-20, 20))
     tripod(px + 45, -245.0)
+# Lane signs.
+sign("QUEUE", -3905.0, LANE_Y1 + 16.0, 150.0, 135.0)
+sign("INVITED GUESTS", PAVE_X0 + 145.0, LANE_ROPE + 8.0, 150.0, 135.0)
+sign("INVITED GUESTS", PAVE_X0 + 40.0, 0.0, 262.0, 180.0, size=26.0)
+sign("PRESS", -3800.0, -LANE_ROPE - 8.0, 130.0, 90.0, size=26.0)
+sign("CREW ONLY", SCAN_X - 8.0, -(LANE_ROPE + FRONT_DOOR_HALF) / 2, 150.0, 180.0, size=26.0)
 for ly in (-1900.0, -700.0, 700.0, 1900.0):
     street_lamp(PAVE_X0 + 40, ly)
 for by in range(-2100, 2101, 350):
@@ -827,8 +909,8 @@ mingle(-2950.0, -1000.0, 2)
 for s in (1, -1):
     sofa(-3180, -3100, s * 600 - 150, s * 600 + 150, F2, "W")
 table(-3020.0, 0.0, 60, 120, h=40, z=F2)
-guest(-2300.0, 865.0, z=F2, facing=270.0)
-guest(-2180.0, 870.0, z=F2, facing=255.0)
+guest(-2300.0, 1340.0, z=F2, facing=270.0)
+guest(-2180.0, 1345.0, z=F2, facing=255.0)
 guest(-1900.0, -865.0, z=F2, facing=90.0)
 
 # --- the side strips: cloakroom and restrooms below, the office and the security room above ----------------------------
@@ -863,7 +945,7 @@ for bx in (-400.0, -200.0, 0.0, 200.0, 400.0, 600.0):  # bidders on the benches,
             guest(bx, gy, z=60.0, facing=0.0, seated=True)
             if rnd.random() < 0.25:
                 deco("Paddle", bx + 14, bx + 18, gy + 24, gy + 38, 150, 172, m_head)
-for (mx, my, n) in ((-750, -1300, 3), (-750, 1250, 2), (150, 1200, 3), (1100, 1150, 2), (1900, 1100, 3),
+for (mx, my, n) in ((-750, -1300, 3), (-750, 1250, 2), (150, 1560, 3), (1100, 1150, 2), (1900, 1100, 3),
                     (150, -1300, 2), (-800, -560, 2), (-800, 560, 2)):
     mingle(float(mx), float(my), n)
 for i in range(8):                                      # the champagne bar
@@ -895,6 +977,16 @@ for cx in (-500.0, 400.0, 1300.0, 2200.0, 3100.0, 4000.0):   # a banner on every
 for s in (1, -1):
     plant(4330.0, s * 1100.0, DAIS_H)
     easel(4230.0, s * 480.0, DAIS_H)
+tripod((RISER[0] + RISER[1]) / 2 + 60.0, 0.0, 80.0)
+ghost(shape(CYL, "Guest", (RISER[0] + RISER[1]) / 2 - 20.0, 40.0, 80.0 + 75.0, 26.0, 48.0, 150.0, GUEST_MATS[1],
+            folder="Set/Guests"))
+ghost(shape(SPHERE, "Guest_Head", (RISER[0] + RISER[1]) / 2 - 20.0, 40.0, 80.0 + 162.0, 24.0, 24.0, 26.0, m_head,
+            folder="Set/Guests"))
+sign("LIVE BROADCAST", RISER[0] - 6.0, 0.0, 45.0, 180.0, size=24.0, rgb=(1.0, 0.25, 0.2))
+sign("LOT 41: THE DIRECTOR'S CUT", 4125.0, 0.0, DAIS_H + 165.0, 180.0, size=18.0)
+sign("CREW ONLY", 3000.0, BY0 + 6.0, 215.0, 90.0, size=22.0)
+for (kx, ky, ks) in ((3760.0, -3200.0, 70.0), (3840.0, -3190.0, 50.0), (3560.0, -3210.0, 60.0)):
+    prop("Flight_Case", kx - ks / 2, kx + ks / 2, ky - 30, ky + 30, 0, ks, m_floor)
 # The second floor of the hall: benches, onlookers and a film camera on the west gallery; cases on the walkway.
 for s in (1, -1):
     prop("Gallery_Bench", -990, -940, s * 400, s * 900, F2, F2 + 45, m_trim)
@@ -1070,10 +1162,12 @@ ppv.set_editor_property("settings", pps)
 # The street: lamp heads, the canopy, a warm key on the carpet at the scanner, red at the scanner's eye.
 for ly in (-1900.0, -700.0, 700.0, 1900.0):
     lamp(PAVE_X0 - 30.0, ly, z=450.0, cd=57.0, radius=1700.0)
-for cy in (-380.0, 380.0):
-    lamp(FRONT - 260.0, cy, z=395.0, cd=15.0, radius=900.0)
-spot("Key_Scanner", SCAN_X - 330.0, 0.0, 400.0, 0.0, -62.0, 330.0, 30.0, 1100.0, WARM, shadows=True)
-lamp(SCAN_X - 30.0, 0.0, z=235.0, cd=2.2, radius=320.0, rgb=REDL)
+for cy in (-330.0, 0.0, 330.0):
+    lamp(FRONT - 115.0, cy, z=400.0, cd=15.0, radius=800.0)
+spot("Key_Scanner", SCAN_X - 360.0, SCAN_Y - 20.0, 470.0, 0.0, -58.0, 420.0, 30.0, 1200.0, WARM, shadows=True)
+lamp(SCAN_X - 30.0, SCAN_Y, z=235.0, cd=2.2, radius=320.0, rgb=REDL)
+lamp(VEX_START[0], VEX_START[1] + 150.0, z=400.0, cd=30.0, radius=1100.0, rgb=WORK)
+lamp((PLAT[0] + PLAT[1]) / 2, (PLAT[2] + PLAT[3]) / 2, z=F2 + 300.0, cd=45.0, radius=900.0, rgb=WORK)
 # The lobby: a chandelier's worth over the atrium, a key down the grand stair.
 lamp((VOID_X0 + VOID_X1) / 2, 0.0, z=820.0, cd=420.0, radius=2600.0)
 spot("Key_Stair", VOID_X0 - 200.0, 0.0, 860.0, 0.0, -55.0, 450.0, 26.0, 2400.0, WARM, shadows=True)
@@ -1102,16 +1196,22 @@ for wx in (300.0, 2400.0, 3700.0):
 A, B, C = unreal.TakeCameraId.A, unreal.TakeCameraId.B, unreal.TakeCameraId.C
 spawn(unreal.TakeDirector, (HX0 + 100, HY0 + 100, 0), label="TakeDirector", folder="Take")
 
-# The three characters. Z is the capsule's centre. Maya starts on the street for Scene 1; her post for Scene 2 is the
-# bridge (the director moves her when Julian walks onto the hall floor). Vex has one post, backstage.
+# The three characters. Z is the capsule's centre. The cover story (Marwan, Nov 14): Aurelia hired a film crew to
+# light and broadcast its gala, and that crew is the player's. Maya and Vex carry crew passes, so nobody watches
+# them; Julian is an actor playing a bidder with no invitation, so every watcher is something that would check him.
+# Each is introduced by one line the first time the player lands on them.
 CAPSULE = 98.0
-julian = spawn(unreal.Julian, (START[0], START[1], CAPSULE), label="Julian", folder="Take")
-maya = spawn(unreal.TakeCharacter, (MAYA_DOOR[0], MAYA_DOOR[1], CAPSULE), label="Maya", folder="Take")
-setp(maya, id=B, tint=unreal.LinearColor(0.10, 0.35, 0.80, 1.0))
-vex = spawn(unreal.TakeCharacter, (VEX[0], VEX[1], CAPSULE), yaw=90.0, label="Vex", folder="Take")
-setp(vex, id=C, tint=unreal.LinearColor(0.10, 0.55, 0.30, 1.0))
-post = spawn(unreal.CrewPost, (MAYA[0], MAYA[1], F2), label="Post_Maya_Scene2", folder="Take")
-setp(post, who=B, scene=2)
+julian = spawn(unreal.Julian, (START[0], START[1], CAPSULE), yaw=-90.0, label="Julian", folder="Take")
+setp(julian, intro_line="JULIAN: an actor playing a bidder. He has no invitation, so every guard, lens and scanner "
+                        "here is looking for him.")
+maya = spawn(unreal.TakeCharacter, (MAYA_START[0], MAYA_START[1], F2 + CAPSULE), yaw=180.0, label="Maya",
+             folder="Take")
+setp(maya, id=B, tint=unreal.LinearColor(0.10, 0.35, 0.80, 1.0), start_look_pitch=-42.0,
+     intro_line="MAYA: gaffer on the film crew Aurelia hired to light its gala. She wears a crew pass: "
+                "nobody watches her.")
+vex = spawn(unreal.TakeCharacter, (VEX_START[0], VEX_START[1], CAPSULE), yaw=143.0, label="Vex", folder="Take")
+setp(vex, id=C, tint=unreal.LinearColor(0.10, 0.55, 0.30, 1.0),
+     intro_line="VEX: props and sound on the same crew. With a crew pass, backstage is his.")
 
 
 def mark(label, name, xy, z=0.0):
@@ -1136,26 +1236,39 @@ def tape(label, x0, x1, y0, y1, z=0.0):
     return a
 
 
-# --- Scene 1, The Door ------------------------------------------------------------------------------------------------
-mark("Mark_Start", "START", START)
+# --- Scene 1, The Door (on the street) ------------------------------------------------------------------------------
+mark("Mark_Start", "THE QUEUE", START)
 mark("Mark_Scanner", "SCANNER", MARK_SCANNER)
-scanner = spawn(unreal.ScannerWatcher, (SCAN_X, 0, 0), label="Scanner", folder="Take")
-setp(scanner, label="SCANNER", gate_half_width=160.0, frame_depth=SCAN_DEPTH,
-     seen_line='CHIEF: "No match. Hold there, sir."', blinded_line='CHIEF: "Who turned that on?!"')
-tape("RedTape_Scanner", SCAN_X - SCAN_DEPTH, SCAN_X, -160.0, 160.0)
-spot_door = spawn(unreal.FollowSpot, SPOT_DOOR, label="Spot_Door", folder="Take")
-# A wide aim assist and a short range: from where Maya lands, the scanner is picked at once, and nothing else can be.
-setp(spot_door, device_name="SPOT", effect=unreal.DeviceEffect.BLIND, range=1500.0, duration=4.0, uses=0,
-     fired_from=B, use_verb="SPOT", aim_assist_degrees=25.0)
-setp(spot_door, use_offset=use_offset(spot_door, (MAYA_DOOR[0], MAYA_DOOR[1], 0.0)))
-ghost(shape(CYL, "Spot_Stand", SPOT_DOOR[0], SPOT_DOOR[1], SPOT_DOOR[2] / 2, 8.0, 8.0, SPOT_DOOR[2], m_trim,
-            folder="Set/Street"))
-trigger("Trigger_Door", "Door", LX0 + 20.0, LX0 + 240.0, -FRONT_DOOR_HALF, FRONT_DOOR_HALF)
+scanner = spawn(unreal.ScannerWatcher, (SCAN_X, SCAN_Y, 0), label="Scanner", folder="Take")
+setp(scanner, label="SCANNER", gate_half_width=SCAN_HALF, frame_depth=SCAN_DEPTH,
+     seen_line='CHIEF: "No match. Hold there, sir."', blinded_line='CHIEF: "Who turned that light on?!"')
+tape("RedTape_Scanner", SCAN_X - SCAN_DEPTH, SCAN_X, SCAN_Y - SCAN_HALF, SCAN_Y + SCAN_HALF)
+# The carpet is the invited guests' lane: red tape from the kerb to the doors, the doorman's frame straight down it.
+tape("RedTape_Carpet", PAVE_X0 + 60.0, FRONT - 30.0, -LANE_ROPE + 10.0, LANE_ROPE - 10.0)
+doorman = spawn(unreal.PatrolGuard, (DOORMAN[0], DOORMAN[1], 0), yaw=180.0, label="Doorman", folder="Take")
+setp(doorman, label="DOORMAN", frame_range=760.0, frame_half_angle=14.0,
+     seen_line='DOORMAN: "Invitation, sir?"')
+# Inside, the carpet runs on to the grand stair under the security chief's eye.
+tape("RedTape_LobbyCarpet", LX0 + 10.0, CHIEF[0] - 20.0, -CARPET_HALF, CARPET_HALF)
+chief = spawn(unreal.PatrolGuard, (CHIEF[0], CHIEF[1], 0), yaw=180.0, label="Chief", folder="Take")
+setp(chief, label="CHIEF", frame_range=500.0, frame_half_angle=17.0,
+     seen_line='CHIEF: "You. That carpet is for invited guests."')
+# Maya's arrivals searchlight on the terrace, over the scanner. A short range and a wide aim assist: from where she
+# stands the scanner is picked at once, and the doorman under the terrace never is.
+searchlight = spawn(unreal.FollowSpot, SEARCHLIGHT, label="Searchlight", folder="Take")
+# It blinds for 6 s, not the follow spot's 4: the flight back to Julian takes 1.6 s of it, and this is the lesson.
+setp(searchlight, device_name="SEARCHLIGHT", effect=unreal.DeviceEffect.BLIND, range=300.0, duration=6.0, uses=0,
+     fired_from=B, use_verb="Swing the searchlight onto the", aim_assist_degrees=75.0)
+setp(searchlight, use_offset=use_offset(searchlight, (MAYA_START[0], MAYA_START[1], F2)))
+ghost(shape(CYL, "Searchlight_Stand", SEARCHLIGHT[0], SEARCHLIGHT[1], (F2 + SEARCHLIGHT[2]) / 2, 8.0, 8.0,
+            SEARCHLIGHT[2] - F2, m_trim, folder="Set/Street"))
+trigger("Trigger_Door", "Door", LX0 + 20.0, LX0 + 240.0, LANE_ROPE + 10.0, FRONT_DOOR_HALF)
+mark("Mark_Desk", "THE DESK", MARK_DESK)
 
 # --- Scene 2, The Floor -----------------------------------------------------------------------------------------------
 m_floor_mark = mark("Mark_Floor", "THE FLOOR", MARK_FLOOR)
-mark("Mark_Aisle", "AISLE", MARK_AISLE)
-mark("Mark_Hall", "THE HALL", HALL_MARK)
+mark("Mark_Seat", "AISLE SEAT", MARK_SEAT)
+mark("Mark_Cocktails", "COCKTAILS", MARK_COCKTAILS)
 m_rope_mark = mark("Mark_Rope", "ROPE", MARK_ROPE)
 m_dais_mark = mark("Mark_Dais", "THE DAIS", MARK_DAIS, DAIS_H)
 m_lift = mark("Mark_Lift", "LIFT", MARK_LIFT, DAIS_H)
@@ -1178,14 +1291,14 @@ tape("RedTape_Aisle", TAPE_X0, TAPE_X1, -GAP + 10.0, GAP - 10.0)
 tape("RedTape_Dais", DAIS_TAPE[0], DAIS_TAPE[1], DAIS_TAPE[2], DAIS_TAPE[3], DAIS_H)
 
 # The drone: a loop down the centre aisle and back, 8 bars; it arrives on the 4-bar line after Scene 2 starts. It
-# flies above the bridge's rail, and the bridge's deck hides Julian from it.
+# flies above the catwalk's rail.
 d1 = spawn(unreal.PatrolPoint, (DRONE_PATH[0][0], DRONE_PATH[0][1], 0), label="Drone_Path_1", folder="Take")
 setp(d1, bars=4)
 d2 = spawn(unreal.PatrolPoint, (DRONE_PATH[1][0], DRONE_PATH[1][1], 0), label="Drone_Path_2", folder="Take")
 setp(d2, bars=4)
 drone = spawn(unreal.DroneWatcher, (DRONE_PATH[0][0], DRONE_PATH[0][1], 0), label="Drone", folder="Take")
 setp(drone, label="DRONE", path_points=[d1, d2], cone_radius=DRONE_RADIUS, fly_height=720.0, arrive_on="Scene2",
-     instrument=unreal.WatcherInstrument.TRUMPET)
+     instrument=unreal.WatcherInstrument.TRUMPET, seen_line='BROADCAST: "Who is the gentleman in white?"')
 
 # The beam across the gap in the rope.
 beam = spawn(unreal.BeamWatcher, (ROPE_X, -GAP, 0), label="Beam", folder="Take")
@@ -1199,7 +1312,7 @@ p2 = spawn(unreal.PatrolPoint, (GUARD[0], GUARD[1], 0), yaw=-90.0, label="Patrol
 setp(p2, bars=1)
 guard = spawn(unreal.PatrolGuard, (GUARD[0], GUARD[1], 0), yaw=90.0, label="Guard", folder="Take")
 setp(guard, label="GUARD", frame_range=GUARD_RANGE, frame_half_angle=GUARD_HALF_ANGLE, patrol_points=[p1, p2],
-     instrument=unreal.WatcherInstrument.BASS)
+     instrument=unreal.WatcherInstrument.BASS, seen_line='GUARD: "Sir? That aisle is closed."')
 
 # Vance at the podium: his frame is on the lift mark behind him, except while he speaks (4 bars from every band
 # break: bars 8, 16, 24...), when it turns to the crowd. A Lure only turns his head.
@@ -1216,16 +1329,16 @@ vance.set_editor_property("bTurnsOnly", True)
 bodyguard = spawn(unreal.PatrolGuard, (BODYGUARD[0], BODYGUARD[1], DAIS_H), yaw=BODYGUARD_YAW, label="Bodyguard",
                   folder="Take")
 setp(bodyguard, label="BODYGUARD", frame_range=BODYGUARD_RANGE, frame_half_angle=BODYGUARD_HALF_ANGLE,
-     arrive_on="PastRope")
+     arrive_on="PastRope", seen_line='BODYGUARD: "Step away from the podium."')
 
-# Maya's devices on the bridge: the follow spot and the banner over the rope.
+# Maya's devices on the lighting platform: the follow spot, and the winch of the banner over the rope.
 spot_dev = spawn(unreal.FollowSpot, (SPOT[0], SPOT[1], F2), label="Spot", folder="Take")
-setp(spot_dev, device_name="SPOT", effect=unreal.DeviceEffect.BLIND, range=3500.0, duration=4.0, uses=0,
-     fired_from=B, use_verb="SPOT")
+setp(spot_dev, device_name="FOLLOW SPOT", effect=unreal.DeviceEffect.BLIND, range=3500.0, duration=4.0, uses=0,
+     fired_from=B, use_verb="Put the follow spot on the")
 setp(spot_dev, use_offset=use_offset(spot_dev, (SPOT_USE[0], SPOT_USE[1], F2)))
 banner = spawn(unreal.BannerDevice, BATTEN, label="Banner", folder="Take")
 setp(banner, device_name="BANNER", effect=unreal.DeviceEffect.MASK, range=600.0, duration=10.0, uses=1,
-     fired_from=B, drop_distance=300.0, use_verb="DROP THE BANNER",
+     fired_from=B, drop_distance=300.0, use_verb="Winch the banner down over the beam",
      effect_offset=unreal.Vector(ROPE_X - BATTEN[0], 0.0, 20.0 - BATTEN[2]))
 setp(banner, use_offset=use_offset(banner, (BANNER_USE[0], BANNER_USE[1], F2)))
 
@@ -1233,17 +1346,18 @@ setp(banner, use_offset=use_offset(banner, (BANNER_USE[0], BANNER_USE[1], F2)))
 # hall, 4 s), the dais cart (Vance and the bodyguard: x2).
 cart = spawn(unreal.CartDevice, (CART[0], CART[1], 0), yaw=90.0, label="Cart", folder="Take")
 setp(cart, device_name="CART", effect=unreal.DeviceEffect.LURE, range=1200.0, duration=6.0, uses=1,
-     fired_from=C, crash_offset=unreal.Vector(CART_ROLL, 0, 0), roll_seconds=1.0, use_verb="RELEASE THE CART")
+     fired_from=C, crash_offset=unreal.Vector(CART_ROLL, 0, 0), roll_seconds=1.0,
+     use_verb="Kick the champagne cart through the hatch")
 setp(cart, use_offset=use_offset(cart, (CART_USE[0], CART_USE[1], 0)))
 cart2 = spawn(unreal.CartDevice, (CART2[0], CART2[1], 0), yaw=90.0, label="Cart_Dais", folder="Take")
 setp(cart2, device_name="DAIS CART", effect=unreal.DeviceEffect.LURE, range=1200.0, duration=6.0, uses=1,
      fired_from=C, crash_offset=unreal.Vector(CART2_ROLL, 0, 0), roll_seconds=1.6,
-     use_verb="RELEASE THE DAIS CART")
+     use_verb="Kick the dais cart through the hatch")
 setp(cart2, use_offset=use_offset(cart2, (CART2_USE[0], CART2_USE[1], 0)))
 desk = spawn(unreal.SoundDesk, (DESK[0], DESK[1], 0), yaw=90.0, label="Sound_Desk", folder="Take")
 # Its range covers the hall's far corner (64 m) and stops short of the scanner on the street (73 m).
 setp(desk, device_name="DESK", effect=unreal.DeviceEffect.BLIND, range=6500.0, duration=4.0, uses=1,
-     fired_from=C, use_verb="FEEDBACK")
+     fired_from=C, use_verb="Push feedback through the band's PA")
 setp(desk, use_offset=use_offset(desk, (DESK_USE[0], DESK_USE[1], 0)))
 
 # The level's game mode.

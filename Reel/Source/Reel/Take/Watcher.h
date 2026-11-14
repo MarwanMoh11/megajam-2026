@@ -92,6 +92,10 @@ public:
 	/** 0 = not scheduled yet. */
 	int32 GetArriveBar() const { return ArriveBar; }
 
+	/** The checkpoint restore, after ScheduleArrival: a watcher whose arrival bar is already behind the restored
+	 *  clock is simply there: no "ARRIVES" line, no tally blink (review, Nov 14). */
+	void MarkArrivedIfDue(const UBarClockComponent* Clock);
+
 	/** Its tally blinks (the arrival, ArrivalBlinkBars long): the HUD and RefreshFrameLook read it. */
 	bool IsArrivalBlinking() const { return ArrivalBlinkSecondsLeft > 0.f; }
 

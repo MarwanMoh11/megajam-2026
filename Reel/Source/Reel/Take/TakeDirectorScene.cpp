@@ -4,6 +4,7 @@
 #include "TakeDirector.h"
 
 #include "BarClockComponent.h"
+#include "ComposureComponent.h"
 #include "CrewPost.h"
 #include "Device.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -209,6 +210,12 @@ void ATakeDirector::StepWarnings()
 void ATakeDirector::StepTriggers()
 {
 	if (Phase != ETakePhase::Rolling || !Julian)
+	{
+		return;
+	}
+	// A blooper is already on its way this frame (the late tick fires it): no trigger, so no checkpoint is saved past
+	// the thing that caught him (review, Nov 14).
+	if (PendingBlooper != EBlooperReason::None || (Composure && Composure->IsEmpty()))
 	{
 		return;
 	}
@@ -420,11 +427,11 @@ void ATakeDirector::UpdateObjective()
 		}
 		else if (Drone && Drone->HasArrived())
 		{
-			NewObjective = TEXT("Cross the floor to the rope. Off a gold mark, the DRONE's red circle sees him.");
+			NewObjective = TEXT("The broadcast DRONE films the centre aisle: off a gold mark its red circle sees him. Go round by a side aisle to the rope.");
 		}
 		else
 		{
-			NewObjective = TEXT("Cross the floor to the rope at the far end");
+			NewObjective = TEXT("The centre aisle is the broadcast's. Wait on the gold mark, then go round by a side aisle to the rope.");
 		}
 	}
 
@@ -504,6 +511,7 @@ void ATakeDirector::RestoreCheckpoint()
 		if (const int32* FiredBar = FiredTriggers.Find(EachWatcher->ArriveOn))
 		{
 			EachWatcher->ScheduleArrival(GetArrivalLine(*FiredBar) + FMath::Max(0, EachWatcher->ArriveExtraBars));
+			EachWatcher->MarkArrivedIfDue(Clock);
 		}
 	}
 

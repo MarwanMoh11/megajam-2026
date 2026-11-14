@@ -196,6 +196,31 @@ void UBarClockComponent::BeginPlay()
 	ClickAudio->SetVolumeMultiplier(ClickVolume);
 	ClickAudio->RegisterComponent();
 	ClickAudio->Play();
+
+	// The phrase voices: the same kind of endless procedural wave, one each.
+	PhraseAudios.Reset();
+	PhraseWaves.Reset();
+	for (int32 Voice = 0; Voice < FMath::Max(1, PhraseVoices); ++Voice)
+	{
+		USoundWaveProcedural* Wave = NewObject<USoundWaveProcedural>(this);
+		Wave->SetSampleRate(static_cast<uint32>(SampleRate));
+		Wave->NumChannels = 1;
+		Wave->Duration = INDEFINITELY_LOOPING_DURATION;
+		Wave->bLooping = false;
+
+		UAudioComponent* Audio = NewObject<UAudioComponent>(OwnerActor);
+		Audio->bAutoActivate = false;
+		Audio->bAutoDestroy = false;
+		Audio->bAllowSpatialization = false;
+		Audio->bIsUISound = true;
+		Audio->SetSound(Wave);
+		Audio->SetVolumeMultiplier(ClickVolume);
+		Audio->RegisterComponent();
+		Audio->Play();
+
+		PhraseWaves.Add(Wave);
+		PhraseAudios.Add(Audio);
+	}
 }
 
 void UBarClockComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -207,6 +232,16 @@ void UBarClockComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		ClickAudio = nullptr;
 	}
 	ClickWave = nullptr;
+	for (UAudioComponent* Audio : PhraseAudios)
+	{
+		if (Audio)
+		{
+			Audio->Stop();
+			Audio->DestroyComponent();
+		}
+	}
+	PhraseAudios.Reset();
+	PhraseWaves.Reset();
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -414,13 +449,13 @@ void UBarClockComponent::PlayWarning(EWatcherInstrument Instrument)
 	switch (Instrument)
 	{
 	case EWatcherInstrument::Bass:
-		PlayPcm(PcmBass);
+		PlayPhrase(PcmBass);
 		break;
 	case EWatcherInstrument::Trumpet:
-		PlayPcm(PcmTrumpet);
+		PlayPhrase(PcmTrumpet);
 		break;
 	case EWatcherInstrument::DrumRoll:
-		PlayPcm(PcmDrumRoll);
+		PlayPhrase(PcmDrumRoll);
 		break;
 	case EWatcherInstrument::HiHat:
 		PlayAccent();
@@ -432,12 +467,12 @@ void UBarClockComponent::PlayWarning(EWatcherInstrument Instrument)
 
 void UBarClockComponent::PlayFeedback()
 {
-	PlayPcm(PcmFeedback);
+	PlayPhrase(PcmFeedback);
 }
 
 void UBarClockComponent::PlayChime()
 {
-	PlayPcm(PcmChime);
+	PlayPhrase(PcmChime);
 }
 
 void UBarClockComponent::MuteMetronome(float Bars)
@@ -461,4 +496,43 @@ bool UBarClockComponent::IsBreakBar(int32 Bar) const
 bool UBarClockComponent::IsMetronomeMuted() const
 {
 	return IsBreakBar(GetBar()) || TotalBeats < MutedUntilBeats;
+}
+
+void UBarClockComponent::PlayPhrase(const TArray<uint8>& Pcm)
+{
+	if (Pcm.Num() == 0)
+	{
+		return;
+	}
+
+	// The voice with the least waiting: a second warning on the same bar line sounds with the first, not after it.
+	int32 Best = INDEX_NONE;
+	int32 BestWaiting = MAX_int32;
+	for (int32 Voice = 0; Voice < PhraseWaves.Num(); ++Voice)
+	{
+		if (PhraseWaves[Voice] && PhraseAudios.IsValidIndex(Voice) && PhraseAudios[Voice])
+		{
+			const int32 Waiting = PhraseWaves[Voice]->GetAvailableAudioByteCount();
+			if (Waiting < BestWaiting)
+			{
+				BestWaiting = Waiting;
+				Best = Voice;
+			}
+		}
+	}
+	if (Best == INDEX_NONE)
+	{
+		PlayPcm(Pcm);	// no phrase voice (no owner at BeginPlay): the click queue is better than silence
+		return;
+	}
+	// More than a second already waiting on every voice: the device is behind, drop this one.
+	if (BestWaiting > SampleRate * 2)
+	{
+		return;
+	}
+	if (!PhraseAudios[Best]->IsPlaying())
+	{
+		PhraseAudios[Best]->Play();
+	}
+	PhraseWaves[Best]->QueueAudio(Pcm.GetData(), Pcm.Num());
 }

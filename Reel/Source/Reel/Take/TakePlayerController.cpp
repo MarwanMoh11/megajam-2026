@@ -756,6 +756,13 @@ void ATakePlayerController::TakeWarp(float X, float Y, float Z)
 	Current->SnapFollowCamera();
 
 	const FVector Feet = Current->GetFeetLocation();
+	if (ATakeDirector* WarpDirector = ATakeDirector::Get(this))
+	{
+		if (Current == WarpDirector->Julian.Get())
+		{
+			WarpDirector->JulianFeetBeforeWalk = Feet;	// or the swept beam test would cross everything in between
+		}
+	}
 	TAKE_LOG(TEXT("WARP %s %.0f %.0f %.0f"), Current->GetCrewName(), Feet.X, Feet.Y, Feet.Z);
 }
 

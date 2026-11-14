@@ -375,3 +375,52 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
     - A test that was meant to end in a blooper did not: with the banner down, Julian walked the aisle on the
       guard's away bar and came out with 20 composure. That is the free route the spec allows, not a bug, but it
       meant the next test started from the wrong checkpoint and had to be rewritten.
+
+- **About 01:00-02:40. A reviewer, and a new note from Marwan in the middle of it.**
+  - One fresh Opus reviewer read the whole step 2 diff for bugs only (67 tool calls, about an hour of its own
+    time, running beside the tests). It found no crash and five things, none fatal: every sound went through one
+    queue, so a warning phrase pushed the next click up to 0.4 s late and two warnings on one bar line played one
+    after the other; a checkpoint restore announced every arrived watcher again; a checkpoint could be saved on
+    the very frame a blooper fired, past the thing that caught him; Maya could be left behind by the scene
+    change; and a test command could trip the beam. The orchestrator fixed the four that still applied (the
+    warning phrases now have three voices of their own).
+  - While that ran, Marwan sent a note through the session that started this one: the queue belongs outside the
+    venue, the crew's places and what they control should make sense in the story, Julian should not just walk
+    in a straight line, and "there should be clever game design basically and narrative building and immersion".
+    The working build was committed and pushed first, then the placement was reworked inside the rules already
+    built. No new system, mostly the map script plus about 150 lines of C++:
+    - **The street.** Three lanes to the doors: the red carpet for invited guests (red tape, the doorman's frame
+      straight down it, a rope at the doors), the queue lane to the scanner, a roped crew lane. Julian starts at
+      the back of the queue along the kerb.
+    - **The crew walk; nobody teleports.** Maya starts on a terrace over the doors with an arrivals searchlight
+      that looks straight down on the scanner, then walks the lobby balcony and a new catwalk to a lighting
+      platform over the benches (22 s in the scripted run). Vex starts on the loading dock and walks to his cart
+      (6 s). The crew-post teleport written an hour earlier is no longer used.
+    - **A blooper keeps the crew where the player walked them.** Without this every retry would have cost the
+      walks again; nobody watches the crew, so their place is not part of the risk.
+    - **No straight line.** The doorman owns the carpet, the security chief the carpet inside, the broadcast
+      drone the hall's centre aisle, whose camera riser now blocks it: Julian goes round by a side aisle.
+    - **Words.** A cover-story line per character on first landing, an opening slate, a line from each watcher
+      when it really catches him, lane signs in the world, Use prompts that say what the hand does.
+  - Checked again in play-in-editor: the full take from the back of the queue clears on bar 66 with both crew
+    walks in it; walking up the carpet gets "Invitation, sir?" and a blooper back to the queue; a blooper at the
+    beam restarts at the rope with the cart back and Maya and Vex still at their posts.
+  - What went wrong:
+    - The orchestrator's own fix broke the build once (a missing include): the only compile error of the night.
+    - A leftover line in the map script kept the banner's winch on the old bridge after Maya's post had moved, so
+      route 1 pressed Use on nothing and walked Julian into the live beam. The scripted test caught it.
+    - The first searchlight left 0.35 s to get through the gate after the flight back. It now blinds for 6 s.
+    - The carpet's ropes ran to the kerb, which closed the wrong way in so nobody could find out it was wrong.
+      Its first metre and a half is open now.
+
+
+### 02:16, Sat Nov 14: the new layout proven in the editor, not yet packaged
+- Scripted play-in-editor runs on the layout after the Nov 14 note all pass: the whole take from the back of the queue
+  (cleared on bar 66), the carpet blooper (doorman, back to the queue), the beam blooper (back to the rope at bar 15,
+  the banner use given back, the crew still at their posts), route 1 (banner then follow spot, composure 21 on the
+  dais), the sound desk lift (x5) and the dais cart (x2).
+- What went wrong: a stale BANNER_USE line in the map script put the banner ring on the old spot, so route 1 found
+  nothing in reach. Removed.
+- Not done yet: the packaged build of this layout and the real-input run of the exe (the session ran out of usage
+  here). The key script is ready outside the repo except for two aim numbers for the beam. Known and cosmetic:
+  composure still drains after SCENE 2 CLEARED.

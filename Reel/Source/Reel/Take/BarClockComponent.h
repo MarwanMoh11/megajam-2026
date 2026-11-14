@@ -163,4 +163,19 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<USoundWaveProcedural> ClickWave;
+
+	/** Voices for the warning phrases, the chime and the feedback (review, Nov 14): one queue played everything in
+	 *  turn, so a phrase pushed the next click late and two warnings on one bar line came one after the other. Each
+	 *  phrase goes to the voice with the least waiting; the clicks keep ClickWave to themselves. */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UAudioComponent>> PhraseAudios;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<USoundWaveProcedural>> PhraseWaves;
+
+	/** How many phrase voices BeginPlay makes. */
+	int32 PhraseVoices = 3;
+
+	/** Queues one phrase on the phrase voice with the least audio waiting, at WarningVolume. */
+	void PlayPhrase(const TArray<uint8>& Pcm);
 };

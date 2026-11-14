@@ -387,3 +387,14 @@ void AWatcher::BuildFrameLines()
 	// Colour and visibility with the frame, this frame.
 	RefreshFrameLook();
 }
+
+void AWatcher::MarkArrivedIfDue(const UBarClockComponent* Clock)
+{
+	if (!ArriveOn.IsNone() && ArriveBar > 0 && Clock && Clock->GetBar() >= ArriveBar)
+	{
+		bArrived = true;
+		ArrivalBlinkSecondsLeft = 0.f;
+		SyncState();
+		RefreshFrameLook();
+	}
+}
