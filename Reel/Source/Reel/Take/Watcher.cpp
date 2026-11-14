@@ -20,9 +20,6 @@ namespace TakeWatcherLocal
 	/** The BlindedLine flash. */
 	constexpr float BlindedLineSeconds = 2.5f;
 
-	/** The arrival blink: the tally is lit while the clock's pulse is above this. */
-	constexpr float BlinkPulseThreshold = 0.5f;
-
 	/** One thin frame line: a cube on Pivot from From to To (Pivot's space), its X axis along the line. */
 	UStaticMeshComponent* AddFrameLine(AActor* Owner, USceneComponent* Pivot, const FVector& From, const FVector& To, double Thickness)
 	{
@@ -73,7 +70,6 @@ void AWatcher::BeginPlay()
 	DarkSecondsLeft = 0.f;
 	DarkKind = EWatcherState::Blinded;
 	bTally = false;
-	LastPulse = 0.f;
 
 	// Arrival (step 2): there from the start, or Off until its bar. ArriveBar is kept: the director may have
 	// scheduled it already.
@@ -118,22 +114,13 @@ void AWatcher::StepWatcher(float DeltaSeconds, UBarClockComponent* Clock)
 		DarkSecondsLeft = FMath::Max(DarkSecondsLeft - DeltaSeconds, 0.f);
 	}
 
-	LastPulse = Clock ? Clock->GetPulse() : 0.f;
-	if (Clock)
-	{
-		// §15.3: full on the beat frame, linear down to the hold level over 10 film frames, then hold.
-		const float SinceBeat = Clock->GetBeatPhase() * Clock->GetSecondsPerBeat();
-		const float FallSeconds = 10.f / TakeStyle::FilmFps;
-		const float Hold = 1.f - 0.65f * FMath::Clamp(AlarmPulseBrightness, 0.f, 1.f);
-		AlarmBeatLevel = SinceBeat < FallSeconds ? FMath::Lerp(1.f, Hold, SinceBeat / FallSeconds) : Hold;
-	}
 	SyncState();
 	if (State != OldState)
 	{
 		TAKE_LOG(TEXT("%s %s"), *Label, *GetStateText());
 	}
 
-	// Every frame: the beat pulse is a brightness pulse on the frame's colour.
+	// Every frame: the look follows the state, the hold and the arrival warning. Nothing moves with the beat.
 	RefreshFrameLook();
 }
 
@@ -250,18 +237,14 @@ void AWatcher::RefreshFrameLook()
 	uint8 FrameStencil = TakeStyle::StencilRed;
 	if (IsLive() && bAlarmLook)
 	{
-		// Step 4 (§15.3): the alarm's frames are white and emissive, pulsing on the beat, so they read in full colour.
-		Colour = TakeColors::White * (AlarmEmissive * AlarmBeatLevel);
+		// Step 4 (§15.3): the alarm's frames are steady white and emissive, so they read in full colour.
+		Colour = TakeColors::White * AlarmEmissive;
 		Colour.A = 1.f;
 		FrameStencil = TakeStyle::StencilWhite;
 	}
 	else if (IsLive())
 	{
 		Colour = bTally ? HoldingColour : TakeColors::Red;
-		// The beat: brighter on the beat, decaying with the clock's pulse. The footprint never changes.
-		const float PulseTowardWhite = bAlarmLook ? AlarmPulseBrightness : PulseBrightness;
-		const float BeatLift = FMath::Clamp(PulseTowardWhite * LastPulse, 0.f, 1.f);
-		Colour = Colour + (TakeColors::White - Colour) * BeatLift;
 	}
 	if (bHovered)
 	{
@@ -285,23 +268,19 @@ void AWatcher::RefreshFrameLook()
 		}
 	}
 
-	// The tally: hidden before arrival; blinks on the beat while arriving; else lit while it holds Julian.
+	// The tally: hidden before arrival; lit, steady, while the arrival warning is up or while it holds Julian.
 	if (Tally)
 	{
 		Tally->SetVisibility(HasArrived());
-		FLinearColor TallyColour = bTally ? HoldingColour : TakeColors::RedDark;
-		if (IsArrivalBlinking())
-		{
-			TallyColour = LastPulse > TakeWatcherLocal::BlinkPulseThreshold ? HoldingColour : TakeColors::RedDark;
-		}
+		const FLinearColor TallyColour = (bTally || IsArrivalBlinking()) ? HoldingColour : TakeColors::RedDark;
 		TallyMID = FTakeShapes::SetColour(Tally, TallyColour);
 	}
 }
 
 void AWatcher::ApplyFrameScale()
 {
-	// The drawn frame must equal the tested frame: FramePivot always stays at scale 1 (PulseScale / HoverScale
-	// are no longer used; the pulse and hover are brightness changes in RefreshFrameLook).
+	// The drawn frame must equal the tested frame: FramePivot always stays at scale 1 (hover is a brightness change
+	// in RefreshFrameLook).
 	if (FramePivot)
 	{
 		FramePivot->SetRelativeScale3D(FVector::OneVector);

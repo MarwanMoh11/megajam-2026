@@ -738,3 +738,49 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   82.4), t_s3 ROUGH CUT, t_s3b DIRECTOR'S CUT by the side exit with The Bow (logs `C:\Jam\Builds\step5_t_*.log`);
   t_fail still to re-run. Idle check: `C:\Jam\Builds\s5\idle_band_strip.png`, `idle_queue_close.png`,
   `idle_queue_moved.png`.
+## Nov 15, about 00:00 Cairo: step 6, audio, phase 1 (a parallel session outside the editor)
+
+- **What changed:** a branch `step6-audio` in a worktree (`.wt-audio`), so the step 5 session keeps the editor.
+  `docs/AUDIO_SCRIPT.md` (48 voice lines, 18 sound effects, 7 music cues, each with its event, file and subtitle),
+  generated from `tools/audio/manifest.py`, which also writes the C++ voice table. `tools/audio/`: the ElevenLabs
+  generator (resumable, with a dry run that counts credits), a numpy stand-in synth for every sound effect and the
+  band, the processing step (decode, trim, earpiece filter, tempo measurement and fit to 120 BPM, loop seam,
+  BS.1770 loudness, a peak limiter) and the editor import script for phase 2. C++: `TakeAudio` on the director, the
+  bar clock now following the music's playback position, one-line calls at the event sites, `FireSound` on devices.
+  The game target compiles in the worktree (no editor build, no assets touched).
+- **What the agents did:** one Claude Opus 5.5 subagent wrote the script, the tools and the C++, generated the voices
+  first (ElevenLabs multilingual v2, eleven premade voices), sent one line per character and the first band loop to
+  Marwan through the orchestrator, then the sound effects. The first generated bed measured 120.01 BPM.
+- **What went wrong:** no Python on the PC outside the engine, so a venv was made from the engine's Python 3.11;
+  scipy and pyloudnorm would not download (pip read timeouts), so resampling, filtering and loudness were written in
+  numpy (a 1 kHz sine at -20 dBFS reads -23.0 LUFS, as BS.1770 says). Three ElevenLabs requests timed out and were
+  retried. The account's credit counter lags by minutes, so the run log keeps its own estimate.
+
+## Nov 15, about 00:40 Cairo: step 6, audio, phase 1 resumed (designed voices, warning phrases retaken)
+
+- **What changed:** Marwan picked Voice Design candidates for Vance, the broadcast producer and the alarm guards
+  (the chief's was picked earlier); they are saved as voices on the account and their 14 lines regenerated,
+  including the chief's "No match" line, which the stopped run had left in the old premade voice. A pause cap in
+  `process.py` (pauses over 0.6 s inside a line become 0.4 s) and a per-voice speed in the manifest. The bass and
+  trumpet warning phrases were retaken. The doorman's two Voice Design candidates went to Marwan.
+- **What the agents did:** one Claude Opus 5.5 session, resuming a stopped one, checked the files by measurement
+  rather than by ear: a 10 ms level envelope, onset times against the beat grid and a pitch track for each phrase.
+- **What went wrong:** the first bass and trumpet takes passed the loudness checks but were each one held note: the
+  checks measured level, not rhythm. A 5 s Music request ignored "then silence"; a 10 s request for a repeating
+  figure gave a clean bass bar with attacks every 0.50 s. The music model gave the muted trumpet as held notes three
+  times, so the trumpet came from the sound-effects endpoint. Vance's designed voice ran his speeches to 10 s, past
+  his 4 bars at the mic; 10% speed, steadier settings and the pause cap brought the longest to 7.45 s.
+
+## Nov 15, about 01:30 Cairo: step 6, nothing on screen keeps the beat
+
+- **What changed:** Marwan's call, relayed by the orchestrator: "make it like a stealth hitman game normal and use
+  the band as warnings". Every beat pulse is gone from the screen: the watchers' frames and tallies, the beam, the
+  sound desk, the danger burn, the HUD's glyphs, the alarm's blinking last bar and the title card's keycap are
+  steady. The HUD's beat squares and bar number became the take's running time; counts are in seconds ("arrives in
+  4 s", a 16-second alarm, the blooper reel's "AT 0:24"). The metronome click is removed. The bar clock, its events,
+  every gameplay timing and the band's warning phrases are unchanged.
+- **What the agents did:** one Claude Opus 5.5 session edited the C++ in the step 6 worktree and compiled the game
+  target there; step 5 kept the editor.
+- **What went wrong:** a missing include broke the first build. A session-wide interrupt stopped the work midway;
+  the retake of Vex's desk hint ("for four seconds") is held until Marwan says go, so the hint still says "two bars".
+  An earlier docs edit had turned a Windows path's `\r` and `\b` into control characters in STATUS.md; fixed.

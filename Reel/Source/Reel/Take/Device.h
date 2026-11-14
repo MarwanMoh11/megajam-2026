@@ -115,6 +115,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Device")
 	FString FireLine;
 
+	/** Step 6: the sound it makes on the frame it fires, a sound in /Game/Take/Audio (None: the device makes its own,
+	 *  as the pyro board's crackle and the sound desk's feedback do through the bar clock). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Device")
+	FName FireSound;
+
 	// --- tunables ---------------------------------------------------------------------------------------------------
 
 	/** HUD and log name ("SPOT", "CART", "BANNER"). */

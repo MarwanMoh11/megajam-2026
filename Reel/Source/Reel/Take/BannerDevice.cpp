@@ -9,6 +9,7 @@
 
 ABannerDevice::ABannerDevice()
 {
+	FireSound = TEXT("sfx_banner_drop");	// step 6
 	DeviceName = TEXT("BANNER");
 	UseVerb = TEXT("Drop the banner");
 	Effect = EDeviceEffect::Mask;

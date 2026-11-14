@@ -16,6 +16,7 @@
 #include "SceneTrigger.h"
 #include "Shutter.h"
 #include "Engine/PostProcessVolume.h"
+#include "TakeAudio.h"
 #include "TakeCharacter.h"
 #include "TakeGameInstance.h"
 #include "TakePlayerController.h"
@@ -76,6 +77,7 @@ ATakeDirector::ATakeDirector()
 
 	Clock = CreateDefaultSubobject<UBarClockComponent>(TEXT("Clock"));
 	Composure = CreateDefaultSubobject<UComposureComponent>(TEXT("Composure"));
+	Audio = CreateDefaultSubobject<UTakeAudioComponent>(TEXT("Audio"));
 
 	SetCanBeDamaged(false);
 }
@@ -198,7 +200,7 @@ void ATakeDirector::BeginPlay()
 			Deleted.bBuilt = bBuilt;
 			DeletedScenes.Add(Deleted);
 		};
-		AddDeletedScene(TEXT("ColdOpen"), TEXT("THE COLD OPEN"), TEXT("the searchlight lands on the beat he reaches the scanner"), false);
+		AddDeletedScene(TEXT("ColdOpen"), TEXT("THE COLD OPEN"), TEXT("the searchlight lands the moment he reaches the scanner"), false);
 		AddDeletedScene(TEXT("LongTake"), TEXT("THE LONG TAKE"), TEXT("cross the floor without cutting"), false);
 		AddDeletedScene(TEXT("Insert"), TEXT("THE INSERT"), TEXT("one cart catches Vance and the bodyguard as the lift lands"), false);
 		AddDeletedScene(TakeTriggers::Bow, TEXT("THE BOW"), TEXT("at the gold side exit, bow to the blinded drone"), true);
@@ -424,6 +426,10 @@ void ATakeDirector::Tick(float DeltaSeconds)
 		if (GI && !GI->CheckpointMark.IsEmpty())
 		{
 			RestoreCheckpoint();
+		}
+		if (Audio && Phase != ETakePhase::Title)
+		{
+			Audio->OnTakeStart(GI && GI->BloopersAtCheckpoint > 0);	// the clapper (the title card claps as it goes)
 		}
 		else if (GI && GI->BloopersAtCheckpoint >= HintAfterBloopers && SceneHints.IsValidIndex(0)
 			&& !SceneHints[0].IsEmpty())

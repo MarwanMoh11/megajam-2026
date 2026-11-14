@@ -1,6 +1,7 @@
 // ATakeDirector slice (e): the blooper (step 7), the freeze, the reload, R. See TakeDirector.h for the contract.
 
 #include "TakeDirector.h"
+#include "TakeAudio.h"
 
 #include "BarClockComponent.h"
 #include "ComposureComponent.h"
@@ -46,6 +47,10 @@ void ATakeDirector::StepBlooperCheck(float DeltaSeconds)
 	LastBlooperReason = Reason;
 	SetPhase(ETakePhase::BlooperFreeze);
 	FreezeSecondsLeft = BlooperFreezeSeconds;
+	if (Audio)
+	{
+		Audio->OnBlooper();	// step 6: the tape-stop, the film burn, the buzzer, "Cut!", the rewind
+	}
 	// Everyone stops where they stand: nobody slides on through the beam under the slate (the level reloads next).
 	for (ATakeCharacter* Character : Characters)
 	{

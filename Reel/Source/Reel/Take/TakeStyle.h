@@ -148,8 +148,6 @@ namespace TakeStyle
 	constexpr float PipGap = 4.f;
 	constexpr float PipUnder = 8.f;			// pips under a key tab's name
 	constexpr float GlyphTextGap = 8.f;		// a glyph and its word
-	constexpr float PulseLow = 0.55f;		// a pulsing glyph's alpha 10 frames after the beat
-	constexpr float PulseFrames = 10.f;
 
 	// --- keycaps (§15.2) ----------------------------------------------------------------------------------------------------
 	constexpr float KeyH = 28.f;
@@ -165,9 +163,7 @@ namespace TakeStyle
 	constexpr float TabShakePx = 4.f;
 	constexpr float TabFlightLine = 2.f;
 	constexpr float TabFlightUnder = 12.f;	// the flight line's top below the name's centre
-	constexpr float ClockSquare = 10.f;
-	constexpr float ClockSquareGap = 6.f;
-	constexpr float FinaleSquare = 12.f;
+	constexpr float FinaleSquare = 12.f;		// the alarm countdown's bar: as tall as a square, as wide as 8 of them
 	constexpr float FinaleSquareGap = 6.f;
 	constexpr float ClockPartGap = 12.f;
 

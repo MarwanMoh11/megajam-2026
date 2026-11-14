@@ -2,6 +2,7 @@
 // See TakeDirector.h for the contract.
 
 #include "TakeDirector.h"
+#include "TakeAudio.h"
 
 #include "BarClockComponent.h"
 #include "DroneWatcher.h"
@@ -130,6 +131,11 @@ void ATakeDirector::StartAlarm(int32 CaseBar, bool bFromRestore)
 	if (Clock)
 	{
 		Clock->SetAlarm(true);
+		Clock->StartHeistCue(AlarmDeadlineBar);	// step 6: its last bar ends on the deadline
+	}
+	if (Audio && !bFromRestore)
+	{
+		Audio->OnAlarm();
 	}
 
 	const FName CaseName(TakeTriggers::Case);
@@ -314,6 +320,10 @@ void ATakeDirector::PrintIt(bool bBySideExit)
 		Clock->SetAlarm(false);
 		Clock->PlayClap();
 		Clock->PlaySting();
+	}
+	if (Audio)
+	{
+		Audio->OnPrintIt();	// step 6: "Print it!" (the slate draws its subtitle)
 	}
 
 	// Everyone stops where they stand (as the blooper does).

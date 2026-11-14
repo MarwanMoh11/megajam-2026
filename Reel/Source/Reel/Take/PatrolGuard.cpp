@@ -133,8 +133,8 @@ void APatrolGuard::StepWatcher(float DeltaSeconds, UBarClockComponent* Clock)
 		}
 	}
 
-	// The base steps the arrival, counts the dark timer down, derives the state (off, dark, then LURED) and pulses
-	// the frame.
+	// The base steps the arrival, counts the dark timer down, derives the state (off, dark, then LURED) and
+	// refreshes the frame's look.
 	Super::StepWatcher(DeltaSeconds, Clock);
 
 	// Not arrived yet: he stays where he was placed, Off (a guard who patrols from his arrival waits at his first

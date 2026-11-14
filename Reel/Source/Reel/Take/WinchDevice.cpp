@@ -10,6 +10,7 @@
 
 AWinchDevice::AWinchDevice()
 {
+	FireSound = TEXT("sfx_winch_release");	// step 6: the counterweight lets go (the curtain lands on PlayThud)
 	DeviceName = TEXT("CURTAIN WINCH");
 	Effect = EDeviceEffect::Mask;
 	Range = 0.f;

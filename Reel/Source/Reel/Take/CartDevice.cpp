@@ -9,6 +9,7 @@
 
 ACartDevice::ACartDevice()
 {
+	FireSound = TEXT("sfx_glass_smash");	// step 6: the cart goes into the glasses
 	DeviceName = TEXT("CHAMPAGNE CART");
 	UseVerb = TEXT("Release the cart");
 	Effect = EDeviceEffect::Lure;

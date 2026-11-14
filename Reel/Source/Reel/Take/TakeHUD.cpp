@@ -11,6 +11,7 @@
 #include "Julian.h"
 #include "Mark.h"
 #include "TakeCharacter.h"
+#include "TakeAudio.h"
 #include "TakeDirector.h"
 #include "TakeGameInstance.h"
 #include "TakePlayerController.h"
@@ -58,7 +59,7 @@ void ATakeHUD::DrawHUD()
 	const FTakeFilmFrame FilmFrame = MakeFilmFrame(*Dir, Canvas->ClipX, Canvas->ClipY);
 	const float BarH = Film.DrawsLetterbox(FilmFrame) ? Film.BarHeight(FilmFrame)
 		: TakeStyle::LetterboxBar(Canvas->ClipX, Canvas->ClipY, Film.LetterboxAspect);
-	Kit.Begin(Canvas, FilmFrame.RealTime, FilmFrame.SecondsSinceBeat, BarH);
+	Kit.Begin(Canvas, FilmFrame.RealTime, BarH);
 	TrackState(*Dir);
 	ReadFlashes(*Dir);
 
@@ -199,6 +200,15 @@ void ATakeHUD::ReadFlashes(const ATakeDirector& Dir)
 		if (Head.Since < 0.0)
 		{
 			Head.Since = Kit.Now;
+			// Step 6: the line is spoken as it comes on screen, and holds for at least its voice.
+			if (Dir.Audio)
+			{
+				const float Voice = Dir.Audio->SpeakSubtitle(Head.Speaker, Head.Line);
+				if (Voice > 0.f)
+				{
+					Head.Hold = FMath::Max(Head.Hold, Voice + Dir.Audio->SubtitleVoicePad);
+				}
+			}
 		}
 		if (Kit.Now - Head.Since < Head.Hold)
 		{
@@ -383,66 +393,35 @@ void ATakeHUD::DrawClock(const ATakeDirector& Dir)
 	if (Dir.bAlarm && Dir.bAlarmLive)
 	{
 		using namespace TakeStyle;
-		// The finale count: ALARM, the bars left, a square for each bar (the current one blinks on the beat).
+		// The finale count: ALARM, the seconds left (whole seconds, rounded up; tenths in the last two) and a steady
+		// bar that drains with them. Nothing blinks or keeps the beat.
 		const int32 Count = FMath::Max(1, Dir.FinaleBars);
-		const int32 Left = FMath::Clamp(Dir.GetAlarmBarsLeft(), 0, Count);
+		const float Total = FMath::Max(0.1f, static_cast<float>(Count) * Clock->GetSecondsPerBar());
+		const float SecondsLeft = FMath::Clamp(Dir.GetAlarmSecondsLeft(), 0.f, Total);
 		const float Sq = Kit.Px(FinaleSquare);
-		const float Step = Sq + Kit.Px(FinaleSquareGap);
-		float X = Right - (Step * static_cast<float>(Count) - Kit.Px(FinaleSquareGap));
+		const float BarW = (Sq + Kit.Px(FinaleSquareGap)) * static_cast<float>(Count) - Kit.Px(FinaleSquareGap);
+		const float BarX = Right - BarW;
 		const float SqY = FMath::RoundToFloat(Y - Sq * 0.5f);
-		for (int32 Index = 0; Index < Count; ++Index)
+		const float FillW = FMath::RoundToFloat(BarW * SecondsLeft / Total);
+		if (FillW > 0.f)
 		{
-			if (Index < Left)
-			{
-				const float Blink = Index == Left - 1 ? Kit.Pulse() : 1.f;
-				Kit.Rect(X, SqY, Sq, Sq, FTakeHudKit::A(Danger, Blink));
-			}
-			else
-			{
-				Kit.Frame(X, SqY, Sq, Sq, Kit.Ln(LineThin), Silver);
-			}
-			X += Step;
+			Kit.Rect(BarX, SqY, FillW, Sq, Danger);
 		}
-		const float NumRight = Right - (Step * static_cast<float>(Count) - Kit.Px(FinaleSquareGap)) - Kit.Px(ClockPartGap);
-		const bool bLastBar = Left <= 1;
-		const FString Numeral = bLastBar ? FString::Printf(TEXT("%.1f"), FMath::Max(0.f, Dir.GetAlarmSecondsLeft()))
-			: FString::FromInt(Left);
+		Kit.Frame(BarX, SqY, BarW, Sq, Kit.Ln(LineThin), Silver);
+		const float NumRight = BarX - Kit.Px(ClockPartGap);
+		const bool bLastBar = SecondsLeft <= 2.f;
+		const FString Numeral = bLastBar ? FString::Printf(TEXT("%.1f"), SecondsLeft)
+			: FString::FromInt(FMath::CeilToInt(SecondsLeft));
 		const float NumW = Kit.Text(EType::Title, Numeral, NumRight, Y, bLastBar ? Danger : Paper, ETakeAlign::Right);
 		Kit.Text(EType::Label, TEXT("ALARM"), NumRight - NumW - Kit.Px(ClockPartGap), Y, Danger, ETakeAlign::Right);
 		return;
 	}
 
-	// The bar clock: BAR, the bar's number, four beat squares (BREAK on the band's break).
-	float PartsLeft = Right;
-	if (Clock->IsMetronomeMuted())
-	{
-		using namespace TakeStyle;
-		PartsLeft -= Kit.Text(EType::Label, TEXT("BREAK"), Right, Y, Bone, ETakeAlign::Right);
-	}
-	else
-	{
-		const int32 Beat = Clock->GetBeatInBar();	// 1..4
-		const float Sq = Kit.Px(ClockSquare);
-		const float Step = Sq + Kit.Px(ClockSquareGap);
-		float X = Right - (Step * 4.f - Kit.Px(ClockSquareGap));
-		PartsLeft = X;
-		const float SqY = FMath::RoundToFloat(Y - Sq * 0.5f);
-		for (int32 Index = 0; Index < 4; ++Index)
-		{
-			if (Index < Beat)
-			{
-				Kit.Rect(X, SqY, Sq, Sq, Paper);
-			}
-			else
-			{
-				Kit.Frame(X, SqY, Sq, Sq, Kit.Ln(LineHair), Silver);
-			}
-			X += Step;
-		}
-	}
-	const float NumRight = PartsLeft - Kit.Px(ClockPartGap);
-	const float NumW = Kit.Text(EType::Label, FString::FromInt(Clock->GetBar()), NumRight, Y, Paper, ETakeAlign::Right);
-	Kit.Text(EType::Tag, TEXT("BAR"), NumRight - NumW - Kit.Px(SlateCaptionGap), Y, Ash, ETakeAlign::Right);
+	// The take's running time on its clock, whole seconds. Nothing on screen keeps the beat (no beat squares, no
+	// BREAK): the band is heard, as the warning, not watched.
+	const int32 Whole = FMath::Max(0, FMath::FloorToInt(static_cast<float>(Clock->GetTotalBeats()) * Clock->GetSecondsPerBeat()));
+	const float NumW = Kit.Text(EType::Label, FString::Printf(TEXT("%d:%02d"), Whole / 60, Whole % 60), Right, Y, Paper, ETakeAlign::Right);
+	Kit.Text(EType::Tag, TEXT("TIME"), Right - NumW - Kit.Px(SlateCaptionGap), Y, Ash, ETakeAlign::Right);
 }
 
 void ATakeHUD::DrawGoal(const ATakeDirector& Dir)
@@ -571,7 +550,7 @@ void ATakeHUD::DrawComposure(const ATakeDirector& Dir)
 	if (Label == EComposureLabel::Seen)
 	{
 		using namespace TakeStyle;
-		Kit.GlyphDanger(SX + Half, Y, Kit.Pulse(), false);
+		Kit.GlyphDanger(SX + Half, Y, 1.f, false);
 		Kit.Text(EType::Label, Comp->GetLabelText(), SX + Half * 2.f + Kit.Px(GlyphTextGap), Y, Danger);
 	}
 	else if (Label == EComposureLabel::Mark)
@@ -611,11 +590,6 @@ FTakeFilmFrame ATakeHUD::MakeFilmFrame(const ATakeDirector& Dir, float ScreenW, 
 	F.Phase = Dir.Phase;
 	F.Composure = Dir.Composure ? Dir.Composure->GetComposure() : 100.f;
 	F.bSeen = Dir.bJulianSeen;
-	if (Dir.Clock)
-	{
-		using namespace TakeStyle;
-		F.SecondsSinceBeat = Dir.Clock->GetBeatPhase() * Dir.Clock->GetSecondsPerBeat();
-	}
 	if (Dir.Julian && Canvas)
 	{
 		using namespace TakeStyle;

@@ -43,7 +43,7 @@ public:
 	// --- director API ----------------------------------------------------------------------------------------------
 
 	/** Step 4, before the sight test. Counts the effect down (back to Watching at 0, frame red again on that frame),
-	 *  moves (patrol, lure), and pulses the frame on the beat (FramePivot scale 1 + PulseScale * Clock->GetPulse()). */
+	 *  moves (patrol, lure), and refreshes the frame's look (steady: nothing on screen moves with the beat). */
 	virtual void StepWatcher(float DeltaSeconds, UBarClockComponent* Clock);	// BODY: (d)
 
 	/** The geometric sight test (step 4, StepSight): does the frame hold Julian right now? Walls ignored in step 1.
@@ -128,9 +128,8 @@ public:
 
 	// --- step 3 (BODY: W) ------------------------------------------------------------------------------------------
 
-	/** The alarm (ATakeDirector, when the alarm goes live, and again after a restore): the frame pulses to white on
-	 *  the beat so it still reads when the picture bleeds to colour: the pulse uses AlarmPulseBrightness in place of
-	 *  PulseBrightness while it is on. */
+	/** The alarm (ATakeDirector, when the alarm goes live, and again after a restore): the frame turns steady
+	 *  emissive white (AlarmEmissive) so it still reads when the picture bleeds to colour. */
 	void SetAlarmLook(bool bOn);
 
 	bool HasAlarmLook() const { return bAlarmLook; }
@@ -144,14 +143,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Arrival")
 	FString ArriveLine;
 
-	/** The beat pulse toward white while the alarm look is on (0..1). */
-	UPROPERTY(EditAnywhere, Category = "Take|Watcher", meta = (ClampMin = "0", ClampMax = "1"))
-	float AlarmPulseBrightness = 1.f;
-
-	/** Step 4 (§15.3): with the alarm look on, a live frame is white at this emissive strength, full on each beat and
-	 *  falling over 10 film frames to (1 - 0.65 * AlarmPulseBrightness) of it, holding until the next beat. */
+	/** Step 4 (§15.3): with the alarm look on, a live frame is steady white at this emissive strength (it was 4 on
+	 *  the beat falling to 1.4 between beats; the steady level sits between them). */
 	UPROPERTY(EditAnywhere, Category = "Take|Watcher", meta = (ClampMin = "0"))
-	float AlarmEmissive = 4.f;
+	float AlarmEmissive = 2.5f;
 
 	/** Step 4, pass 3 (§15.10): the body's tint (PatrolGuard, DroneWatcher). Heavies are the darkest thing on set. */
 	UPROPERTY(EditAnywhere, Category = "Take|Look")
@@ -205,10 +200,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Watcher")
 	FString Label = TEXT("WATCHER");
 
-	/** The frame grows by this fraction on each beat. */
-	UPROPERTY(EditAnywhere, Category = "Take|Watcher")
-	float PulseScale = 0.06f;
-
 	/** Height of the label point above the actor, cm. */
 	UPROPERTY(EditAnywhere, Category = "Take|Watcher")
 	float LabelHeight = 220.f;
@@ -220,14 +211,6 @@ public:
 	/** Frame and tally colour while it holds an exposed Julian (solid bright red). */
 	UPROPERTY(EditAnywhere, Category = "Take|Watcher")
 	FLinearColor HoldingColour = FLinearColor(1.f, 0.1f, 0.06f);
-
-	/** The frame's scale while the pointer is over the watcher. */
-	UPROPERTY(EditAnywhere, Category = "Take|Watcher")
-	float HoverScale = 1.08f;
-
-	/** On the beat a live frame's colour moves this far toward white, decaying with the clock's pulse (0..1). */
-	UPROPERTY(EditAnywhere, Category = "Take|Watcher", meta = (ClampMin = "0", ClampMax = "1"))
-	float PulseBrightness = 0.35f;
 
 	/** While hovered the frame's colour moves this far toward white (0..1). The footprint never scales. */
 	UPROPERTY(EditAnywhere, Category = "Take|Watcher", meta = (ClampMin = "0", ClampMax = "1"))
@@ -318,12 +301,6 @@ protected:
 	TArray<TObjectPtr<UStaticMeshComponent>> FrameLines;
 
 private:
-	/** FramePivot scale from the last beat pulse and the hover state, applied this frame. */
+	/** Keeps FramePivot at scale 1: the drawn frame is the tested frame. */
 	void ApplyFrameScale();
-
-	/** The clock's pulse at the last StepWatcher (0..1). */
-	float LastPulse = 0.f;
-
-	/** Step 4: the alarm frames' brightness this frame (1 on the beat, falling to the hold level), set with LastPulse. */
-	float AlarmBeatLevel = 1.f;
 };
