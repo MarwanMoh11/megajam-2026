@@ -546,3 +546,37 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   second sensitive there); the rerun waits longer on the mark.
 - **Needs Marwan's eye:** the grain, flicker and burn levels; how dark the film's hall reads; the making-of blue;
   the bleed into the pyro's orange at the finale; whether the split reads as film against making-of at all.
+
+## Nov 14, about 19:45 Cairo: step 4 pass 2, the HUD and every word on screen
+
+- **What changed:** the HUD is redrawn as one family on the film's own titles (ART_STYLE §15.5-15.7). The letterbox
+  bars hold the lanes on every camera: top, the slate strip (scene, name, take), the key tabs with device pips and
+  the flight's growing line, the bar clock (four beat squares, BREAK) or the alarm's count (ALARM, bars left, eight
+  red squares, seconds in the last bar), and the goal line with a rule that draws out when it changes; bottom, the
+  Use prompt or a refused press saying why (the pressed tab shakes), Julian's mark action with its gold bar, the
+  composure line (SEEN square, MARK T), the controls row. In the picture: subtitles split into speaker and line,
+  camera-tape labels on the crew's cameras under a label rule (priority, at most four plus the one you aim at,
+  stacking, never in the bars or under a subtitle), countdown tags only on Julian's camera, the reticle on the
+  crew's cameras. Stamps land at 1.30 scale and tilt (X2, CLEARED, DELETED SCENE RESTORED, the grades); slates for
+  the opening (lower left, while you walk), the blooper and PRINT IT; cards for the title card, the stats and the
+  blooper reel. Three OFL fonts (Limelight, IM Fell English, Josefin Sans) are imported as font faces and drawn
+  through runtime fonts built in C++. 93 copy patches: one name per thing (CHAMPAGNE CART, SOUND DESK, PYRO BOARD,
+  CURTAIN WINCH), THE STREET, no spaced dashes, nobody runs, "New take".
+- **How:** a drawing kit (`TakeHudKit`) holds the type roles, keycaps, glyphs, stamps, cards and slates; every
+  number is a token in `TakeStyle.h`; the HUD's tunables (label rule, timings, the words) are on `TakeHUD`. Flashes
+  now carry a kind, so the director says where a line goes (goal lane, B1, subtitle, stamp) instead of a colour.
+- **What the agents did:** one builder session: phase 1 staged the code and the copy patches while pass 1 still
+  held the editor; phase 2 dropped them in, built, checked in play-in-editor screenshots, ran the tests, packaged.
+- **What went wrong:** the first PIE run drew every box and no letter: `FCanvasTextItem` draws only when a `UFont`
+  stands behind its font info, so each face now gets a transient runtime `UFont`. Unreal's shadow warning treats a
+  parameter named like a style token (`Ink`) as an error. The editor's wide viewport has almost no letterbox, so the
+  views were shot in a 1600x900 PIE window; that window runs at 12 fps and broke the timing of the gold-door test,
+  which passes in the normal viewport. Pass 1's real-keys shots were offset by DPI scaling: the new script makes
+  itself DPI-aware before measuring the window.
+- **Proof:** play-in-editor screenshots of every view (`docs/shots/step4_p2_pie_*.png`); the four scripted tests
+  (whole take, Scene 3 by the trap, the side exit with The Bow for DIRECTOR'S CUT, the failures) reach their ends;
+  the Shipping package run with real keys (title card, the queue, a cut to Maya, a refused cut, a blooper at the
+  scanner's tape) shows the three fonts and the HUD (`docs/shots/step4_p2_*.png`). Zip: `TeamName_GameName.zip`,
+  326 MB; the pass 1 zip is kept as `TeamName_GameName_step4p1.zip`.
+- **Needs Marwan's eye:** the fonts and sizes, the opening slate over the street while he walks, the tape labels on
+  Maya's platform, every line of the new copy.

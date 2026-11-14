@@ -169,7 +169,7 @@ void APatrolGuard::StepWatcher(float DeltaSeconds, UBarClockComponent* Clock)
 				{
 					if (ATakeDirector* Director = ATakeDirector::Get(this))
 					{
-						Director->Flash(Held->ArriveLine, TakeColors::White, TakeSliceDGuard::ArriveLineSeconds);
+						Director->Flash(Held->ArriveLine, ETakeFlashKind::Line, TakeSliceDGuard::ArriveLineSeconds);
 					}
 				}
 			}

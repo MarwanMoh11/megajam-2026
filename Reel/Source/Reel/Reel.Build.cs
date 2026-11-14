@@ -14,6 +14,7 @@ public class Reel : ModuleRules
 			"Engine",
 			"InputCore",
 			"EnhancedInput",
+			"SlateCore",
 			"AIModule",
 			"StateTreeModule",
 			"GameplayStateTreeModule",

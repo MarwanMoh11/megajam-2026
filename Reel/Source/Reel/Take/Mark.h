@@ -55,7 +55,7 @@ public:
 
 	/** The HUD's word over the progress bar while it runs ("LIFTING THE KEYCARD"). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Mark")
-	FString ActionVerb = TEXT("LIFTING");
+	FString ActionVerb = TEXT("Lifting");
 
 	/** ATakeDirector::StepMarkActions calls this every frame for every action mark: bRunning is "Julian stands on
 	 *  this mark and is not SEEN this frame". Running: ActionProgress += Dt; not running: ActionProgress = 0 (it

@@ -157,7 +157,7 @@ void ATakeDirector::StartAlarm(int32 CaseBar, bool bFromRestore)
 		{
 			ShowTitle(AlarmTitle);
 		}
-		Flash(AlarmLine, TakeColors::Red, 3.f);
+		Flash(AlarmLine, ETakeFlashKind::Line, 3.f);
 	}
 	TAKE_LOG(TEXT("ALARM case bar %d live %d deadline %d (shutters %d%s)"), CaseBar, AlarmLiveBar, AlarmDeadlineBar,
 		ShuttersMoved, bFromRestore ? TEXT(", restore") : TEXT(""));
@@ -188,7 +188,7 @@ void ATakeDirector::StepAlarm()
 				Drone->SetChaseTarget(Julian.Get());
 			}
 		}
-		Flash(AlarmLiveLine, TakeColors::Red, 3.f);
+		Flash(AlarmLiveLine, ETakeFlashKind::Danger, 3.f);
 		TAKE_LOG(TEXT("ALARM LIVE bar %d (deadline %d)"), Bar, AlarmDeadlineBar);
 	}
 
@@ -261,8 +261,8 @@ void ATakeDirector::RestoreDeletedScene(FName Id)
 	}
 
 	GI->RestoredScenes.Add(Id);
-	Flash(FString::Printf(TEXT("DELETED SCENE RESTORED: %s"), *Found->Name), TakeColors::GoldBright, 4.f);
-	Flash(KeepThatInLine, TakeColors::White);
+	Flash(FString::Printf(TEXT("DELETED SCENE RESTORED|%s"), *Found->Name), ETakeFlashKind::Stamp, 3.f);
+	Flash(KeepThatInLine, ETakeFlashKind::Line, 3.f);
 	if (Clock)
 	{
 		Clock->PlayChime();
@@ -360,7 +360,7 @@ void ATakeDirector::StepEnd(float DeltaSeconds)
 			{
 				if (EndPage >= 2)
 				{
-					Flash(TEXT("[R] another take"), TakeColors::White, 2.f);
+					Flash(TEXT("[R] New take"), ETakeFlashKind::Refusal, 2.f);
 					TAKE_LOG(TEXT("PRESS on the last end page (%s): [R] another take"), *Press.Source);
 				}
 				else
@@ -371,7 +371,7 @@ void ATakeDirector::StepEnd(float DeltaSeconds)
 			}
 			else
 			{
-				Flash(TEXT("That is a print.  [R] another take"), TakeColors::White, 2.f);
+				Flash(TEXT("That's a print.  [R] New take"), ETakeFlashKind::Refusal, 2.f);
 				TAKE_LOG(TEXT("PRESS on the end page %d (%s): cut refused, that is a print"), EndPage, *Press.Source);
 			}
 		}
@@ -428,8 +428,8 @@ void ATakeDirector::StepTitleCard(float DeltaSeconds)
 			// The opening slate, as a fresh take's first tick shows it.
 			const UTakeGameInstance* GI = GetTakeGameInstance();
 			ShowTitle(VenueLine, 4.f);
-			Flash(FString::Printf(TEXT("%s   TAKE %d"), *Scene1Title, GI ? GI->TakeNumber : 1), TakeColors::GoldBright, 4.f);
-			Flash(TEXT("ACTION!"), TakeColors::White, 1.5f);
+			bTitleIsSlate = true;	// the opening slate shows the scene and the take
+			Flash(TEXT("DIRECTOR: \"Action!\""), ETakeFlashKind::Line, 1.5f);
 			if (Clock)
 			{
 				Clock->PlayClap();
@@ -439,7 +439,7 @@ void ATakeDirector::StepTitleCard(float DeltaSeconds)
 		}
 
 		// A cut key on the card: say how to start.
-		Flash(TitleCardPrompt, TakeColors::White, 2.f);
+		Flash(TitleCardPrompt, ETakeFlashKind::Refusal, 2.f);
 		TAKE_LOG(TEXT("PRESS on the title card (%s): %s"), *Press.Source, *TitleCardPrompt);
 	}
 }

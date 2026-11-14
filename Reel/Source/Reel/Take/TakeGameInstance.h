@@ -82,7 +82,7 @@ public:
 
 	/** Named on the slate: "BLOOPER - AGAIN FROM THE START". Step 1 has only the start. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Take")
-	FString CheckpointName = TEXT("THE START");
+	FString CheckpointName = TEXT("THE STREET");
 
 	/** MarkName of the checkpoint mark the next blooper restarts at. Empty: where Julian was placed in the map. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Take")

@@ -18,7 +18,7 @@ void UTakeGameInstance::NoteBlooper(EBlooperReason Reason)
 void UTakeGameInstance::NoteNewTake()
 {
 	++TakeNumber;
-	CheckpointName = TEXT("THE START");
+	CheckpointName = TEXT("THE STREET");
 	CheckpointMark.Reset();
 	CheckpointBar = 1;
 	CheckpointScene = 1;

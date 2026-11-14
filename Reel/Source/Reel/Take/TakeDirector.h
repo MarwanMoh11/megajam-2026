@@ -80,8 +80,16 @@ struct FTakeFlash
 	UPROPERTY()
 	FString Text;
 
+	/** Where and how the HUD shows it. */
+	ETakeFlashKind Kind = ETakeFlashKind::Note;
+
+	/** Counts up with every Flash(): the HUD shows each line once, on its own clock. */
 	UPROPERTY()
-	FLinearColor Colour = FLinearColor::White;
+	int32 Serial = 0;
+
+	/** A refused cut: the key tab pressed (1-3); 0 none. */
+	UPROPERTY()
+	int32 Tab = 0;
 
 	/** Seconds still to show. */
 	UPROPERTY()
@@ -146,7 +154,7 @@ public:
 
 	/** Shows Text on the HUD from this frame for Seconds, in Colour, and logs it (TAKE_LOG "FLASH ..."). At most
 	 *  MaxFlashes lines are kept; the oldest goes first. Use for prompts and refusals. */
-	void Flash(const FString& Text, const FLinearColor& Colour = FLinearColor::White, float Seconds = 2.f);
+	void Flash(const FString& Text, ETakeFlashKind Kind = ETakeFlashKind::Note, float Seconds = 2.f, int32 Tab = 0);
 
 	/** The level's character with this Id (the first found), null if the set has none (no Vex in the test box). */
 	ATakeCharacter* GetCharacter(ETakeCamera Id) const;
@@ -510,7 +518,7 @@ public:
 
 	/** The opening slate, as the big title on a fresh take (a first take or R; not after a blooper). */
 	UPROPERTY(EditAnywhere, Category = "Take|Scene")
-	FString VenueLine = TEXT("AURELIA AUCTION HOUSE  -  LOT 41: THE DIRECTOR'S CUT");
+	FString VenueLine = TEXT("AURELIA AUCTION HOUSE|LOT 41: THE DIRECTOR'S CUT");
 
 	/** Flashed with the take number under the opening slate. */
 	UPROPERTY(EditAnywhere, Category = "Take|Scene")
@@ -533,7 +541,7 @@ public:
 
 	/** Flashed when a cut key is pressed on the title card. */
 	UPROPERTY(EditAnywhere, Category = "Take|Ends")
-	FString TitleCardPrompt = TEXT("[ENTER] or [E]: action");
+	FString TitleCardPrompt = TEXT("[ENTER] Action!");
 
 	/** Whole bars held after the bar the case is opened in, before the alarm goes live (rule: "that first bar is
 	 *  held: nothing sees him until the next bar line"). */
@@ -735,6 +743,14 @@ public:
 	/** The HUD's flash lines, oldest first. */
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
 	TArray<FTakeFlash> Flashes;
+
+	/** The last flash's serial. */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	int32 FlashSerial = 0;
+
+	/** The title showing is the opening slate (a fresh take), not a scene title. */
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
+	bool bTitleIsSlate = false;
 
 	// --- step 3 state (read by the HUD) -------------------------------------------------------------------------------
 

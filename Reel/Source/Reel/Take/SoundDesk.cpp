@@ -10,7 +10,7 @@
 
 ASoundDesk::ASoundDesk()
 {
-	DeviceName = TEXT("DESK");
+	DeviceName = TEXT("SOUND DESK");
 	Effect = EDeviceEffect::Blind;
 	Range = 6000.f;
 	Duration = 4.f;

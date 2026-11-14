@@ -51,7 +51,7 @@ FTakeUseTarget ATakeDirector::FindUseTarget(const ATakeCharacter* Who) const
 	if (!Best->CanFire(WhyNot))
 	{
 		Result.bCanFire = false;
-		Result.Prompt = WhyNot.IsEmpty() ? Best->DeviceName + TEXT(" - can't fire now") : WhyNot;
+		Result.Prompt = WhyNot.IsEmpty() ? Best->DeviceName + TEXT(" can't fire now") : WhyNot;
 		return Result;
 	}
 	Result.bCanFire = true;
@@ -101,7 +101,7 @@ FTakeUseTarget ATakeDirector::FindUseTarget(const ATakeCharacter* Who) const
 	else
 	{
 		Result.Watcher = nullptr;
-		Result.Prompt = TEXT("Look at a watcher");
+		Result.Prompt = TEXT("Look at a watcher to aim the follow spot");
 		Result.bCanFire = false;
 	}
 	return Result;
@@ -174,19 +174,19 @@ bool ATakeDirector::FireDevice(ADevice* Device)
 		// Step 3: the crew's call as it fires ("VEX: Curtain coming down!").
 		if (!Device->FireLine.IsEmpty())
 		{
-			Flash(Device->FireLine, TakeColors::White, 3.f);
+			Flash(Device->FireLine, ETakeFlashKind::Line, 3.f);
 		}
 		return true;
 	}
 
 	if (WhyNot.IsEmpty())
 	{
-		WhyNot = Device->DeviceName + TEXT(" - can't fire now");
+		WhyNot = Device->DeviceName + TEXT(" can't fire now");
 	}
-	Flash(WhyNot);
+	Flash(WhyNot, ETakeFlashKind::Refusal);
 
 	FString ShortWhy = WhyNot;
-	ShortWhy.RemoveFromStart(Device->DeviceName + TEXT(" - "));
+	ShortWhy.RemoveFromStart(Device->DeviceName + TEXT(" "));
 	TAKE_LOG(TEXT("FIRE REFUSED %s: %s"), *Device->DeviceName, *ShortWhy);
 	return false;
 }
@@ -195,7 +195,7 @@ bool ATakeDirector::SpotWatcher(AWatcher* Watcher)
 {
 	if (!FollowSpot)
 	{
-		Flash(TEXT("No follow spot on this set"));
+		Flash(TEXT("No follow spot on this set"), ETakeFlashKind::Refusal);
 		TAKE_LOG(TEXT("SPOT REFUSED: no follow spot"));
 		return false;
 	}
@@ -209,9 +209,9 @@ bool ATakeDirector::SpotWatcher(AWatcher* Watcher)
 	{
 		if (WhyNot.IsEmpty())
 		{
-			WhyNot = FollowSpot->DeviceName + TEXT(" - can't fire now");
+			WhyNot = FollowSpot->DeviceName + TEXT(" can't fire now");
 		}
-		Flash(WhyNot);
+		Flash(WhyNot, ETakeFlashKind::Refusal);
 		TAKE_LOG(TEXT("SPOT REFUSED %s: %s"), *Watcher->GetLabel(), *WhyNot);
 		return false;
 	}
@@ -259,7 +259,7 @@ void ATakeDirector::StepDevices(float DeltaSeconds)
 		if (Caught >= 2)
 		{
 			const float Refill = ExtraWatcherRefill * static_cast<float>(Caught - 1);
-			Flash(FString::Printf(TEXT("x%d"), Caught), TakeColors::GoldBright, 2.f);
+			Flash(FString::Printf(TEXT("x%d"), Caught), ETakeFlashKind::Count, 1.5f);
 			if (Composure)
 			{
 				Composure->Add(Refill);

@@ -1353,17 +1353,17 @@ m_rope_mark = mark("Mark_Rope", "ROPE", MARK_ROPE)
 m_dais_mark = mark("Mark_Dais", "THE DAIS", MARK_DAIS, DAIS_H)
 m_lift = mark("Mark_Lift", "LIFT", MARK_LIFT, DAIS_H)
 # The spec says 1.5 s. A flight back from Maya costs 1.6 s of the spot's 4 s, so 1.0 s is what fits (STATUS.md).
-setp(m_lift, action_seconds=1.0, action_trigger="Keycard", action_verb="LIFTING THE KEYCARD")
+setp(m_lift, action_seconds=1.0, action_trigger="Keycard", action_verb="Lifting the keycard")
 # The keycard starts Scene 3 and is a checkpoint: a blooper before the case puts him back on the dais mark (no
 # frame covers it), still holding the keycard.
-setp(m_lift, action_scene=3, action_title="SCENE 3 - THE GETAWAY", action_checkpoint_name="THE KEYCARD",
+setp(m_lift, action_scene=3, action_title="SCENE 3|THE GETAWAY", action_checkpoint_name="THE KEYCARD",
      action_checkpoint_mark=m_dais_mark)
 
 # Walking onto the hall floor starts Scene 2 (a checkpoint); the rope mark and the dais are checkpoints too. Stepping
 # into the aisle brings Vance and the bodyguard on: 8.5 s of walking from there to the end of a lift, and they
 # arrive within 8.
 trigger("Trigger_Scene2", "Scene2", HX0 + 20.0, ROPE_X - 30.0, HY0 + 10.0, HY1 - 10.0, scene=2,
-        title="SCENE 2 - THE FLOOR", checkpoint=m_floor_mark, checkpoint_name="THE FLOOR")
+        title="SCENE 2|THE FLOOR", checkpoint=m_floor_mark, checkpoint_name="THE FLOOR")
 trigger("Trigger_Rope", "Rope", MARK_ROPE[0] - 180.0, ROPE_X - 20.0, -400.0, 400.0,
         checkpoint=m_rope_mark, checkpoint_name="THE ROPE")
 trigger("Trigger_PastRope", "PastRope", ROPE_X + 20.0, ROPE_X + 300.0, -GAP + 10.0, GAP - 10.0)
@@ -1429,7 +1429,7 @@ setp(banner, use_offset=use_offset(banner, (BANNER_USE[0], BANNER_USE[1], F2)))
 # Vex's devices, along the backstage corridor: the mid-floor cart (the guard), the sound desk (everything in the
 # hall, 4 s), the dais cart (Vance and the bodyguard: x2).
 cart = spawn(unreal.CartDevice, (CART[0], CART[1], 0), yaw=90.0, label="Cart", folder="Take")
-setp(cart, device_name="CART", effect=unreal.DeviceEffect.LURE, range=1200.0, duration=6.0, uses=1,
+setp(cart, device_name="CHAMPAGNE CART", effect=unreal.DeviceEffect.LURE, range=1200.0, duration=6.0, uses=1,
      fired_from=C, crash_offset=unreal.Vector(CART_ROLL, 0, 0), roll_seconds=1.0,
      use_verb="Kick the champagne cart through the hatch")
 setp(cart, use_offset=use_offset(cart, (CART_USE[0], CART_USE[1], 0)))
@@ -1440,7 +1440,7 @@ setp(cart2, device_name="DAIS CART", effect=unreal.DeviceEffect.LURE, range=1200
 setp(cart2, use_offset=use_offset(cart2, (CART2_USE[0], CART2_USE[1], 0)))
 desk = spawn(unreal.SoundDesk, (DESK[0], DESK[1], 0), yaw=90.0, label="Sound_Desk", folder="Take")
 # Its range covers the hall's far corner (64 m) and stops short of the scanner on the street (73 m).
-setp(desk, device_name="DESK", effect=unreal.DeviceEffect.BLIND, range=6500.0, duration=DESK_SECONDS, uses=1,
+setp(desk, device_name="SOUND DESK", effect=unreal.DeviceEffect.BLIND, range=6500.0, duration=DESK_SECONDS, uses=1,
      fired_from=C, use_verb="Push feedback through the band's PA")
 setp(desk, use_offset=use_offset(desk, (DESK_USE[0], DESK_USE[1], 0)))
 
@@ -1449,18 +1449,18 @@ setp(desk, use_offset=use_offset(desk, (DESK_USE[0], DESK_USE[1], 0)))
 # scene's checkpoint. The rest of that bar and one more are held; then the floor is red tape, security walks in
 # through both doors, the drone follows him, and 8 bars later the clock runs out.
 m_case_mark = mark("Mark_Case", "THE CASE", MARK_CASE, DAIS_H)
-setp(m_case_mark, appear_on="Keycard", action_seconds=1.2, action_trigger="Case", action_verb="OPENING THE CASE",
+setp(m_case_mark, appear_on="Keycard", action_seconds=1.2, action_trigger="Case", action_verb="Opening the case",
      action_checkpoint_name="THE CASE")
 # The free way out: Vex's winch drops the curtain (the guards at both doors lose the dais) and opens the trap.
 m_trap = mark("Mark_Trap", "THE TRAP", TRAP, DAIS_H)
 setp(m_trap, appear_on="Winch", action_needs="Case", action_seconds=0.4, action_trigger="ExitTrap",
-     action_verb="DROPPING THROUGH THE TRAP", action_while_seen=True, stand_radius=85.0)
+     action_verb="Dropping through the stage trap", action_while_seen=True, stand_radius=85.0)
 # The paid way out: the gold door past the band. Two guards hold it; something saved has to take them both.
 m_bow = mark("Mark_Bow", "THE BOW", MARK_BOW)
-setp(m_bow, action_needs="Case", action_seconds=0.5, action_trigger="Bow", action_verb="TAKING A BOW",
+setp(m_bow, action_needs="Case", action_seconds=0.5, action_trigger="Bow", action_verb="Taking a bow",
      needs_blind_drone=True)
 m_side = mark("Mark_Side", "THE GOLD DOOR", MARK_SIDE)
-setp(m_side, action_needs="Case", action_seconds=0.3, action_trigger="ExitSide", action_verb="OUT THE GOLD DOOR")
+setp(m_side, action_needs="Case", action_seconds=0.3, action_trigger="ExitSide", action_verb="Out by the gold side exit")
 
 
 def security(label, name, door, post, facing, line=""):
@@ -1489,7 +1489,7 @@ security("Security_S_Flank", "SECURITY 1", None, SEC_S_POST, 90.0)
 
 # Maya's pyro board, at the south end of her platform. The charges stand along the front of the dais.
 pyro = spawn(unreal.PyroDevice, (PYRO[0], PYRO[1], F2), label="Pyro", folder="Take")
-setp(pyro, device_name="PYRO", effect=unreal.DeviceEffect.BLIND, range=PYRO_RANGE, duration=6.0, uses=1,
+setp(pyro, device_name="PYRO BOARD", effect=unreal.DeviceEffect.BLIND, range=PYRO_RANGE, duration=6.0, uses=1,
      fired_from=B, use_verb="Fire the pyro along the stage", locked_until="Case",
      fire_line='MAYA: "Pyro! Eyes shut!"', flare_candelas=PYRO_CD)
 setp(pyro, use_offset=use_offset(pyro, (PYRO_USE[0], PYRO_USE[1], F2)),
@@ -1506,7 +1506,7 @@ for (ax, ay, bx, by) in ((DAIS_X0 + 6.0, -1200.0, DAIS_X0 + 6.0, 1200.0), (DAIS_
     p.set_editor_property("a", unreal.Vector(ax, ay, DAIS_H))
     p.set_editor_property("b", unreal.Vector(bx, by, DAIS_H))
     panels.append(p)
-setp(winch, device_name="WINCH", effect=unreal.DeviceEffect.MASK, range=0.0, duration=0.0, uses=1, fired_from=C,
+setp(winch, device_name="CURTAIN WINCH", effect=unreal.DeviceEffect.MASK, range=0.0, duration=0.0, uses=1, fired_from=C,
      use_verb="Let the counterweight go: the curtain drops", locked_until="Case", land_trigger="Winch",
      fire_line='VEX: "Curtain coming down. The trap is yours."', panels=panels, curtain_height=CURTAIN_H,
      raised_height=HALL_H - CURTAIN_H - 60.0)

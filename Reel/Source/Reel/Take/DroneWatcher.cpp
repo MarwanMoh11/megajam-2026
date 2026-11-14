@@ -284,7 +284,7 @@ void ADroneWatcher::SetChaseTarget(const AActor* Target)
 		{
 			if (ATakeDirector* Director = ATakeDirector::Get(this))
 			{
-				Director->Flash(ChaseLine, TakeColors::Red, 3.f);
+				Director->Flash(ChaseLine, ETakeFlashKind::Line, 3.f);
 			}
 		}
 	}

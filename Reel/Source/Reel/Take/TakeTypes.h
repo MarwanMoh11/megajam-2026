@@ -187,6 +187,19 @@ struct FTakeUseTarget
 };
 
 /** Shared colours (linear). Used for BasicShapeMaterial's "Color" parameter and for the HUD. */
+/** Where the HUD shows a flash (docs/ART_STYLE.md 15.5): T2 with no glyph, T2 with the danger square, T2 with Julian's
+ *  T, B1 (a refused press, bone), the subtitle row ("SPEAKER: \"line\""), a julian stamp ("CAPTION|TEXT"), x2 / x3. */
+enum class ETakeFlashKind : uint8
+{
+	Note,
+	Danger,
+	Julian,
+	Refusal,
+	Line,
+	Stamp,
+	Count
+};
+
 namespace TakeColors
 {
 	inline const FLinearColor Gold(1.0f, 0.62f, 0.08f);
@@ -267,6 +280,18 @@ namespace TakeText
 		case EWatcherInstrument::DrumRoll: return TEXT("DRUM ROLL");
 		case EWatcherInstrument::HiHat: return TEXT("HI-HAT");
 		default: return TEXT("NONE");
+		}
+	}
+
+	/** The blooper's reason as the slate and the reel say it (BlooperReasonName stays the log's tag). */
+	inline const TCHAR* BlooperReasonLine(EBlooperReason R)
+	{
+		switch (R)
+		{
+		case EBlooperReason::ComposureZero: return TEXT("Composure ran out");
+		case EBlooperReason::BeamTouched: return TEXT("Walked into the beam");
+		case EBlooperReason::ClockRanOut: return TEXT("The clock ran out");
+		default: return TEXT("");
 		}
 	}
 

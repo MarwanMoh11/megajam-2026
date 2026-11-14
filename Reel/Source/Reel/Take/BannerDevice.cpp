@@ -49,10 +49,10 @@ bool ABannerDevice::CanFire(FString& OutWhyNot) const
 	{
 	case EBannerPhase::Dropping:
 	case EBannerPhase::Down:
-		OutWhyNot = DeviceName + TEXT(" - still down");
+		OutWhyNot = DeviceName + TEXT(" is still down");
 		return false;
 	case EBannerPhase::Raising:
-		OutWhyNot = DeviceName + TEXT(" - winching up");
+		OutWhyNot = DeviceName + TEXT(" is winching back up");
 		return false;
 	default:
 		break;

@@ -191,7 +191,7 @@ bool AWatcher::ApplyEffect(EDeviceEffect Effect, float Duration, const FVector& 
 	{
 		if (ATakeDirector* Director = ATakeDirector::Get(this))
 		{
-			Director->Flash(BlindedLine, TakeColors::White, TakeWatcherLocal::BlindedLineSeconds);
+			Director->Flash(BlindedLine, ETakeFlashKind::Line, TakeWatcherLocal::BlindedLineSeconds);
 		}
 	}
 	return true;
@@ -343,7 +343,7 @@ void AWatcher::StepArrival(float DeltaSeconds, const UBarClockComponent* Clock)
 		{
 			if (ATakeDirector* Director = ATakeDirector::Get(this))
 			{
-				Director->Flash(ArriveLine, TakeColors::Red, 3.f);
+				Director->Flash(ArriveLine, ETakeFlashKind::Line, 3.f);
 			}
 		}
 	}

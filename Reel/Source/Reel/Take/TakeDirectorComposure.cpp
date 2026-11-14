@@ -84,7 +84,7 @@ void ATakeDirector::StepComposure(float DeltaSeconds)
 			const AWatcher* const Holder = WatcherPtr.Get();
 			if (Holder && Holder->HasTally() && !Holder->SeenLine.IsEmpty())
 			{
-				Flash(Holder->SeenLine, TakeColors::Red, 2.5f);
+				Flash(Holder->SeenLine, ETakeFlashKind::Line, 2.5f);
 			}
 		}
 	}

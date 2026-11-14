@@ -110,17 +110,17 @@ bool ADevice::CanFire(FString& OutWhyNot) const
 	// Step 3: locked until its trigger (the pyro and the winch: the alarm).
 	if (IsLocked())
 	{
-		OutWhyNot = DeviceName + TEXT(" - ") + LockedWhy;
+		OutWhyNot = DeviceName + TEXT(" is ") + LockedWhy;
 		return false;
 	}
 	if (Uses > 0 && UsesLeft <= 0)
 	{
-		OutWhyNot = DeviceName + TEXT(" - used");
+		OutWhyNot = DeviceName + TEXT(" is used up");
 		return false;
 	}
 	if (bRunning)
 	{
-		OutWhyNot = DeviceName + TEXT(" - busy");
+		OutWhyNot = DeviceName + TEXT(" is busy");
 		return false;
 	}
 	OutWhyNot.Reset();

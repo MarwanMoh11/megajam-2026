@@ -10,7 +10,7 @@
 
 AWinchDevice::AWinchDevice()
 {
-	DeviceName = TEXT("WINCH");
+	DeviceName = TEXT("CURTAIN WINCH");
 	Effect = EDeviceEffect::Mask;
 	Range = 0.f;
 	Duration = 0.f;
@@ -92,7 +92,7 @@ bool AWinchDevice::CanFire(FString& OutWhyNot) const
 	// Locked first (the base says why); then once it is dropping or down it never fires again.
 	if (!IsLocked() && (bDropping || bCurtainDown))
 	{
-		OutWhyNot = DeviceName + TEXT(" - the curtain is down");
+		OutWhyNot = DeviceName + TEXT(" is spent: the curtain is down");
 		return false;
 	}
 	return Super::CanFire(OutWhyNot);

@@ -13,7 +13,7 @@
 
 APyroDevice::APyroDevice()
 {
-	DeviceName = TEXT("PYRO");
+	DeviceName = TEXT("PYRO BOARD");
 	Effect = EDeviceEffect::Blind;
 	Range = 1300.f;
 	Duration = 6.f;

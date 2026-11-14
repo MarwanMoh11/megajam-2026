@@ -44,7 +44,7 @@ void ATakeDirector::StepPresses()
 	{
 		if (QueuedPress.Type == ETakePressType::Confirm)
 		{
-			Flash(TEXT("WASD walk   E use   1 2 3 cut   R new take"), TakeColors::Grey, 2.f);
+			Flash(TEXT("[WASD] Walk   [MOUSE] Look   [E] Use   [1] [2] [3] Cut   [R] New take"), ETakeFlashKind::Refusal, 2.f);
 			TAKE_LOG(TEXT("CONFIRM (%s): the controls line"), *QueuedPress.Source);
 		}
 	}
@@ -68,7 +68,7 @@ void ATakeDirector::HandleCut(ETakeCamera Camera, const FTakePress& Press)
 
 	if (PC->IsInFlight())
 	{
-		Flash(TEXT("Mid-cut"), TakeColors::Grey, 0.8f);
+		Flash(TEXT("Wait for the cut to land"), ETakeFlashKind::Refusal, 1.5f, static_cast<int32>(Camera) + 1);
 		TAKE_LOG(TEXT("CUT -> %s (%s) refused: mid-cut"), Letter, *Press.Source);
 		return;
 	}
@@ -76,13 +76,13 @@ void ATakeDirector::HandleCut(ETakeCamera Camera, const FTakePress& Press)
 	ATakeCharacter* To = GetCharacter(Camera);
 	if (!To)
 	{
-		Flash(FString::Printf(TEXT("No camera %s on this set"), Letter), TakeColors::Grey);
+		Flash(FString::Printf(TEXT("No camera %s on this set"), Letter), ETakeFlashKind::Refusal, 1.5f, static_cast<int32>(Camera) + 1);
 		TAKE_LOG(TEXT("CUT -> %s (%s) refused: no such character"), Letter, *Press.Source);
 		return;
 	}
 	if (To == PC->GetCurrentCharacter())
 	{
-		Flash(FString::Printf(TEXT("Already on %s"), To->GetCrewName()), TakeColors::Grey, 1.f);
+		Flash(FString::Printf(TEXT("Already on %s"), To->GetCrewName()), ETakeFlashKind::Refusal, 1.5f, static_cast<int32>(Camera) + 1);
 		TAKE_LOG(TEXT("CUT -> %s (%s) refused: already there"), Letter, *Press.Source);
 		return;
 	}
@@ -110,7 +110,7 @@ void ATakeDirector::HandleUse(const FTakePress& Press)
 	}
 	if (PC->IsInFlight())
 	{
-		Flash(TEXT("Mid-cut"), TakeColors::Grey, 0.8f);
+		Flash(TEXT("Wait for the cut to land"), ETakeFlashKind::Refusal, 1.5f);
 		TAKE_LOG(TEXT("USE (%s) refused: mid-cut"), *Press.Source);
 		return;
 	}
@@ -125,7 +125,7 @@ void ATakeDirector::HandleUse(const FTakePress& Press)
 
 	if (Who == Julian.Get())
 	{
-		Flash(TEXT("[2] MAYA or [3] VEX work the set"), TakeColors::Grey);
+		Flash(TEXT("JULIAN has nothing to use. [2] MAYA and [3] VEX work the set."), ETakeFlashKind::Refusal, 1.5f);
 		TAKE_LOG(TEXT("USE %s: refused, the crew work the set"), WhoName);
 		return;
 	}
@@ -133,13 +133,13 @@ void ATakeDirector::HandleUse(const FTakePress& Press)
 	ADevice* Device = CurrentUse.Device;
 	if (!Device)
 	{
-		Flash(TEXT("Nothing in reach - stand in a device's ring"), TakeColors::Grey);
+		Flash(TEXT("Nothing in reach. Stand in a device's ring."), ETakeFlashKind::Refusal, 1.5f);
 		TAKE_LOG(TEXT("USE %s: refused, nothing in reach"), WhoName);
 		return;
 	}
 	if (!CurrentUse.bCanFire)
 	{
-		Flash(CurrentUse.Prompt, TakeColors::Grey);
+		Flash(CurrentUse.Prompt, ETakeFlashKind::Refusal, 1.5f);
 		TAKE_LOG(TEXT("USE %s: %s -> refused %s"), WhoName, *Device->DeviceName, *CurrentUse.Prompt);
 		return;
 	}

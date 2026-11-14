@@ -1,16 +1,37 @@
-// Everything on screen, drawn on the Canvas as text and flat rects (no UMG assets). Owner: (u).
+// Everything on screen, drawn on the Canvas (no UMG assets). Owner: (u). Step 4 pass 2: docs/ART_STYLE.md §15.5-15.7.
 // Reads everything through ATakeDirector's public state and the actors' getters; never changes game state.
-// Add drawing helpers as free functions in a uniquely named namespace in TakeHUD.cpp (no header change needed).
+// Every colour, size and timing comes from TakeStyle.h through the kit (TakeHudKit.h); the tunables are below.
+// Drawing is split over three files: TakeHUD.cpp (the frame, the bars, flashes), TakeHUDPicture.cpp (reticle,
+// labels, subtitles, stamps, the opening slate), TakeHUDCards.cpp (title card, blooper slate, PRINT IT, end pages).
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/HUD.h"
 #include "TakeFilmOverlay.h"
+#include "TakeHudKit.h"
+#include "TakeTypes.h"
 #include "TakeHUD.generated.h"
 
 class ATakeDirector;
-class UFont;
+
+/** A line the HUD is showing from the director's flashes (its own timing, from the frame it first saw it). */
+struct FTakeShown
+{
+	FString Text;
+	ETakeFlashKind Kind = ETakeFlashKind::Note;
+	double Since = -100.0;
+	int32 Tab = 0;
+};
+
+/** A spoken line waiting for, or holding, the subtitle row. */
+struct FTakeSubtitle
+{
+	FString Speaker;
+	FString Line;
+	float Hold = 2.f;
+	double Since = -1.0;	// < 0: queued, not shown yet
+};
 
 UCLASS()
 class REEL_API ATakeHUD : public AHUD
@@ -21,124 +42,143 @@ public:
 	ATakeHUD();
 
 	/**
-	 * Drawn every frame after the world tick (so after the director's late tick): whatever a press changed this
-	 * frame is on screen this frame. Layers, in order:
-	 *  - Camera look: on A, black letterbox bars to LetterboxAspect with "A - JULIAN" + timecode (bar.beat) + "TAKE n"
-	 *    top left, a red REC dot top right, the gold composure line and its label (SEEN in red / MARK in gold) in the
-	 *    bottom bar. On B, no bars: "B - MAYA" top left in work-light blue, timecode, take, and the composure line
-	 *    along the bottom. The look follows Director->CurrentCamera, which changes on a flight's last frame.
-	 *  - A beat dot that flashes with Clock->GetPulse().
-	 *  - No pointer (the cursor is hidden). A centre reticle: a small cross or ring ReticleSize px across, white;
-	 *    gold while Director->CurrentUse.Watcher is set (the spot has a watcher picked). Hidden during a flight.
-	 *  - The use prompt: Director->CurrentUse.Prompt, centred just below the reticle, gold when bCanFire, grey when
-	 *    not. Empty prompt (nothing in reach, Julian, a flight): nothing drawn.
-	 *  - The crew strip, bottom centre above the hint: "1 JULIAN   2 MAYA   3 VEX", one entry per Id that
-	 *    Director->GetCharacter finds (a missing Vex is drawn dim or left out), the current one
-	 *    (Director->CurrentCamera) lit GoldBright, the others grey.
-	 *  - During a flight (PC->IsInFlight()): a big "CUT -> MAYA" (PC->GetFlightTarget()->GetCrewName()) in LargeFont at
-	 *    SlateTextScale across the middle, from the press frame to the landing frame.
-	 *  - On B and C only (labels only on set): each watcher's label and state over it ("GUARD - LURED"), each
-	 *    device's name and pips over it (ADevice::GetPipsText: the spot shows READY or BUSY 2.1).
-	 *  - The flash lines (Director->Flashes), centred low, newest at the bottom.
-	 *  - One controls hint line, the same on every character: ControlsHint, grey, bottom centre.
-	 *  - Phase BlooperFreeze: a red slate across the middle, "BLOOPER - AGAIN FROM THE START" (checkpoint name from
-	 *    the game instance), the reason, and "Cut!".
-	 *  - Phase Cleared: a gold "CLEAR" stamp.
-	 * The PC is GetOwningPlayerController() cast to ATakePlayerController (or Director->PC).
+	 * Drawn every frame after the world tick, so whatever a press changed this frame is on screen this frame.
+	 * Order: the film overlay's under-layer (picture dirt or viewfinder, burn, splice, bars); then by phase:
+	 *  - Title: the title card (a card over the picture; the bars stay ink).
+	 *  - Printed: the PRINT IT slate, the stats and grade, the blooper reel and credits (cards, keys in B3).
+	 *  - Rolling / Cleared / BlooperFreeze: the picture layer (reticle on the crew's cameras, world labels by the
+	 *    label rule, subtitles, the opening slate, scene titles and stamps), then the bars: T1 slate strip, key tabs
+	 *    with pips, bar clock or finale count; T2 goal line or flash; B1 Use prompt, Julian's mark action or a
+	 *    refusal; B2 composure; B3 controls. Then the overlay's over-layer (blooper burn, PRINT IT snap), then the
+	 *    blooper slate when it is due, and B1 refusals over everything.
 	 */
 	virtual void DrawHUD() override;	// BODY: (u)
 
-	/** The one controls line at the bottom. */
-	UPROPERTY(EditAnywhere, Category = "Take|HUD")
-	FString ControlsHint = TEXT("WASD walk   Mouse look   E use   1 2 3 switch   R new take");
+	// --- words (§15.7) ---------------------------------------------------------------------------------------------------
 
-	/** The centre reticle's size, px. */
+	/** The controls row, B3, during play. */
 	UPROPERTY(EditAnywhere, Category = "Take|HUD")
-	float ReticleSize = 8.f;
+	FString ControlsHint = TEXT("[WASD] Walk   [MOUSE] Look   [E] Use   [1] [2] [3] Cut   [R] New take");
 
-	/** Camera A's letterbox: 2.39:1. */
+	/** The scenes' names for the slate strip and the slates, index 0 = Scene 1. */
 	UPROPERTY(EditAnywhere, Category = "Take|HUD")
-	float LetterboxAspect = 2.39f;
+	TArray<FString> SceneNames;
 
 	UPROPERTY(EditAnywhere, Category = "Take|HUD")
-	float TextScale = 1.4f;
+	FString DirectorWord = TEXT("YOU");
 
-	UPROPERTY(EditAnywhere, Category = "Take|HUD")
-	float SlateTextScale = 2.5f;
+	// --- timings (§15.2 motion, §15.5) --------------------------------------------------------------------------------------
 
-	/** Height of the composure line, px. */
-	UPROPERTY(EditAnywhere, Category = "Take|HUD")
-	float ComposureLineHeight = 6.f;
+	/** A flash holds the goal line's place this long (48 film frames). */
+	UPROPERTY(EditAnywhere, Category = "Take|HUD", meta = (ClampMin = "0.1"))
+	float FlashHoldSeconds = 2.f;
 
-	// --- step 2 (BODY: D; the layers are listed in the orchestrator's brief to D) ------------------------------------
+	/** A refused press says why in B1 this long (36 film frames). */
+	UPROPERTY(EditAnywhere, Category = "Take|HUD", meta = (ClampMin = "0.1"))
+	float RefusalHoldSeconds = 1.5f;
 
-	/** The objective line's text scale (top centre, under the bar). */
-	UPROPERTY(EditAnywhere, Category = "Take|HUD")
-	float ObjectiveScale = 1.6f;
+	/** A subtitle holds SubtitleBaseSeconds + SubtitlePerCharSeconds a character. */
+	UPROPERTY(EditAnywhere, Category = "Take|HUD", meta = (ClampMin = "0.1"))
+	float SubtitleBaseSeconds = 2.f;
 
-	/** The scene title's text scale (LargeFont). */
-	UPROPERTY(EditAnywhere, Category = "Take|HUD")
-	float TitleScale = 2.2f;
+	UPROPERTY(EditAnywhere, Category = "Take|HUD", meta = (ClampMin = "0"))
+	float SubtitlePerCharSeconds = 0.06f;
 
-	/** Watcher labels also show on Julian's camera (dimmer), not only on Maya's and Vex's. */
-	UPROPERTY(EditAnywhere, Category = "Take|HUD")
-	bool bLabelsOnJulian = true;
+	/** Lines waiting behind the one on screen; a newer line pushes out the oldest waiting one. */
+	UPROPERTY(EditAnywhere, Category = "Take|HUD", meta = (ClampMin = "0"))
+	int32 SubtitleQueueMax = 2;
 
-	/** Labels and pips farther than this from the camera are not drawn, cm (Maya's and Vex's cameras). */
-	UPROPERTY(EditAnywhere, Category = "Take|HUD")
+	/** Stamps over play hold this many film frames (titles and DELETED SCENE RESTORED: StampTitleHoldFrames). */
+	UPROPERTY(EditAnywhere, Category = "Take|HUD", meta = (ClampMin = "1"))
+	float StampHoldFrames = 36.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|HUD", meta = (ClampMin = "1"))
+	float StampTitleHoldFrames = 72.f;
+
+	/** A new goal's bone rule draws out from the centre over this many film frames. */
+	UPROPERTY(EditAnywhere, Category = "Take|HUD", meta = (ClampMin = "1"))
+	float GoalRuleFrames = 12.f;
+
+	// --- the label rule (§15.5) ------------------------------------------------------------------------------------------------
+
+	/** Off (default, STATUS rule 1): Julian's camera shows only countdown tags. On: tape labels on the film too. */
+	UPROPERTY(EditAnywhere, Category = "Take|Labels")
+	bool bLabelsOnFilmCamera = false;
+
+	/** Only watchers and devices this close to the camera get a label, cm (40 m). */
+	UPROPERTY(EditAnywhere, Category = "Take|Labels", meta = (ClampMin = "0"))
 	float LabelMaxDistance = 4000.f;
 
-	/** ...and on Julian's camera, where they are only a reminder, cm. */
-	UPROPERTY(EditAnywhere, Category = "Take|HUD")
-	float JulianLabelMaxDistance = 2200.f;
-
-	/** A watcher that has not arrived yet shows its "OFF" label only this close, cm. */
-	UPROPERTY(EditAnywhere, Category = "Take|HUD")
+	/** A watcher that has not arrived yet shows its OFF label only this close, cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Labels", meta = (ClampMin = "0"))
 	float OffLabelMaxDistance = 1500.f;
 
-	/** Two labels closer than this on screen (px on a 900 px tall screen: across, down) are stacked, not overlapped. */
-	UPROPERTY(EditAnywhere, Category = "Take|HUD")
-	FVector2D LabelStackSize = FVector2D(170.f, 20.f);
+	/** At most this many labels, plus the priority-1 label (the picked watcher or the device in reach). */
+	UPROPERTY(EditAnywhere, Category = "Take|Labels", meta = (ClampMin = "0"))
+	int32 MaxLabels = 4;
 
-	/** The action bar's size (the lift), px. */
-	UPROPERTY(EditAnywhere, Category = "Take|HUD")
-	FVector2D ActionBarSize = FVector2D(260.f, 10.f);
+	/** Julian's camera: at most this many countdown tags (blinded, lured, masked). */
+	UPROPERTY(EditAnywhere, Category = "Take|Labels", meta = (ClampMin = "0"))
+	int32 MaxCountdownTags = 3;
 
-	// --- step 3 (BODY: D; the layers are listed in the orchestrator's brief to D) ------------------------------------
+	/** Watchers with the same name and state this close share one label ("2 GUARDS"), cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Labels", meta = (ClampMin = "0"))
+	float LabelMergeDistance = 300.f;
 
-	/** The title card and the credits: the game's name (a working title until Marwan picks one). */
+	/** An overlapping label moves up at most this many times, then hides. */
+	UPROPERTY(EditAnywhere, Category = "Take|Labels", meta = (ClampMin = "0"))
+	int32 LabelMaxLifts = 2;
+
+	/** A label's bottom edge this far above the actor's label point, px at 1080. */
+	UPROPERTY(EditAnywhere, Category = "Take|Labels", meta = (ClampMin = "0"))
+	float LabelLiftPx = 8.f;
+
+	// --- the ends (step 3, reworded by §15.7) -----------------------------------------------------------------------------------
+
 	UPROPERTY(EditAnywhere, Category = "Take|Ends")
 	FString GameTitle = TEXT("PRINT IT");
 
 	UPROPERTY(EditAnywhere, Category = "Take|Ends")
-	FString TitleTagline = TEXT("a heist shot in one take");
+	FString TitleTagline = TEXT("A heist shot in one take.");
 
-	/** How to play, on the title card (one line each). Empty at BeginPlay: filled with the default lines. */
+	/** The title card's pitch, one line each (type.body). */
 	UPROPERTY(EditAnywhere, Category = "Take|Ends")
-	TArray<FString> TitleLines;
+	TArray<FString> TitlePitch;
+
+	/** The cast row: "key|NAME|job", three columns. */
+	UPROPERTY(EditAnywhere, Category = "Take|Ends")
+	TArray<FString> TitleCast;
+
+	/** The rule lines; [danger] and [julian] draw the glyphs. */
+	UPROPERTY(EditAnywhere, Category = "Take|Ends")
+	TArray<FString> TitleRules;
 
 	UPROPERTY(EditAnywhere, Category = "Take|Ends")
-	FString TitlePrompt = TEXT("[ENTER]  ACTION");
+	FString TitleControls = TEXT("[WASD] Walk   [MOUSE] Look   [E] Use what the crew stands at   [R] New take");
 
-	/** The credits under the blooper reel (one line each). Empty at BeginPlay: filled with the default lines. */
+	UPROPERTY(EditAnywhere, Category = "Take|Ends")
+	FString TitlePrompt = TEXT("[ENTER] Action!");
+
+	/** The credits after the blooper reel (the first line is drawn as a title). */
 	UPROPERTY(EditAnywhere, Category = "Take|Ends")
 	TArray<FString> CreditLines;
 
-	/** The title card's and the PRINT IT slate's name scale (LargeFont). */
 	UPROPERTY(EditAnywhere, Category = "Take|Ends")
-	float BigTitleScale = 4.f;
+	FString EndKeys = TEXT("[ENTER] Next   [R] New take   [ESC] Quit");
 
-	/** The blooper reel rolls up this many px (on a 900 px tall screen) a second. */
 	UPROPERTY(EditAnywhere, Category = "Take|Ends")
-	float ReelScrollSpeed = 28.f;
+	FString EndKeysLast = TEXT("[R] New take   [ESC] Quit");
 
-	/** The alarm's red wash at the screen's edges: its strongest alpha, on the beat. */
-	UPROPERTY(EditAnywhere, Category = "Take|HUD", meta = (ClampMin = "0", ClampMax = "1"))
-	float AlarmEdgeAlpha = 0.45f;
+	/** The blooper reel rolls up this many px (at 1080) a second. */
+	UPROPERTY(EditAnywhere, Category = "Take|Ends")
+	float ReelScrollSpeed = 34.f;
 
-	/** The alarm clock's text scale ("ALARM  5 BARS"). */
-	UPROPERTY(EditAnywhere, Category = "Take|HUD")
-	float AlarmClockScale = 2.4f;
+	/** The stats rows appear one every this many seconds; the grade stamp lands GradeDelayFrames after the page. */
+	UPROPERTY(EditAnywhere, Category = "Take|Ends", meta = (ClampMin = "0"))
+	float StatsRowSeconds = 0.3f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Ends", meta = (ClampMin = "0"))
+	float GradeDelayFrames = 24.f;
 
 	/** Step 4: the film overlay and the letterbox (TakeFilmOverlay.h): every number and switch is here. */
 	UPROPERTY(EditAnywhere, Category = "Take|Film")
@@ -151,19 +191,56 @@ protected:
 	/** The director, cached (ATakeDirector::Get). */
 	ATakeDirector* GetDirector();	// BODY: (u)
 
-	/** Text with a dark drop shadow, centred on X when bCentre. Returns the drawn size. */
-	FVector2D DrawShadowedText(const FString& Text, const FLinearColor& Colour, float X, float Y, float Scale,
-		bool bCentre);	// BODY: (u)
+	// TakeHUD.cpp
+	void ReadFlashes(const ATakeDirector& Dir);
+	void TrackState(const ATakeDirector& Dir);
+	void DrawBars(const ATakeDirector& Dir);
+	void DrawSlateStrip(const ATakeDirector& Dir);
+	void DrawKeyTabs(const ATakeDirector& Dir);
+	void DrawClock(const ATakeDirector& Dir);
+	void DrawGoal(const ATakeDirector& Dir);
+	void DrawB1(const ATakeDirector& Dir, bool bRefusalsOnly);
+	void DrawComposure(const ATakeDirector& Dir);
+	bool IsRefusalShowing() const;
+	float Age(double Since) const { return static_cast<float>(Kit.Now - Since); }
+	FString SceneName(int32 Scene) const;
 
-	/** DrawShadowedText with a chosen font (the slate and stamp use LargeFont). */
-	FVector2D DrawTextWithFont(const FString& Text, UFont* Font, const FLinearColor& Colour, float X, float Y,
-		float Scale, bool bCentre);
+	// TakeHUDPicture.cpp
+	void DrawPicture(const ATakeDirector& Dir, const FTakeFilmFrame& F);
+	void DrawReticle(const ATakeDirector& Dir);
+	void DrawLabels(const ATakeDirector& Dir);
+	void DrawSubtitles(const FTakeFilmFrame& F);
+	void DrawStamps(const ATakeDirector& Dir);
+	void DrawOpeningSlate(const ATakeDirector& Dir, float SlateAge, float Alpha);
+	void DrawSubtitleNow(const FString& Speaker, const FString& Line, bool bFilm);
+
+	// TakeHUDCards.cpp
+	void DrawTitleCard(const ATakeDirector& Dir, const FTakeFilmFrame& F);
+	void DrawBlooperSlate(const ATakeDirector& Dir);
+	void DrawEnds(const ATakeDirector& Dir, const FTakeFilmFrame& F);
+	void DrawPrintIt(const ATakeDirector& Dir);
+	void DrawStats(const ATakeDirector& Dir, const FVector4f& Box);
+	void DrawReel(const ATakeDirector& Dir, const FVector4f& Box);
 
 	UPROPERTY(Transient)
-	TObjectPtr<UFont> SmallFont;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UFont> LargeFont;
+	FTakeHudKit Kit;
 
 	TWeakObjectPtr<ATakeDirector> CachedDirector;
+
+	// What the HUD is showing, on its own clock (real time, so a freeze or a pause cannot stall a line).
+	int32 LastSerial = 0;
+	FTakeShown GoalFlash;
+	FTakeShown Refusal;
+	TArray<FTakeShown> Stamps;
+	TArray<FTakeSubtitle> Subtitles;
+	FString LastGoal;
+	double GoalSince = -100.0;
+	float LastComposure = -1.f;
+	float RefillFrom = 0.f;
+	float RefillTo = 0.f;
+	double RefillSince = -100.0;
+	ETakePhase LastPhase = ETakePhase::Rolling;
+	double PhaseSince = 0.0;
+	ETakeCamera LastLook = ETakeCamera::A;
+	double LookSince = -100.0;
 };

@@ -215,7 +215,7 @@ void ATakeDirector::BeginPlay()
 		GI ? GI->TakeNumber : 1, Julian ? TEXT("yes") : TEXT("NO"), Characters.Num(), Marks.Num(), Watchers.Num(),
 		Devices.Num(), TapeZones.Num(), SceneTriggers.Num(), CrewPosts.Num());
 
-	Flash(TEXT("ACTION!"), TakeColors::White, 1.5f);
+	Flash(TEXT("DIRECTOR: \"Action!\""), ETakeFlashKind::Line, 1.5f);
 	if (UTakeGameInstance* MutableGI = GetTakeGameInstance())
 	{
 		MutableGI->bReloadingFromBlooper = false;
@@ -418,7 +418,7 @@ void ATakeDirector::Tick(float DeltaSeconds)
 			{
 				// A fresh take (the first, or R): the opening slate.
 				ShowTitle(VenueLine, 4.f);
-				Flash(FString::Printf(TEXT("%s   TAKE %d"), *Scene1Title, GI->TakeNumber), TakeColors::GoldBright, 4.f);
+				bTitleIsSlate = true;	// the opening slate shows the scene and the take
 			}
 		}
 		if (GI && !GI->CheckpointMark.IsEmpty())
@@ -429,7 +429,7 @@ void ATakeDirector::Tick(float DeltaSeconds)
 			&& !SceneHints[0].IsEmpty())
 		{
 			// No checkpoint yet (Scene 1 from the start): the crew hint still comes after the bloopers here.
-			Flash(SceneHints[0], TakeColors::White, 6.f);
+			Flash(SceneHints[0], ETakeFlashKind::Line, 6.f);
 		}
 		if (GI && GI->CheckpointMark.IsEmpty())
 		{
@@ -465,7 +465,7 @@ void ATakeDirector::Tick(float DeltaSeconds)
 		{
 			// No press is silent, even under the slate: R starts the new take at once, anything else says why not.
 			const UTakeGameInstance* FreezeGI = GetTakeGameInstance();
-			const FString AgainFrom = FreezeGI ? FreezeGI->CheckpointName : FString(TEXT("THE START"));
+			const FString AgainFrom = FreezeGI ? FreezeGI->CheckpointName : FString(TEXT("THE STREET"));
 			TArray<FTakePress> Dropped;
 			PC->TakePresses(Dropped);
 			for (const FTakePress& Press : Dropped)
@@ -477,7 +477,7 @@ void ATakeDirector::Tick(float DeltaSeconds)
 					return;
 				}
 				TAKE_LOG(TEXT("PRESS during the freeze: dropped"));
-				Flash(FString::Printf(TEXT("Cut! Again from %s"), *AgainFrom), TakeColors::White, 1.0f);
+				Flash(FString::Printf(TEXT("Again from %s.  [R] New take"), *AgainFrom.ToLower()), ETakeFlashKind::Refusal, 1.0f);
 			}
 		}
 		StepFreeze(DeltaSeconds);
@@ -576,11 +576,13 @@ void ATakeDirector::SetPhase(ETakePhase NewPhase)
 	PhaseSeconds = 0.f;
 }
 
-void ATakeDirector::Flash(const FString& Text, const FLinearColor& Colour, float Seconds)
+void ATakeDirector::Flash(const FString& Text, ETakeFlashKind Kind, float Seconds, int32 Tab)
 {
 	FTakeFlash& Line = Flashes.AddDefaulted_GetRef();
 	Line.Text = Text;
-	Line.Colour = Colour;
+	Line.Kind = Kind;
+	Line.Serial = ++FlashSerial;
+	Line.Tab = Tab;
 	Line.Seconds = FMath::Max(0.1f, Seconds);
 	Line.SecondsLeft = Line.Seconds;
 	while (Flashes.Num() > FMath::Max(1, MaxFlashes))

@@ -123,7 +123,6 @@ void ATakeDirector::NewTake()
 		GI->NoteNewTake();
 		NewTakeNumber = GI->TakeNumber;
 	}
-	Flash(FString::Printf(TEXT("TAKE %d"), NewTakeNumber), TakeColors::White, 1.5f);
 	TAKE_LOG(TEXT("NEW TAKE %d"), NewTakeNumber);
 	ReloadLevel();
 }

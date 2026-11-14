@@ -9,7 +9,7 @@
 
 ACartDevice::ACartDevice()
 {
-	DeviceName = TEXT("CART");
+	DeviceName = TEXT("CHAMPAGNE CART");
 	UseVerb = TEXT("Release the cart");
 	Effect = EDeviceEffect::Lure;
 	Range = 1200.f;

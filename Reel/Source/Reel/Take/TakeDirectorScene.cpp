@@ -76,7 +76,8 @@ void ATakeDirector::StepScene(float /*DeltaSeconds*/)
 	if (Phase == ETakePhase::Rolling && Standing && Standing->bGoal)
 	{
 		SetPhase(ETakePhase::Cleared);
-		Flash(TEXT("CLEAR - that's the one"), TakeColors::GoldBright, 3.f);
+		Flash(TEXT("CLEARED"), ETakeFlashKind::Stamp, 1.5f);
+		Flash(TEXT("DIRECTOR: \"That's the one.\""), ETakeFlashKind::Line, 3.f);
 		TAKE_LOG(TEXT("CLEARED on %s"), *Standing->MarkName);
 	}
 }
@@ -107,7 +108,7 @@ void ATakeDirector::FireTrigger(FName Name)
 			EachWatcher->ScheduleArrival(ArriveBar);
 			if (!bCase)
 			{
-				Flash(FString::Printf(TEXT("%s - arrives on bar %d"), *EachWatcher->GetLabel(), ArriveBar), TakeColors::Red, 3.f);
+				Flash(FString::Printf(TEXT("%s arrives on bar %d"), *EachWatcher->GetLabel(), ArriveBar), ETakeFlashKind::Danger, 3.f);
 			}
 		}
 	}
@@ -116,7 +117,7 @@ void ATakeDirector::FireTrigger(FName Name)
 	if (Name == FName(TakeTriggers::Keycard))
 	{
 		// The lift mark's ActionScene / ActionTitle start Scene 3 (StepMarkActions).
-		Flash(TEXT("KEYCARD LIFTED"), TakeColors::Gold, 3.f);
+		Flash(TEXT("KEYCARD LIFTED"), ETakeFlashKind::Julian, 3.f);
 		if (Clock)
 		{
 			Clock->PlayChime();
@@ -125,11 +126,11 @@ void ATakeDirector::FireTrigger(FName Name)
 	else if (bCase)
 	{
 		StartAlarm(Bar, false);
-		Flash(TEXT("HE HAS THE REEL"), TakeColors::Gold, 3.f);
+		Flash(TEXT("HE HAS THE REEL"), ETakeFlashKind::Julian, 3.f);
 	}
 	else if (Name == FName(TakeTriggers::Winch))
 	{
-		Flash(TEXT("THE STAGE TRAP IS OPEN"), TakeColors::Gold, 3.f);
+		Flash(TEXT("THE STAGE TRAP IS OPEN"), ETakeFlashKind::Julian, 3.f);
 	}
 	else if (Name == FName(TakeTriggers::Bow))
 	{
@@ -205,7 +206,7 @@ void ATakeDirector::StepWarnings()
 			// It arrives on the next bar line: its instrument plays solo for one bar.
 			PlayOnce(EachWatcher->Instrument);
 			Clock->MuteMetronome(1.f);
-			Flash(FString::Printf(TEXT("%s arrives on the next bar"), *EachWatcher->GetLabel()), TakeColors::Red, 2.f);
+			Flash(FString::Printf(TEXT("%s arrives on the next bar"), *EachWatcher->GetLabel()), ETakeFlashKind::Danger, 2.f);
 			if (EachWatcher->Instrument != EWatcherInstrument::None)
 			{
 				TAKE_LOG(TEXT("WARNING %s %s: arrives on bar %d"), *EachWatcher->GetLabel(),
@@ -356,7 +357,7 @@ void ATakeDirector::UpdateObjective()
 
 	if (Phase == ETakePhase::Cleared)
 	{
-		NewObjective = TEXT("CLEARED.   [R] new take");
+		NewObjective = TEXT("Cleared.  [R] New take");
 	}
 	else if (HasFired(FName(TakeTriggers::Keycard)))
 	{
@@ -384,7 +385,7 @@ void ATakeDirector::UpdateObjective()
 			{
 				NewObjective = bJulianExposed
 					? FString(TEXT("He has the keycard. Get JULIAN off the red tape."))
-					: FString::Printf(TEXT("The case trips the alarm: %d bars to get out. Post the crew first: [3] VEX at the curtain winch, [2] MAYA at the pyro board. Then stand JULIAN on the gold mark at the case."), FinaleBars);
+					: FString::Printf(TEXT("The case trips the alarm: %d bars to get out. Post [3] VEX at the CURTAIN WINCH and [2] MAYA at the PYRO BOARD first."), FinaleBars);
 			}
 			else if (CurrentCamera == ETakeCamera::B)
 			{
@@ -396,7 +397,7 @@ void ATakeDirector::UpdateObjective()
 			{
 				NewObjective = bAtWinch
 					? TEXT("VEX is at the curtain winch. It unlocks with the alarm.   [2] MAYA   [1] JULIAN")
-					: TEXT("Walk VEX east along the corridor to the curtain winch at its far end. (His sound desk buys the gold side exit instead.)");
+					: TEXT("Walk VEX east along the corridor to the CURTAIN WINCH. Or save his SOUND DESK for the gold side exit.");
 			}
 		}
 		else if (!HasFired(FName(TakeTriggers::Winch)) && Winch && Winch->UsesLeft > 0)
@@ -404,12 +405,12 @@ void ATakeDirector::UpdateObjective()
 			if (CurrentCamera == ETakeCamera::C)
 			{
 				NewObjective = bAtWinch
-					? TEXT("[E]  Let the counterweight go: the curtain hides him from the guards and opens the stage trap")
-					: TEXT("Run VEX to the curtain winch at the east end of the corridor");
+					? TEXT("[E] Drop the curtain: it hides JULIAN from the guards and opens the stage trap")
+					: TEXT("Walk VEX to the CURTAIN WINCH at the east end of the corridor");
 			}
 			else
 			{
-				NewObjective = TEXT("ALARM.   [3] VEX: the winch drops the curtain and opens the stage trap.   [2] MAYA: the pyro blinds the stage.");
+				NewObjective = TEXT("Alarm. [3] VEX: drop the curtain to open the stage trap. [2] MAYA: the pyro blinds the stage.");
 			}
 		}
 		else if (Pyro && Pyro->UsesLeft > 0)
@@ -427,11 +428,11 @@ void ATakeDirector::UpdateObjective()
 		}
 		else if (CurrentCamera == ETakeCamera::A)
 		{
-			NewObjective = TEXT("RUN. The open trap: the gold mark upstage, behind the lots table.");
+			NewObjective = TEXT("Go. The open trap is the gold mark upstage, behind the lots table.");
 		}
 		else
 		{
-			NewObjective = TEXT("[1]  JULIAN: get him to the open trap");
+			NewObjective = TEXT("[1] JULIAN: get him to the open trap");
 		}
 	}
 	else if (Scene <= 1)
@@ -459,11 +460,11 @@ void ATakeDirector::UpdateObjective()
 				}
 				else if (FVector::Dist2D(Julian->GetFeetLocation(), Scanner->GetActorLocation()) > DoorPromptDistance)
 				{
-					NewObjective = TEXT("No invitation: keep off the red carpet. Walk JULIAN up the queue lane to the gold mark   (WASD + mouse)");
+					NewObjective = TEXT("No invitation: keep off the red carpet. Walk JULIAN up the queue lane to the gold mark");
 				}
 				else
 				{
-					NewObjective = TEXT("[2]  Cut to MAYA on the canopy. She has the searchlight.");
+					NewObjective = TEXT("[2] Cut to MAYA on the terrace. She has the SEARCHLIGHT.");
 				}
 			}
 			else if (CurrentCamera == ETakeCamera::B)
@@ -474,7 +475,7 @@ void ATakeDirector::UpdateObjective()
 				}
 				else if (!CurrentUse.Device)
 				{
-					NewObjective = TEXT("Stand in the searchlight's gold ring");
+					NewObjective = TEXT("Stand MAYA in the SEARCHLIGHT's ring");
 				}
 				else if (CurrentUse.Watcher.Get() == Scanner)
 				{
@@ -566,7 +567,7 @@ void ATakeDirector::UpdateObjective()
 
 		if (Beam && Julian && Beam->DistanceToPoint(Julian->GetFeetLocation()) <= TakeSceneLocal::RopePromptDistance)
 		{
-			NewObjective = TEXT("The rope. Blind or mask the BEAM and the GUARD:   [2] MAYA spot, banner   [3] VEX cart");
+			NewObjective = TEXT("The rope. Blind or mask the BEAM and the GUARD: [2] MAYA has the FOLLOW SPOT and the BANNER, [3] VEX the CHAMPAGNE CART.");
 		}
 		else if (Drone && Drone->HasArrived())
 		{
@@ -592,6 +593,7 @@ void ATakeDirector::UpdateObjective()
 void ATakeDirector::ShowTitle(const FString& Text, float Seconds)
 {
 	Title = Text;
+	bTitleIsSlate = false;
 	TitleSeconds = FMath::Max(0.1f, Seconds);
 	TitleSecondsLeft = TitleSeconds;
 	TAKE_LOG(TEXT("TITLE \"%s\" %.1f s"), *Text, TitleSeconds);
@@ -626,7 +628,7 @@ void ATakeDirector::SaveCheckpoint(AMark* Mark, const FString& Name)
 	GI->BloopersAtCheckpoint = 0;
 	GI->CheckpointCuts = GI->Cuts;
 
-	Flash(FString::Printf(TEXT("CHECKPOINT - %s"), *Name), TakeColors::Gold, 3.f);
+	Flash(FString::Printf(TEXT("CHECKPOINT: %s"), *Name), ETakeFlashKind::Julian, 3.f);
 	if (Clock)
 	{
 		Clock->PlayChime();
@@ -724,7 +726,7 @@ void ATakeDirector::RestoreCheckpoint()
 			: (HasFired(FName(TakeTriggers::PastRope)) ? 2 : Scene - 1);
 		if (SceneHints.IsValidIndex(HintIndex) && !SceneHints[HintIndex].IsEmpty())
 		{
-			Flash(SceneHints[HintIndex], TakeColors::White, 6.f);
+			Flash(SceneHints[HintIndex], ETakeFlashKind::Line, 6.f);
 		}
 	}
 }
@@ -840,6 +842,6 @@ void ATakeDirector::StepIntroLines()
 		return;
 	}
 	GI->IntroShownMask |= Bit;
-	Flash(On->IntroLine, TakeColors::White, IntroLineSeconds);
+	Flash(On->IntroLine, ETakeFlashKind::Line, IntroLineSeconds);
 	TAKE_LOG(TEXT("INTRO %s"), On->GetCrewName());
 }

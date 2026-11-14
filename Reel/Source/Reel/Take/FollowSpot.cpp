@@ -73,7 +73,7 @@ bool AFollowSpot::CanFire(FString& OutWhyNot) const
 	// Idle: it can fire (which watcher is FindUseTarget's and FireAt's business). Busy: the countdown.
 	if (bRunning)
 	{
-		OutWhyNot = FString::Printf(TEXT("%s - busy %.1f s"), *DeviceName, BusySecondsLeft);
+		OutWhyNot = FString::Printf(TEXT("%s is busy for %.1f s"), *DeviceName, BusySecondsLeft);
 		return false;
 	}
 	return Super::CanFire(OutWhyNot);
@@ -136,17 +136,17 @@ bool AFollowSpot::FireAt(AWatcher* Watcher, FString& OutWhyNot)
 	}
 	if (bRunning)
 	{
-		OutWhyNot = FString::Printf(TEXT("%s - busy %.1f s"), *DeviceName, BusySecondsLeft);
+		OutWhyNot = FString::Printf(TEXT("%s is busy for %.1f s"), *DeviceName, BusySecondsLeft);
 		return false;
 	}
 	if (Uses > 0 && UsesLeft <= 0)
 	{
-		OutWhyNot = DeviceName + TEXT(" - used");
+		OutWhyNot = DeviceName + TEXT(" is used up");
 		return false;
 	}
 	if (Watcher->DistanceToPoint(GetActorLocation()) > Range)
 	{
-		OutWhyNot = DeviceName + TEXT(" - out of range");
+		OutWhyNot = DeviceName + TEXT(" can't reach that far");
 		return false;
 	}
 
