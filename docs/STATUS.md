@@ -95,11 +95,19 @@ script is `docs/AUDIO_SCRIPT.md`; the tools are `tools/audio/`; the files are in
   feedback, the clapper, the chime, the thud and the sting keep their existing calls on the clock, which now play
   the imported sound or, if it is missing, the old synthesised one.
 - Earpiece lines (Maya, Vex, the broadcast producer) are band-passed like a radio.
+- **Designed voices (Marwan picked from two or three ElevenLabs Voice Design candidates each):** the chief, Vance,
+  the broadcast producer and the alarm guards. Vance's designed voice is slow and theatrical, so it reads 10% fast
+  with steadier settings, and any pause over 0.6 s inside a line is cut to 0.4 s (all voices): his longest speech is
+  7.45 s, inside his 4 bars at the mic. The doorman's candidates are with Marwan.
+- **Warning phrases retaken:** the first bass and trumpet takes were single held notes. The bass is now a one-bar
+  walking figure (four notes on the beats and a pickup, from a 10 s Music take); the trumpet is three short muted
+  notes from the sound-effects endpoint (the music model only sustains it).
 - Copy note: Vex's existing hint "...Then Maya's pyro. Then run." breaks the copy deck's "nobody runs"; it is voiced
   as written because the game flashes those words.
 
 **Only Marwan can judge (step 6):** the voices picked (`docs/AUDIO_SCRIPT.md`, Voices), the bed loop and its seam,
-the mix levels (bed 0.8, duck 45%, break 20%), whether the warning phrases cut through the bed, Julian's quips.
+the mix levels (bed 0.8, duck 45%, break 20%), whether the warning phrases cut through the bed and sit in its
+key (`C:\Jam\Audioeviewand_warnings_over_bed.wav`), Julian's quips, the doorman's voice.
 
 ## Step 4 as built, Nov 14 (the look)
 

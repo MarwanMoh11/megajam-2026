@@ -683,3 +683,18 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   scipy and pyloudnorm would not download (pip read timeouts), so resampling, filtering and loudness were written in
   numpy (a 1 kHz sine at -20 dBFS reads -23.0 LUFS, as BS.1770 says). Three ElevenLabs requests timed out and were
   retried. The account's credit counter lags by minutes, so the run log keeps its own estimate.
+
+## Nov 15, about 00:40 Cairo: step 6, audio, phase 1 resumed (designed voices, warning phrases retaken)
+
+- **What changed:** Marwan picked Voice Design candidates for Vance, the broadcast producer and the alarm guards
+  (the chief's was picked earlier); they are saved as voices on the account and their 14 lines regenerated,
+  including the chief's "No match" line, which the stopped run had left in the old premade voice. A pause cap in
+  `process.py` (pauses over 0.6 s inside a line become 0.4 s) and a per-voice speed in the manifest. The bass and
+  trumpet warning phrases were retaken. The doorman's two Voice Design candidates went to Marwan.
+- **What the agents did:** one Claude Opus 5.5 session, resuming a stopped one, checked the files by measurement
+  rather than by ear: a 10 ms level envelope, onset times against the beat grid and a pitch track for each phrase.
+- **What went wrong:** the first bass and trumpet takes passed the loudness checks but were each one held note: the
+  checks measured level, not rhythm. A 5 s Music request ignored "then silence"; a 10 s request for a repeating
+  figure gave a clean bass bar with attacks every 0.50 s. The music model gave the muted trumpet as held notes three
+  times, so the trumpet came from the sound-effects endpoint. Vance's designed voice ran his speeches to 10 s, past
+  his 4 bars at the mic; 10% speed, steadier settings and the pause cap brought the longest to 7.45 s.

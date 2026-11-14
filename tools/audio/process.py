@@ -2,7 +2,7 @@
 
   python tools/audio/process.py [id ...]          (default: every raw file)
 
-- Voices: mono, silence trimmed, the earpiece band-pass for the crew and the broadcast, loudness-normalised.
+- Voices: mono, silence trimmed, pauses over 0.6 s cut to 0.4 s, the earpiece band-pass for the crew and the broadcast, loudness-normalised.
 - Sound effects: mono, trimmed to the onset (a press answers in its frame), tail faded; loops get a crossfaded seam.
 - Music: the tempo is measured (onset envelope, comb search over the whole clip), the clip is resampled to exactly
   120 BPM when it is off (a pitch change under 4%; more is flagged for a retake), cut on a downbeat to a whole
@@ -69,6 +69,35 @@ def fade(x, fin=0.003, fout=0.03):
     if n_out:
         x[-n_out:] *= np.linspace(1, 0, n_out).reshape(shape)
     return x
+
+
+def cap_pauses(x, longest=0.6, keep=0.4):
+    """Shortens any silence inside a line that is longer than `longest` to `keep` seconds: a designed voice's
+    theatrical pauses would otherwise run a line past its bars (Vance's speech has 4)."""
+    rms, hop = frame_rms(x)
+    level = 20 * np.log10(rms)
+    quiet = level < level.max() - 35
+    pieces, last, i, n = [], 0, 0, len(quiet)
+    while i < n:
+        if not quiet[i]:
+            i += 1
+            continue
+        j = i
+        while j < n and quiet[j]:
+            j += 1
+        if i > 0 and j < n and (j - i) * hop > longest * RATE:
+            pieces.append(x[last:i * hop + int(keep / 2 * RATE)])
+            last = j * hop - int(keep / 2 * RATE)
+        i = j
+    if not pieces:
+        return x
+    pieces.append(x[last:])
+    k = int(0.01 * RATE)
+    w = np.linspace(0, 1, k)
+    y = pieces[0]
+    for p in pieces[1:]:
+        y = np.concatenate([y[:-k], y[-k:] * (1 - w) + p[:k] * w, p[k:]])
+    return y
 
 
 def earpiece(x):
@@ -204,6 +233,7 @@ def process(iid):
     note = ""
     if iid.startswith("vo_"):
         x = trim(mono(x), -45, 0.02, 0.15)
+        x = cap_pauses(x)
         if SPEAKER.get(iid) in M.EARPIECE:
             x = earpiece(x)
         x = fade(x, 0.005, 0.04)
@@ -224,9 +254,11 @@ def process(iid):
             x, note = fit_music(x, iid, bars)
         else:
             x = trim(x, -50, 0.003, 0.2)
-            longest = {"band_bass": BAR + 0.25, "band_trumpet": BAR + 0.25, "band_drumroll": BAR + 0.4,
+            # The bass figure repeats every bar: cut just before the next bar's first note, so its pickup leads
+            # into the bar the guard turns on.
+            longest = {"band_bass": BAR - 0.01, "band_trumpet": BAR + 0.25, "band_drumroll": BAR + 0.4,
                        "band_hihat": 0.9, "mus_sting": 4.0}.get(iid, 4.0)
-            x = fade(x[: int(longest * RATE)], 0.002, 0.12)
+            x = fade(x[: int(longest * RATE)], 0.002, 0.04 if iid == "band_bass" else 0.12)
             if iid in ("band_bass", "band_trumpet", "band_drumroll", "band_hihat"):
                 x = mono(x)
     x = normalise(x, M.loudness_for(iid))

@@ -63,13 +63,13 @@ The key is read from the User environment (`ELEVENLABS_API_KEY`) inside the scri
 | JULIAN | Callum (`N2lVS1w4EtoT3dr4eOWO`) | husky trickster: the actor in white, amused by everything |
 | MAYA | Lily (`pFZP5JQG7iQjIQuC4Bku`) | velvety, British, unhurried: the gaffer on the earpiece |
 | VEX | Charlie (`IKne3meq5aSn9XLyUdCD`) | young, Australian, quick: props and sound on the earpiece |
-| VANCE | George (`JBFqnCBsd6RMkjVDRZzb`) | warm British storyteller: the auctioneer at the mic |
+| VANCE | Print It - Vance (Voice Design, candidate 1 of 2, picked by Marwan) (`oDQy4IsGdMzP2p0Mj1UU`) | smooth, theatrical English showman with a hint of menace: the auctioneer at the mic |
 | CHIEF | Print It - Chief (Voice Design, candidate 2 of 3, picked by Marwan) (`miMOxTjoFH6ibPnOrTEa`) | gruff, older, working-class, unhurried and contemptuous: the security chief (Adam was too recognisable) |
 | DOORMAN | Brian (`nPczCjzI2devNBz1zQrb`) | deep, classy: the doorman on the carpet |
 | GUARD | Chris (`iP95p4xoKVk53GoZ742B`) | down-to-earth: the guard at the rope |
 | BODYGUARD | Harry (`SOYHLrjzK2X1ezoPC6cr`) | rough, fierce: Vance's bodyguard |
-| BROADCAST | Daniel (`onwK4e9ZLuTAKqWW03F9`) | steady broadcaster: the drone's producer on talkback |
-| SECURITY | Liam (`TX3LPaxmHKxFdv7VOQHJ`) | young, energetic: the guards who come in at the alarm |
+| BROADCAST | Print It - Broadcast (Voice Design, candidate 1 of 2, picked by Marwan) (`zp7wscOG54kLZi18OhAE`) | harried 1950s live-TV producer, fast and clipped: the drone's producer on talkback |
+| SECURITY | Print It - Security (Voice Design, candidate 2 of 2, picked by Marwan) (`BKCBzTejPWQ1UuUOlatr`) | young, burly, breathless Brooklyn guard: the guards who come in at the alarm |
 
 Model `eleven_multilingual_v2`. Earpiece lines (BROADCAST, MAYA, VEX) are band-passed like a radio in `process.py`.
 
@@ -156,8 +156,8 @@ Model `eleven_multilingual_v2`. Earpiece lines (BROADCAST, MAYA, VEX) are band-p
 | `mus_bed` | The band's bed, looped from the take's start; the clock follows it | 16 bars (32 s) | ElevenLabs Music, 40 s generated | Noir jazz quintet, exactly 120 BPM in 4/4, steady medium swing from the first beat: upright bass walking in quarter notes, brushed snare and ride cymbal, piano comping, muted trumpet and tenor saxophone trading short smoky phrases. A 1950s heist film, a black-tie auction hall at night, sly and understated. No intro, no ending, no tempo changes, no breaks. |
 | `mus_heist` | The alarm: crashes in at the same tempo, its last bar ends on the deadline | 10 bars (20 s) | ElevenLabs Music, 24 s generated | Urgent noir jazz heist chase, exactly 120 BPM in 4/4, the same quintet at full tilt from the first beat: driving walking bass, hard-swinging drums with crashes, stabbing brass hits, tense piano. Builds for twenty seconds to a final big brass hit. No tempo changes. |
 | `mus_sting` | PRINT IT: the escape | one-shot, trimmed | ElevenLabs Music, 4 s generated | A short triumphant noir jazz sting: the quintet's brass fanfare and a final ringing cymbal, three seconds. |
-| `band_bass` | Warning, a bar before the guard turns | one-shot, trimmed | ElevenLabs Music, 5 s generated | Solo upright jazz bass, nothing else, dry studio, exactly 120 BPM: four low ominous plucked notes, one per beat, then silence. |
-| `band_trumpet` | Warning, a bar before the drone passes | one-shot, trimmed | ElevenLabs Music, 5 s generated | Solo muted jazz trumpet with a harmon mute, nothing else, dry studio, exactly 120 BPM: a sly two-note warning phrase on beats one and two, then silence. |
+| `band_bass` | Warning, a bar before the guard turns | one-shot, trimmed | ElevenLabs Music, 10 s generated | Solo upright jazz bass, nothing else: no drums, no piano, no horns. Dry studio, exactly 120 BPM in 4/4. A sly, ominous noir figure: four low plucked quarter notes, one on each beat, walking down, then a bar of rest; the same figure again and again. |
+| `band_trumpet` | Warning, a bar before the drone passes | one-shot, trimmed | ElevenLabs SFX, 1.5 s generated | Two short staccato notes on a muted jazz trumpet, falling minor third, bah-dah, then silence, dry studio, solo |
 | `band_drumroll` | Warning, a bar before Vance speaks | one-shot, trimmed | ElevenLabs SFX, 2.2 s generated | Jazz snare drum roll, one bar long, crescendo from soft to loud, ending on a short cymbal hit, dry studio |
 | `band_hihat` | The beam drops (one beat in every 4 bars) | one-shot, trimmed | ElevenLabs SFX, 0.8 s generated | A single open hi-hat cymbal splash on a jazz drum kit, dry, short |
 

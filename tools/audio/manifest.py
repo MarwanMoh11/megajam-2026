@@ -14,19 +14,20 @@ Text is ASCII only, with the copy deck's rules (ART_STYLE 15.7): one name per th
 TEMPO_BPM = 120
 BEATS_PER_BAR = 4
 
-# One ElevenLabs voice per character (premade voices, multilingual v2). Settings: stability, similarity, style.
+# One ElevenLabs voice per character (premade, or Voice Design for the minor characters; multilingual v2). Settings: stability, similarity, style;
+# speed (0.7-1.2) where a voice is too slow for its bars.
 VOICES = {
     "DIRECTOR":  dict(voice="Bill",    voice_id="pqHfZKP75CvOlQylNhV4", why="old, crisp, American: a studio-era director", settings=(0.45, 0.8, 0.35)),
     "JULIAN":    dict(voice="Callum",  voice_id="N2lVS1w4EtoT3dr4eOWO", why="husky trickster: the actor in white, amused by everything", settings=(0.4, 0.8, 0.45)),
     "MAYA":      dict(voice="Lily",    voice_id="pFZP5JQG7iQjIQuC4Bku", why="velvety, British, unhurried: the gaffer on the earpiece", settings=(0.55, 0.8, 0.2)),
     "VEX":       dict(voice="Charlie", voice_id="IKne3meq5aSn9XLyUdCD", why="young, Australian, quick: props and sound on the earpiece", settings=(0.4, 0.8, 0.4)),
-    "VANCE":     dict(voice="George",  voice_id="JBFqnCBsd6RMkjVDRZzb", why="warm British storyteller: the auctioneer at the mic", settings=(0.5, 0.8, 0.4)),
+    "VANCE":     dict(voice="Print It - Vance (Voice Design, candidate 1 of 2, picked by Marwan)", voice_id="oDQy4IsGdMzP2p0Mj1UU", why="smooth, theatrical English showman with a hint of menace: the auctioneer at the mic", settings=(0.6, 0.8, 0.25), speed=1.1),
     "CHIEF":     dict(voice="Print It - Chief (Voice Design, candidate 2 of 3, picked by Marwan)", voice_id="miMOxTjoFH6ibPnOrTEa", why="gruff, older, working-class, unhurried and contemptuous: the security chief (Adam was too recognisable)", settings=(0.5, 0.8, 0.3)),
     "DOORMAN":   dict(voice="Brian",   voice_id="nPczCjzI2devNBz1zQrb", why="deep, classy: the doorman on the carpet", settings=(0.55, 0.8, 0.2)),
     "GUARD":     dict(voice="Chris",   voice_id="iP95p4xoKVk53GoZ742B", why="down-to-earth: the guard at the rope", settings=(0.5, 0.8, 0.3)),
     "BODYGUARD": dict(voice="Harry",   voice_id="SOYHLrjzK2X1ezoPC6cr", why="rough, fierce: Vance's bodyguard", settings=(0.45, 0.8, 0.4)),
-    "BROADCAST": dict(voice="Daniel",  voice_id="onwK4e9ZLuTAKqWW03F9", why="steady broadcaster: the drone's producer on talkback", settings=(0.55, 0.8, 0.25)),
-    "SECURITY":  dict(voice="Liam",    voice_id="TX3LPaxmHKxFdv7VOQHJ", why="young, energetic: the guards who come in at the alarm", settings=(0.35, 0.8, 0.5)),
+    "BROADCAST": dict(voice="Print It - Broadcast (Voice Design, candidate 1 of 2, picked by Marwan)", voice_id="zp7wscOG54kLZi18OhAE", why="harried 1950s live-TV producer, fast and clipped: the drone's producer on talkback", settings=(0.55, 0.8, 0.25)),
+    "SECURITY":  dict(voice="Print It - Security (Voice Design, candidate 2 of 2, picked by Marwan)", voice_id="BKCBzTejPWQ1UuUOlatr", why="young, burly, breathless Brooklyn guard: the guards who come in at the alarm", settings=(0.35, 0.8, 0.5)),
 }
 TTS_MODEL = "eleven_multilingual_v2"
 EARPIECE = {"MAYA", "VEX", "BROADCAST"}   # band-passed like a radio in process.py
@@ -144,12 +145,15 @@ MUSIC = [
      "seconds to a final big brass hit. No tempo changes."),
     ("mus_sting", "PRINT IT: the escape", 0, 4, "music",
      "A short triumphant noir jazz sting: the quintet's brass fanfare and a final ringing cymbal, three seconds."),
-    ("band_bass", "Warning, a bar before the guard turns", 0, 5, "music",
-     "Solo upright jazz bass, nothing else, dry studio, exactly 120 BPM: four low ominous plucked notes, one per "
-     "beat, then silence."),
-    ("band_trumpet", "Warning, a bar before the drone passes", 0, 5, "music",
-     "Solo muted jazz trumpet with a harmon mute, nothing else, dry studio, exactly 120 BPM: a sly two-note "
-     "warning phrase on beats one and two, then silence."),
+    # The bass is a one-bar figure the music model repeats (a 5 s "then silence" take came back as one held note):
+    # process.py keeps its first bar. The music model only sustains a muted trumpet, so the trumpet comes from the
+    # sound-effects endpoint: three short notes on beat 1, beat 2 and the swung "and" of 2.
+    ("band_bass", "Warning, a bar before the guard turns", 0, 10, "music",
+     "Solo upright jazz bass, nothing else: no drums, no piano, no horns. Dry studio, exactly 120 BPM in 4/4. A sly, "
+     "ominous noir figure: four low plucked quarter notes, one on each beat, walking down, then a bar of rest; the "
+     "same figure again and again."),
+    ("band_trumpet", "Warning, a bar before the drone passes", 0, 1.5, "sfx",
+     "Two short staccato notes on a muted jazz trumpet, falling minor third, bah-dah, then silence, dry studio, solo"),
     ("band_drumroll", "Warning, a bar before Vance speaks", 0, 2.2, "sfx",
      "Jazz snare drum roll, one bar long, crescendo from soft to loud, ending on a short cymbal hit, dry studio"),
     ("band_hihat", "The beam drops (one beat in every 4 bars)", 0, 0.8, "sfx",

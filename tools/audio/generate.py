@@ -31,6 +31,8 @@ def items():
         v = M.VOICES[speaker]
         st, sim, style = v["settings"]
         settings = {"stability": st, "similarity_boost": sim, "style": style, "use_speaker_boost": True}
+        if "speed" in v:
+            settings["speed"] = v["speed"]
         out.append(("vo", lid, len(words),
                     lambda w=words, vid=v["voice_id"], s=settings: el_api.tts(vid, w, M.TTS_MODEL, s)))
     for (sid, _event, secs, prompt, loop) in M.SFX:
