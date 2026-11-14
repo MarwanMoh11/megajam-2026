@@ -10,6 +10,7 @@
 
 class ADevice;
 class UNiagaraSystem;
+class UAnimSequenceBase;
 
 /** When a cue plays. In Python: unreal.TakeFXWhen. */
 UENUM(BlueprintType)
@@ -64,6 +65,11 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "Take|FX")
 	TArray<FTakeFXCue> Cues;
+
+	/** QA cast: the mocap clips the cast loads by path at runtime (tools/mocap_clips.json), referenced here only so the
+	 *  cook packages them. tools/build_cast.py fills it. */
+	UPROPERTY(EditAnywhere, Category = "Take|FX")
+	TArray<TSoftObjectPtr<UAnimSequenceBase>> CookClips;
 
 	/** Master switch. */
 	UPROPERTY(EditAnywhere, Category = "Take|FX")

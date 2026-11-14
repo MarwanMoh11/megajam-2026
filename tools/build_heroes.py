@@ -508,6 +508,8 @@ def build(hero):
 
 # --- hook-up --------------------------------------------------------------------------------------------------------------
 def hook_up(built):
+    """HeroMesh on each lead: on the ATakeCharacter (the contract) and on the CastMember build_cast.py attaches to it
+    (where package cast declared it), whichever has the property; nothing when neither is compiled yet."""
     eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
     chars = [a for a in eas.get_all_level_actors() if isinstance(a, unreal.TakeCharacter)]
     changed = 0
@@ -517,14 +519,16 @@ def hook_up(built):
         skm = built.get(cid)
         if not skm:
             continue
-        try:
-            a.get_editor_property("hero_mesh")
-        except Exception:                                       # noqa: BLE001 (package cast's property not compiled yet)
-            log("hook-up: ATakeCharacter has no HeroMesh yet: skipped")
-            return 0
-        a.set_editor_property("hero_mesh", skm)
-        changed += 1
-        log("hook-up: %s HeroMesh = %s" % (a.get_actor_label(), skm.get_name()))
+        for t in [a] + list(a.get_attached_actors() or []):
+            try:
+                t.get_editor_property("hero_mesh")
+            except Exception:                                   # noqa: BLE001 (no such property: skip quietly)
+                continue
+            t.set_editor_property("hero_mesh", skm)
+            changed += 1
+            log("hook-up: %s HeroMesh = %s" % (t.get_actor_label(), skm.get_name()))
+    if not changed:
+        log("hook-up: no HeroMesh property on the leads or their cast members yet: skipped")
     return changed
 
 

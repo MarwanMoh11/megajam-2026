@@ -606,7 +606,7 @@ def office():
     and the picture over the wall safe swung open."""
     Z = F2
     hide([r"Office_Desk_\d+", r"Office_Screen_\d+", r"Office_Cabinet_\d+"], (-3200, -2100, 1420, 2000, 430, 900))
-    sz = prop("rooms_desk", -2700, 1850, Z, 100, 205, 110, face=90)
+    sz = prop("rooms_desk", -2700, 1850, Z, 100, 205, 138, face=90)
     hw = (sz[1] / 2 if sz[1] else 100.0) + 3
     for (x0, x1, side) in ((-2900, -2700 - hw, -1), (-2700 + hw, -2500, 1)):
         if x1 - x0 < 25:
@@ -869,7 +869,7 @@ def director():
     cabinet, a movie camera kept as a trophy, the blinds half down."""
     Z = F2
     hide([r"Director_Desk_\d+", r"Desk_Screen_\d+", r"Award_\d+"], (-1000, 800, 2020, 2900, 430, 900))
-    sz = prop("rooms_desk", -100, 2705, Z, 110, 240, 118, face=90)
+    sz = prop("rooms_desk", -100, 2705, Z, 110, 240, 150, face=90)
     hw = (sz[1] / 2 if sz[1] else 110.0) + 3
     W.cyl(-310, 2705, Z, 40, 3, "wood")                         # the globe bar
     for a in (90, 210, 330):
@@ -1169,6 +1169,7 @@ def clear_rooms(names):
 
 
 def rooms():
+    C.clear("set_rooms_lineup")
     if ONLY:
         LOG.append("cleared %d" % clear_rooms(ONLY))
     else:

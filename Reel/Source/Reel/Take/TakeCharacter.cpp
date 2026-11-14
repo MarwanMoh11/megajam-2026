@@ -4,6 +4,7 @@
 
 #include "Animation/AnimInstance.h"
 #include "Camera/CameraComponent.h"
+#include "CastMember.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/CollisionProfile.h"
@@ -87,6 +88,7 @@ void ATakeCharacter::BeginPlay()
 
 	// OnConstruction does not rerun for placed actors in play or in a package: apply the tunables again here.
 	ApplyTunables();
+	ApplyHeroMesh();
 	ApplyTint();
 	SetLook(static_cast<float>(GetActorRotation().Yaw), StartLookPitch);
 	TAKE_LOG(TEXT("%s on set, look %.0f / %.0f"), GetCrewName(), LookYaw, LookPitch);
@@ -98,6 +100,7 @@ void ATakeCharacter::OnConstruction(const FTransform& Transform)
 
 	// The editor shows the tinted mannequin and the boom where the take starts it (behind him).
 	ApplyTunables();
+	ApplyHeroMesh();
 	ApplyTint();
 	SetLook(static_cast<float>(GetActorRotation().Yaw), StartLookPitch);
 }
@@ -228,7 +231,7 @@ void ATakeCharacter::ApplyTunables()
 void ATakeCharacter::ApplyTint()
 {
 	USkeletalMeshComponent* MeshComp = GetMesh();
-	if (!MeshComp || !MeshComp->GetSkeletalMeshAsset())
+	if (!MeshComp || !MeshComp->GetSkeletalMeshAsset() || !HeroMesh.IsNull())
 	{
 		return;
 	}
@@ -247,6 +250,43 @@ void ATakeCharacter::ApplyTint()
 			MID->SetVectorParameterValue(TintParameter, Tint);
 			TintMIDs.Add(MID);
 		}
+	}
+}
+
+// --- QA cast: acts and the hero mesh ------------------------------------------------------------------------------------
+
+void ATakeCharacter::PlayGesture(FName Gesture)
+{
+	PlayGestureAt(Gesture, FVector::ZeroVector);
+}
+
+void ATakeCharacter::PlayGestureAt(FName Gesture, const FVector& WorldPoint)
+{
+	// His cast member (attached by tools/build_cast.py) plays it over his own animation.
+	if (ACastMember* Member = ACastMember::FindOn(this))
+	{
+		Member->PlayGestureAt(Gesture, WorldPoint);
+	}
+}
+
+void ATakeCharacter::ApplyHeroMesh()
+{
+	USkeletalMeshComponent* MeshComp = GetMesh();
+	if (!MeshComp)
+	{
+		return;
+	}
+	USkeletalMesh* Want = HeroMesh.IsNull() ? nullptr : HeroMesh.LoadSynchronous();
+	if (!Want)
+	{
+		// Cleared (or not found): the class's own mannequin.
+		const ATakeCharacter* Default = GetClass()->GetDefaultObject<ATakeCharacter>();
+		Want = Default && Default->GetMesh() ? Default->GetMesh()->GetSkeletalMeshAsset() : nullptr;
+	}
+	if (Want && MeshComp->GetSkeletalMeshAsset() != Want)
+	{
+		MeshComp->SetSkeletalMeshAsset(Want);
+		TintMIDs.Reset();
 	}
 }
 

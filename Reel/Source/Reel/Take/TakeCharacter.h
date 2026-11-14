@@ -11,6 +11,7 @@
 class USpringArmComponent;
 class UCameraComponent;
 class UMaterialInstanceDynamic;
+class USkeletalMesh;
 
 /**
  * A third-person character that NO controller ever possesses (AutoPossessPlayer / AutoPossessAI disabled, no AI
@@ -98,6 +99,23 @@ public:
 	/** "JULIAN", "MAYA", "VEX" (TakeText::CrewName(Id)). */
 	const TCHAR* GetCrewName() const { return TakeText::CrewName(Id); }
 
+	// --- QA cast: acts and the hero mesh -------------------------------------------------------------------------------
+
+	/** An act on the character, the frame it is called: Use, Lift, Shrug, Headset, Bow (any ACastMember gesture). A
+	 *  mocap clip when one exists (/Game/Take/Anim/Mocap), else built from bones; it plays over his own animation (on
+	 *  the upper body while he walks) and hands back when done. Nothing happens without his cast member (build_cast.py). */
+	UFUNCTION(BlueprintCallable, Category = "Take|Character")
+	void PlayGesture(FName Gesture);
+
+	/** PlayGesture toward a world point (Use reaches to it). */
+	UFUNCTION(BlueprintCallable, Category = "Take|Character")
+	void PlayGestureAt(FName Gesture, const FVector& WorldPoint);
+
+	/** A generated, rigged mesh on the mannequin skeleton (package heroes). When set it replaces the mannequin (the tint
+	 *  is not applied: it wears its own materials) and his cast member builds no costume shells. */
+	UPROPERTY(EditAnywhere, Category = "Take|Character")
+	TSoftObjectPtr<USkeletalMesh> HeroMesh;
+
 	// --- tunables (all re-applied in BeginPlay / OnConstruction by ApplyTunables) ------------------------------------
 
 	/** Whose character and camera this is: A Julian, B Maya, C Vex. Keys 1/2/3 switch to it. */
@@ -181,8 +199,11 @@ protected:
 	void ApplyTunables();	// BODY: (m)
 
 	/** Creates (once) a dynamic material instance for every material slot of the mesh and sets TintParameter = Tint.
-	 *  No mesh: does nothing. */
+	 *  No mesh, or a hero mesh: does nothing. */
 	void ApplyTint();	// BODY: (m)
+
+	/** HeroMesh on the mesh when set (back to the class's mannequin when cleared). */
+	void ApplyHeroMesh();
 
 	/** Boom->SetWorldRotation(FRotator(LookPitch, LookYaw, 0)): the follow camera moves with it this frame. */
 	void ApplyLookToBoom();
