@@ -1,0 +1,22 @@
+{
+  "_comment": "Hyper3D Rodin hero props (text-to-3D). generate.py adds STYLE to every prompt. Sizes are the target box in cm (x, y, z) the import fits each mesh into; see import_props.py.",
+  "style": "1950s mid-century, chunky simplified silhouette like a stage prop, slightly exaggerated proportions, single object, centred, matte, neutral flat lighting, no baked shadows, no text, no logos, plain background",
+  "params": {
+    "tier": "Gen-2.5-Low",
+    "texture_mode": "high",
+    "mesh_mode": "Raw",
+    "quality_override": "15000",
+    "geometry_file_format": "glb",
+    "material": "PBR",
+    "preview_render": "true"
+  },
+  "props": {
+    "podium": "an auctioneer's lectern podium, tall box body with a slanted reading top and a narrow ledge, fluted front panel, square plinth base, dark walnut wood with pale grey pewter trim",
+    "pedestal": "a museum display pedestal, a square column with vertical fluting on a stepped square base and a flat square top, pale grey painted wood",
+    "reel": "a large vintage film reel with six round holes in each flange, standing upright on edge in a small low cradle stand, plain silver metal",
+    "cart": "a hotel room-service trolley with two shelves, a push handle at one end and four small castor wheels, an ice bucket holding two champagne bottles on the top shelf, chrome metal frame and white linen cloth",
+    "desk": "a radio broadcast sound mixing console on a sturdy wooden desk, a sloped control panel with rows of large round knobs and two round needle meters, a thick bundle of cables at the back, dark grey metal and dark wood",
+    "chandelier": "a sputnik chandelier, a small central sphere with straight thin rods radiating in all directions, each rod ending in a round frosted bulb, hanging from a short ceiling rod, pewter grey metal and white bulbs",
+    "piano": "a black lacquered baby grand piano with the lid propped half open on a thick stick, black and white keys, three short thick legs"
+  }
+}

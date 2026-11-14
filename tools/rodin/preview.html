@@ -1,0 +1,42 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Rodin preview</title>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
+<style>body{margin:0;background:#777;font:14px sans-serif;color:#fff} model-viewer{width:512px;height:512px;background:#7a7a7a}</style>
+</head><body>
+<model-viewer id="mv" loading="eager" reveal="auto" camera-controls interaction-prompt="none" shadow-intensity="0" environment-image="neutral"
+  exposure="1" field-of-view="30deg"></model-viewer>
+<pre id="log"></pre>
+<script type="module">
+// Contact sheet per prop: three views on top in colour, the same three below in greyscale (how the film grade reads
+// its values). Saved as <prop>/preview.png through preview.py. ?p=a,b,c picks the props.
+const log = (s) => (document.getElementById('log').textContent += s + '\n');
+const props = (new URLSearchParams(location.search).get('p') || '').split(',').filter(Boolean);
+const views = ['35deg 72deg auto', '125deg 80deg auto', '-60deg 45deg auto'];
+const frame = () => new Promise((r) => setTimeout(r, 400));   // timers, not rAF: the pane may be hidden
+await customElements.whenDefined('model-viewer');
+const mv = document.getElementById('mv');
+window.done = [];
+for (const p of props) {
+  try {
+    mv.src = `/${p}/base_basic_pbr.glb`;
+    await new Promise((res, rej) => { mv.addEventListener('load', res, { once: true }); mv.addEventListener('error', rej, { once: true }); });
+    await Promise.race([mv.updateFraming(), new Promise((r) => setTimeout(r, 3000))]); await frame(); await frame();   // frame this model, not the last one
+    const S = 512, sheet = document.createElement('canvas');
+    sheet.width = S * 3; sheet.height = S * 2;
+    const g = sheet.getContext('2d');
+    g.fillStyle = '#808080'; g.fillRect(0, 0, sheet.width, sheet.height);   // mid-grey, so dark props show
+    for (let i = 0; i < views.length; i++) {
+      mv.cameraOrbit = views[i]; mv.cameraTarget = 'auto auto auto'; mv.jumpCameraToGoal();
+      await frame(); await frame();
+      const img = await createImageBitmap(await mv.toBlob({ mimeType: 'image/png', idealAspect: false }));
+      g.filter = 'none'; g.drawImage(img, i * S, 0, S, S);
+      g.filter = 'grayscale(1)'; g.drawImage(img, i * S, S, S, S);
+    }
+    g.filter = 'none'; g.fillStyle = '#fff'; g.font = 'bold 28px sans-serif'; g.fillText(p, 12, 36);
+    const blob = await new Promise((r) => sheet.toBlob(r, 'image/png'));
+    await fetch(`/save/${p}/preview.png`, { method: 'POST', body: blob });
+    log(p + ' ok'); window.done.push(p);
+  } catch (e) { log(p + ' FAILED ' + e); window.done.push(p + ':failed'); }
+}
+log('ALL DONE');
+</script></body></html>
