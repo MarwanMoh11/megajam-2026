@@ -9,6 +9,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "TakeDirector.h"
 #include "TakeShapes.h"
+#include "TakeStyle.h"
 
 namespace TakeWatcherLocal
 {
@@ -35,6 +36,7 @@ namespace TakeWatcherLocal
 		UStaticMeshComponent* Line = FTakeShapes::AddShapeAtRuntime(Owner, ETakeShape::Cube, Pivot, (From + To) * 0.5, Scale, TakeColors::Red, false);
 		if (Line)
 		{
+			FTakeShapes::SetSignal(Line, TakeStyle::StencilRed);
 			Line->SetRelativeRotation(Dir.Rotation());
 		}
 		return Line;
@@ -85,6 +87,8 @@ void AWatcher::BeginPlay()
 
 	FrameMID = FTakeShapes::SetColour(FrameMesh, TakeColors::Red);
 	TallyMID = FTakeShapes::SetColour(Tally, TakeColors::DarkGrey);
+	FTakeShapes::SetSignal(FrameMesh, TakeStyle::StencilRed);
+	FTakeShapes::SetSignal(Tally, TakeStyle::StencilRed);
 
 	SyncState();
 	RefreshFrameLook();
@@ -113,6 +117,14 @@ void AWatcher::StepWatcher(float DeltaSeconds, UBarClockComponent* Clock)
 	}
 
 	LastPulse = Clock ? Clock->GetPulse() : 0.f;
+	if (Clock)
+	{
+		// §15.3: full on the beat frame, linear down to the hold level over 10 film frames, then hold.
+		const float SinceBeat = Clock->GetBeatPhase() * Clock->GetSecondsPerBeat();
+		const float FallSeconds = 10.f / TakeStyle::FilmFps;
+		const float Hold = 1.f - 0.65f * FMath::Clamp(AlarmPulseBrightness, 0.f, 1.f);
+		AlarmBeatLevel = SinceBeat < FallSeconds ? FMath::Lerp(1.f, Hold, SinceBeat / FallSeconds) : Hold;
+	}
 	SyncState();
 	if (State != OldState)
 	{
@@ -233,7 +245,15 @@ void AWatcher::RefreshFrameLook()
 	FrameMesh->SetVisibility(bShowFrame);
 
 	FLinearColor Colour = TakeColors::RedDark;
-	if (IsLive())
+	uint8 FrameStencil = TakeStyle::StencilRed;
+	if (IsLive() && bAlarmLook)
+	{
+		// Step 4 (§15.3): the alarm's frames are white and emissive, pulsing on the beat, so they read in full colour.
+		Colour = TakeColors::White * (AlarmEmissive * AlarmBeatLevel);
+		Colour.A = 1.f;
+		FrameStencil = TakeStyle::StencilWhite;
+	}
+	else if (IsLive())
 	{
 		Colour = bTally ? HoldingColour : TakeColors::Red;
 		// The beat: brighter on the beat, decaying with the clock's pulse. The footprint never changes.
@@ -246,6 +266,7 @@ void AWatcher::RefreshFrameLook()
 		const float HoverLift = FMath::Clamp(HoverBrightness, 0.f, 1.f);
 		Colour = Colour + (TakeColors::White - Colour) * HoverLift;
 	}
+	FTakeShapes::SetSignal(FrameMesh, FrameStencil);
 	FrameMID = FTakeShapes::SetColour(FrameMesh, Colour);
 
 	// The frame lines go with the frame: same visibility, same colour.
@@ -256,6 +277,7 @@ void AWatcher::RefreshFrameLook()
 			Line->SetVisibility(bShowFrame);
 			if (bShowFrame)
 			{
+				FTakeShapes::SetSignal(Line, FrameStencil);
 				FTakeShapes::SetColour(Line, Colour);
 			}
 		}

@@ -8,6 +8,8 @@
 #include "Engine/PostProcessVolume.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Julian.h"
+#include "Materials/Material.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "Mark.h"
 #include "Shutter.h"
 #include "TakeCharacter.h"
@@ -446,31 +448,137 @@ void ATakeDirector::StepTitleCard(float DeltaSeconds)
 // The look
 // ---------------------------------------------------------------------------------------------------------------------
 
-void ATakeDirector::StepLook(float DeltaSeconds, bool bSnap)
+ETakeCamera ATakeDirector::GetLookCamera() const
 {
+	if (PC)
+	{
+		if (const ATakeCharacter* To = PC->GetFlightTarget())
+		{
+			return To->Id;
+		}
+		if (const ATakeCharacter* On = PC->GetCurrentCharacter())
+		{
+			return On->Id;
+		}
+	}
+	return CurrentCamera;
+}
+
+bool ATakeDirector::IsFilmPicture() const
+{
+	return bFilmLook && (!bMakingOfSplit || GetLookCamera() == ETakeCamera::A);
+}
+
+void ATakeDirector::SetupLook()
+{
+	GradeMID = nullptr;
+	AppliedBleed = -1.f;
+	AppliedMakingOf = -1.f;
+	AppliedFilmLook = -1;
 	if (!LookVolume)
 	{
+		TAKE_LOG(TEXT("LOOK no unbound post-process volume: no grade"));
 		return;
 	}
 
-	const float Target = bAlarmLive ? AlarmSaturation : FilmSaturation;
-	float Saturation = Target;
-	if (!bSnap && BleedSeconds > KINDA_SMALL_NUMBER)
+	// The map's volume carries MI_FilmGrade (tools/build_auction.py); a dynamic instance takes its slot.
+	TArray<FWeightedBlendable>& Blendables = LookVolume->Settings.WeightedBlendables.Array;
+	UMaterialInterface* Base = nullptr;
+	int32 Slot = INDEX_NONE;
+	for (int32 Index = 0; Index < Blendables.Num(); ++Index)
 	{
-		const float Span = FMath::Max(KINDA_SMALL_NUMBER, FMath::Abs(AlarmSaturation - FilmSaturation));
-		Saturation = FMath::FInterpConstantTo(CurrentSaturation, Target, DeltaSeconds, Span / BleedSeconds);
+		UMaterialInterface* const Candidate = Cast<UMaterialInterface>(Blendables[Index].Object);
+		const UMaterial* const CandidateBase = Candidate ? Candidate->GetMaterial() : nullptr;
+		if (CandidateBase && CandidateBase->MaterialDomain == MD_PostProcess)
+		{
+			const UMaterialInstanceDynamic* const AsMID = Cast<UMaterialInstanceDynamic>(Candidate);
+			Base = AsMID && AsMID->Parent ? AsMID->Parent.Get() : Candidate;
+			Slot = Index;
+			break;
+		}
+	}
+	if (!Base)
+	{
+		Base = FilmGradeMaterial.LoadSynchronous();
+	}
+	if (!Base)
+	{
+		TAKE_LOG(TEXT("LOOK no grade material (run tools/build_look.py): no grade"));
+		return;
 	}
 
-	if (!bSnap && FMath::IsNearlyEqual(Saturation, CurrentSaturation) && LookVolume->Settings.bOverride_ColorSaturation)
+	GradeMID = UMaterialInstanceDynamic::Create(Base, this);
+	if (Slot == INDEX_NONE)
+	{
+		Blendables.Add(FWeightedBlendable(1.f, GradeMID));
+	}
+	else
+	{
+		Blendables[Slot].Object = GradeMID;
+	}
+	TAKE_LOG(TEXT("LOOK grade %s"), *Base->GetName());
+}
+
+void ATakeDirector::StepLook(float DeltaSeconds, bool bSnap)
+{
+	if (!LookVolume || !GradeMID)
 	{
 		return;
 	}
 
-	CurrentSaturation = Saturation;
-	LookVolume->Settings.bOverride_ColorSaturation = true;
-	LookVolume->Settings.ColorSaturation = FVector4(Saturation, Saturation, Saturation, 1.0);
+	// The master switch: the grade's weight, and the volume's own tone curve (the material does the tone).
+	const int32 FilmLookNow = bFilmLook ? 1 : 0;
+	if (FilmLookNow != AppliedFilmLook)
+	{
+		AppliedFilmLook = FilmLookNow;
+		FPostProcessSettings& Settings = LookVolume->Settings;
+		for (FWeightedBlendable& Blendable : Settings.WeightedBlendables.Array)
+		{
+			if (Blendable.Object == GradeMID)
+			{
+				Blendable.Weight = bFilmLook ? 1.f : 0.f;
+			}
+		}
+		Settings.bOverride_ToneCurveAmount = bFilmLook;
+		Settings.ToneCurveAmount = 0.f;
+		Settings.bOverride_ExpandGamut = bFilmLook;
+		Settings.ExpandGamut = 0.f;
+		Settings.bOverride_BlueCorrection = bFilmLook;
+		Settings.BlueCorrection = 0.f;
+		TAKE_LOG(TEXT("LOOK film look %s"), bFilmLook ? TEXT("on") : TEXT("off"));
+	}
+
+	// The bleed: 0 until the alarm is live, then to 1 over BleedSeconds; a snap lands it on the frame.
+	const float Target = bAlarmLive ? 1.f : 0.f;
+	if (bSnap || BleedSeconds <= KINDA_SMALL_NUMBER)
+	{
+		CurrentBleed = Target;
+	}
+	else
+	{
+		CurrentBleed = FMath::FInterpConstantTo(CurrentBleed, Target, DeltaSeconds, 1.f / BleedSeconds);
+	}
+	float Bleed = FMath::SmoothStep(0.f, 1.f, CurrentBleed);
+	if (ForceBleed >= 0.f)
+	{
+		Bleed = FMath::Clamp(ForceBleed, 0.f, 1.f);
+	}
+	if (Bleed != AppliedBleed)
+	{
+		GradeMID->SetScalarParameterValue(TEXT("Bleed"), Bleed);
+		AppliedBleed = Bleed;
+	}
+
+	// The making-of grade on B and C, from the frame of the cut press (the flight is seen in the look it lands in).
+	const float MakingOf = (bMakingOfSplit && GetLookCamera() != ETakeCamera::A) ? 1.f : 0.f;
+	if (MakingOf != AppliedMakingOf)
+	{
+		GradeMID->SetScalarParameterValue(TEXT("MakingOf"), MakingOf);
+		AppliedMakingOf = MakingOf;
+		TAKE_LOG(TEXT("LOOK grade %s"), MakingOf > 0.5f ? TEXT("making-of") : TEXT("film"));
+	}
 	if (bSnap)
 	{
-		TAKE_LOG(TEXT("LOOK saturation %.2f"), Saturation);
+		TAKE_LOG(TEXT("LOOK bleed %.2f"), Bleed);
 	}
 }

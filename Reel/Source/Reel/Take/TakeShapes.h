@@ -58,6 +58,16 @@ struct FTakeShapes
 	 *  On an instanced component it colours every instance. Returns the dynamic instance. */
 	static UMaterialInstanceDynamic* SetColour(UStaticMeshComponent* Comp, const FLinearColor& Colour);
 
+	/** Step 4: the unlit signal material (/Game/Take/Look/M_TakeSignal, vector parameter "Color" -> emissive). */
+	static UMaterialInterface* GetSignalMaterial();
+
+	/** Step 4, RUNTIME or OnConstruction, NEVER in a constructor: tags a shape as carrying meaning for the film grade.
+	 *  Stencil != 0 (TakeStyle::StencilRed / StencilGold / StencilWhite): custom depth on with that stencil value, and
+	 *  slot 0 becomes a dynamic instance of the unlit signal material keeping the colour it had (so the colour on
+	 *  screen is the colour set, wherever the lights are). Stencil 0: custom depth off (the material stays).
+	 *  Cheap when nothing changes; SetColour keeps working on the same component afterwards. */
+	static void SetSignal(UStaticMeshComponent* Comp, uint8 Stencil);
+
 	/** CONSTRUCTOR ONLY: creates a click volume: a hidden, query-only box that blocks ECC_Visibility and ignores
 	 *  every other channel, generates no overlaps and never affects navigation. Make it generous: the pointer
 	 *  trace (ECC_Visibility under the cursor) must find it before the floor. */

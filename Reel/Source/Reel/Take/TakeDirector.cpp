@@ -304,6 +304,7 @@ void ATakeDirector::GatherActors()
 			break;
 		}
 	}
+	SetupLook();
 
 	// Every take actor a sight trace ignores (IsSightBlocked).
 	for (ATakeCharacter* Character : Characters)

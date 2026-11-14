@@ -150,7 +150,7 @@ DESK_SECONDS = 6.0                # the spec says 4 s; a flight back costs 1.6 s
 WINCH = (4330.0, -2510.0)         # the curtain's counterweight winch, at the east end of the corridor (the wings)
 WINCH_USE = (4300.0, -2390.0)
 
-# --- the look (lighting only: the dressing pass is step 4) -------------------------------------------------------------
+# --- the look (lighting; the film grade is tools/build_look.py) -------------------------------------------------------------
 EXPOSURE_EV = 0.3                 # fixed exposure (EV100): a night interior
 SKY_FILL = 14.0                   # skylight strength: the fill in every shadow (the night sky is dim)
 MOON_LUX = 0.35                   # the directional light: cool, from behind the dais
@@ -586,6 +586,26 @@ ART_MATS = [make_mi("MI_Art_%d" % i, c) for i, c in enumerate(
 CAR_MATS = [make_mi("MI_Car_%d" % i, c) for i, c in enumerate(
     ((0.35, 0.03, 0.03), (0.03, 0.07, 0.22), (0.35, 0.36, 0.38), (0.015, 0.015, 0.018)))]
 
+# Step 4, the film look (docs/ART_STYLE.md §15.3): its assets come from tools/build_look.py (run here if missing).
+# Only what carries meaning keeps its colour: those meshes are unlit signal colours with a custom-depth stencil
+# (1 red = danger, 2 gold = Julian). Red or gold anywhere else is dressing and goes monochrome in the grade.
+if not eal.does_asset_exist("/Game/Take/Look/MI_FilmGrade"):
+    _look = unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir() + "../tools/build_look.py")
+    exec(open(_look).read(), {"__name__": "build_look"})
+m_sig_red = eal.load_asset("/Game/Take/Look/MI_Signal_Red")
+m_sig_gold = eal.load_asset("/Game/Take/Look/MI_Signal_Gold")
+GRADE = eal.load_asset("/Game/Take/Look/MI_FilmGrade")
+
+
+def signal(a, mat, stencil):
+    """A map mesh that keeps its colour in the grade: unlit signal material, custom depth with this stencil."""
+    c = a.static_mesh_component
+    c.set_material(0, mat)
+    c.set_editor_property("render_custom_depth", True)
+    c.set_editor_property("custom_depth_stencil_value", stencil)
+    return a
+
+
 # Ground floors (they run under the walls, so doorways have a floor), and the street around the building: a road
 # along the front, 21 cm below the pavement, and unseen walls at the street's edge so nobody walks off it.
 SX0, SX1, SYA, SYB = ROAD_X0, EX1 + 1200, SY0 - 1200, NY1 + 1200
@@ -678,7 +698,7 @@ box("Cases_North", ROPE_X + 10, AISLE_X1, GAP, GAP + 60, 0, 110, m_case)
 box("Dais", DAIS_X0, HX1, -1200, 1200, 0, DAIS_H, m_dais)
 box("Podium", 3780, 3840, -520, -440, DAIS_H, DAIS_H + 120, m_trim)
 box("Case_Plinth", 4130, 4190, -30, 30, DAIS_H, DAIS_H + 90, m_trim)
-box("Case_Reel", 4140, 4180, -20, 20, DAIS_H + 90, DAIS_H + 130, m_gold)
+signal(box("Case_Reel", 4140, 4180, -20, 20, DAIS_H + 90, DAIS_H + 130, m_gold), m_sig_gold, 2)
 box("Screen", HX1 - 10, HX1, -700, 700, 300, 900, m_floor)
 
 # Scene 3's set. The lots table stands between the case and the stage trap; the band's PA stacks stand between
@@ -690,7 +710,7 @@ box("Band_Riser", BAND[0], BAND[1], BAND[2], BAND[3], 0, 30, m_dais)
 for sy in (-GAP - 30.0, GAP + 30.0):
     box("Shutter_Post", AISLE_SHUTTER_X - 8, AISLE_SHUTTER_X + 8, sy - 8, sy + 8, 110, 330, m_trim)
 box("Shutter_Housing", AISLE_SHUTTER_X - 14, AISLE_SHUTTER_X + 14, -GAP - 40, GAP + 40, 330, 372, m_trim)
-box("Side_Exit", HX1 - 8, HX1, SIDE_DOOR_Y - 65, SIDE_DOOR_Y + 65, 0, 235, m_gold)
+signal(box("Side_Exit", HX1 - 8, HX1, SIDE_DOOR_Y - 65, SIDE_DOOR_Y + 65, 0, 235, m_gold), m_sig_gold, 2)
 box("Security_Door", HX1 - 8, HX1, SEC_DOOR_Y - 65, SEC_DOOR_Y + 65, 0, 235, m_door)
 
 # --- the lobby block (two storeys) -----------------------------------------------------------------------------------
@@ -853,7 +873,7 @@ def sign(text, x, y, z, yaw, size=32.0, rgb=(1.0, 0.85, 0.45), folder="Set/Signs
     return a
 
 
-flat("Carpet", PAVE_X0 + 60.0, VOID_X0 + 80, -CARPET_HALF, CARPET_HALF, m_carpet)
+signal(flat("Carpet", PAVE_X0 + 60.0, VOID_X0 + 80, -CARPET_HALF, CARPET_HALF, m_carpet), m_sig_red, 1)  # it is tape
 # The scanner arch at the head of the queue lane (the watcher itself is placed with the rules).
 for s in (1, -1):
     prop("Scanner_Post", SCAN_X - 10, SCAN_X + 10, SCAN_Y + s * SCAN_HALF, SCAN_Y + s * (SCAN_HALF + 20), 0, 240, m_case,
@@ -1206,8 +1226,13 @@ ppv.set_editor_property("bUnbound", True)
 pps = ppv.get_editor_property("settings")
 try_set(pps, override_auto_exposure_min_brightness=True, auto_exposure_min_brightness=EXPOSURE_EV,
         override_auto_exposure_max_brightness=True, auto_exposure_max_brightness=EXPOSURE_EV,
-        override_vignette_intensity=True, vignette_intensity=0.55,
-        override_bloom_intensity=True, bloom_intensity=0.5,
+        override_vignette_intensity=True, vignette_intensity=0.0,     # step 4: the grade does the vignette (§15.3)
+        override_bloom_intensity=True, bloom_intensity=0.4,
+        override_bloom_threshold=True, bloom_threshold=1.0,
+        override_tone_curve_amount=True, tone_curve_amount=0.0,       # the grade does the tone (tools/build_look.py)
+        override_expand_gamut=True, expand_gamut=0.0,
+        override_blue_correction=True, blue_correction=0.0,
+        weighted_blendables=unreal.WeightedBlendables(array=[unreal.WeightedBlendable(weight=1.0, object=GRADE)]),
         override_dynamic_global_illumination_method=True,
         dynamic_global_illumination_method=unreal.DynamicGlobalIlluminationMethod.NONE,
         override_reflection_method=True, reflection_method=unreal.ReflectionMethod.NONE,

@@ -6,6 +6,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/HUD.h"
+#include "TakeFilmOverlay.h"
 #include "TakeHUD.generated.h"
 
 class ATakeDirector;
@@ -139,7 +140,14 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|HUD")
 	float AlarmClockScale = 2.4f;
 
+	/** Step 4: the film overlay and the letterbox (TakeFilmOverlay.h): every number and switch is here. */
+	UPROPERTY(EditAnywhere, Category = "Take|Film")
+	FTakeFilmOverlay Film;
+
 protected:
+	/** Step 4: what the film overlay needs this frame. */
+	FTakeFilmFrame MakeFilmFrame(const ATakeDirector& Dir, float ScreenW, float ScreenH) const;
+
 	/** The director, cached (ATakeDirector::Get). */
 	ATakeDirector* GetDirector();	// BODY: (u)
 

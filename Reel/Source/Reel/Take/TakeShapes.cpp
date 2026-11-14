@@ -97,6 +97,49 @@ UMaterialInstanceDynamic* FTakeShapes::SetColour(UStaticMeshComponent* Comp, con
 	return MID;
 }
 
+UMaterialInterface* FTakeShapes::GetSignalMaterial()
+{
+	static TWeakObjectPtr<UMaterialInterface> Cached;
+	if (!Cached.IsValid())
+	{
+		Cached = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Take/Look/M_TakeSignal.M_TakeSignal"));
+	}
+	return Cached.Get();
+}
+
+void FTakeShapes::SetSignal(UStaticMeshComponent* Comp, uint8 Stencil)
+{
+	if (!Comp)
+	{
+		return;
+	}
+	Comp->SetCustomDepthStencilValue(Stencil);
+	Comp->SetRenderCustomDepth(Stencil != 0);
+	if (Stencil == 0)
+	{
+		return;
+	}
+	UMaterialInterface* const Signal = GetSignalMaterial();
+	if (!Signal)
+	{
+		return;
+	}
+	UMaterialInstanceDynamic* const Old = Cast<UMaterialInstanceDynamic>(Comp->GetMaterial(0));
+	if (Old && Old->Parent == Signal)
+	{
+		return;
+	}
+	FLinearColor Colour = FLinearColor::White;
+	if (Old)
+	{
+		Old->GetVectorParameterValue(FHashedMaterialParameterInfo(ColorParam), Colour);
+	}
+	if (UMaterialInstanceDynamic* const MID = Comp->CreateDynamicMaterialInstance(0, Signal))
+	{
+		MID->SetVectorParameterValue(ColorParam, Colour);
+	}
+}
+
 UBoxComponent* FTakeShapes::CreateClickVolume(AActor* Owner, FName Name, USceneComponent* Parent, const FVector& Extent,
 	const FVector& RelLocation)
 {

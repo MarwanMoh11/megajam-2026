@@ -13,6 +13,7 @@
 #include "FollowSpot.h"
 #include "Julian.h"
 #include "Mark.h"
+#include "Misc/ScopeExit.h"
 #include "TakeCharacter.h"
 #include "TakeDirector.h"
 #include "TakeGameInstance.h"
@@ -117,6 +118,18 @@ void ATakeHUD::DrawHUD()
 	const int32 TakeN = GI ? GI->TakeNumber : 1;
 	const FString Tc = BarClock ? BarClock->GetTimecode() : FString(TEXT("-.-"));
 
+	// --- Step 4: the film overlay: under every HUD layer, and its blooper burn / PRINT IT snap over all of them ------
+	const FTakeFilmFrame FilmFrame = MakeFilmFrame(*Dir, ScreenW, ScreenH);
+	Film.DrawUnder(*this, *Canvas, FilmFrame);
+	ON_SCOPE_EXIT
+	{
+		if (Canvas)
+		{
+			Film.DrawOver(*this, *Canvas, FilmFrame);
+		}
+	};
+	const bool bFilmBars = Film.DrawsLetterbox(FilmFrame);
+
 	// --- Step 3: the title card's and the credits' default lines (the fields stay editable; filled once) ------------
 	if (TitleLines.Num() == 0)
 	{
@@ -193,6 +206,7 @@ void ATakeHUD::DrawHUD()
 	if (Dir->Phase == ETakePhase::Title)
 	{
 		DrawRect(TakeHudA::WithAlpha(TakeColors::Black, 0.72f), 0.f, 0.f, ScreenW, ScreenH);
+		Film.DrawCard(*this, *Canvas, FilmFrame);
 		const float CardMaxW = ScreenW * 0.9f;
 		const float CardMidX = ScreenW * 0.5f;
 		float CardY = ScreenH * 0.13f;
@@ -229,6 +243,7 @@ void ATakeHUD::DrawHUD()
 	if (Dir->Phase == ETakePhase::Printed)
 	{
 		DrawRect(TakeColors::Black, 0.f, 0.f, ScreenW, ScreenH);
+		Film.DrawCard(*this, *Canvas, FilmFrame);
 		const float EndMaxW = ScreenW * 0.9f;
 		const float EndMidX = ScreenW * 0.5f;
 
@@ -463,8 +478,8 @@ void ATakeHUD::DrawHUD()
 		const FLinearColor WashColour = TakeHudA::WithAlpha(TakeColors::Red, WashAlpha);
 		const float WashDepth = ScreenH * 0.07f;
 		// On A the picture sits between the letterbox bars: the wash hugs the picture, not the black bars.
-		const float PictureTop = bOnA ? LetterboxBarH : 0.f;
-		const float PictureBottom = bOnA ? ScreenH - LetterboxBarH : ScreenH;
+		const float PictureTop = (bOnA || bFilmBars) ? LetterboxBarH : 0.f;
+		const float PictureBottom = (bOnA || bFilmBars) ? ScreenH - LetterboxBarH : ScreenH;
 		const float SideH = FMath::Max(0.f, PictureBottom - PictureTop - WashDepth * 2.f);
 		DrawRect(WashColour, 0.f, PictureTop, ScreenW, WashDepth);
 		DrawRect(WashColour, 0.f, PictureBottom - WashDepth, ScreenW, WashDepth);
@@ -482,8 +497,11 @@ void ATakeHUD::DrawHUD()
 		const float BarH = LetterboxBarH;
 		TopBarH = BarH;
 		BottomTop = ScreenH - BarH;
-		DrawRect(TakeColors::Black, 0.f, 0.f, ScreenW, BarH);
-		DrawRect(TakeColors::Black, 0.f, BottomTop, ScreenW, BarH);
+		if (!bFilmBars)
+		{
+			DrawRect(TakeColors::Black, 0.f, 0.f, ScreenW, BarH);
+			DrawRect(TakeColors::Black, 0.f, BottomTop, ScreenW, BarH);
+		}
 
 		// REC dot, top right.
 		const float RecR = 8.f * Ui;
@@ -825,7 +843,7 @@ void ATakeHUD::DrawHUD()
 	}
 
 	// --- Blooper slate ----------------------------------------------------------------------------------------------
-	if (Dir->Phase == ETakePhase::BlooperFreeze)
+	if (Dir->Phase == ETakePhase::BlooperFreeze && Film.IsBlooperSlateDue(FilmFrame))
 	{
 		const float SlateH = ScreenH * 0.36f;
 		const float SlateY = (ScreenH - SlateH) * 0.5f;
@@ -917,4 +935,33 @@ FVector2D ATakeHUD::DrawTextWithFont(const FString& Text, UFont* Font, const FLi
 	DrawText(Text, FLinearColor(0.f, 0.f, 0.f, Colour.A * 0.85f), DrawX + Offset, Y + Offset, UseFont, Scale);
 	DrawText(Text, Colour, DrawX, Y, UseFont, Scale);
 	return FVector2D(TextW, TextH);
+}
+
+FTakeFilmFrame ATakeHUD::MakeFilmFrame(const ATakeDirector& Dir, float ScreenW, float ScreenH) const
+{
+	FTakeFilmFrame F;
+	F.ScreenW = ScreenW;
+	F.ScreenH = ScreenH;
+	const UWorld* World = GetWorld();
+	F.RealTime = World ? static_cast<double>(World->GetRealTimeSeconds()) : 0.0;
+	F.bFilmLook = Dir.bFilmLook;
+	F.bFilmPicture = Dir.IsFilmPicture();
+	F.LookCamera = Dir.GetLookCamera();
+	const ATakePlayerController* TakePC = Cast<ATakePlayerController>(PlayerOwner);
+	F.bInFlight = TakePC && TakePC->IsInFlight();
+	F.Phase = Dir.Phase;
+	F.Composure = Dir.Composure ? Dir.Composure->GetComposure() : 100.f;
+	F.bSeen = Dir.bJulianSeen;
+	if (Dir.Clock)
+	{
+		F.SecondsSinceBeat = Dir.Clock->GetBeatPhase() * Dir.Clock->GetSecondsPerBeat();
+	}
+	if (Dir.Julian && Canvas)
+	{
+		const FVector Projected = Canvas->Project(Dir.Julian->GetActorLocation());
+		F.bJulianOnScreen = Projected.Z > 0.0 && Projected.X >= 0.0 && Projected.X <= ScreenW && Projected.Y >= 0.0
+			&& Projected.Y <= ScreenH;
+		F.JulianScreen = FVector2D(Projected.X, Projected.Y);
+	}
+	return F;
 }

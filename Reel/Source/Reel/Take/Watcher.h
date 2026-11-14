@@ -148,6 +148,11 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Watcher", meta = (ClampMin = "0", ClampMax = "1"))
 	float AlarmPulseBrightness = 1.f;
 
+	/** Step 4 (§15.3): with the alarm look on, a live frame is white at this emissive strength, full on each beat and
+	 *  falling over 10 film frames to (1 - 0.65 * AlarmPulseBrightness) of it, holding until the next beat. */
+	UPROPERTY(EditAnywhere, Category = "Take|Watcher", meta = (ClampMin = "0"))
+	float AlarmEmissive = 4.f;
+
 	// --- tunables ---------------------------------------------------------------------------------------------------
 
 	/** The trigger this watcher arrives on (ATakeDirector::FireTrigger). None: it is there from the take's start. */
@@ -309,4 +314,7 @@ private:
 
 	/** The clock's pulse at the last StepWatcher (0..1). */
 	float LastPulse = 0.f;
+
+	/** Step 4: the alarm frames' brightness this frame (1 on the beat, falling to the hold level), set with LastPulse. */
+	float AlarmBeatLevel = 1.f;
 };

@@ -513,3 +513,36 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   which reads as if they could still see him. Route 1 is still tight. The band-break checkpoints of rule 9 are
   not built. Labels overlap on Maya's camera when several watchers line up.
 
+
+### 19:10, Sat Nov 14: step 4 pass 1, the look: the film grade, the stencil, the overlay (packaged, played with real keys)
+- **What changed:** Julian's camera is now the film: noir monochrome where only the things that carry meaning keep
+  their colour, red for danger (watchers' frames and lines, tally lights, red tape and the carpet, the scanner's live
+  bar and eye, the beam, the drone's circle) and gold for Julian (his marks, the scanner's open bar, the reel's case,
+  the gold side exit, the trap's mark). Maya's and Vex's cameras are the making-of: steel blue video with viewfinder
+  corners and scan lines. The grade swaps on the frame of the cut press. At the alarm the picture bleeds to full
+  colour over 2 s and the live frames turn white and pulse on the beat; a restore snaps it back. The step 3
+  saturation stand-in is gone. On Canvas: 2.39:1 ink bars on every camera, grain, flicker, dust and scratches at
+  24 fps on the film, a paper flash and a frame-line roll at each cut, a danger burn at the picture's edges as
+  composure falls, a burn and a paper flash before the blooper slate, and an ink frame at PRINT IT.
+- **How:** one post-process material (`tools/build_look.py` builds it from text; `build_auction.py` puts it in the
+  volume) runs before TSR, so the stencil's edges are anti-aliased with the picture instead of crawling. The numbers
+  are the designer's (ART_STYLE §15). Everything meaningful is drawn in an unlit signal colour with a custom-depth
+  stencil. Switches on the director: `bFilmLook` (off = the old picture), `bMakingOfSplit` (off = all film); every
+  overlay number is on the HUD's `Film`.
+- **Measured:** a live red tape pixel on the film camera (199, 47, 31) in the package and (208, 50, 34) in the
+  editor against `#D3301F` (211, 48, 31); a gold mark (229, 182, 73) against `#E9B949`. Frame cost in the editor at
+  three fixed views: GPU +0.3 to 0.6 ms, draw thread +0.7 ms (`docs/shots/step4_before_*` and `step4_after_*`).
+- **Proof:** the four scripted tests in the editor (the whole take, Scene 3 by the trap, the side exit with The Bow,
+  the failures), then one run of the packaged exe with real keys: a whole take to PRINT IT (3:02, 17 cuts, 1 blooper,
+  out by the stage trap). Screenshots: `docs/shots/step4_p1_*.png`.
+- **What the agents did:** one builder session alone: code, material, map, tests, package. The designer agent wrote
+  §15 in parallel; no subagents.
+- **What went wrong:** three traps, each found on a screenshot. The custom-depth pass ignores what stands in front,
+  so a gold stanchion in front of a red frame kept its own colour: the grade now keeps a pixel only where the
+  tagged surface is the one seen. After the grade the engine brightened the picture by a constant factor (display
+  x1.25), found with a test pattern drawn by the material, and divided out. And a red source tinted by a
+  per-channel gain turned the grey tally lights teal: the grade now maps a saturated red or gold onto its token and
+  leaves greys alone. The first exe run walked off the keycard mid-lift (the dead-reckoned key script is about a
+  second sensitive there); the rerun waits longer on the mark.
+- **Needs Marwan's eye:** the grain, flicker and burn levels; how dark the film's hall reads; the making-of blue;
+  the bleed into the pyro's orange at the finale; whether the split reads as film against making-of at all.

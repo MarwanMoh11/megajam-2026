@@ -52,6 +52,8 @@ class ASceneTrigger;
 class ACrewPost;
 class AShutter;
 class APostProcessVolume;
+class UMaterialInstanceDynamic;
+class UMaterialInterface;
 class ATakeCharacter;
 class ATakePlayerController;
 class UBarClockComponent;
@@ -148,6 +150,14 @@ public:
 
 	/** The level's character with this Id (the first found), null if the set has none (no Vex in the test box). */
 	ATakeCharacter* GetCharacter(ETakeCamera Id) const;
+
+	/** Step 4: the camera whose look is on screen: the flight's destination from the frame of the cut press, else the
+	 *  current character's. A before there is a player controller. */
+	ETakeCamera GetLookCamera() const;
+
+	/** Step 4: the picture is the film (the grade's noir and the film overlay): bFilmLook and the look camera is A, or
+	 *  bMakingOfSplit is off. False: the making-of (or no look at all when bFilmLook is off). */
+	bool IsFilmPicture() const;
 
 	/** The game instance that survives reloads (take number, bloopers). Null outside a Take game instance. */
 	UTakeGameInstance* GetTakeGameInstance() const;
@@ -443,11 +453,16 @@ public:
 	 *  NewTake -> NewTake(); Cut -> Flash(TitleCardPrompt). */
 	void StepTitleCard(float DeltaSeconds);
 
-	/** The colour bleed (docs/STATUS.md, "Look"): the picture's saturation is FilmSaturation until the alarm goes
-	 *  live, then moves to AlarmSaturation over BleedSeconds. Called at the end of step 6 every frame and once in
-	 *  the first tick with bSnap (a restore lands on the right value). Writes LookVolume's ColorSaturation
-	 *  (bOverride_ColorSaturation = true, FVector4(S, S, S, 1)). No LookVolume: nothing. */
+	/** Step 4, the film grade (docs/ART_STYLE.md §15.3): drives GradeMID, the dynamic instance of the volume's grade
+	 *  material. MakingOf = 1 on B and C (bMakingOfSplit) from the frame of the cut press (GetLookCamera); Bleed runs
+	 *  0 -> 1 on a smoothstep over BleedSeconds once the alarm is live (bAlarmLive); bSnap (the first tick, a
+	 *  restore) lands it on the frame. bFilmLook off: the blendable's weight 0 and the volume's tone curve back.
+	 *  Called at the end of step 6 every frame and once in the first tick with bSnap. No LookVolume: nothing. */
 	void StepLook(float DeltaSeconds, bool bSnap = false);
+
+	/** Step 4: finds the grade material in LookVolume's blendables (or loads FilmGradeMaterial), puts a dynamic
+	 *  instance in its place (GradeMID) and turns the volume's tone curve off (the material does the tone). */
+	void SetupLook();
 
 	// ---------------------------------------------------------------------------------------------------------------
 	// Components and tunables
@@ -569,15 +584,25 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Ends")
 	bool bSideExitIsFinalCut = true;
 
-	/** The picture's saturation before the alarm (1 = untouched). */
-	UPROPERTY(EditAnywhere, Category = "Take|Look", meta = (ClampMin = "0", ClampMax = "2"))
-	float FilmSaturation = 0.6f;
+	/** Step 4, the master switch: off = no grade and no film overlay (the picture as it was before step 4). */
+	UPROPERTY(EditAnywhere, Category = "Take|Look")
+	bool bFilmLook = true;
 
-	/** ...and once the alarm is live: the bleed to full colour. */
-	UPROPERTY(EditAnywhere, Category = "Take|Look", meta = (ClampMin = "0", ClampMax = "2"))
-	float AlarmSaturation = 1.25f;
+	/** Step 4: on = Maya's and Vex's cameras get the making-of grade and viewfinder; off = all three cameras are the
+	 *  film (§15.3's bAllFilm, inverted). The HUD, the labels and the stencils do not change. */
+	UPROPERTY(EditAnywhere, Category = "Take|Look")
+	bool bMakingOfSplit = true;
 
-	/** How long the bleed takes, s. */
+	/** Step 4: the grade material used when the volume has none (tools/build_look.py makes it). Its numbers are
+	 *  parameters of /Game/Take/Look/MI_FilmGrade: tune them there. */
+	UPROPERTY(EditAnywhere, Category = "Take|Look")
+	TSoftObjectPtr<UMaterialInterface> FilmGradeMaterial = TSoftObjectPtr<UMaterialInterface>(FSoftObjectPath(TEXT("/Game/Take/Look/MI_FilmGrade.MI_FilmGrade")));
+
+	/** Step 4, for checking the look: 0..1 holds the bleed there (1 = the full-colour picture); below 0: off. */
+	UPROPERTY(EditAnywhere, Category = "Take|Look", meta = (ClampMax = "1"))
+	float ForceBleed = -1.f;
+
+	/** How long the alarm's bleed to full colour takes, s (§15.2 motion.bar: 48 film frames). */
 	UPROPERTY(EditAnywhere, Category = "Take|Look", meta = (ClampMin = "0"))
 	float BleedSeconds = 2.f;
 
@@ -756,7 +781,15 @@ public:
 
 	/** The saturation StepLook last wrote. */
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
-	float CurrentSaturation = 1.f;
+	/** Step 4: the bleed's linear progress 0..1 (the material gets its smoothstep), and what GradeMID last got. */
+	float CurrentBleed = 0.f;
+	float AppliedBleed = -1.f;
+	float AppliedMakingOf = -1.f;
+	int32 AppliedFilmLook = -1;
+
+	/** Step 4: the dynamic instance of the grade material in LookVolume's blendables (SetupLook). */
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> GradeMID;
 
 	/** Sets Phase and zeroes PhaseSeconds, logs "PHASE -> X". */
 	void SetPhase(ETakePhase NewPhase);

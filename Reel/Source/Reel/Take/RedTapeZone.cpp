@@ -5,6 +5,7 @@
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "TakeShapes.h"
+#include "TakeStyle.h"
 #include "TakeTypes.h"
 
 ARedTapeZone::ARedTapeZone()
@@ -78,6 +79,7 @@ void ARedTapeZone::LayoutTape()
 		}
 		Strip.Comp->SetRelativeLocation(Strip.Location);
 		Strip.Comp->SetRelativeScale3D(Strip.Scale);
+		FTakeShapes::SetSignal(Strip.Comp, TakeStyle::StencilRed);
 		FTakeShapes::SetColour(Strip.Comp, TakeColors::Red);
 	}
 }

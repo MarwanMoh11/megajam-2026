@@ -9,6 +9,7 @@
 #include "TakeCharacter.h"
 #include "TakeDirector.h"
 #include "TakeShapes.h"
+#include "TakeStyle.h"
 
 namespace TakeScannerLocal
 {
@@ -240,7 +241,9 @@ void AScannerWatcher::LayoutScanner()
 	ClickVolume->SetBoxExtent(TakeScannerLocal::EyeClickExtent);
 
 	FTakeShapes::SetColour(FrameMesh, TakeColors::Red);
+	FTakeShapes::SetSignal(GateBar, bGateOpen ? TakeStyle::StencilGold : TakeStyle::StencilRed);
 	FTakeShapes::SetColour(GateBar, bGateOpen ? TakeColors::Gold : TakeColors::Red);
+	FTakeShapes::SetSignal(Eye, TakeStyle::StencilRed);
 	FTakeShapes::SetColour(Eye, TakeColors::Red);
 	FTakeShapes::SetColour(Tally, TakeColors::DarkGrey);
 }
@@ -258,6 +261,7 @@ void AScannerWatcher::SetGateOpen(bool bOpen)
 	if (GateBar)
 	{
 		GateBar->SetRelativeLocation(FVector(0.f, 0.f, bOpen ? TakeScannerLocal::OpenBarZ : BarHeight));
+		FTakeShapes::SetSignal(GateBar, bOpen ? TakeStyle::StencilGold : TakeStyle::StencilRed);
 		FTakeShapes::SetColour(GateBar, bOpen ? TakeColors::Gold : TakeColors::Red);
 	}
 

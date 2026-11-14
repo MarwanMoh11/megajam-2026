@@ -4,6 +4,7 @@
 
 #include "Components/StaticMeshComponent.h"
 #include "TakeShapes.h"
+#include "TakeStyle.h"
 #include "TakeTypes.h"
 
 AMark::AMark()
@@ -74,6 +75,9 @@ void AMark::ApplyLook()
 		const float Pulse = 0.5f + 0.5f * FMath::Cos(ActionProgress * 2.f * UE_PI * 2.f);
 		DiscColour = FMath::Lerp(TakeColors::GoldBright, TakeColors::White, 0.2f + 0.5f * Pulse);
 	}
+	FTakeShapes::SetSignal(Disc, TakeStyle::StencilGold);
+	FTakeShapes::SetSignal(CrossA, TakeStyle::StencilGold);
+	FTakeShapes::SetSignal(CrossB, TakeStyle::StencilGold);
 	FTakeShapes::SetColour(Disc, DiscColour);
 	FTakeShapes::SetColour(CrossA, TakeColors::GoldBright);
 	FTakeShapes::SetColour(CrossB, TakeColors::GoldBright);
