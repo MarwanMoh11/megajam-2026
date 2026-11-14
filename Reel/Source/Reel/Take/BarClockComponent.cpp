@@ -12,6 +12,10 @@
 
 namespace TakeClockA
 {
+	/** Step 6 phase 2: after the music starts (a take, a restore, the heist cue), its playback reports are ignored for
+	 *  this long, so the last reports of the sound it replaced cannot pass for it (OnMusicPercent). */
+	constexpr double MusicSettleSeconds = 0.5;
+
 	/** One 16-bit little-endian mono sample, Sample in -1..1. */
 	void AppendSample(TArray<uint8>& Out, float Sample)
 	{
@@ -857,8 +861,9 @@ void UBarClockComponent::StartMusic(int32 Kind, double BaseBeats)
 	MusicKind = Kind;
 	MusicDuration = Wave->Duration;
 	MusicReportSeconds = -1.0;
+	MusicReportTime = FPlatformTime::Seconds();	// reports are ignored for MusicSettleSeconds from here (OnMusicPercent)
 	MusicWraps = 0;
-	LastRawPercent = 0.f;
+	LastRawPercent = -1.f;	// not primed: the first moving report after the settle only primes
 	MusicAudio->Stop();
 	MusicAudio->SetSound(Wave);
 	MusicAudio->SetVolumeMultiplier(1.f);
@@ -893,15 +898,39 @@ void UBarClockComponent::OnMusicPercent(const UAudioComponent* Component, const 
 	{
 		return;
 	}
+	// Step 6 phase 2: a sound that was just stopped (the bed as the alarm cuts to the heist cue, or the bed before a
+	// restore restarts it) reports its last position for a few more audio buffers, and a source that has not started
+	// yet repeats its seek point. Read as the music, either sent the clock into a burst of reseeks until it gave up.
+	// So: only the current sound counts; nothing counts for MusicSettleSeconds after StartMusic (which sets
+	// MusicReportTime; no report has been taken while MusicReportSeconds < 0); a report that has not moved since the
+	// last one is ignored; and the first moving report only primes the next comparison.
+	if (Wave != Cast<USoundWave>(MusicAudio->Sound))
+	{
+		return;
+	}
+	const double Now = FPlatformTime::Seconds();
+	if (MusicReportSeconds < 0.0 && Now - MusicReportTime < TakeClockA::MusicSettleSeconds)
+	{
+		return;
+	}
+	if (Percent == LastRawPercent)
+	{
+		return;
+	}
 	// The mixer counts frames from the file's start (the seek included). A looping file may count on past 1 or
-	// wrap to 0: a drop of more than half the file is a wrap.
-	if (MusicKind == 1 && Percent < LastRawPercent - 0.5f)
+	// wrap to 0: a drop of more than half the file between two taken reports is a wrap.
+	if (MusicReportSeconds >= 0.0 && MusicKind == 1 && Percent < LastRawPercent - 0.5f)
 	{
 		++MusicWraps;
 	}
+	const bool bPrimed = LastRawPercent >= 0.f;
 	LastRawPercent = Percent;
+	if (!bPrimed)
+	{
+		return;
+	}
 	MusicReportSeconds = (static_cast<double>(MusicWraps) + static_cast<double>(Percent)) * static_cast<double>(MusicDuration);
-	MusicReportTime = FPlatformTime::Seconds();
+	MusicReportTime = Now;
 }
 
 double UBarClockComponent::GetMusicBeats() const
