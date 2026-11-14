@@ -687,3 +687,29 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
 - **Proof so far:** play-in-editor shots of the band, Vance and the pyro after the rebuild
   (`Reel/Saved/Screenshots/WindowsEditor/s5m_*.png`). Still open: the bob's tuning, the drums and piano from the
   floor, the pyro's size, the tests, the frame time and the package.
+
+## Nov 14 22:45 to Nov 15 01:00 Cairo: running steps 5 and 6 in parallel, and how Marwan steered them
+- **The set-up:** Marwan asked for steps 5 and 6 at once, with Opus 5.5 builders and a lean orchestrator session that
+  only briefs, relays and hands over the editor. Step 5 owns the editor and `main`; step 6 builds audio outside the
+  editor in its own git worktree (`.wt-audio`, branch `step6-audio`), compiling only the game target so it never
+  touches the open editor; a third builder generates props with Rodin in `.wt-rodin`. The editor goes to one of them
+  at a time: step 5, then the audio import, then the props.
+- **Keys without a clipboard:** the PC and the Mac share no clipboard, and no agent may type a key. The orchestrator
+  opened a masked PowerShell prompt on the PC's screen; Marwan typed each key into it from the Mac with Moonlight's
+  Ctrl+Alt+Shift+V (it types the Mac's clipboard on the host), and it went straight into the user environment, never
+  into the chat or a shell history. Done for ElevenLabs (Starter, checked against its API: 40,000 credits), Rodin
+  and Tripo.
+- **Marwan as the director, from his phone and Mac:** each builder sends pictures and audio as it goes, and his
+  verdicts go back within minutes. The band loop: approved. The chief's stock voice: "the classical AI voice ... it
+  ruins immersion", so he got three Voice Design candidates and picked one; then four more stock voices a listener
+  would recognise (the doorman, Vance, the broadcast, security) were redesigned and he picked each. The bob on the
+  beat: "jolting forward the whole model all together feels unnatural", sent back as upper-body motion, eased, out of
+  unison, the band moving most. The goal for the night moved to the set: "make the environment rich rather than how
+  barren it is right now"; rigged people only if there's time. His rule for generated assets: one prop first to check
+  the quality before anything else.
+- **What went wrong:** the builders started as subagents of the orchestrator, and every interruption of its turn
+  killed them (four times in two hours; their files and commits survived, the time didn't). From 00:30 they run as
+  separate Claude Code sessions, which survive it. Messages to a busy session wait for its turn to end, so urgent
+  feedback (the bob, the one-prop rule) needed its turn stopped first. The one-prop rule still arrived late: Rodin's
+  API was fast and seven props were already made (0.5 credits each); Marwan judged them good. Rodin's API refused its
+  high tier ("no active subscription" for API use), so the props are Gen-2.5-Low.
