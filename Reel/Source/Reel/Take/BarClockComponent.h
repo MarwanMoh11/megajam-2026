@@ -45,10 +45,6 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Clock", meta = (ClampMin = "0", ClampMax = "1"))
 	float ClickVolume = 0.5f;
 
-	/** How long GetPulse takes to fall from 1 (on the beat) to 0. Only PyroDevice's flare reads it; it goes with that. */
-	UPROPERTY(EditAnywhere, Category = "Take|Clock")
-	float PulseDecaySeconds = 0.2f;
-
 	/** Step 1 (director). Moves time on by DeltaSeconds; sets the beat/bar-crossed flags for this frame (true only
 	 *  on the frame a beat or bar line is crossed); restarts the pulse and plays the click on each beat crossed. */
 	void Advance(float DeltaSeconds);	// BODY: (a)
@@ -76,10 +72,6 @@ public:
 
 	float GetSecondsPerBeat() const;	// BODY: (a)
 	float GetSecondsPerBar() const;	// BODY: (a)
-
-	/** 1 on the frame of a beat, falling to 0 over PulseDecaySeconds. Only PyroDevice's flare still reads it (step 5
-	 *  removes that); nothing else on screen moves with the beat. Delete it with the flare. */
-	float GetPulse() const;	// BODY: (a)
 
 	/** "bar.beat", e.g. "12.3": the HUD timecode and the TAKE_LOG stamp. */
 	FString GetTimecode() const;	// BODY: (a)
@@ -339,7 +331,6 @@ private:
 	double TotalBeats = 0.0;
 	bool bBeatCrossed = false;
 	bool bBarCrossed = false;
-	float PulseAge = 1000.f;
 
 	int32 SampleRate = 48000;
 	TArray<uint8> PcmAccent;

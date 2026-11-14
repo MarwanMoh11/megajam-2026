@@ -264,7 +264,6 @@ void UBarClockComponent::BeginPlay()
 	}
 	bBeatCrossed = false;
 	bBarCrossed = false;
-	PulseAge = 1000.f;
 	bFirstAdvance = true;
 
 	BuildPcm();
@@ -408,14 +407,12 @@ void UBarClockComponent::Advance(float DeltaSeconds)
 	}
 
 	TotalBeats += StepBeats;
-	PulseAge += Step;
 
 	// A beat line this frame: the stand-in alarm tone's cue. Nothing clicks: the metronome is gone, the band's music is
 	// the only thing that keeps time, and nothing on screen moves with the beat.
 	bool bBeatLine = false;
 
-	// The take's first frame sits on a beat line (bar N, beat 1): the pulse (PyroDevice's flare) restarts, without
-	// beat events.
+	// The take's first frame sits on a beat line (bar N, beat 1): the alarm tone's cue, without beat events.
 	if (bFirstAdvance)
 	{
 		bFirstAdvance = false;
@@ -428,7 +425,6 @@ void UBarClockComponent::Advance(float DeltaSeconds)
 		if (Before - static_cast<double>(StartLine) < 1e-6)
 		{
 			bBeatLine = true;
-			PulseAge = 0.f;
 		}
 	}
 
@@ -446,7 +442,6 @@ void UBarClockComponent::Advance(float DeltaSeconds)
 
 	if (bBeatCrossed)
 	{
-		PulseAge = 0.f;
 		bBeatLine = true;
 	}
 
@@ -482,7 +477,6 @@ void UBarClockComponent::SetStartBar(int32 Bar)
 	TotalBeats = static_cast<double>(FMath::Max(1, Bar) - 1) * static_cast<double>(FMath::Max(1, BeatsPerBar));
 	bBeatCrossed = false;
 	bBarCrossed = false;
-	PulseAge = 1000.f;
 	bFirstAdvance = true;
 	bStartBarSet = true;
 	MutedUntilBeats = 0.0;
@@ -528,15 +522,6 @@ float UBarClockComponent::GetSecondsPerBeat() const
 float UBarClockComponent::GetSecondsPerBar() const
 {
 	return GetSecondsPerBeat() * static_cast<float>(FMath::Max(1, BeatsPerBar));
-}
-
-float UBarClockComponent::GetPulse() const
-{
-	if (PulseDecaySeconds <= 0.f)
-	{
-		return PulseAge <= 0.f ? 1.f : 0.f;
-	}
-	return FMath::Clamp(1.f - PulseAge / PulseDecaySeconds, 0.f, 1.f);
 }
 
 FString UBarClockComponent::GetTimecode() const
