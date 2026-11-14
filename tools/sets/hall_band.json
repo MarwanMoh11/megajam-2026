@@ -1,0 +1,39 @@
+{
+ "BAND_PIANO": {
+  "x": 3790.0,
+  "y": 1358.0,
+  "z": 80.0,
+  "yaw": 90.0,
+  "seated": true
+ },
+ "BAND_DRUMS": {
+  "x": 3945.0,
+  "y": 1700.0,
+  "z": 105.0,
+  "yaw": 180.0,
+  "seated": true
+ },
+ "BAND_BASS": {
+  "x": 3760.0,
+  "y": 1795.0,
+  "z": 30.0,
+  "yaw": 200.0,
+  "seated": false
+ },
+ "BAND_TRUMPET": {
+  "x": 3700.0,
+  "y": 1700.0,
+  "z": 30.0,
+  "yaw": 195.0,
+  "seated": false,
+  "held": true
+ },
+ "BAND_SINGER": {
+  "x": 3690.0,
+  "y": 1598.0,
+  "z": 30.0,
+  "yaw": 205.0,
+  "seated": false
+ },
+ "props": true
+}

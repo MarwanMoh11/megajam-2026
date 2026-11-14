@@ -12,6 +12,7 @@
 #include "Julian.h"
 #include "Mark.h"
 #include "PyroDevice.h"
+#include "QueueLine.h"
 #include "SceneTrigger.h"
 #include "ScannerWatcher.h"
 #include "TakeCharacter.h"
@@ -60,11 +61,18 @@ namespace TakeSceneLocal
 	}
 }
 
-void ATakeDirector::StepScene(float /*DeltaSeconds*/)
+void ATakeDirector::StepScene(float DeltaSeconds)
 {
 	if (!Julian)
 	{
 		return;
+	}
+
+	// QA scene1: the queue for the scanner and the beats of the taught first switch (QueueLine.h, the beat sheet).
+	// The line steps itself into the old flow when bQueueScene1 is off.
+	if (AQueueLine* const QueueLine = AQueueLine::Get(this))
+	{
+		QueueLine->StepLine(*this, DeltaSeconds);
 	}
 
 	// Marks' occupied state follows where Julian stands (AJulian sets it on arrival and on a cue; this keeps it true).
@@ -403,7 +411,7 @@ void ATakeDirector::UpdateObjective()
 			if (CurrentCamera == ETakeCamera::A)
 			{
 				NewObjective = bJulianExposed
-					? FString(TEXT("He has the keycard. Get JULIAN off the red tape."))
+					? FString(TEXT("He has the keycard. Get JULIAN out of the cold light on the dais."))
 					: FString::Printf(TEXT("Post [3] VEX at the CURTAIN WINCH and [2] MAYA at the PYRO BOARD: the case trips a %d-second alarm"),
 						FMath::CeilToInt(static_cast<float>(FinaleBars) * (Clock ? Clock->GetSecondsPerBar() : 2.f)));
 			}
@@ -443,12 +451,12 @@ void ATakeDirector::UpdateObjective()
 			}
 			else
 			{
-				NewObjective = TEXT("Curtain down. [2] MAYA: the pyro blinds the stage. Then [1] JULIAN to the gold mark on the trap");
+				NewObjective = TEXT("Curtain down. [2] MAYA: the pyro blinds the stage. Then [1] JULIAN to the warm light on the trap");
 			}
 		}
 		else if (CurrentCamera == ETakeCamera::A)
 		{
-			NewObjective = TEXT("Go. The open trap is the gold mark upstage, behind the lots table.");
+			NewObjective = TEXT("Go. The open trap is the warm pool of light upstage, behind the lots table.");
 		}
 		else
 		{
@@ -480,7 +488,7 @@ void ATakeDirector::UpdateObjective()
 				}
 				else if (FVector::Dist2D(Julian->GetFeetLocation(), Scanner->GetActorLocation()) > DoorPromptDistance)
 				{
-					NewObjective = TEXT("No invitation: keep off the red carpet. Walk JULIAN up the queue lane to the gold mark");
+					NewObjective = TEXT("No invitation: keep off the red carpet. Walk JULIAN up the queue lane to the warm light");
 				}
 				else
 				{
@@ -591,11 +599,25 @@ void ATakeDirector::UpdateObjective()
 		}
 		else if (Drone && Drone->HasArrived())
 		{
-			NewObjective = TEXT("The DRONE's searchlight sees him off a gold mark. Take a side aisle to the rope");
+			NewObjective = TEXT("The DRONE's searchlight sees him unless he stands in a warm pool. Take a side aisle to the rope");
 		}
 		else
 		{
-			NewObjective = TEXT("Wait on the gold mark, then take a side aisle to the rope: the DRONE has the centre");
+			NewObjective = TEXT("Wait in the warm light, then take a side aisle to the rope: the DRONE has the centre");
+		}
+	}
+
+	// QA scene1: the queue and the taught first switch speak first in Scene 1 (empty: the lines above).
+	if (bQueueScene1 && Phase == ETakePhase::Rolling && Scene <= 1)
+	{
+		if (const AQueueLine* const QueueLine = AQueueLine::Get(this))
+		{
+			const FString QueueObjective = QueueLine->GetObjective(*this);
+			if (!QueueObjective.IsEmpty())
+			{
+				NewObjective = QueueObjective;
+				bCountdownLine = false;
+			}
 		}
 	}
 
@@ -862,6 +884,16 @@ void ATakeDirector::StepIntroLines()
 		return;
 	}
 	GI->IntroShownMask |= Bit;
+	// QA scene1: while the first switch is taught, the tutor's lines introduce Maya: her cover line is not stacked on them.
+	if (On->Id == ETakeCamera::B)
+	{
+		const AQueueLine* const QueueLine = AQueueLine::Get(this);
+		if (QueueLine && QueueLine->IsTeaching())
+		{
+			TAKE_LOG(TEXT("INTRO %s: the tutor's lines introduce her"), On->GetCrewName());
+			return;
+		}
+	}
 	Flash(On->IntroLine, ETakeFlashKind::Line, IntroLineSeconds);
 	TAKE_LOG(TEXT("INTRO %s"), On->GetCrewName());
 }

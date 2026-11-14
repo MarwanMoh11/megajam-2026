@@ -67,7 +67,7 @@ TERRACE_X0 = LX0 - T - 230.0      # the terrace over the doors (the old canopy):
 CARPET_HALF = 150.0               # the carpet: Y -150..150, from the kerb to the grand stair
 LANE_ROPE = 200.0                 # the ropes each side of the carpet
 LANE_Y0, LANE_Y1 = 210.0, 430.0   # the queue lane
-START = (PAVE_X0 + 130.0, 980.0)  # the back of the queue, on the kerb, facing south along it
+START = (PAVE_X0 + 60.0, 360.0)   # QA scene1: Julian's place in the queue, at the lane's mouth (was the back, 980)
 SCAN_X = LX0 - T - 300.0          # the scanner's gate: at the queue lane's head, clear of the terrace above
 SCAN_Y, SCAN_HALF = 320.0, 110.0
 SCAN_DEPTH = 180.0                # its frame (and its red tape) reaches this far out in front of the gate
@@ -944,11 +944,22 @@ blocker("Carpet_Rope_Block", FRONT - 26, FRONT - 14, -LANE_ROPE, LANE_ROPE, 0, 2
 velvet_rope([(SCAN_X, -LANE_ROPE - 12.0), (SCAN_X, -FRONT_DOOR_HALF + 10.0)])   # QA front: was a bar with no posts
 blocker("Crew_Lane_Block", SCAN_X - 6, SCAN_X + 6, -FRONT_DOOR_HALF, -LANE_ROPE, 0, 260)
 # --- end QA front
-# The queue: two in the lane against its north rope, the rest backed up along the kerb to Julian's start.
-for qx in (-3880.0, -3800.0):
-    guest(qx, LANE_Y1 - 35.0, facing=0.0)
-for qy in (500.0, 580.0, 660.0, 740.0, 820.0, 900.0):
-    guest(PAVE_X0 + 50.0, qy + rnd.uniform(-10, 10), facing=270.0)
+# --- QA scene1 (notes 1, 2, 10: the line moves; AQueueLine runs it, the Scene 1 section below places it) ----------
+# The queue for the scanner, front first: the warm light at the scanner, back down the lane, then along the kerb.
+# Julian takes QUEUE_JULIAN, three guests ahead of him and five behind. The guests are ghosts (no collision): they
+# walk, and AQueueLine gives each one a blocker that walks with it. Eight guests and six rnd draws, as before, so
+# nothing placed after this block moves.
+QUEUE_PLACES = [MARK_SCANNER, (SCAN_X - 355.0, 315.0), (SCAN_X - 440.0, 325.0), START] + \
+    [(PAVE_X0 + 85.0, qy) for qy in (450.0, 535.0, 620.0, 705.0, 790.0)]
+QUEUE_JULIAN = 3
+for qi, (qx, qy) in enumerate(QUEUE_PLACES):
+    if qi == QUEUE_JULIAN:
+        continue
+    ax, ay = QUEUE_PLACES[qi - 1] if qi > 0 else (qx + 100.0, qy)   # each faces the place ahead of it
+    ghost(guest(qx, qy, facing=math.degrees(math.atan2(ay - qy, ax - qx))))
+for _ in range(6):
+    rnd.uniform(-10, 10)
+# --- end QA scene1
 # The press, behind the carpet's south rope.
 for px in (-3950.0, -3800.0, -3650.0):
     guest(px, -300.0, facing=90.0 + rnd.uniform(-20, 20))
@@ -1040,8 +1051,9 @@ for bx in (-400.0, -200.0, 0.0, 200.0, 400.0, 600.0):  # bidders on the benches,
         for slot in rnd.sample(range(6), 3):
             gy = s * (320.0 + slot * 115.0)
             guest(bx, gy, z=60.0, facing=0.0, seated=True)
-            if rnd.random() < 0.25:
-                deco("Paddle", bx + 14, bx + 18, gy + 24, gy + 38, 150, 172, m_head)
+            if rnd.random() < 0.25:     # --- QA hall --- (the draw stays: the rest of the layout's dice depend on it)
+                N[0] += 1               # no paddle hanging in the air: tools/sets/hall.py lays paddles on empty seats
+                                        # (the label counter steps as before, so later labels keep their numbers)
 for (mx, my, n) in ((-750, -1300, 3), (-750, 1250, 2), (150, 1560, 3), (1100, 1150, 2), (1900, 1100, 3),
                     (150, -1300, 2), (-800, -560, 2), (-800, 560, 2)):
     mingle(float(mx), float(my), n)
@@ -1090,7 +1102,8 @@ for py in (PA[2] - 3.0,):
 sign("EXIT", HX1 - 14.0, SIDE_DOOR_Y, 262.0, 180.0, size=26.0, rgb=(1.0, 0.72, 0.15))
 sign("SECURITY", HX1 - 14.0, SEC_DOOR_Y, 262.0, 180.0, size=22.0, rgb=(1.0, 0.25, 0.2))
 sign("CURTAIN WINCH", WINCH[0] - 30.0, BY0 + 6.0, 215.0, 90.0, size=20.0)
-tripod((RISER[0] + RISER[1]) / 2 + 60.0, 0.0, 80.0)
+# --- QA hall --- no tripod here: tools/sets/hall.py stands a TV studio camera on its pedestal on the riser (note 16)
+N[0] += 2                                               # the tripod's two labels, so later labels keep their numbers
 ghost(shape(CYL, "Guest", (RISER[0] + RISER[1]) / 2 - 20.0, 40.0, 80.0 + 75.0, 26.0, 48.0, 150.0, GUEST_MATS[1],
             folder="Set/Guests"))
 ghost(shape(SPHERE, "Guest_Head", (RISER[0] + RISER[1]) / 2 - 20.0, 40.0, 80.0 + 162.0, 24.0, 24.0, 26.0, m_head,
@@ -1380,6 +1393,15 @@ ghost(shape(CYL, "Searchlight_Stand", SEARCHLIGHT[0], SEARCHLIGHT[1], (F2 + SEAR
             SEARCHLIGHT[2] - F2, m_trim, folder="Set/Street"))
 trigger("Trigger_Door", "Door", LX0 + 20.0, LX0 + 240.0, LANE_ROPE + 10.0, FRONT_DOOR_HALF)
 mark("Mark_Desk", "THE DESK", MARK_DESK)
+# --- QA scene1: the queue line (AQueueLine, QueueLine.h has the beat sheet). At the origin, so its points read as
+# world: the places (the street dressing put a guest on each but Julian's), where a guest stands to be scanned (in
+# the scanner's light, before the gate), the way in through the gate and the doors, and where they go inside.
+queue_line = spawn(unreal.QueueLine, (0.0, 0.0, 0.0), label="QueueLine", folder="Take")
+setp(queue_line, places=[unreal.Vector(qx, qy, 0.0) for qx, qy in QUEUE_PLACES], julian_place=QUEUE_JULIAN,
+     scan_point=unreal.Vector(SCAN_X - 90.0, SCAN_Y, 0.0),
+     way_in=[unreal.Vector(SCAN_X + 130.0, SCAN_Y, 0.0), unreal.Vector(FRONT + 160.0, SCAN_Y + 60.0, 0.0)],
+     inside_spots=[unreal.Vector(sx, sy, 0.0) for sx, sy in ((-2750.0, 1150.0), (-2600.0, 1250.0), (-2450.0, 1150.0))])
+# --- end QA scene1
 
 # --- Scene 2, The Floor -----------------------------------------------------------------------------------------------
 m_floor_mark = mark("Mark_Floor", "THE FLOOR", MARK_FLOOR)

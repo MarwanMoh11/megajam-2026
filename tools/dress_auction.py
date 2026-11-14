@@ -1088,9 +1088,15 @@ def dress_street():
             piece("Stanchion_Foot", (x - 14, x + 14, y - 14, y + 14, 0, 3), "MI_Front_Trim", mesh=CYL)
             posts.append(y)
         y += QUEUE_POSTS[2]
+    # --- QA front (note 13): the velvet sags from hooks under the posts' tops (94 cm), a chain along a catenary
     for y0, y1 in zip(posts, posts[1:]):
-        x = PAVE_X0 + 12.0
-        piece("Queue_Rope", (x - 2, x + 2, y0 + 4, y1 - 4, 76, 82), "MI_Front_Velvet")
+        x, n, sag = PAVE_X0 + 12.0, 8, min(28.0, 0.06 * (y1 - y0) + 4.0)
+        pts = [(y0 + 4 + (y1 - y0 - 8) * i / n, 88.0 - 4.0 * sag * (i / n) * (1 - i / n)) for i in range(n + 1)]
+        for (pa, za), (pb, zb) in zip(pts, pts[1:]):
+            ln, my, mz = math.hypot(pb - pa, zb - za), (pa + pb) / 2, (za + zb) / 2
+            piece("Queue_Sag", (x - 1, x + 1, my - 1, my + 1, mz - 1, mz + 1), "MI_Front_Velvet", mesh=CYL, yaw=90.0,
+                  pitch=math.degrees(math.atan2(zb - za, pb - pa)) - 90.0, size=(3.6, 3.6, ln + 2.2))
+    # --- end QA front
     # The press wall.
     x0, x1, py = PRESS_WALL
     b = (x0, x1, py - 4, py, 0, 240)

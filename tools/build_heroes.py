@@ -24,7 +24,7 @@ import traceback
 
 import unreal
 
-VERSION = "1"                       # bump to rebuild every hero on the next run
+VERSION = "4"                 # bump to rebuild every hero on the next run
 SRC = r"C:\Jam\Art\Rodin"
 DEST = "/Game/Take/Cast/Heroes"
 SKELETON = "/Game/Characters/Mannequins/Meshes/SK_Mannequin"
@@ -41,7 +41,18 @@ HEROES = [
 ARM_MIN_DEG = 2.0                   # arm-angle differences below this are left alone
 ARM_REACH = 12.0                    # cm outward of the shoulder joint where the arm sample starts
 ROUGHNESS = 0.7
-TRANSFER = "closest"                # "closest" (ClosestPointOnSurface) or "inpaint" (InpaintWeights)
+TRANSFER = "hybrid"                 # "closest": ClosestPointOnSurface everywhere. "hybrid": also InpaintWeights (copies
+                                    # where the surfaces face the same way, solves the rest smooth: no fins at the
+                                    # armpits), kept per vertex only where it is a sane weight set near the closest
+                                    # point's bone (an island with nothing matched comes back as garbage otherwise)
+INPAINT_RADIUS = -1.0               # x the mesh's bounding-box diagonal; -1: distance is no reason to inpaint
+INPAINT_NORMAL = 50.0               # degrees
+SANE_HOPS = 2                       # hybrid: the inpainted main bone at most this many bones from the closest point's
+SMOOTH_ITERS = 4                    # Laplacian passes over the transferred weights (0: off): no seams at the armpits
+SMOOTH_STRENGTH = 0.5
+MAX_INFLUENCES = 6
+RIGID_FINGERS = True                # finger weights folded into the hand: the generated hands' fingers do not lie
+                                    # along the mannequin's, and a curling finger bone tore them (Vex, jump)
 
 EAL = unreal.EditorAssetLibrary
 AT = unreal.AssetToolsHelpers.get_asset_tools()
@@ -125,6 +136,78 @@ def side_weights(dm, n, groups):
                 if bw.bone_index in s:
                     out[g][vid] += bw.weight
     return out
+
+
+def read_weights(dm, n):
+    prof = unreal.GeometryScriptBoneWeightProfile()
+    W = []
+    for vid in range(n):
+        ws = first(BW.get_vertex_bone_weights(dm, vid, prof), (list, unreal.Array)) or []
+        W.append({bw.bone_index: bw.weight for bw in ws})
+    return W
+
+
+def hops(parents, a, b):
+    """Bones between a and b in the hierarchy."""
+    up, d, i = {}, 0, a
+    while i is not None and i >= 0:
+        up[i] = d
+        i, d = parents.get(i), d + 1
+    d, i = 0, b
+    while i is not None and i >= 0:
+        if i in up:
+            return up[i] + d
+        i, d = parents.get(i), d + 1
+    return 99
+
+
+def merge(Wc, Wi, parents):
+    """Per vertex the inpainted weights when sane (a distribution whose main bone is near the closest point's)."""
+    out, kept = [], 0
+    for wc, wi in zip(Wc, Wi):
+        s = sum(wi.values())
+        ok = wi and wc and 0.95 < s < 1.05 and all(-1e-3 < x < 1.001 for x in wi.values()) and \
+            hops(parents, max(wi, key=wi.get), max(wc, key=wc.get)) <= SANE_HOPS
+        out.append(wi if ok else wc)
+        kept += 1 if ok else 0
+    return out, kept
+
+
+def smooth_weights(dm, n, iters, strength, W=None):
+    """Laplacian smoothing of every vertex's bone weights over its mesh neighbours, pruned to MAX_INFLUENCES, written
+    back to dm (W: the weights to start from, else dm's own)."""
+    prof = unreal.GeometryScriptBoneWeightProfile()
+    W = W if W is not None else read_weights(dm, n)
+    tl = first(Q.get_all_triangle_indices(dm, False), unreal.GeometryScriptTriangleList)
+    nb = [set() for _ in range(n)]
+    for t in LS.convert_triangle_list_to_array(tl):
+        a, b, c = t.x, t.y, t.z
+        if max(a, b, c) < n:
+            nb[a].update((b, c))
+            nb[b].update((a, c))
+            nb[c].update((a, b))
+    for _ in range(iters):
+        new = []
+        for v in range(n):
+            if not nb[v] or not W[v]:
+                new.append(W[v])
+                continue
+            acc = {}
+            for u in nb[v]:
+                for k, x in W[u].items():
+                    acc[k] = acc.get(k, 0.0) + x
+            k_n = 1.0 / len(nb[v])
+            d = {k: (1 - strength) * x for k, x in W[v].items()}
+            for k, x in acc.items():
+                d[k] = d.get(k, 0.0) + strength * x * k_n
+            new.append(d)
+        W = new
+    for v in range(n):
+        top = sorted(W[v].items(), key=lambda kv: -kv[1])[:MAX_INFLUENCES]
+        top = [(k, x) for k, x in top if x > 0.01] or top[:1]
+        tot = sum(x for _, x in top) or 1.0
+        arr = [unreal.GeometryScriptBoneWeight(bone_index=k, weight=x / tot) for k, x in top]
+        BW.set_vertex_bone_weights(dm, v, arr, prof)
 
 
 def bbox(pts):
@@ -366,15 +449,30 @@ def build(hero):
     # weights: posed mannequin -> generated mesh, with the mannequin's bones
     o = unreal.GeometryScriptTransferBoneWeightsOptions()
     o.set_editor_property("output_target_mesh_bones", unreal.OutputTargetMeshBones.SOURCE_BONES)
-    if TRANSFER == "inpaint":
+    o.set_editor_property("transfer_method", unreal.TransferBoneWeightsMethod.CLOSEST_POINT_ON_SURFACE)
+    BW.transfer_bone_weights_from_mesh(S, T, o, unreal.GeometryScriptMeshSelection())
+    W = None
+    if TRANSFER == "hybrid":
+        Wc = read_weights(T, len(tp))
         o.set_editor_property("transfer_method", unreal.TransferBoneWeightsMethod.INPAINT_WEIGHTS)
-        o.set_editor_property("radius_percentage", 0.04)
-        o.set_editor_property("normal_threshold", 60.0)
+        o.set_editor_property("radius_percentage", INPAINT_RADIUS)
+        o.set_editor_property("normal_threshold", INPAINT_NORMAL)
         o.set_editor_property("num_smoothing_iterations", 6)
         o.set_editor_property("smoothing_strength", 0.4)
-    else:
-        o.set_editor_property("transfer_method", unreal.TransferBoneWeightsMethod.CLOSEST_POINT_ON_SURFACE)
-    BW.transfer_bone_weights_from_mesh(S, T, o, unreal.GeometryScriptMeshSelection())
+        try:
+            BW.transfer_bone_weights_from_mesh(S, T, o, unreal.GeometryScriptMeshSelection())
+            W, kept = merge(Wc, read_weights(T, len(tp)), {b.index: b.parent_index for b in infos})
+            log("%s: inpainted weights kept on %d of %d vertices" % (name, kept, len(tp)))
+        except Exception as e:                                  # noqa: BLE001
+            W = Wc
+            log("%s: inpaint failed (%s): closest point only" % (name, e))
+    if SMOOTH_ITERS or W is not None:
+        smooth_weights(T, len(tp), SMOOTH_ITERS, SMOOTH_STRENGTH, W)
+    if RIGID_FINGERS:
+        fingers = [unreal.Name(n) for n in by_name if any(k in n for k in ("thumb_", "index_", "middle_", "ring_",
+                                                                          "pinky_"))]
+        BW.prune_bone_weights(T, fingers, unreal.GeometryScriptPruneBoneWeightsOptions(),
+                              unreal.GeometryScriptBoneWeightProfile())
 
     # the generated arms back to the reference pose, with their new weights
     if posed:

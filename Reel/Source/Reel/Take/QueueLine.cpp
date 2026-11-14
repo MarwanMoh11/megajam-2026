@@ -22,7 +22,7 @@ namespace QueueLineLocal
 	TWeakObjectPtr<AQueueLine> GCurrent;
 
 	/** ATakeDirector::BeginSlow / EndSlow's reason for the taught beats. */
-	const FName SlowReason(TEXT("QueueTutor"));
+	FName SlowReason() { return FName(TEXT("QueueTutor")); }
 
 	const TCHAR* BeatName(EQueueBeat Beat)
 	{
@@ -477,6 +477,18 @@ void AQueueLine::StepGuests(ATakeDirector& Director, float DeltaSeconds)
 			WalkGuest(Guest, ToWorld(Places[Index]));
 		}
 	}
+
+	// The guest behind Julian stops short of him (he may stand a little shy of his place): it never shoves him.
+	const int32 JulianAt = JulianIndex();
+	if (Director.Julian && JulianAt >= 0 && Line.IsValidIndex(JulianAt + 1) && Line[JulianAt + 1] != INDEX_NONE)
+	{
+		FQueueGuest& Behind = Guests[Line[JulianAt + 1]];
+		ACastMember* const Member = Behind.Member.Get();
+		if (Member && Member->IsWalking() && FVector::Dist2D(Member->GetActorLocation(), JulianFeet) < KeepClearOfJulian)
+		{
+			WalkGuest(Behind, Member->GetActorLocation());	// stops where it is
+		}
+	}
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -541,11 +553,11 @@ void AQueueLine::SetSlow(ATakeDirector& Director, bool bSlow)
 	if (bSlow)
 	{
 		SlowStartedAt = RealNow();
-		Director.BeginSlow(QueueLineLocal::SlowReason, TutorSlowScale);
+		Director.BeginSlow(QueueLineLocal::SlowReason(), TutorSlowScale);
 	}
 	else
 	{
-		Director.EndSlow(QueueLineLocal::SlowReason);
+		Director.EndSlow(QueueLineLocal::SlowReason());
 	}
 	TAKE_LOG(TEXT("QUEUE slow %s (%s)"), bSlow ? TEXT("on") : TEXT("off"), QueueLineLocal::BeatName(Beat));
 }

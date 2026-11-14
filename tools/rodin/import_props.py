@@ -86,6 +86,11 @@ ALL = sorted(set(LOOK) | set(SIGNAL) | set(DEVICES))
 # unknown axis after Interchange's glTF conversion: set from the lineup screenshot in phase 2.
 FRONT = {n: 0.0 for n in ALL}
 FRONT["piano"] = 270.0              # Rodin drew the grand side-on: its keyboard comes in on +Y (seen from above, Nov 15)
+# --- QA hall --- the chair too comes in facing +Y (its back's vertices sit at -Y): at FRONT 0 the 144 bench chairs
+# stood sideways (Marwan's note 15). Every hall_* prop measured the same way (tools/sets/hall.py FRONT).
+FRONT["chair"] = 270.0
+# --- QA front --- the sofa likewise (the lobby balcony's two settees stood side-on and shrunk to fit; front.py checked it)
+FRONT["sofa"] = 270.0
 
 # What each prop replaces. parts: label patterns grouped by touching bounds into one piece; hide: patterns hidden
 # with no prop of their own; mode: fit (uniform, inside), fitxy (uniform from the footprint), stretch (per axis),
@@ -100,7 +105,9 @@ RULES = [
     dict(prop="bust", parts=[r"Lot_\d+", r"Preview_Lot_\d+"], mode="fitxy", face=270, alternate="vase", grow=1.25,
          on=r"Plinth_\d+|Preview_Plinth_\d+|Lot_Plinth_\d+", every_other=True),
     dict(prop="column", parts=[r"Column_\d+"], mode="stretchz", face=0, grow=1.08),   # flutes stretch, base too
-    dict(prop="chair", parts=[r"Bench_\d+"], mode="row", face=0, spacing=62.0, height=90.0),
+    # --- QA hall --- the benches' chairs are tools/sets/hall.py's now (gilt ballroom chairs facing the dais, seat
+    # heights for package cast); hall.py hides the benches. This rule stays off so a rebuild doesn't stack two rows.
+    # dict(prop="chair", parts=[r"Bench_\d+"], mode="row", face=0, spacing=62.0, height=90.0),
     # --- QA front (note 13): stretchz, so the top lands on the box's top and the glasses stand on it (was fit)
     dict(prop="cocktail", parts=[r"Cocktail_Table_\d+", r"Cocktail_Stem_\d+"], mode="stretchz", face=0),
     dict(prop="bar", parts=[r"Bar_\d+"], mode="modules", n=4, face=90),
@@ -126,8 +133,11 @@ RULES = [
 # faces west, down the hall to the house. It leaves the back line (bass 3693,1571; drums 3811,1561) clear and covers
 # today's singer, trumpet and seated pianist: step 5 (tools/build_cast.py) re-seats the pianist at SEAT and moves the
 # front line after it, from the transform "check" prints. Nothing of the band or the box upright is moved or hidden.
-NEW = [dict(prop="piano", box=(3680.0, 3855.0, 1340.0, 1490.0, 30.0, 160.0), mode="fit", face=0,
-            seat=35.0)]       # the pianist's seat: this many cm east of the keyboard edge, on the keyboard's middle
+# --- QA hall --- the grand is set on the bandstand by tools/sets/hall.py (lid to the house, keys south, its bench;
+# Marwan's note 22: here it stood behind the shape piano). NEW stays empty so a rebuild places no second grand.
+NEW = []
+# NEW = [dict(prop="piano", box=(3680.0, 3855.0, 1340.0, 1490.0, 30.0, 160.0), mode="fit", face=0,
+#             seat=35.0)]       # the pianist's seat: this many cm east of the keyboard edge, on the keyboard's middle
 GAMEPLAY = ("Mark", "Watcher", "Device", "Crew", "Julian", "Maya", "Vex", "Character", "Guard", "Drone", "Spot")
 # Collision (Nov 14 rules): the watchers see with Visibility line traces (TakeDirectorSight.cpp) and the camera boom
 # probes Camera, so no prop answers either. The heroes and the raised pieces are NoCollision (a hero's hidden box keeps

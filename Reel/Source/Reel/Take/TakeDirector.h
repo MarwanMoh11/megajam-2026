@@ -557,6 +557,15 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Scene")
 	float DoorPromptDistance = 450.f;
 
+	// --- QA scene1 ---
+	/** QA notes 1, 2, 10: Scene 1 is a moving queue, a refusal at the scanner and a taught first switch (slow time,
+	 *  the camera pans to Maya, a line and a prompt for each of [2], [E] and [1]): AQueueLine (QueueLine.h has the
+	 *  beat sheet) placed in the level. Off: the old Scene 1 (the guests before Julian are already inside and the
+	 *  line stands still: walk up the lane to the warm light, no tutorial). */
+	UPROPERTY(EditAnywhere, Category = "Take|Scene")
+	bool bQueueScene1 = true;
+	// --- end QA scene1 ---
+
 	// --- step 3 tunables ---------------------------------------------------------------------------------------------
 
 	/** The title card shows before the session's first take. Off: the take starts at once (tests). */

@@ -199,7 +199,11 @@ public:
 	bool bGuestsBlock = true;
 
 	UPROPERTY(EditAnywhere, Category = "Take|Queue", meta = (ClampMin = "10"))
-	float BlockRadius = 48.f;
+	float BlockRadius = 40.f;
+
+	/** The guest behind Julian stops this far from his feet (2D, cm): more than its blocker and his capsule. */
+	UPROPERTY(EditAnywhere, Category = "Take|Queue", meta = (ClampMin = "0"))
+	float KeepClearOfJulian = 95.f;
 
 	UPROPERTY(EditAnywhere, Category = "Take|Queue", meta = (ClampMin = "10"))
 	float BlockHalfHeight = 90.f;

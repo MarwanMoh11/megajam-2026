@@ -63,6 +63,10 @@ AHouseDimmer::AHouseDimmer()
 		Body->SetRelativeScale3D(FVector(0.3f, 1.2f, 1.8f));
 	}
 
+	// The master lever on the board's face (towards the use point), waist high: thrown while the house is down.
+	bShowHandle = true;
+	HandleOffset = FVector(18.f, 0.f, 110.f);
+
 	ProjectorBody = FTakeShapes::CreateShape(this, TEXT("ProjectorBody"), ETakeShape::Cube, Root, ProjectorOffset,
 		FVector(0.6f, 0.35f, 0.4f), FRotator::ZeroRotator, false);
 
@@ -172,6 +176,8 @@ bool AHouseDimmer::Fire()
 
 void AHouseDimmer::StepDevice(float DeltaSeconds)
 {
+	StepLook(DeltaSeconds);	// the pilot lamp and the lever (ADevice, package devices): every frame, first
+
 	if (!bRunning)
 	{
 		return;

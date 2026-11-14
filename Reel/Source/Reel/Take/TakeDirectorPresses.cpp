@@ -83,6 +83,13 @@ void ATakeDirector::HandleCut(ETakeCamera Camera, const FTakePress& Press)
 	}
 	if (To == PC->GetCurrentCharacter())
 	{
+		if (PC->IsGlancing())
+		{
+			// QA scene1: the key of the character the view is on takes the camera back from a glance, this frame.
+			PC->EndGlance();
+			TAKE_LOG(TEXT("CUT -> %s (%s): the glance handed back"), Letter, *Press.Source);
+			return;
+		}
 		Flash(FString::Printf(TEXT("Already on %s"), To->GetCrewName()), ETakeFlashKind::Refusal, 1.5f, static_cast<int32>(Camera) + 1);
 		TAKE_LOG(TEXT("CUT -> %s (%s) refused: already there"), Letter, *Press.Source);
 		return;

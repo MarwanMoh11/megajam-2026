@@ -41,7 +41,7 @@ F2 = 450.0
 # The yaw that turns each imported mesh to face +X (its front: the lens, the panel, the gate's walkway, the rail's
 # lever side). From the lineup shot.
 FRONT = {n: 0.0 for n in MESHES}
-FRONT.update({"cart": 0.0, "desk": 0.0})
+FRONT.update({"cart": 0.0, "desk": 0.0, "devices_pyro": 270.0, "devices_gate": 90.0, "devices_followspot": 270.0})
 
 BRASS = (0.42, 0.27, 0.08)
 AMBER = (1.0, 0.52, 0.16)
@@ -109,12 +109,13 @@ def device(label):
 #   relative to face), lever: (pivot, rest (pitch, yaw rel. to face, roll), throw (pitch, yaw, roll), length, spin),
 #   rope: (from, to_z world).
 SPECS = [
-    dict(label="Searchlight", mesh="devices_searchlight", at=(-3372.0, 500.0, F2), face=150.0, size=(160, 110, 170),
-         lens=(0.36, 0.0, 0.78), pilot=(-0.22, 0.0, 0.42), pilot_size=4.0, hide_body=True,
+    dict(label="Searchlight", mesh="devices_searchlight", at=(-3358.0, 500.0, F2), face=150.0, size=(230, 160, 200),
+         lens=(0.5, 0.0, 0.75), pilot=(-0.22, 0.0, 0.42), pilot_size=4.0, hide_body=True,
          shot=((-3990.0, 120.0, 260.0), (-3390.0, 470.0, 540.0))),
-    dict(label="Spot", mesh="devices_followspot", at=(712.0, -282.0, F2), face=("toward", (4000.0, 0.0)),
-         size=(110, 70, 195), lens=(0.42, 0.0, 0.84), pilot=(-0.05, 0.22, 0.45), pilot_size=3.5, hide_body=True,
-         shot=((420.0, -60.0, 690.0), (720.0, -300.0, 560.0))),
+    # The follow spot: its operator's handle sticks out the back toward Maya (SPOT_USE 650,-290), beside her.
+    dict(label="Spot", mesh="devices_followspot", at=(645.0, -372.0, F2), face=("toward", (4000.0, 0.0)),
+         size=(240, 110, 170), lens=(0.9, 0.0, 0.8), pilot=(-0.3, 0.35, 0.45), pilot_size=3.5, hide_body=True,
+         shot=((470.0, -560.0, 640.0), (680.0, -340.0, 540.0))),
     dict(label="Banner", mesh="devices_winch", at=(718.0, -512.0, F2), face=0.0, size=(55, 85, 62),
          pilot=(0.0, -0.45, 0.95), pilot_size=3.5, hide_body=False,
          lever=((0.0, 0.5, 0.55), (0.0, 90.0, 0.0), (0.0, 0.0, 0.0), 22.0, 540.0),
@@ -137,10 +138,12 @@ SPECS = [
          lever=((0.55, 0.30, 0.36), (-15.0, 0.0, 0.0), (75.0, 0.0, 0.0), 40.0, 0.0),
          rope=((0.0, 0.0, 1.0), 495.0),
          shot=((4080.0, -2230.0, 260.0), (4330.0, -2530.0, 160.0))),
-    # The house dimmer (package heist's new device, if it lands): wherever it stands, facing its use point.
-    dict(label="Dimmer", mesh="devices_dimmer", at=None, face="use", size=(45, 60, 140), hide_body=True,
+    # The house dimmer (package heist's AHouseDimmer, an ADevice: the slot works): on the platform's west rail, facing
+    # its use point. Its projector is dressed by projector() below.
+    dict(label="HouseDimmer", mesh="devices_dimmer", at=None, face="use", size=(40, 120, 180), hide_body=True,
          pilot=(0.52, 0.0, 0.86), pilot_size=4.0, optional=True,
-         lever=((0.0, 0.52, 0.55), (0.0, 90.0, 0.0), (-80.0, 0.0, 0.0), 30.0, 0.0), shot=None),
+         lever=((0.0, 0.56, 0.55), (0.0, 0.0, 0.0), (-80.0, 0.0, 0.0), 34.0, 0.0),
+         shot=((560.0, -420.0, 640.0), (470.0, -640.0, 540.0))),
 ]
 
 
@@ -203,8 +206,10 @@ def hide_parts(a, names):
     for c in comps:
         c.set_visibility(False, False)
     if comps:
-        ts = [t for t in C.tags(a) if not t.startswith(TAG + ":hid=")]
-        C._set_tags(a, ts + ["%s:hid=%s" % (TAG, "|".join(c.get_name() for c in comps))])
+        ts = C.tags(a)
+        had = [t.split("=", 1)[1].split("|") for t in ts if t.startswith(TAG + ":hid=")]
+        names = sorted(set(sum(had, [])) | {c.get_name() for c in comps})
+        C._set_tags(a, [t for t in ts if not t.startswith(TAG + ":hid=")] + ["%s:hid=%s" % (TAG, "|".join(names))])
 
 
 def slot(spec, dev, m):
@@ -278,9 +283,9 @@ def do_lineup():
         loc, r, sc = C.fit(m, (x - 80, x + 80, y - 80, y + 80, z, z + 160), 0.0, "fit")
         C.spawn(m, loc, r, sc, tag=LINEUP_TAG, label="Set_Lineup_" + n)
         y += 260.0
-    a = C.shot("devices_lineup_from_x", (x + 700.0, LINEUP[1] + 900.0, 260.0), (x, LINEUP[1] + 900.0, 80.0), fov=80,
+    a = C.shot("devices_lineup_from_x", (x + 700.0, LINEUP[1] + 900.0, 260.0), (x, LINEUP[1] + 900.0, 80.0), fov=80, unlit=True,
                out_dir=OUT)
-    b = C.shot("devices_lineup_from_above", (x + 300.0, LINEUP[1] + 900.0, 900.0), (x, LINEUP[1] + 900.0, 0.0),
+    b = C.shot("devices_lineup_from_above", (x + 300.0, LINEUP[1] + 900.0, 900.0), (x, LINEUP[1] + 900.0, 0.0), unlit=True,
                fov=80, out_dir=OUT)
     C.clear(LINEUP_TAG)
     return a + " " + b
@@ -312,8 +317,40 @@ def do_place():
             hide_parts(a, ["UseRing"])
     out.append(gate())
     out.append(catwalk())
+    out.append(projector())
     C.save_level()
     return "\n".join(out)
+
+
+PROJECTOR_MESH = "devices_followspot"   # stand-in: a lamp barrel on a pedestal (a projector mesh needs a 9th Rodin prop)
+
+
+def projector():
+    """The house dimmer's projector (package heist's ProjectorBody box, hidden): a model on the platform floor, its
+    front at ProjectorOffset (the lens), turned to the screen. HouseDimmer.cpp places the box once at BeginPlay and
+    never moves it, so a standing model holds."""
+    dims = [a for a in C.actors() if a.get_actor_label() == "HouseDimmer"]
+    if not dims:
+        return "projector: no HouseDimmer yet"
+    d = dims[0]
+    loc, ayaw = d.get_actor_location(), d.get_actor_rotation().yaw
+    aloc = (loc.x, loc.y, loc.z)
+    po, so = d.get_editor_property("projector_offset"), d.get_editor_property("screen_offset")
+    lens = add(aloc, turn((po.x, po.y, po.z), ayaw))
+    screen = add(aloc, turn((so.x, so.y, so.z), ayaw))
+    yaw = yaw_to(lens, screen)
+    m = mesh(PROJECTOR_MESH)
+    front = FRONT.get(PROJECTOR_MESH, 0.0)
+    x0, x1, y0, y1, z0, z1 = mbox(m)
+    along = (x1 - x0) if int(round(front / 90.0)) % 2 == 0 else (y1 - y0)
+    s = (lens[2] - aloc[2]) / max(0.85 * (z1 - z0), 1e-3)      # the lens at about 85% of its height
+    anchor = ((x0 + x1) * 0.5, (y0 + y1) * 0.5, z0)
+    at = add((lens[0], lens[1], aloc[2]), turn((-0.4 * along * s, 0.0, 0.0), yaw))
+    total = yaw + front
+    C.spawn(m, sub(at, turn((anchor[0] * s, anchor[1] * s, anchor[2] * s), total)), total, s, tag=TAG,
+            label="Set_Device_Projector")
+    hide_parts(d, ["ProjectorBody"])
+    return "projector: at (%.0f, %.0f) yaw %.0f scale %.2f" % (at[0], at[1], yaw, s)
 
 
 def gate():

@@ -638,8 +638,8 @@ void ATakeHUD::DrawUsePrompt(const FTakeUseTarget& Use, float Y)
 {
 	using namespace TakeStyle;
 	// Ready: paper; in reach but not ready: bone with silver keycaps. The device's uses as pips after the words.
-	FTakeInk Ink = Use.bCanFire ? FTakeInk::Of(Paper, Paper) : FTakeInk::Of(Bone, Silver);
-	Ink.bSmallKeys = true;
+	FTakeInk PromptInk = Use.bCanFire ? FTakeInk::Of(Paper, Paper) : FTakeInk::Of(Bone, Silver);
+	PromptInk.bSmallKeys = true;
 	const FString Words = NoFinalStop(Use.Prompt);
 	const float MaxW = Kit.Px(UseMaxW);
 	const ADevice* Device = Use.Device.Get();
@@ -647,9 +647,9 @@ void ATakeHUD::DrawUsePrompt(const FTakeUseTarget& Use, float Y)
 	const bool bPips = Uses > 0 && Device->UsesLeft > 0;
 	const float PipStep = Kit.Px(PipW) + Kit.Px(PipGap);
 	const float PipsW = bPips ? Kit.Px(KeyTextGap) * 2.f + PipStep * static_cast<float>(Uses) - Kit.Px(PipGap) : 0.f;
-	const float WordsW = FMath::Min(Kit.RichWidth(EType::Goal, Words, Ink), MaxW);
+	const float WordsW = FMath::Min(Kit.RichWidth(EType::Goal, Words, PromptInk), MaxW);
 	const float Left = FMath::RoundToFloat(Kit.CX() - (WordsW + PipsW) * 0.5f);
-	Kit.Rich(EType::Goal, Words, Left + WordsW * 0.5f, Y, MaxW, 1, Ink);
+	Kit.Rich(EType::Goal, Words, Left + WordsW * 0.5f, Y, MaxW, 1, PromptInk);
 	if (bPips)
 	{
 		using namespace TakeStyle;
@@ -674,11 +674,11 @@ void ATakeHUD::DrawPromptLane(const ATakeDirector& Dir, bool bRefusalsOnly)
 	if (IsRefusalShowing())
 	{
 		using namespace TakeStyle;
-		FTakeInk Ink = FTakeInk::Of(Bone, Bone);
-		Ink.bSmallKeys = true;
+		FTakeInk RefusalInk = FTakeInk::Of(Bone, Bone);
+		RefusalInk.bSmallKeys = true;
 		Kit.Fade = FadeOut(Age(Refusal.Since), RefusalHold(), PromptFadeSeconds);
 		Kit.Rich(EType::Goal, NoFinalStop(Refusal.Text), Kit.CX(), Y, IsControlsAnswer() ? Kit.W - 2.f * Kit.Px(Margin) : MaxW,
-			1, Ink);
+			1, RefusalInk);
 		Kit.Fade = 1.f;
 		return;
 	}
