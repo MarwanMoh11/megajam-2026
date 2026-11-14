@@ -154,7 +154,7 @@ public:
 	TArray<FString> TitleRules;
 
 	UPROPERTY(EditAnywhere, Category = "Take|Ends")
-	FString TitleControls = TEXT("[WASD] Walk   [MOUSE] Look   [E] Use what the crew stands at   [R] New take");
+	FString TitleControls = TEXT("[WASD] Walk   [MOUSE] Look   [E] Use   [1] [2] [3] Cut   [R] New take");
 
 	UPROPERTY(EditAnywhere, Category = "Take|Ends")
 	FString TitlePrompt = TEXT("[ENTER] Action!");
@@ -202,6 +202,8 @@ protected:
 	void DrawB1(const ATakeDirector& Dir, bool bRefusalsOnly);
 	void DrawComposure(const ATakeDirector& Dir);
 	bool IsRefusalShowing() const;
+	bool IsControlsAnswer() const;
+	static FString NoFinalStop(const FString& In);
 	float Age(double Since) const { return static_cast<float>(Kit.Now - Since); }
 	FString SceneName(int32 Scene) const;
 

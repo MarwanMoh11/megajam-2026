@@ -7,7 +7,6 @@
 #include "TakeDirector.h"
 #include "TakeGameInstance.h"
 
-using namespace TakeStyle;
 
 namespace TakeHudCards
 {
@@ -15,6 +14,7 @@ namespace TakeHudCards
 	void SlateCells(FTakeHudKit& Kit, float X, float Y, float W, float H, const TArray<FString>& Captions,
 		const TArray<FString>& Values, TakeStyle::EType ValueType)
 	{
+		using namespace TakeStyle;
 		const int32 N = FMath::Max(1, Captions.Num());
 		const float CellW = W / static_cast<float>(N);
 		for (int32 Index = 0; Index < N; ++Index)
@@ -30,7 +30,7 @@ namespace TakeHudCards
 			}
 			if (Values.IsValidIndex(Index))
 			{
-				Kit.Text(ValueType, Values[Index], CellX + CellW * 0.5f, Y + H * 0.6f, Paper, ETakeAlign::Centre);
+				Kit.Text(ValueType, Values[Index], CellX + Kit.Px(CellIn), Y + H * 0.6f, Paper);
 			}
 		}
 	}
@@ -40,6 +40,7 @@ namespace TakeHudCards
 
 void ATakeHUD::DrawTitleCard(const ATakeDirector& Dir, const FTakeFilmFrame& F)
 {
+	using namespace TakeStyle;
 	Kit.CardField();
 	Film.DrawCard(*this, *Canvas, F);
 	Kit.Rect(0.f, 0.f, Kit.W, Kit.Bar, Ink);	// the bars stay clean
@@ -54,10 +55,11 @@ void ATakeHUD::DrawTitleCard(const ATakeDirector& Dir, const FTakeFilmFrame& F)
 	const float CastH = Kit.Px(KeyH) + Kit.Px(Unit) + LineH;
 	const float Blocks = CapDisplay + LineH + BodyH * TitlePitch.Num() + CastH + BodyH * TitleRules.Num()
 		+ Kit.Px(KeyHSmall) + Kit.Px(KeyH);
-	const float Gaps[] = { 28.f, 24.f, 32.f, 32.f, 28.f, 32.f };
+	const float Gaps[] = { 28.f, 24.f, 56.f, 56.f, 52.f, 32.f };	// pitch | cast | rules | controls: 3u more between groups
 	float GapSum = 0.f;
 	for (const float G : Gaps)
 	{
+		using namespace TakeStyle;
 		GapSum += Kit.Px(G);
 	}
 	const float Squeeze = GapSum > 0.f ? FMath::Clamp((Box.W - Blocks) / GapSum, 0.f, 1.f) : 1.f;
@@ -73,6 +75,7 @@ void ATakeHUD::DrawTitleCard(const ATakeDirector& Dir, const FTakeFilmFrame& F)
 	Kit.Text(EType::Line, TitleTagline, CX, Next(LineH, 1), Bone, ETakeAlign::Centre);
 	for (int32 Index = 0; Index < TitlePitch.Num(); ++Index)
 	{
+		using namespace TakeStyle;
 		Kit.Text(EType::Body, TitlePitch[Index], CX, Next(BodyH, Index == TitlePitch.Num() - 1 ? 2 : -1), Paper,
 			ETakeAlign::Centre);
 	}
@@ -103,6 +106,7 @@ void ATakeHUD::DrawTitleCard(const ATakeDirector& Dir, const FTakeFilmFrame& F)
 
 	for (int32 Index = 0; Index < TitleRules.Num(); ++Index)
 	{
+		using namespace TakeStyle;
 		Kit.Rich(EType::Body, TitleRules[Index], CX, Next(BodyH, Index == TitleRules.Num() - 1 ? 4 : -1), Box.Z, 1,
 			FTakeInk::Of(Paper, Paper));
 	}
@@ -124,6 +128,7 @@ void ATakeHUD::DrawTitleCard(const ATakeDirector& Dir, const FTakeFilmFrame& F)
 
 void ATakeHUD::DrawBlooperSlate(const ATakeDirector& Dir)
 {
+	using namespace TakeStyle;
 	const UTakeGameInstance* GI = Dir.GetTakeGameInstance();
 	Kit.Rect(0.f, Kit.PicY, Kit.W, Kit.PicH, Ink);
 
@@ -158,11 +163,13 @@ void ATakeHUD::DrawBlooperSlate(const ATakeDirector& Dir)
 
 void ATakeHUD::DrawEnds(const ATakeDirector& Dir, const FTakeFilmFrame& F)
 {
+	using namespace TakeStyle;
 	Kit.Rect(0.f, 0.f, Kit.W, Kit.H, Ink);
 	Film.DrawCard(*this, *Canvas, F);
 
 	if (Dir.EndPage <= 0)
 	{
+		using namespace TakeStyle;
 		DrawPrintIt(Dir);
 	}
 	else
@@ -186,6 +193,7 @@ void ATakeHUD::DrawEnds(const ATakeDirector& Dir, const FTakeFilmFrame& F)
 
 void ATakeHUD::DrawPrintIt(const ATakeDirector& Dir)
 {
+	using namespace TakeStyle;
 	const UTakeGameInstance* GI = Dir.GetTakeGameInstance();
 	const float SW = Kit.Px(PrintW);
 	const float SH = Kit.Px(PrintH);
@@ -209,6 +217,7 @@ void ATakeHUD::DrawPrintIt(const ATakeDirector& Dir)
 	float LineY = Top + SH + Kit.Px(PrintLineUnder);
 	for (const FString& Each : Lines)
 	{
+		using namespace TakeStyle;
 		Kit.Text(EType::Line, Each, Kit.CX(), LineY, Paper, ETakeAlign::Centre);
 		LineY += Kit.Em(EType::Line) * LineSpacing;
 	}
@@ -217,6 +226,7 @@ void ATakeHUD::DrawPrintIt(const ATakeDirector& Dir)
 
 void ATakeHUD::DrawStats(const ATakeDirector& Dir, const FVector4f& Box)
 {
+	using namespace TakeStyle;
 	const UTakeGameInstance* GI = Dir.GetTakeGameInstance();
 	const float CX = Kit.CX();
 	const float TitleCap = TakeStyle::Type(EType::Title).CapEm * Kit.Em(EType::Title);
@@ -242,6 +252,7 @@ void ATakeHUD::DrawStats(const ATakeDirector& Dir, const FVector4f& Box)
 	TArray<FString> SceneLines;
 	for (const FTakeDeletedScene& Deleted : Dir.DeletedScenes)
 	{
+		using namespace TakeStyle;
 		if (!Deleted.bBuilt)
 		{
 			continue;
@@ -268,6 +279,7 @@ void ATakeHUD::DrawStats(const ATakeDirector& Dir, const FVector4f& Box)
 	int32 Shown = 0;
 	for (const FRow& Row : Rows)
 	{
+		using namespace TakeStyle;
 		if (Dir.EndPageSeconds < StatsRowSeconds * static_cast<float>(Shown))
 		{
 			break;
@@ -283,6 +295,7 @@ void ATakeHUD::DrawStats(const ATakeDirector& Dir, const FVector4f& Box)
 	}
 	for (const FString& Line : SceneLines)
 	{
+		using namespace TakeStyle;
 		if (Dir.EndPageSeconds < StatsRowSeconds * static_cast<float>(Shown))
 		{
 			break;
@@ -296,6 +309,7 @@ void ATakeHUD::DrawStats(const ATakeDirector& Dir, const FVector4f& Box)
 	const float GradeAge = Dir.EndPageSeconds - Frames(GradeDelayFrames);
 	if (GradeAge >= 0.f)
 	{
+		using namespace TakeStyle;
 		FTakeStampSpec Spec;
 		Spec.Text = TakeText::GradeName(Dir.Grade);
 		Spec.Tilt = GradeTilt;
@@ -312,6 +326,7 @@ void ATakeHUD::DrawStats(const ATakeDirector& Dir, const FVector4f& Box)
 
 void ATakeHUD::DrawReel(const ATakeDirector& Dir, const FVector4f& Box)
 {
+	using namespace TakeStyle;
 	const UTakeGameInstance* GI = Dir.GetTakeGameInstance();
 	const float CX = Kit.CX();
 	const float TitleCap = TakeStyle::Type(EType::Title).CapEm * Kit.Em(EType::Title);
@@ -331,6 +346,7 @@ void ATakeHUD::DrawReel(const ATakeDirector& Dir, const FVector4f& Box)
 	Items.Add({ EType::Title, TEXT("THE BLOOPER REEL"), Paper, 0.f });
 	if (!GI || GI->BlooperReel.Num() == 0)
 	{
+		using namespace TakeStyle;
 		Items.Add({ EType::Body, TEXT("No bloopers. One clean take."), Paper, Gap });
 	}
 	else
@@ -354,6 +370,7 @@ void ATakeHUD::DrawReel(const ATakeDirector& Dir, const FVector4f& Box)
 	}
 	for (int32 Index = 0; Index < CreditLines.Num(); ++Index)
 	{
+		using namespace TakeStyle;
 		Items.Add({ Index == 0 ? EType::Title : EType::Body, CreditLines[Index], Paper, Index == 0 ? Gap * 4.f : Gap * 0.5f });
 	}
 
@@ -362,6 +379,7 @@ void ATakeHUD::DrawReel(const ATakeDirector& Dir, const FVector4f& Box)
 	float Cursor = 0.f;
 	for (const FItem& Item : Items)
 	{
+		using namespace TakeStyle;
 		Cursor += Item.GapBefore;
 		Offsets.Add(Cursor + Kit.Em(Item.Type) * 0.5f);
 		Cursor += Kit.Em(Item.Type) * LineSpacing;
@@ -371,6 +389,7 @@ void ATakeHUD::DrawReel(const ATakeDirector& Dir, const FVector4f& Box)
 	const float Rolled = FMath::Min(FMath::Max(0.f, Dir.EndPageSeconds) * ReelScrollSpeed * Kit.S, MaxRoll);
 	for (int32 Index = 0; Index < Items.Num(); ++Index)
 	{
+		using namespace TakeStyle;
 		const float ItemY = Start + Offsets[Index] - Rolled;
 		const float Half = Kit.Em(Items[Index].Type) * 0.6f;
 		if (ItemY - Half >= BandTop && ItemY + Half <= BandBottom)	// whole lines only: the roll is clipped by the band

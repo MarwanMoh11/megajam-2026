@@ -610,3 +610,22 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   three views.
 - **Needs Marwan's eye:** dashes and hatch as "camera frames" and "red tape"; the T marks; the hall's and
   backstage's darkness; the footlights and sconces; the house lights over the seats against the noir pools.
+
+## Nov 14, about 21:45 Cairo: step 4, the HUD fixes after the critique
+
+- **What changed:** the HUD is the same size on every screen. Windows scaling (125% on this PC) hands the game a
+  smaller canvas than the window (1280 x 720 for a 1600 x 900 window); the HUD's scale had a 0.8 floor, so on that
+  canvas everything drew 1.2x and the controls row and the grade stamp could leave the screen. The scale now has
+  no such floor for the HUD, follows the screen's real pixels when the canvas reports a DPI scale, keeps the bars at
+  least 138 px tall (ultra-wide screens crop the picture instead), and lifts the bottom rows if the controls would
+  touch the edge. One controls legend: pressing Enter lights the bottom row instead of printing a second one. The
+  goal line never repeats the Use prompt, every goal fits one line, the cast intros are one line in the director's
+  voice, one target label at a time (the label rule's "four plus the target" now holds), pips sit under a device's
+  name, labels keep the 48 px margin, slate values align under their captions, and no final full stops in the bars.
+- **What went wrong:** a file-scope `using namespace` in the HUD's files leaked into the next file of Unreal's
+  unity build and broke `Watcher.cpp` (C4459) once the tree was committed: the using-directives now sit inside each
+  function. The first scale theory (the canvas's own DPI scale) was only half the story: the standalone run showed
+  DPI 1.0 and a 720-line canvas, so the 0.8 floor was the real cause.
+- **Proof:** the standalone game at 1920 x 1080 on this 125% display: composure line 800 px (x 560 to 1359), the
+  controls row's lowest pixel at y 1065 of 1080 (`docs/shots/step4_fix_scale_1080.png`); in a 1600 x 900 window the
+  line is 667 px from x 468, as at 1080 scaled (`step4_fix_scale_900_windowed.png`). PIE views: `step4_fix_*.png`.

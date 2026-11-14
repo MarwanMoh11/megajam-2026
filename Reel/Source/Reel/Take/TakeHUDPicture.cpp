@@ -11,7 +11,6 @@
 #include "TakePlayerController.h"
 #include "Watcher.h"
 
-using namespace TakeStyle;
 
 namespace TakeHudLabels
 {
@@ -33,11 +32,13 @@ namespace TakeHudLabels
 
 	bool Overlaps(const FVector4f& A, const FVector4f& B, float Gap)
 	{
+		using namespace TakeStyle;
 		return A.X < B.X + B.Z + Gap && B.X < A.X + A.Z + Gap && A.Y < B.Y + B.W + Gap && B.Y < A.Y + A.W + Gap;
 	}
 
 	FString Plural(const FString& Name, int32 Count)
 	{
+		using namespace TakeStyle;
 		if (Count <= 1)
 		{
 			return Name;
@@ -48,10 +49,12 @@ namespace TakeHudLabels
 
 void ATakeHUD::DrawPicture(const ATakeDirector& Dir, const FTakeFilmFrame& F)
 {
+	using namespace TakeStyle;
 	DrawReticle(Dir);
 	DrawLabels(Dir);
 	if (Dir.bTitleIsSlate && Dir.TitleSecondsLeft > 0.f)
 	{
+		using namespace TakeStyle;
 		Kit.Fade = FMath::Clamp(Dir.TitleSecondsLeft / Frames(FramesSettle), 0.f, 1.f);
 		DrawOpeningSlate(Dir, Dir.TitleSeconds - Dir.TitleSecondsLeft, Kit.Fade);
 		Kit.Fade = 1.f;
@@ -62,10 +65,12 @@ void ATakeHUD::DrawPicture(const ATakeDirector& Dir, const FTakeFilmFrame& F)
 
 void ATakeHUD::DrawReticle(const ATakeDirector& Dir)
 {
+	using namespace TakeStyle;
 	// The crew's cameras only (§15.4: Julian has nothing to aim); kept with the split off, since Maya still aims.
 	const ATakePlayerController* TakePC = Cast<ATakePlayerController>(GetOwningPlayerController());
 	if (Dir.Phase != ETakePhase::Rolling || Dir.GetLookCamera() == ETakeCamera::A || (TakePC && TakePC->IsInFlight()))
 	{
+		using namespace TakeStyle;
 		return;
 	}
 	const bool bUseUp = Dir.CurrentUse.bCanFire && !Dir.CurrentUse.Prompt.IsEmpty();
@@ -83,10 +88,12 @@ void ATakeHUD::DrawReticle(const ATakeDirector& Dir)
 
 void ATakeHUD::DrawLabels(const ATakeDirector& Dir)
 {
+	using namespace TakeStyle;
 	using namespace TakeHudLabels;
 	const APlayerController* ViewPC = GetOwningPlayerController();
 	if (!ViewPC || !ViewPC->PlayerCameraManager || Dir.Phase == ETakePhase::BlooperFreeze)
 	{
+		using namespace TakeStyle;
 		return;
 	}
 	const FVector CamLoc = ViewPC->PlayerCameraManager->GetCameraLocation();
@@ -108,6 +115,7 @@ void ATakeHUD::DrawLabels(const ATakeDirector& Dir)
 	TArray<FCand> Cands;
 	for (const TObjectPtr<AWatcher>& Watcher : Dir.Watchers)
 	{
+		using namespace TakeStyle;
 		if (!Watcher || Watcher->IsHidden())
 		{
 			continue;
@@ -148,6 +156,7 @@ void ATakeHUD::DrawLabels(const ATakeDirector& Dir)
 	}
 	if (!bTagsOnly)
 	{
+		using namespace TakeStyle;
 		for (const TObjectPtr<ADevice>& Device : Dir.Devices)
 		{
 			if (!Device)
@@ -167,7 +176,9 @@ void ATakeHUD::DrawLabels(const ATakeDirector& Dir)
 			C.Dist = Dist;
 			C.Name = Device->DeviceName;
 			C.Device = Device.Get();
-			C.Prio = Device.Get() == Dir.CurrentUse.Device.Get() ? 1 : (Device->FiredFrom == Look ? 4 : 6);
+			// One priority-1 label (15.5 rule 3): the picked watcher, else the device in reach.
+			const bool bTarget = Device.Get() == Dir.CurrentUse.Device.Get() && !Dir.CurrentUse.Watcher;
+			C.Prio = bTarget ? 1 : (Device->FiredFrom == Look ? 4 : 6);
 		}
 	}
 
@@ -175,6 +186,7 @@ void ATakeHUD::DrawLabels(const ATakeDirector& Dir)
 	Cands.Sort([](const FCand& L, const FCand& R) { return L.Prio != R.Prio ? L.Prio < R.Prio : L.Dist < R.Dist; });
 	for (int32 I = 0; I < Cands.Num(); ++I)
 	{
+		using namespace TakeStyle;
 		for (int32 J = Cands.Num() - 1; J > I; --J)
 		{
 			if (Cands[I].bWatcher && Cands[J].bWatcher && Cands[I].Name == Cands[J].Name
@@ -199,6 +211,7 @@ void ATakeHUD::DrawLabels(const ATakeDirector& Dir)
 	// The subtitle row is taken: a label never sits under a spoken line.
 	if (Subtitles.Num() > 0 && Subtitles[0].Since >= 0.0)
 	{
+		using namespace TakeStyle;
 		const float SubH = 2.f * Kit.Px(SubtitlePadY) + 2.f * Kit.Em(EType::Line) * LineSpacing;
 		Placed.Add(FVector4f(Kit.CX() - Kit.Px(SubtitleMaxW) * 0.5f, Kit.PicBottom() - Kit.Px(SubtitleUp) - SubH * 0.5f,
 			Kit.Px(SubtitleMaxW), SubH));
@@ -206,6 +219,7 @@ void ATakeHUD::DrawLabels(const ATakeDirector& Dir)
 
 	for (const FCand& C : Cands)
 	{
+		using namespace TakeStyle;
 		const bool bP1 = C.Prio == 1;
 		if (!bP1 && Others >= Limit)
 		{
@@ -226,15 +240,18 @@ void ATakeHUD::DrawLabels(const ATakeDirector& Dir)
 				+ (C.State.IsEmpty() ? 0.f : Gap + Kit.Measure(EType::Tag, C.State));
 			if (C.Device && C.Device->Uses > 0)
 			{
-				ContentW += Gap + (Kit.Px(PipW) + Kit.Px(PipGap)) * static_cast<float>(C.Device->Uses) - Kit.Px(PipGap);
+				ContentW = FMath::Max(ContentW, (Kit.Px(PipW) + Kit.Px(PipGap)) * static_cast<float>(C.Device->Uses) - Kit.Px(PipGap));
 			}
 		}
 		const float BoxW = FMath::RoundToFloat(ContentW + 2.f * Pad);
-		float X = FMath::RoundToFloat(FMath::Clamp(C.Screen.X - BoxW * 0.5f, Clear, Kit.W - Clear - BoxW));
-		float Y = FMath::RoundToFloat(C.Screen.Y - Kit.Px(LabelLiftPx) - TapeHPx);
-		Y = FMath::Clamp(Y, Kit.PicY + Kit.Px(LabelBarClear), Kit.PicBottom() - Kit.Px(LabelBarClear) - TapeHPx);
+		const float Edge = Kit.Px(Margin);
+		float X = Kit.Snap(FMath::Clamp(C.Screen.X - BoxW * 0.5f, Edge, FMath::Max(Edge, Kit.W - Edge - BoxW)));
+		const bool bPipRow = !bTagsOnly && C.Device && C.Device->Uses > 0;
+		const float BoxH = bPipRow ? TapeHPx + Kit.Px(TapePipRow) : TapeHPx;
+		float Y = Kit.Snap(C.Screen.Y - Kit.Px(LabelLiftPx) - BoxH);
+		Y = FMath::Clamp(Y, Kit.PicY + Kit.Px(LabelBarClear), Kit.PicBottom() - Kit.Px(LabelBarClear) - BoxH);
 
-		FVector4f Box(X, Y, BoxW, TapeHPx);
+		FVector4f Box(X, Y, BoxW, BoxH);
 		if (!bP1 && !bFilmCam && Overlaps(Box, Reticle, 0.f))
 		{
 			continue;	// only the priority-1 label may sit by the reticle
@@ -252,7 +269,7 @@ void ATakeHUD::DrawLabels(const ATakeDirector& Dir)
 				bFree = Box.Y >= Kit.PicY + Kit.Px(LabelBarClear);
 				break;
 			}
-			Box.Y -= TapeHPx + LabelGapPx;
+			Box.Y -= BoxH + LabelGapPx;
 		}
 		if (!bFree)
 		{
@@ -264,7 +281,7 @@ void ATakeHUD::DrawLabels(const ATakeDirector& Dir)
 			++Others;
 		}
 
-		const float CY = Box.Y + TapeHPx * 0.5f;
+		const float CY = Box.Y + TapeHPx * 0.5f - (bPipRow ? Kit.Px(2.f) : 0.f);
 		float CX = Box.X + Pad;
 		if (bTagsOnly)
 		{
@@ -298,13 +315,16 @@ void ATakeHUD::DrawLabels(const ATakeDirector& Dir)
 		{
 			CX += Gap + Kit.Text(EType::Tag, C.State, CX + Gap, CY, Ink);
 		}
-		if (C.Device && C.Device->Uses > 0)
+		if (bPipRow)
 		{
-			CX += Gap;
+			// One pip per use, a row under the name, as under the key tabs.
+			const float PipStep = Kit.Px(PipW) + Kit.Px(PipGap);
+			float PX = Kit.Snap(Box.X + Box.Z * 0.5f - (PipStep * static_cast<float>(C.Device->Uses) - Kit.Px(PipGap)) * 0.5f);
+			const float PY = Box.Y + Box.W - Kit.Px(TapePipRow) - Kit.Px(2.f);
 			for (int32 Use = 0; Use < C.Device->Uses; ++Use)
 			{
-				Kit.Pip(CX, CY, Use < C.Device->UsesLeft, Ink, Ink);
-				CX += Kit.Px(PipW) + Kit.Px(PipGap);
+				Kit.Pip(PX, PY, Use < C.Device->UsesLeft, Ink, Ink);
+				PX += PipStep;
 			}
 		}
 	}
@@ -312,19 +332,23 @@ void ATakeHUD::DrawLabels(const ATakeDirector& Dir)
 
 void ATakeHUD::DrawSubtitles(const FTakeFilmFrame& F)
 {
+	using namespace TakeStyle;
 	if (Subtitles.Num() > 0 && Subtitles[0].Since >= 0.0)
 	{
+		using namespace TakeStyle;
 		DrawSubtitleNow(Subtitles[0].Speaker, Subtitles[0].Line, F.bFilmPicture || !F.bFilmLook);
 	}
 }
 
 void ATakeHUD::DrawSubtitleNow(const FString& Speaker, const FString& Line, bool bFilm)
 {
+	using namespace TakeStyle;
 	if (Line.IsEmpty())
 	{
+		using namespace TakeStyle;
 		return;
 	}
-	const float CY = Kit.PicBottom() - Kit.Px(SubtitleUp);
+	float CY = Kit.PicBottom() - Kit.Px(SubtitleUp);
 	const float PadX = Kit.Px(SubtitlePadX);
 	const float PadY = Kit.Px(SubtitlePadY);
 	const float SpeakerW = Speaker.IsEmpty() ? 0.f : Kit.Measure(EType::Tag, Speaker) + Kit.Px(SubtitleSpeakerGap);
@@ -332,26 +356,31 @@ void ATakeHUD::DrawSubtitleNow(const FString& Speaker, const FString& Line, bool
 	Kit.Wrap(EType::Line, Line, Kit.Px(SubtitleMaxW) - 2.f * PadX - SpeakerW, Lines);
 	while (Lines.Num() > 2)
 	{
+		using namespace TakeStyle;
 		Lines[1] += TEXT(" ") + Lines.Pop();	// two lines at most; a very long line runs wide
 	}
 	float LinesW = 0.f;
 	for (const FString& Each : Lines)
 	{
+		using namespace TakeStyle;
 		LinesW = FMath::Max(LinesW, Kit.Measure(EType::Line, Each));
 	}
 	const float Pitch = Kit.Em(EType::Line) * LineSpacing;
 	const float BoxW = FMath::RoundToFloat(2.f * PadX + SpeakerW + LinesW);
 	const float BoxH = FMath::RoundToFloat(2.f * PadY + Pitch * static_cast<float>(Lines.Num()));
+	CY = FMath::Min(CY, Kit.PicBottom() - Kit.Px(LabelBarClear) - BoxH * 0.5f);	// two lines never reach the bottom bar
 	const float X = FMath::RoundToFloat(Kit.CX() - BoxW * 0.5f);
 	Kit.Rect(X, FMath::RoundToFloat(CY - BoxH * 0.5f), BoxW, BoxH,
 		FTakeHudKit::A(bFilm ? TakeStyle::Plate : PlateMo, PlateAlpha));
 	float LineY = CY - Pitch * 0.5f * static_cast<float>(Lines.Num() - 1);
 	if (!Speaker.IsEmpty())
 	{
+		using namespace TakeStyle;
 		Kit.Text(EType::Tag, Speaker, X + PadX, LineY, Bone);
 	}
 	for (const FString& Each : Lines)
 	{
+		using namespace TakeStyle;
 		Kit.Text(EType::Line, Each, X + PadX + SpeakerW, LineY, Paper);
 		LineY += Pitch;
 	}
@@ -359,6 +388,7 @@ void ATakeHUD::DrawSubtitleNow(const FString& Speaker, const FString& Line, bool
 
 void ATakeHUD::DrawStamps(const ATakeDirector& Dir)
 {
+	using namespace TakeStyle;
 	const FVector2D Centre(Kit.CX(), Kit.PicY + Kit.Px(StampY));
 	const FVector2D Side(Kit.CX() + Kit.Px(StampSideX), Centre.Y);
 	bool bCentreTaken = false;
@@ -366,6 +396,7 @@ void ATakeHUD::DrawStamps(const ATakeDirector& Dir)
 	// The scene title: a caption, the title, bone rules above and below; no field, no border, no tilt.
 	if (!Dir.bTitleIsSlate && !Dir.Title.IsEmpty() && Dir.TitleSecondsLeft > 0.f)
 	{
+		using namespace TakeStyle;
 		FString Caption;
 		FString Title;
 		FTakeHudKit::SplitCaption(Dir.Title, Caption, Title);
@@ -389,6 +420,7 @@ void ATakeHUD::DrawStamps(const ATakeDirector& Dir)
 
 	for (const FTakeShown& Shown : Stamps)
 	{
+		using namespace TakeStyle;
 		FTakeStampSpec Spec;
 		Spec.Colour = TakeStyle::Julian;
 		FVector2D At = Centre;
@@ -415,6 +447,7 @@ void ATakeHUD::DrawStamps(const ATakeDirector& Dir)
 
 void ATakeHUD::DrawOpeningSlate(const ATakeDirector& Dir, float SlateAge, float Alpha)
 {
+	using namespace TakeStyle;
 	const UTakeGameInstance* GI = Dir.GetTakeGameInstance();
 	const float SW = Kit.Px(OpeningW);
 	const float SH = Kit.Px(OpeningH);
@@ -434,6 +467,7 @@ void ATakeHUD::DrawOpeningSlate(const ATakeDirector& Dir, float SlateAge, float 
 	FTakeHudKit::SplitCaption(Dir.VenueLine, Venue, Lot);
 	if (Venue.IsEmpty())
 	{
+		using namespace TakeStyle;
 		const int32 Dash = Lot.Find(TEXT(" - "));
 		if (Dash > 0)
 		{
@@ -451,12 +485,13 @@ void ATakeHUD::DrawOpeningSlate(const ATakeDirector& Dir, float SlateAge, float 
 	const float CellH = BH - Row1;
 	for (int32 Index = 0; Index < 3; ++Index)
 	{
+		using namespace TakeStyle;
 		const float CellX = FMath::RoundToFloat(X + CellW * static_cast<float>(Index));
 		if (Index > 0)
 		{
 			Kit.HairV(CellX, CellY, CellH, Bone);
 		}
 		Kit.CellCaption(CellX, CellY, Captions[Index]);
-		Kit.Text(EType::Title, Values[Index], CellX + CellW * 0.5f, CellY + CellH * 0.6f, Paper, ETakeAlign::Centre);
+		Kit.Text(EType::Title, Values[Index], CellX + Kit.Px(CellIn), CellY + CellH * 0.6f, Paper);
 	}
 }

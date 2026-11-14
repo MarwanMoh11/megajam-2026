@@ -61,6 +61,9 @@ struct FTakeHudKit
 	void Begin(UCanvas* InCanvas, double InRealTime, float InSecondsSinceBeat, float InBarHeight);
 
 	UCanvas* Canvas = nullptr;
+	/** Canvas units per px-at-1080: the screen's s (from its pixel height, §15.2) divided by the canvas's DPI scale.
+	 *  A game viewport on a 120% Windows desktop draws its canvas at DPI scale 1.2 (UCanvas::Update divides ClipX/Y by
+	 *  it, FCanvas scales back up); the editor's PIE viewport uses 1.0. Sizing from the pixels keeps the HUD identical. */
 	float S = 1.f;
 	float W = 1920.f;
 	float H = 1080.f;
@@ -72,10 +75,12 @@ struct FTakeHudKit
 	/** Multiplies every alpha the kit draws: set it around a composite to fade it out whole, then back to 1. */
 	float Fade = 1.f;
 
-	/** px at 1080 -> px on this screen, rounded. */
-	float Px(float V) const { return FMath::RoundToFloat(V * S); }
+	/** px at 1080 -> canvas units on this screen, rounded to whole screen pixels. */
+	float Px(float V) const { return FMath::RoundToFloat(V * S * DPIScale) / DPIScale; }
+	/** A position rounded to whole screen pixels. */
+	float Snap(float V) const { return FMath::RoundToFloat(V * DPIScale) / DPIScale; }
 	/** A line's thickness: rounded, never under 1 px. */
-	float Ln(float V) const { return FMath::Max(1.f, FMath::RoundToFloat(V * S)); }
+	float Ln(float V) const { return FMath::Max(1.f, FMath::RoundToFloat(V * S * DPIScale)) / DPIScale; }
 	float CX() const { return W * 0.5f; }
 	float PicBottom() const { return PicY + PicH; }
 
@@ -181,5 +186,10 @@ private:
 	TArray<TObjectPtr<UFont>> FontObjects;
 	TMap<uint32, FSlateFontInfo> FontInfos;
 	bool bFontsTried = false;
+	float LoggedScreenH = -1.f;
+	float LoggedDpi = -1.f;
+
+	/** A bottom-bar row: Down below the bar's top edge, lifted together if B3's keycaps would leave the screen. */
+	float BottomRow(float Down) const;
 	float DPIScale = 1.f;
 };

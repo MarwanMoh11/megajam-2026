@@ -14,7 +14,6 @@
 #include "Fonts/FontCache.h"
 #include "TakeTypes.h"
 
-using namespace TakeStyle;
 
 namespace TakeKitLocal
 {
@@ -31,6 +30,8 @@ namespace TakeKitLocal
 	/** Splits a rich line into words, keycaps ([E], [WASD], [1]) and glyphs ([danger], [julian]). */
 	void Parse(const FString& In, TArray<FRun>& Out)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		const int32 N = In.Len();
 		int32 I = 0;
 		int32 Spaces = 0;
@@ -90,6 +91,8 @@ namespace TakeKitLocal
 	template <typename FillFn>
 	UTexture2D* MakeTexture(int32 W, int32 H, FillFn Fill)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		UTexture2D* Tex = UTexture2D::CreateTransient(W, H, PF_B8G8R8A8);
 		if (!Tex || !Tex->GetPlatformData() || Tex->GetPlatformData()->Mips.Num() == 0)
 		{
@@ -114,60 +117,97 @@ namespace TakeKitLocal
 	}
 }
 
-using namespace TakeKitLocal;
 
 // --- the frame --------------------------------------------------------------------------------------------------------
 
 void FTakeHudKit::Begin(UCanvas* InCanvas, double InRealTime, float InSecondsSinceBeat, float InBarHeight)
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	Canvas = InCanvas;
 	Now = InRealTime;
 	SinceBeat = InSecondsSinceBeat;
 	if (!Canvas)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		return;
 	}
 	W = Canvas->ClipX;
 	H = Canvas->ClipY;
-	S = Scale(H);
-	Bar = FMath::Max(0.f, InBarHeight);
+	// ClipX/Y are screen pixels divided by the canvas's DPI scale (UCanvas::Update): size everything from the pixels.
+	DPIScale = Canvas->Canvas ? FMath::Max(0.25f, Canvas->Canvas->GetDPIScale()) : 1.f;
+	S = HudScale(H * DPIScale) / DPIScale;
+	// The lanes never shrink below MinBar: on a screen wider than 2.39:1 the picture is cropped instead.
+	Bar = FMath::Max(FMath::Max(0.f, InBarHeight), Px(MinBar));
 	PicY = Bar;
 	PicH = FMath::Max(0.f, H - 2.f * Bar);
-	DPIScale = Canvas->Canvas ? FMath::Max(0.25f, Canvas->Canvas->GetDPIScale()) : 1.f;
 	Fade = 1.f;
+	if (!FMath::IsNearlyEqual(LoggedScreenH, H) || !FMath::IsNearlyEqual(LoggedDpi, DPIScale))
+	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
+		LoggedScreenH = H;
+		LoggedDpi = DPIScale;
+		UE_LOG(LogTake, Log, TEXT("HUD SCALE: canvas %.0f x %.0f, DPI scale %.2f, screen %.0f x %.0f, s %.3f, bar %.0f px"),
+			W, H, DPIScale, W * DPIScale, H * DPIScale, S * DPIScale, Bar * DPIScale);
+	}
 }
 
 float FTakeHudKit::RowT1() const
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	return Px(TakeStyle::RowT1);
 }
 
 float FTakeHudKit::RowT2() const
 {
-	return FMath::Max(Bar, Px(BarRowsMinBar)) - Px(RowT2Up);
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
+	return Bar - Px(RowT2Up);
 }
 
 float FTakeHudKit::RowB1() const
 {
-	return H - FMath::Max(Bar, Px(BarRowsMinBar)) + Px(RowB1Down);
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
+	return BottomRow(RowB1Down);
 }
 
 float FTakeHudKit::RowB2() const
 {
-	return H - FMath::Max(Bar, Px(BarRowsMinBar)) + Px(RowB2Down);
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
+	return BottomRow(RowB2Down);
 }
 
 float FTakeHudKit::RowB3() const
 {
-	return H - FMath::Max(Bar, Px(BarRowsMinBar)) + Px(RowB3Down);
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
+	return BottomRow(RowB3Down);
+}
+
+float FTakeHudKit::BottomRow(float Down) const
+{
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
+	const float B3 = H - Bar + Px(RowB3Down);
+	const float Over = FMath::Max(0.f, B3 + Px(KeyHSmall) * 0.5f + Px(BottomSafe) - H);
+	return H - Bar + Px(Down) - Over;
 }
 
 // --- primitives ---------------------------------------------------------------------------------------------------------
 
 void FTakeHudKit::Rect(float X, float Y, float InW, float InH, const FLinearColor& C) const
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	if (!Canvas || InW <= 0.f || InH <= 0.f || C.A * Fade <= 0.f)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		return;
 	}
 	FCanvasTileItem Item(FVector2D(X, Y), FVector2D(InW, InH), A(C, Fade));
@@ -177,6 +217,8 @@ void FTakeHudKit::Rect(float X, float Y, float InW, float InH, const FLinearColo
 
 void FTakeHudKit::Frame(float X, float Y, float InW, float InH, float Thick, const FLinearColor& C) const
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	Rect(X, Y, InW, Thick, C);
 	Rect(X, Y + InH - Thick, InW, Thick, C);
 	Rect(X, Y + Thick, Thick, InH - 2.f * Thick, C);
@@ -185,8 +227,12 @@ void FTakeHudKit::Frame(float X, float Y, float InW, float InH, float Thick, con
 
 void FTakeHudKit::Diamond(float CentreX, float CentreY, float Size, const FLinearColor& C) const
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	if (!Canvas || Size <= 0.f || C.A * Fade <= 0.f)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		return;
 	}
 	FCanvasTileItem Item(FVector2D(CentreX - Size * 0.5f, CentreY - Size * 0.5f), FVector2D(Size, Size), A(C, Fade));
@@ -198,23 +244,33 @@ void FTakeHudKit::Diamond(float CentreX, float CentreY, float Size, const FLinea
 
 void FTakeHudKit::EnsureStripes()
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	if (StripeTex)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		return;
 	}
 	const int32 P = static_cast<int32>(StripePeriod);
 	StripeTex = MakeTexture(P, P, [P](int32 X, int32 Y)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		return ((X + Y) % P) < P / 2 ? FColor(255, 255, 255, 255) : FColor(255, 255, 255, 0);
 	});
 }
 
 void FTakeHudKit::Stripes(float X, float Y, float InW, float InH, const FLinearColor& Meaning)
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	Rect(X, Y, InW, InH, Ink);
 	EnsureStripes();
 	if (!Canvas || !StripeTex || !StripeTex->GetResource())
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		return;
 	}
 	const float Period = FMath::Max(1.f, Px(StripePeriod));
@@ -226,8 +282,12 @@ void FTakeHudKit::Stripes(float X, float Y, float InW, float InH, const FLinearC
 
 void FTakeHudKit::Push(const FVector2D& Pivot, float Degrees, float InScale) const
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	if (!Canvas || !Canvas->Canvas)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		return;
 	}
 	const FMatrix M = FTranslationMatrix(FVector(-Pivot.X, -Pivot.Y, 0.0))
@@ -239,8 +299,12 @@ void FTakeHudKit::Push(const FVector2D& Pivot, float Degrees, float InScale) con
 
 void FTakeHudKit::Pop() const
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	if (Canvas && Canvas->Canvas)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		Canvas->Canvas->PopTransform();
 	}
 }
@@ -249,14 +313,20 @@ void FTakeHudKit::Pop() const
 
 void FTakeHudKit::EnsureFonts()
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	if (bFontsTried)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		return;
 	}
 	bFontsTried = true;
 	int32 Missing = 0;
 	for (int32 Index = 0; Index < static_cast<int32>(EFace::Count); ++Index)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		UFontFace* Face = LoadObject<UFontFace>(nullptr, FacePath(static_cast<EFace>(Index)));
 		Faces.Add(Face);
 		UFont* FontObject = nullptr;
@@ -276,6 +346,8 @@ void FTakeHudKit::EnsureFonts()
 	}
 	if (Missing > 0)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		UE_LOG(LogTake, Warning, TEXT("HUD FONTS: %d of %d font faces missing in /Game/Take/Fonts: the engine font stands in"),
 			Missing, static_cast<int32>(EFace::Count));
 	}
@@ -285,47 +357,64 @@ void FTakeHudKit::EnsureFonts()
 	}
 }
 
-const FSlateFontInfo& FTakeHudKit::Font(EType T)
+const FSlateFontInfo& FTakeHudKit::Font(TakeStyle::EType T)
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	EnsureFonts();
 	const FTypeToken& Tok = Type(T);
-	// Slate sizes are points at 96 DPI (1 pt = 4/3 px): the em comes out at Tok.Px * s screen pixels.
-	const float Pt = FMath::Max(4.f, FMath::RoundToFloat(Tok.Px * S * 0.75f / DPIScale * 4.f) * 0.25f);
+	// Slate sizes are points at 96 DPI (1 pt = 4/3 canvas units); the font cache renders them at the canvas's DPI
+	// scale, so the em is Tok.Px * S canvas units = Tok.Px * s screen pixels.
+	const float Pt = FMath::Max(4.f, FMath::RoundToFloat(Tok.Px * S * 0.75f * 4.f) * 0.25f);
 	const uint32 CacheKey = (static_cast<uint32>(T) << 24) | static_cast<uint32>(FMath::RoundToInt(Pt * 4.f));
 	if (const FSlateFontInfo* Found = FontInfos.Find(CacheKey))
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		return *Found;
 	}
 	const int32 FaceIndex = static_cast<int32>(Tok.Face);
 	const UFont* FontObject = FontObjects.IsValidIndex(FaceIndex) ? FontObjects[FaceIndex].Get() : nullptr;
 	if (!FontObject && GEngine)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		FontObject = GEngine->GetMediumFont();	// the engine's runtime Roboto stands in (logged once in EnsureFonts)
 	}
 	return FontInfos.Add(CacheKey, FSlateFontInfo(FontObject, Pt));
 }
 
-FString FTakeHudKit::Cased(EType T, const FString& In) const
+FString FTakeHudKit::Cased(TakeStyle::EType T, const FString& In) const
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	return Type(T).bUpper ? In.ToUpper() : In;
 }
 
-float FTakeHudKit::Measure(EType T, const FString& InText)
+float FTakeHudKit::Measure(TakeStyle::EType T, const FString& InText)
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	if (InText.IsEmpty())
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		return 0.f;
 	}
 	const FString Str = Cased(T, InText);
 	const FSlateFontInfo Info = Font(T);
-	const float Tr = Track(T);
+	const float Tr = Track(T) * DPIScale;	// the character list is in screen pixels
 	if (!FEngineFontServices::IsInitialized())
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		return static_cast<float>(Str.Len()) * Em(T) * 0.55f;
 	}
 	const TSharedPtr<FSlateFontCache> Cache = FEngineFontServices::Get().GetFontCache();
 	if (!Cache.IsValid())
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		return static_cast<float>(Str.Len()) * Em(T) * 0.55f;
 	}
 	// The same sum FCanvasSimpleTextItem::DrawStringInternal_RuntimeCache walks: kerning, advance, spacing adjust.
@@ -334,6 +423,8 @@ float FTakeHudKit::Measure(EType T, const FString& InText)
 	TCHAR Prev = 0;
 	for (int32 Index = 0; Index < Str.Len(); ++Index)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		const TCHAR Ch = Str[Index];
 		const FCharacterEntry& Entry = List.GetCharacter(Ch, Info.FontFallback);
 		const bool bWhite = !Entry.Valid || FChar::IsWhitespace(Ch);
@@ -345,18 +436,24 @@ float FTakeHudKit::Measure(EType T, const FString& InText)
 		X += Advance + Tr;
 		Prev = Ch;
 	}
-	return FMath::Max(0.f, X - Tr);
+	return FMath::Max(0.f, X - Tr) / DPIScale;
 }
 
-float FTakeHudKit::Text(EType T, const FString& InText, float X, float CentreY, const FLinearColor& C, ETakeAlign Align)
+float FTakeHudKit::Text(TakeStyle::EType T, const FString& InText, float X, float CentreY, const FLinearColor& C, ETakeAlign Align)
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	if (InText.IsEmpty())
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		return 0.f;
 	}
 	const float TextW = Measure(T, InText);
 	if (!Canvas || C.A * Fade <= 0.f)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		return TextW;
 	}
 	const FString Str = Cased(T, InText);
@@ -364,26 +461,32 @@ float FTakeHudKit::Text(EType T, const FString& InText, float X, float CentreY, 
 	float Left = X;
 	if (Align == ETakeAlign::Centre)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		Left = X - TextW * 0.5f;
 	}
 	else if (Align == ETakeAlign::Right)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		Left = X - TextW;
 	}
 	// Caps centred on CentreY: the item's top is the baseline minus (line height + descender).
 	float Top = CentreY - Em(T) * 0.6f;
 	if (FEngineFontServices::IsInitialized())
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		const TSharedPtr<FSlateFontCache> Cache = FEngineFontServices::Get().GetFontCache();
 		if (Cache.IsValid())
 		{
 			FCharacterList& List = Cache->GetCharacterList(Info, DPIScale);
 			const float Baseline = CentreY + Type(T).CapEm * Em(T) * 0.5f;
-			Top = Baseline - (static_cast<float>(List.GetMaxHeight()) + static_cast<float>(List.GetBaseline()));
+			Top = Baseline - (static_cast<float>(List.GetMaxHeight()) + static_cast<float>(List.GetBaseline())) / DPIScale;
 		}
 	}
-	FCanvasTextItem Item(FVector2D(FMath::RoundToFloat(Left), FMath::RoundToFloat(Top)), FText::FromString(Str), Info, A(C, Fade));
-	Item.HorizSpacingAdjust = Track(T);
+	FCanvasTextItem Item(FVector2D(Snap(Left), Snap(Top)), FText::FromString(Str), Info, A(C, Fade));
+	Item.HorizSpacingAdjust = Track(T) * DPIScale;	// screen pixels, added to the glyph advances
 	Canvas->DrawItem(Item);
 	return TextW;
 }
@@ -392,11 +495,15 @@ float FTakeHudKit::Text(EType T, const FString& InText, float X, float CentreY, 
 
 float FTakeHudKit::KeyWidth(const FString& KeyText, bool bSmall)
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	return FMath::Max(Px(KeyMinW), Measure(EType::Key, KeyText) + 2.f * Px(KeyPad));
 }
 
 float FTakeHudKit::Key(const FString& KeyText, float X, float CentreY, const FTakeInk& InInk)
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	const float KW = KeyWidth(KeyText, InInk.bSmallKeys);
 	const float KH = Px(InInk.bSmallKeys ? KeyHSmall : KeyH);
 	const float Y = FMath::RoundToFloat(CentreY - KH * 0.5f);
@@ -408,17 +515,23 @@ float FTakeHudKit::Key(const FString& KeyText, float X, float CentreY, const FTa
 
 float FTakeHudKit::Pulse() const
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	const float BeatFrame = FMath::FloorToFloat(FMath::Max(0.f, SinceBeat) * FilmFps);
 	return FMath::Lerp(1.f, PulseLow, FMath::Clamp(BeatFrame / PulseFrames, 0.f, 1.f));
 }
 
 void FTakeHudKit::GlyphDanger(float CentreX, float CentreY, float Alpha, bool bInkBorder) const
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	const float Size = Px(GlyphSquare);
 	const float X = FMath::RoundToFloat(CentreX - Size * 0.5f);
 	const float Y = FMath::RoundToFloat(CentreY - Size * 0.5f);
 	if (bInkBorder)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		const float B = Ln(TapeGlyphBorder);
 		Rect(X - B, Y - B, Size + 2.f * B, Size + 2.f * B, Ink);
 	}
@@ -427,6 +540,8 @@ void FTakeHudKit::GlyphDanger(float CentreX, float CentreY, float Alpha, bool bI
 
 void FTakeHudKit::GlyphJulian(float CentreX, float CentreY, float Alpha) const
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	const float BW = Px(GlyphTBarW);
 	const float BH = Ln(GlyphTBarH);
 	const float SW = Ln(GlyphTStemW);
@@ -438,6 +553,8 @@ void FTakeHudKit::GlyphJulian(float CentreX, float CentreY, float Alpha) const
 
 void FTakeHudKit::GlyphOff(float CentreX, float CentreY, const FLinearColor& C) const
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	const float Size = Px(GlyphSquare);
 	Frame(FMath::RoundToFloat(CentreX - Size * 0.5f), FMath::RoundToFloat(CentreY - Size * 0.5f), Size, Size,
 		Ln(LineThin), C);
@@ -445,11 +562,15 @@ void FTakeHudKit::GlyphOff(float CentreX, float CentreY, const FLinearColor& C) 
 
 void FTakeHudKit::Pip(float X, float CentreY, bool bUnused, const FLinearColor& On, const FLinearColor& Spent) const
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	const float PW = Px(PipW);
 	const float PH = Ln(PipH);
 	const float Y = FMath::RoundToFloat(CentreY - PH * 0.5f);
 	if (bUnused)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		Rect(X, Y, PW, PH, On);
 	}
 	else
@@ -464,6 +585,8 @@ namespace TakeKitLocal
 {
 	float GapBefore(const FRun& Prev, const FRun& Run, float SpaceW, float KeyGap)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		if (Run.Spaces <= 0)
 		{
 			return 0.f;
@@ -474,14 +597,18 @@ namespace TakeKitLocal
 	}
 }
 
-float FTakeHudKit::RichWidth(EType T, const FString& InText, const FTakeInk& InInk)
+float FTakeHudKit::RichWidth(TakeStyle::EType T, const FString& InText, const FTakeInk& InInk)
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	TArray<FRun> Runs;
 	Parse(InText, Runs);
 	const float SpaceW = Measure(T, TEXT("n")) * 0.55f + Track(T);
 	float X = 0.f;
 	for (int32 Index = 0; Index < Runs.Num(); ++Index)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		FRun& Run = Runs[Index];
 		Run.W = Run.Kind == ERun::Word ? Measure(T, Run.Text)
 			: (Run.Kind == ERun::Key ? KeyWidth(Run.Text, InInk.bSmallKeys) : GlyphW());
@@ -490,19 +617,25 @@ float FTakeHudKit::RichWidth(EType T, const FString& InText, const FTakeInk& InI
 	return X;
 }
 
-float FTakeHudKit::Rich(EType T, const FString& InText, float CentreX, float CentreY, float MaxW, int32 MaxLines,
+float FTakeHudKit::Rich(TakeStyle::EType T, const FString& InText, float CentreX, float CentreY, float MaxW, int32 MaxLines,
 	const FTakeInk& InInk, float* OutLastLineY, int32* OutLines)
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	TArray<FRun> Runs;
 	Parse(InText, Runs);
 	if (Runs.Num() == 0)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		return 0.f;
 	}
 	const float SpaceW = Measure(T, TEXT("n")) * 0.55f + Track(T);
 	const float KeyGap = Px(KeyTextGap);
 	for (FRun& Run : Runs)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		Run.W = Run.Kind == ERun::Word ? Measure(T, Run.Text)
 			: (Run.Kind == ERun::Key ? KeyWidth(Run.Text, InInk.bSmallKeys) : GlyphW());
 	}
@@ -514,6 +647,8 @@ float FTakeHudKit::Rich(EType T, const FString& InText, float CentreX, float Cen
 	LineW.Add(0.f);
 	for (int32 Index = 0; Index < Runs.Num(); ++Index)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		const bool bLineEmpty = LineStart.Last() == Index;
 		const float Gap = bLineEmpty ? 0.f : GapBefore(Runs[Index - 1], Runs[Index], SpaceW, KeyGap);
 		if (!bLineEmpty && LineW.Last() + Gap + Runs[Index].W > MaxW && LineStart.Num() < FMath::Max(1, MaxLines))
@@ -531,6 +666,8 @@ float FTakeHudKit::Rich(EType T, const FString& InText, float CentreX, float Cen
 	float LineY = CentreY - Pitch * 0.5f * static_cast<float>(Lines - 1);
 	for (int32 Line = 0; Line < Lines; ++Line)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		const int32 First = LineStart[Line];
 		const int32 End = Line + 1 < Lines ? LineStart[Line + 1] : Runs.Num();
 		float X = FMath::RoundToFloat(CentreX - LineW[Line] * 0.5f);
@@ -558,22 +695,30 @@ float FTakeHudKit::Rich(EType T, const FString& InText, float CentreX, float Cen
 	}
 	if (OutLastLineY)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		*OutLastLineY = LineY;
 	}
 	if (OutLines)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		*OutLines = Lines;
 	}
 	return Widest;
 }
 
-void FTakeHudKit::Wrap(EType T, const FString& InText, float MaxW, TArray<FString>& OutLines)
+void FTakeHudKit::Wrap(TakeStyle::EType T, const FString& InText, float MaxW, TArray<FString>& OutLines)
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	TArray<FString> Words;
 	InText.ParseIntoArrayWS(Words);
 	FString Building;
 	for (const FString& Word : Words)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		const FString Candidate = Building.IsEmpty() ? Word : Building + TEXT(" ") + Word;
 		if (!Building.IsEmpty() && Measure(T, Candidate) > MaxW)
 		{
@@ -587,6 +732,8 @@ void FTakeHudKit::Wrap(EType T, const FString& InText, float MaxW, TArray<FStrin
 	}
 	if (!Building.IsEmpty())
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		OutLines.Add(Building);
 	}
 }
@@ -595,6 +742,8 @@ void FTakeHudKit::Wrap(EType T, const FString& InText, float MaxW, TArray<FStrin
 
 FVector2D FTakeHudKit::StampSize(const FTakeStampSpec& Spec)
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	const float TextW = Measure(Spec.Type, Spec.Text);
 	const float Cap = Type(Spec.Type).CapEm * Em(Spec.Type);
 	const float Outer = Spec.bOuter ? Ln(LineHeavy) : 0.f;
@@ -604,9 +753,13 @@ FVector2D FTakeHudKit::StampSize(const FTakeStampSpec& Spec)
 
 float FTakeHudKit::LandingScale(float Age)
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	const int32 F = FilmFrame(Age);
 	switch (F)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 	case 0: return 1.30f;
 	case 1: return 1.13f;
 	case 2: return 0.96f;
@@ -617,9 +770,13 @@ float FTakeHudKit::LandingScale(float Age)
 
 float FTakeHudKit::ExitAlpha(float Age, float HoldFrames)
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	const float F = static_cast<float>(FilmFrame(Age));
 	if (F < HoldFrames)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		return 1.f;
 	}
 	return FMath::Clamp(1.f - (F - HoldFrames + 1.f) / FramesSettle, 0.f, 1.f);
@@ -627,13 +784,19 @@ float FTakeHudKit::ExitAlpha(float Age, float HoldFrames)
 
 void FTakeHudKit::Stamp(const FTakeStampSpec& Spec, const FVector2D& Centre, float Age, float HoldFrames)
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	if (Age < 0.f || Spec.Text.IsEmpty())
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		return;
 	}
 	const float Alpha = ExitAlpha(Age, HoldFrames);
 	if (Alpha <= 0.f)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		return;
 	}
 	const FVector2D Size = StampSize(Spec);
@@ -643,15 +806,21 @@ void FTakeHudKit::Stamp(const FTakeStampSpec& Spec, const FVector2D& Centre, flo
 	Push(Centre, Spec.Tilt, LandingScale(Age));
 	if (Spec.bField)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		Rect(X, Y, Size.X, Size.Y, A(TakeStyle::Plate, StampFieldAlpha * Alpha));
 	}
 	const float Outer = Spec.bOuter ? Ln(LineHeavy) : 0.f;
 	if (Spec.bOuter)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		Frame(X, Y, Size.X, Size.Y, Outer, Colour);
 	}
 	if (Spec.bInner)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		const float In = Outer + Px(StampInnerIn);
 		Frame(X + In, Y + In, Size.X - 2.f * In, Size.Y - 2.f * In, Ln(LineThin), Colour);
 		if (Spec.bDiamonds)
@@ -666,6 +835,8 @@ void FTakeHudKit::Stamp(const FTakeStampSpec& Spec, const FVector2D& Centre, flo
 	Text(Spec.Type, Spec.Text, Centre.X, Centre.Y, Colour, ETakeAlign::Centre);
 	if (!Spec.Caption.IsEmpty())
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		Text(EType::Label, Spec.Caption, Centre.X, Y - Px(CaptionGap) - Em(EType::Label) * 0.4f, Colour, ETakeAlign::Centre);
 	}
 	Pop();
@@ -673,11 +844,15 @@ void FTakeHudKit::Stamp(const FTakeStampSpec& Spec, const FVector2D& Centre, flo
 
 void FTakeHudKit::CardField() const
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	Rect(0.f, PicY, W, PicH, Ink);
 }
 
 FVector4f FTakeHudKit::Card()
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	const float In = Px(CardInset);
 	const float X = In;
 	const float Y = PicY + In;
@@ -702,6 +877,8 @@ FVector4f FTakeHudKit::Card()
 
 void FTakeHudKit::Sticks(float X, float Y, float InW, const FLinearColor& Meaning, float Age)
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	const float SH = Px(StickH);
 	const float Thin = Ln(LineThin);
 	Stripes(X, Y + SH, InW, SH, Meaning);
@@ -715,22 +892,30 @@ void FTakeHudKit::Sticks(float X, float Y, float InW, const FLinearColor& Meanin
 
 void FTakeHudKit::Board(float X, float Y, float InW, float InH) const
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	Rect(X, Y, InW, InH, Ink);
 	Frame(X, Y, InW, InH, Ln(BoardBorder), Paper);
 }
 
 void FTakeHudKit::CellCaption(float X, float Y, const FString& Caption)
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	Text(EType::Tag, Caption, X + Px(CellIn), Y + Px(CellIn) + Em(EType::Tag) * 0.5f, Ash);
 }
 
 void FTakeHudKit::HairH(float X, float Y, float InW, const FLinearColor& C) const
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	Rect(X, Y, InW, Ln(LineHair), C);
 }
 
 void FTakeHudKit::HairV(float X, float Y, float InH, const FLinearColor& C) const
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	Rect(X, Y, Ln(LineHair), InH, C);
 }
 
@@ -738,11 +923,15 @@ void FTakeHudKit::HairV(float X, float Y, float InH, const FLinearColor& C) cons
 
 void FTakeHudKit::SplitSpeaker(const FString& In, FString& OutSpeaker, FString& OutLine)
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	OutSpeaker.Reset();
 	OutLine = In.TrimStartAndEnd();
 	int32 Colon = INDEX_NONE;
 	if (OutLine.FindChar(TEXT(':'), Colon) && Colon > 0 && Colon <= 24)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		const FString Head = OutLine.Left(Colon).TrimStartAndEnd();
 		bool bName = !Head.IsEmpty();
 		for (const TCHAR Ch : Head)
@@ -758,15 +947,21 @@ void FTakeHudKit::SplitSpeaker(const FString& In, FString& OutSpeaker, FString& 
 	}
 	if (OutLine.Len() >= 2 && OutLine.StartsWith(TEXT("\"")) && OutLine.EndsWith(TEXT("\"")))
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		OutLine = OutLine.Mid(1, OutLine.Len() - 2);
 	}
 }
 
 void FTakeHudKit::SplitCaption(const FString& In, FString& OutCaption, FString& OutText)
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	int32 Split = INDEX_NONE;
 	if (In.FindChar(TEXT('|'), Split))
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		OutCaption = In.Left(Split).TrimStartAndEnd();
 		OutText = In.Mid(Split + 1).TrimStartAndEnd();
 		return;
@@ -774,6 +969,8 @@ void FTakeHudKit::SplitCaption(const FString& In, FString& OutCaption, FString& 
 	const int32 Dash = In.Find(TEXT(" - "));
 	if (Dash > 0 && In.StartsWith(TEXT("SCENE")))
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		OutCaption = In.Left(Dash).TrimStartAndEnd();
 		OutText = In.Mid(Dash + 3).TrimStartAndEnd();
 		return;
@@ -784,10 +981,14 @@ void FTakeHudKit::SplitCaption(const FString& In, FString& OutCaption, FString& 
 
 FString FTakeHudKit::TitleCase(const FString& In)
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	FString Out = In.ToLower();
 	bool bStart = true;
 	for (int32 Index = 0; Index < Out.Len(); ++Index)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		if (bStart && FChar::IsAlpha(Out[Index]))
 		{
 			Out[Index] = FChar::ToUpper(Out[Index]);
@@ -799,14 +1000,20 @@ FString FTakeHudKit::TitleCase(const FString& In)
 
 FString FTakeHudKit::Sentence(const FString& In, bool bFullStop)
 {
+	using namespace TakeStyle;
+	using namespace TakeKitLocal;
 	FString Out = In.TrimStartAndEnd();
 	if (Out.IsEmpty())
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		return Out;
 	}
 	Out[0] = FChar::ToUpper(Out[0]);
 	if (bFullStop)
 	{
+		using namespace TakeStyle;
+		using namespace TakeKitLocal;
 		const TCHAR Last = Out[Out.Len() - 1];
 		if (Last != TEXT('.') && Last != TEXT('!') && Last != TEXT('?'))
 		{

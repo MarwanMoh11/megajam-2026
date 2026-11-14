@@ -15,10 +15,10 @@
 #include "TakeGameInstance.h"
 #include "TakePlayerController.h"
 
-using namespace TakeStyle;
 
 ATakeHUD::ATakeHUD()
 {
+	using namespace TakeStyle;
 	SceneNames = { TEXT("THE DOOR"), TEXT("THE FLOOR"), TEXT("THE GETAWAY") };
 	TitlePitch = {
 		TEXT("Tonight the Aurelia Auction House sells the only print of a lost film: the Director's Cut."),
@@ -41,14 +41,17 @@ ATakeHUD::ATakeHUD()
 
 void ATakeHUD::DrawHUD()
 {
+	using namespace TakeStyle;
 	Super::DrawHUD();
 	if (!Canvas)
 	{
+		using namespace TakeStyle;
 		return;
 	}
 	ATakeDirector* Dir = GetDirector();
 	if (!Dir)
 	{
+		using namespace TakeStyle;
 		return;
 	}
 
@@ -61,15 +64,17 @@ void ATakeHUD::DrawHUD()
 
 	// Under everything: the picture's film or viewfinder, the burn, the splice, the bars in ink.
 	Film.DrawUnder(*this, *Canvas, FilmFrame);
-	if (!Film.DrawsLetterbox(FilmFrame))
+	if (!Film.DrawsLetterbox(FilmFrame) || Kit.Bar > BarH + 0.5f)
 	{
-		// The look is off: the bars are still the HUD's lanes.
+		using namespace TakeStyle;
+		// The look is off, or the screen is wider than 2.39:1: the bars are still the HUD's lanes (MinBar tall).
 		Kit.Rect(0.f, 0.f, Kit.W, Kit.Bar, Ink);
 		Kit.Rect(0.f, Kit.PicBottom(), Kit.W, Kit.Bar, Ink);
 	}
 
 	if (Dir->Phase == ETakePhase::Title)
 	{
+		using namespace TakeStyle;
 		DrawTitleCard(*Dir, FilmFrame);
 		DrawB1(*Dir, true);
 		Film.DrawOver(*this, *Canvas, FilmFrame);
@@ -77,6 +82,7 @@ void ATakeHUD::DrawHUD()
 	}
 	if (Dir->Phase == ETakePhase::Printed)
 	{
+		using namespace TakeStyle;
 		DrawEnds(*Dir, FilmFrame);
 		Film.DrawOver(*this, *Canvas, FilmFrame);
 		return;
@@ -88,6 +94,7 @@ void ATakeHUD::DrawHUD()
 	Film.DrawOver(*this, *Canvas, FilmFrame);
 	if (Dir->Phase == ETakePhase::BlooperFreeze && Film.IsBlooperSlateDue(FilmFrame))
 	{
+		using namespace TakeStyle;
 		DrawBlooperSlate(*Dir);
 		DrawB1(*Dir, true);
 	}
@@ -97,8 +104,10 @@ void ATakeHUD::DrawHUD()
 
 void ATakeHUD::TrackState(const ATakeDirector& Dir)
 {
+	using namespace TakeStyle;
 	if (Dir.Phase != LastPhase)
 	{
+		using namespace TakeStyle;
 		LastPhase = Dir.Phase;
 		PhaseSince = Kit.Now;
 		if (Dir.Phase != ETakePhase::Rolling && Dir.Phase != ETakePhase::Cleared)
@@ -112,17 +121,20 @@ void ATakeHUD::TrackState(const ATakeDirector& Dir)
 	const ETakeCamera Look = Dir.GetLookCamera();
 	if (Look != LastLook)
 	{
+		using namespace TakeStyle;
 		LastLook = Look;
 		LookSince = Kit.Now;
 	}
 	if (Dir.Objective != LastGoal)
 	{
+		using namespace TakeStyle;
 		LastGoal = Dir.Objective;
 		GoalSince = Kit.Now;
 	}
 	const float Composure = Dir.Composure ? Dir.Composure->GetComposure() : 100.f;
 	if (LastComposure >= 0.f && Composure - LastComposure >= RefillMinJump)
 	{
+		using namespace TakeStyle;
 		RefillFrom = LastComposure;
 		RefillTo = Composure;
 		RefillSince = Kit.Now;
@@ -132,8 +144,10 @@ void ATakeHUD::TrackState(const ATakeDirector& Dir)
 
 void ATakeHUD::ReadFlashes(const ATakeDirector& Dir)
 {
+	using namespace TakeStyle;
 	for (const FTakeFlash& Flash : Dir.Flashes)
 	{
+		using namespace TakeStyle;
 		if (Flash.Serial <= LastSerial)
 		{
 			continue;
@@ -173,12 +187,14 @@ void ATakeHUD::ReadFlashes(const ATakeDirector& Dir)
 	// A director that starts its serials again (a fresh director with this HUD): follow it down.
 	if (Dir.FlashSerial < LastSerial)
 	{
+		using namespace TakeStyle;
 		LastSerial = Dir.FlashSerial;
 	}
 
 	// Subtitles: the head holds its time, then the next one shows on that frame.
 	while (Subtitles.Num() > 0)
 	{
+		using namespace TakeStyle;
 		FTakeSubtitle& Head = Subtitles[0];
 		if (Head.Since < 0.0)
 		{
@@ -192,17 +208,34 @@ void ATakeHUD::ReadFlashes(const ATakeDirector& Dir)
 	}
 	Stamps.RemoveAll([this](const FTakeShown& Shown)
 	{
+		using namespace TakeStyle;
 		return Age(Shown.Since) > Frames(StampTitleHoldFrames + FramesSettle);
 	});
 }
 
+bool ATakeHUD::IsControlsAnswer() const
+{
+	using namespace TakeStyle;
+	// Enter during play answers with the controls (TakeDirectorPresses): B3 lights up instead of a second legend in B1.
+	return IsRefusalShowing() && Refusal.Text.StartsWith(TEXT("[WASD]"));
+}
+
+FString ATakeHUD::NoFinalStop(const FString& In)
+{
+	using namespace TakeStyle;
+	// One rule for T2 and B1: no final full stop (inner ones stay).
+	return In.EndsWith(TEXT(".")) && !In.EndsWith(TEXT("..")) ? In.LeftChop(1) : In;
+}
+
 bool ATakeHUD::IsRefusalShowing() const
 {
+	using namespace TakeStyle;
 	return !Refusal.Text.IsEmpty() && Age(Refusal.Since) < RefusalHoldSeconds;
 }
 
 FString ATakeHUD::SceneName(int32 Scene) const
 {
+	using namespace TakeStyle;
 	return SceneNames.IsValidIndex(Scene - 1) ? SceneNames[Scene - 1] : FString();
 }
 
@@ -210,6 +243,7 @@ FString ATakeHUD::SceneName(int32 Scene) const
 
 void ATakeHUD::DrawBars(const ATakeDirector& Dir)
 {
+	using namespace TakeStyle;
 	DrawSlateStrip(Dir);
 	DrawKeyTabs(Dir);
 	DrawClock(Dir);
@@ -218,7 +252,10 @@ void ATakeHUD::DrawBars(const ATakeDirector& Dir)
 	DrawComposure(Dir);
 	if (Dir.Phase == ETakePhase::Rolling || Dir.Phase == ETakePhase::Cleared)
 	{
-		FTakeInk Controls = FTakeInk::Of(Ash, Ash);
+		using namespace TakeStyle;
+		// The only controls legend in play: paper while the opening slate runs (a cold start) and when Enter asks.
+		const bool bLoud = IsControlsAnswer() || (Dir.bTitleIsSlate && Dir.TitleSecondsLeft > 0.f);
+		FTakeInk Controls = bLoud ? FTakeInk::Of(Paper, Paper) : FTakeInk::Of(Ash, Ash);
 		Controls.bSmallKeys = true;
 		Kit.Rich(EType::Tag, ControlsHint, Kit.CX(), Kit.RowB3(), Kit.W - 2.f * Kit.Px(Margin), 1, Controls);
 	}
@@ -226,6 +263,7 @@ void ATakeHUD::DrawBars(const ATakeDirector& Dir)
 
 void ATakeHUD::DrawSlateStrip(const ATakeDirector& Dir)
 {
+	using namespace TakeStyle;
 	const UTakeGameInstance* GI = Dir.GetTakeGameInstance();
 	const float Y = Kit.RowT1();
 	float X = Kit.Px(Margin);
@@ -238,6 +276,7 @@ void ATakeHUD::DrawSlateStrip(const ATakeDirector& Dir)
 
 void ATakeHUD::DrawKeyTabs(const ATakeDirector& Dir)
 {
+	using namespace TakeStyle;
 	const ETakeCamera Ids[] = { ETakeCamera::A, ETakeCamera::B, ETakeCamera::C };
 	const ETakeCamera Active = Dir.GetLookCamera();
 	const ATakePlayerController* TakePC = Cast<ATakePlayerController>(GetOwningPlayerController());
@@ -249,6 +288,7 @@ void ATakeHUD::DrawKeyTabs(const ATakeDirector& Dir)
 	int32 Shown = 0;
 	for (int32 Index = 0; Index < 3; ++Index)
 	{
+		using namespace TakeStyle;
 		if (!Dir.GetCharacter(Ids[Index]))
 		{
 			continue;
@@ -262,6 +302,7 @@ void ATakeHUD::DrawKeyTabs(const ATakeDirector& Dir)
 	float X = FMath::RoundToFloat(Kit.CX() - Total * 0.5f);
 	for (int32 Index = 0; Index < 3; ++Index)
 	{
+		using namespace TakeStyle;
 		if (Widths[Index] <= 0.f)
 		{
 			continue;
@@ -329,9 +370,11 @@ void ATakeHUD::DrawKeyTabs(const ATakeDirector& Dir)
 
 void ATakeHUD::DrawClock(const ATakeDirector& Dir)
 {
+	using namespace TakeStyle;
 	const UBarClockComponent* Clock = Dir.Clock;
 	if (!Clock)
 	{
+		using namespace TakeStyle;
 		return;
 	}
 	const float Y = Kit.RowT1();
@@ -339,6 +382,7 @@ void ATakeHUD::DrawClock(const ATakeDirector& Dir)
 
 	if (Dir.bAlarm && Dir.bAlarmLive)
 	{
+		using namespace TakeStyle;
 		// The finale count: ALARM, the bars left, a square for each bar (the current one blinks on the beat).
 		const int32 Count = FMath::Max(1, Dir.FinaleBars);
 		const int32 Left = FMath::Clamp(Dir.GetAlarmBarsLeft(), 0, Count);
@@ -372,6 +416,7 @@ void ATakeHUD::DrawClock(const ATakeDirector& Dir)
 	float PartsLeft = Right;
 	if (Clock->IsMetronomeMuted())
 	{
+		using namespace TakeStyle;
 		PartsLeft -= Kit.Text(EType::Label, TEXT("BREAK"), Right, Y, Bone, ETakeAlign::Right);
 	}
 	else
@@ -402,12 +447,14 @@ void ATakeHUD::DrawClock(const ATakeDirector& Dir)
 
 void ATakeHUD::DrawGoal(const ATakeDirector& Dir)
 {
+	using namespace TakeStyle;
 	const float Y = Kit.RowT2();
 	const float MaxW = Kit.Px(GoalMaxW);
 
 	// A flash takes the goal line's place for FlashHoldSeconds: a square for arrivals, a T for his wins.
 	if (!GoalFlash.Text.IsEmpty() && Age(GoalFlash.Since) < FlashHoldSeconds)
 	{
+		using namespace TakeStyle;
 		FString Line = GoalFlash.Text;
 		if (GoalFlash.Kind == ETakeFlashKind::Danger)
 		{
@@ -417,15 +464,16 @@ void ATakeHUD::DrawGoal(const ATakeDirector& Dir)
 		{
 			Line = TEXT("[julian] ") + Line;
 		}
-		Kit.Rich(EType::Goal, Line, Kit.CX(), Y, MaxW, 1, FTakeInk::Of(Paper, Paper));
+		Kit.Rich(EType::Goal, NoFinalStop(Line), Kit.CX(), Y, MaxW, 1, FTakeInk::Of(Paper, Paper));
 		return;
 	}
 	if (Dir.Objective.IsEmpty())
 	{
+		using namespace TakeStyle;
 		return;
 	}
 	float LastY = Y;
-	const float Widest = Kit.Rich(EType::Goal, Dir.Objective, Kit.CX(), Y, MaxW, 2, FTakeInk::Of(Paper, Paper), &LastY);
+	const float Widest = Kit.Rich(EType::Goal, NoFinalStop(Dir.Objective), Kit.CX(), Y, MaxW, 2, FTakeInk::Of(Paper, Paper), &LastY);
 
 	// A new goal: a bone rule under it draws out from the centre over GoalRuleFrames.
 	const float Grow = FMath::Clamp(static_cast<float>(FilmFrame(Age(GoalSince)) + 1) / GoalRuleFrames, 0.f, 1.f);
@@ -435,26 +483,31 @@ void ATakeHUD::DrawGoal(const ATakeDirector& Dir)
 
 void ATakeHUD::DrawB1(const ATakeDirector& Dir, bool bRefusalsOnly)
 {
+	using namespace TakeStyle;
 	const float Y = Kit.RowB1();
 	const float MaxW = Kit.Px(UseMaxW);
-	if (IsRefusalShowing())
+	if (IsRefusalShowing() && !IsControlsAnswer())
 	{
-		Kit.Rich(EType::Goal, Refusal.Text, Kit.CX(), Y, MaxW, 1, FTakeInk::Of(Bone, Bone));
+		using namespace TakeStyle;
+		Kit.Rich(EType::Goal, NoFinalStop(Refusal.Text), Kit.CX(), Y, MaxW, 1, FTakeInk::Of(Bone, Bone));
 		return;
 	}
 	if (bRefusalsOnly || Dir.Phase != ETakePhase::Rolling)
 	{
+		using namespace TakeStyle;
 		return;
 	}
 	const ATakePlayerController* TakePC = Cast<ATakePlayerController>(GetOwningPlayerController());
 	if (TakePC && TakePC->IsInFlight())
 	{
+		using namespace TakeStyle;
 		return;
 	}
 
 	// Julian's camera: his mark action and its gold progress bar.
 	if (Dir.CurrentCamera == ETakeCamera::A)
 	{
+		using namespace TakeStyle;
 		const AMark* ActionMark = Dir.Julian ? Dir.Julian->GetStandingMark() : nullptr;
 		if (ActionMark && ActionMark->IsActionMark() && !ActionMark->IsActionDone())
 		{
@@ -474,13 +527,15 @@ void ATakeHUD::DrawB1(const ATakeDirector& Dir, bool bRefusalsOnly)
 	const FTakeUseTarget& Use = Dir.CurrentUse;
 	if (!Use.Prompt.IsEmpty())
 	{
-		Kit.Rich(EType::Goal, Use.Prompt, Kit.CX(), Y, MaxW, 1,
+		using namespace TakeStyle;
+		Kit.Rich(EType::Goal, NoFinalStop(Use.Prompt), Kit.CX(), Y, MaxW, 1,
 			Use.bCanFire ? FTakeInk::Of(Paper, Paper) : FTakeInk::Of(Bone, Silver));
 	}
 }
 
 void ATakeHUD::DrawComposure(const ATakeDirector& Dir)
 {
+	using namespace TakeStyle;
 	const UComposureComponent* Comp = Dir.Composure;
 	const float Fraction = Comp ? FMath::Clamp(Comp->GetFraction(), 0.f, 1.f) : 1.f;
 	const EComposureLabel Label = Comp ? Comp->GetLabel() : EComposureLabel::None;
@@ -497,6 +552,7 @@ void ATakeHUD::DrawComposure(const ATakeDirector& Dir)
 	FLinearColor Fill = TakeStyle::Julian;
 	if (Label == EComposureLabel::Seen && (FilmFrame(Kit.Now) / static_cast<int32>(FramesSettle)) % 2 == 0)
 	{
+		using namespace TakeStyle;
 		Fill = Danger;
 	}
 	const float FillW = FMath::RoundToFloat(LW * Fraction);
@@ -505,6 +561,7 @@ void ATakeHUD::DrawComposure(const ATakeDirector& Dir)
 	// A refill (x2): the gained part in paper for 12 frames.
 	if (Age(RefillSince) < Frames(FramesBeat) && RefillTo > RefillFrom)
 	{
+		using namespace TakeStyle;
 		const float From = FMath::RoundToFloat(LW * FMath::Clamp(RefillFrom / 100.f, 0.f, 1.f));
 		Kit.Rect(LX + From, LY, FMath::Max(0.f, FillW - From), LH, Paper);
 	}
@@ -513,11 +570,13 @@ void ATakeHUD::DrawComposure(const ATakeDirector& Dir)
 	const float Half = Kit.Px(GlyphSquare) * 0.5f;
 	if (Label == EComposureLabel::Seen)
 	{
+		using namespace TakeStyle;
 		Kit.GlyphDanger(SX + Half, Y, Kit.Pulse(), false);
 		Kit.Text(EType::Label, Comp->GetLabelText(), SX + Half * 2.f + Kit.Px(GlyphTextGap), Y, Danger);
 	}
 	else if (Label == EComposureLabel::Mark)
 	{
+		using namespace TakeStyle;
 		Kit.GlyphJulian(SX + Kit.GlyphW() * 0.5f, Y, 1.f);
 		Kit.Text(EType::Label, Comp->GetLabelText(), SX + Kit.GlyphW() + Kit.Px(GlyphTextGap), Y, TakeStyle::Julian);
 	}
@@ -527,8 +586,10 @@ void ATakeHUD::DrawComposure(const ATakeDirector& Dir)
 
 ATakeDirector* ATakeHUD::GetDirector()
 {
+	using namespace TakeStyle;
 	if (!CachedDirector.IsValid())
 	{
+		using namespace TakeStyle;
 		CachedDirector = ATakeDirector::Get(this);
 	}
 	return CachedDirector.Get();
@@ -536,6 +597,7 @@ ATakeDirector* ATakeHUD::GetDirector()
 
 FTakeFilmFrame ATakeHUD::MakeFilmFrame(const ATakeDirector& Dir, float ScreenW, float ScreenH) const
 {
+	using namespace TakeStyle;
 	FTakeFilmFrame F;
 	F.ScreenW = ScreenW;
 	F.ScreenH = ScreenH;
@@ -551,10 +613,12 @@ FTakeFilmFrame ATakeHUD::MakeFilmFrame(const ATakeDirector& Dir, float ScreenW, 
 	F.bSeen = Dir.bJulianSeen;
 	if (Dir.Clock)
 	{
+		using namespace TakeStyle;
 		F.SecondsSinceBeat = Dir.Clock->GetBeatPhase() * Dir.Clock->GetSecondsPerBeat();
 	}
 	if (Dir.Julian && Canvas)
 	{
+		using namespace TakeStyle;
 		const FVector Projected = Canvas->Project(Dir.Julian->GetActorLocation());
 		F.bJulianOnScreen = Projected.Z > 0.0 && Projected.X >= 0.0 && Projected.X <= ScreenW && Projected.Y >= 0.0
 			&& Projected.Y <= ScreenH;

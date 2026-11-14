@@ -117,7 +117,7 @@ void ATakeDirector::FireTrigger(FName Name)
 	if (Name == FName(TakeTriggers::Keycard))
 	{
 		// The lift mark's ActionScene / ActionTitle start Scene 3 (StepMarkActions).
-		Flash(TEXT("KEYCARD LIFTED"), ETakeFlashKind::Julian, 3.f);
+		Flash(TEXT("Keycard lifted"), ETakeFlashKind::Julian, 3.f);
 		if (Clock)
 		{
 			Clock->PlayChime();
@@ -126,11 +126,11 @@ void ATakeDirector::FireTrigger(FName Name)
 	else if (bCase)
 	{
 		StartAlarm(Bar, false);
-		Flash(TEXT("HE HAS THE REEL"), ETakeFlashKind::Julian, 3.f);
+		Flash(TEXT("He has the reel"), ETakeFlashKind::Julian, 3.f);
 	}
 	else if (Name == FName(TakeTriggers::Winch))
 	{
-		Flash(TEXT("THE STAGE TRAP IS OPEN"), ETakeFlashKind::Julian, 3.f);
+		Flash(TEXT("The stage trap is open"), ETakeFlashKind::Julian, 3.f);
 	}
 	else if (Name == FName(TakeTriggers::Bow))
 	{
@@ -385,7 +385,7 @@ void ATakeDirector::UpdateObjective()
 			{
 				NewObjective = bJulianExposed
 					? FString(TEXT("He has the keycard. Get JULIAN off the red tape."))
-					: FString::Printf(TEXT("The case trips the alarm: %d bars to get out. Post [3] VEX at the CURTAIN WINCH and [2] MAYA at the PYRO BOARD first."), FinaleBars);
+					: FString::Printf(TEXT("Post [3] VEX at the CURTAIN WINCH and [2] MAYA at the PYRO BOARD: the case trips a %d-bar alarm"), FinaleBars);
 			}
 			else if (CurrentCamera == ETakeCamera::B)
 			{
@@ -397,7 +397,7 @@ void ATakeDirector::UpdateObjective()
 			{
 				NewObjective = bAtWinch
 					? TEXT("VEX is at the curtain winch. It unlocks with the alarm.   [2] MAYA   [1] JULIAN")
-					: TEXT("Walk VEX east along the corridor to the CURTAIN WINCH. Or save his SOUND DESK for the gold side exit.");
+					: TEXT("Walk VEX east to the CURTAIN WINCH. Or save his SOUND DESK for the gold side exit");
 			}
 		}
 		else if (!HasFired(FName(TakeTriggers::Winch)) && Winch && Winch->UsesLeft > 0)
@@ -405,7 +405,7 @@ void ATakeDirector::UpdateObjective()
 			if (CurrentCamera == ETakeCamera::C)
 			{
 				NewObjective = bAtWinch
-					? TEXT("[E] Drop the curtain: it hides JULIAN from the guards and opens the stage trap")
+					? TEXT("Drop the curtain: it hides JULIAN from the guards and opens the stage trap")
 					: TEXT("Walk VEX to the CURTAIN WINCH at the east end of the corridor");
 			}
 			else
@@ -418,12 +418,12 @@ void ATakeDirector::UpdateObjective()
 			if (CurrentCamera == ETakeCamera::B)
 			{
 				NewObjective = bAtPyro
-					? FString::Printf(TEXT("[E]  Fire the pyro: everything on the stage is blind for %.0f s"), Pyro->Duration)
+					? FString::Printf(TEXT("Fire the pyro: everything on the stage is blind for %.0f s"), Pyro->Duration)
 					: FString(TEXT("Walk MAYA to the pyro board"));
 			}
 			else
 			{
-				NewObjective = TEXT("The curtain is down. [2] MAYA: the pyro blinds the drone and the stage.   Then [1] JULIAN: the gold mark on the open trap.");
+				NewObjective = TEXT("Curtain down. [2] MAYA: the pyro blinds the stage. Then [1] JULIAN to the gold mark on the trap");
 			}
 		}
 		else if (CurrentCamera == ETakeCamera::A)
@@ -479,11 +479,11 @@ void ATakeDirector::UpdateObjective()
 				}
 				else if (CurrentUse.Watcher.Get() == Scanner)
 				{
-					NewObjective = TEXT("[E]  Swing the searchlight onto the SCANNER");
+					NewObjective = TEXT("Blind the SCANNER so JULIAN can walk in");
 				}
 				else
 				{
-					NewObjective = TEXT("Look down at the SCANNER's red eye, then [E]");
+					NewObjective = TEXT("Look down at the SCANNER's red eye to aim the searchlight");
 				}
 			}
 			else
@@ -517,7 +517,7 @@ void ATakeDirector::UpdateObjective()
 			{
 				NewObjective = bAtPost
 					? TEXT("MAYA is at her post over the hall.   [3] VEX   [1] JULIAN")
-					: TEXT("Walk MAYA in through the door behind her, round the balcony and out along the catwalk to the follow spot");
+					: TEXT("Walk MAYA in behind her, round the balcony and out along the catwalk to the FOLLOW SPOT");
 			}
 			else if (CurrentCamera == ETakeCamera::C)
 			{
@@ -527,7 +527,7 @@ void ATakeDirector::UpdateObjective()
 			}
 			else
 			{
-				NewObjective = TEXT("He is in. Post the crew first: [2] MAYA to the follow spot, [3] VEX to his cart. Then walk JULIAN round the stair into the hall.");
+				NewObjective = TEXT("He is in. Post [2] MAYA at the FOLLOW SPOT and [3] VEX at his cart. Then JULIAN into the hall");
 			}
 		}
 	}
@@ -542,7 +542,7 @@ void ATakeDirector::UpdateObjective()
 		}
 		else
 		{
-			NewObjective = TEXT("Lift VANCE's keycard: stand on the mark behind him while no frame is on it. He turns away to speak.");
+			NewObjective = TEXT("Lift VANCE's keycard from the mark behind him when no frame is on it. He turns to speak");
 		}
 	}
 	else
@@ -567,15 +567,15 @@ void ATakeDirector::UpdateObjective()
 
 		if (Beam && Julian && Beam->DistanceToPoint(Julian->GetFeetLocation()) <= TakeSceneLocal::RopePromptDistance)
 		{
-			NewObjective = TEXT("The rope. Blind or mask the BEAM and the GUARD: [2] MAYA has the FOLLOW SPOT and the BANNER, [3] VEX the CHAMPAGNE CART.");
+			NewObjective = TEXT("Blind or mask the BEAM and GUARD: [2] MAYA's FOLLOW SPOT or BANNER, [3] VEX's CHAMPAGNE CART");
 		}
 		else if (Drone && Drone->HasArrived())
 		{
-			NewObjective = TEXT("The broadcast DRONE films the centre aisle: off a gold mark its red circle sees him. Go round by a side aisle to the rope.");
+			NewObjective = TEXT("The DRONE's red circle sees him off a gold mark. Take a side aisle to the rope");
 		}
 		else
 		{
-			NewObjective = TEXT("The centre aisle is the broadcast's. Wait on the gold mark, then go round by a side aisle to the rope.");
+			NewObjective = TEXT("Wait on the gold mark, then take a side aisle to the rope: the DRONE has the centre");
 		}
 	}
 
@@ -628,7 +628,7 @@ void ATakeDirector::SaveCheckpoint(AMark* Mark, const FString& Name)
 	GI->BloopersAtCheckpoint = 0;
 	GI->CheckpointCuts = GI->Cuts;
 
-	Flash(FString::Printf(TEXT("CHECKPOINT: %s"), *Name), ETakeFlashKind::Julian, 3.f);
+	Flash(FString::Printf(TEXT("Checkpoint: %s"), *Name), ETakeFlashKind::Julian, 3.f);
 	if (Clock)
 	{
 		Clock->PlayChime();

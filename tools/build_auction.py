@@ -1282,16 +1282,14 @@ spawn(unreal.TakeDirector, (HX0 + 100, HY0 + 100, 0), label="TakeDirector", fold
 # Each is introduced by one line the first time the player lands on them.
 CAPSULE = 98.0
 julian = spawn(unreal.Julian, (START[0], START[1], CAPSULE), yaw=-90.0, label="Julian", folder="Take")
-setp(julian, intro_line="JULIAN: an actor playing a bidder. He has no invitation, so every guard, lens and scanner "
-                        "here is looking for him.")
+setp(julian, intro_line='DIRECTOR: "Julian, our bidder with no invitation. Every guard is watching him."')
 maya = spawn(unreal.TakeCharacter, (MAYA_START[0], MAYA_START[1], F2 + CAPSULE), yaw=180.0, label="Maya",
              folder="Take")
 setp(maya, id=B, tint=unreal.LinearColor(0.10, 0.35, 0.80, 1.0), start_look_pitch=-42.0,
-     intro_line="MAYA: gaffer on the film crew Aurelia hired to light its gala. She wears a crew pass: "
-                "nobody watches her.")
+     intro_line='DIRECTOR: "Maya, our gaffer, up on the lights. Crew pass: nobody watches her."')
 vex = spawn(unreal.TakeCharacter, (VEX_START[0], VEX_START[1], CAPSULE), yaw=143.0, label="Vex", folder="Take")
 setp(vex, id=C, tint=unreal.LinearColor(0.10, 0.55, 0.30, 1.0),
-     intro_line="VEX: props and sound on the same crew. With a crew pass, backstage is his.")
+     intro_line='DIRECTOR: "Vex, props and sound. Crew pass: backstage is his."')
 
 
 def mark(label, name, xy, z=0.0):

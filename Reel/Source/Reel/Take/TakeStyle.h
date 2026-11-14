@@ -123,7 +123,12 @@ namespace TakeStyle
 	constexpr float RowB1Down = 36.f;	// B1 (978) below the bottom bar's top edge (942)
 	constexpr float RowB2Down = 76.f;	// B2 (1018)
 	constexpr float RowB3Down = 112.f;	// B3 (1054)
-	constexpr float BarRowsMinBar = 120.f;	// below this bar height (ultra-wide) the rows sit over the picture
+	/** The HUD's s: like Scale() but without its 0.8 floor, so on a small or DPI-virtualised screen (a 1280 x 720
+	 *  canvas on a 150% laptop) every lane and stamp still fits; text drops below 16 px only below 864 lines. */
+	inline float HudScale(float ScreenH) { return FMath::Clamp(ScreenH / 1080.f, 0.6f, 2.f); }
+	constexpr float MinBar = 138.f;		// the bars never shrink below this (ultra-wide screens crop the picture instead)
+	constexpr float BottomSafe = 8.f;	// B3's keycaps end at least this far above the screen's bottom edge
+	constexpr float TapePipRow = 4.f;	// a device's tape grows this much for its row of pips under the name
 
 	// --- the picture's anchors (§15.5, §15.6) ---------------------------------------------------------------------------
 	constexpr float SubtitleUp = 64.f;		// subtitle centre above the picture's bottom edge (878)

@@ -101,7 +101,7 @@ FTakeUseTarget ATakeDirector::FindUseTarget(const ATakeCharacter* Who) const
 	else
 	{
 		Result.Watcher = nullptr;
-		Result.Prompt = TEXT("Look at a watcher to aim the follow spot");
+		Result.Prompt = TEXT("Look at a watcher to aim the light");
 		Result.bCanFire = false;
 	}
 	return Result;
