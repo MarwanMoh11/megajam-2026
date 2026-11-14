@@ -1,0 +1,15 @@
+{
+  "_comment": "Tripo filler props (text-to-3D, v3 API). tripo.py adds STYLE to every prompt and sends PARAMS as they are.",
+  "style": "1950s mid-century, chunky simplified silhouette like a stage prop, single object, centred, matte, neutral flat lighting, no baked shadows, no text, no logos, plain background",
+  "params": {
+    "model": "v3.1-20260211",
+    "texture": true,
+    "pbr": true,
+    "texture_quality": "standard",
+    "face_limit": 15000,
+    "negative_prompt": "text, letters, logo, red, gold, brass, baked shadows, multiple objects, ground plane"
+  },
+  "props": {
+    "palm": "a potted kentia palm with broad arching fronds in a round fluted planter, dark green leaves, pale grey stone planter"
+  }
+}

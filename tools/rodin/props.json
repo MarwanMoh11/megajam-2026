@@ -1,0 +1,38 @@
+{
+  "_comment": "Hyper3D Rodin hero props (text-to-3D). generate.py adds STYLE to every prompt. Sizes are the target box in cm (x, y, z) the import fits each mesh into; see import_props.py.",
+  "style": "1950s mid-century, chunky simplified silhouette like a stage prop, slightly exaggerated proportions, single object, centred, matte, neutral flat lighting, no baked shadows, no text, no logos, plain background",
+  "params": {
+    "tier": "Gen-2.5-Low",
+    "texture_mode": "high",
+    "mesh_mode": "Raw",
+    "quality_override": "15000",
+    "geometry_file_format": "glb",
+    "material": "PBR",
+    "preview_render": "true"
+  },
+  "props": {
+    "podium": "an auctioneer's lectern podium, tall box body with a slanted reading top and a narrow ledge, fluted front panel, square plinth base, dark walnut wood with pale grey pewter trim",
+    "pedestal": "a museum display pedestal, a square column with vertical fluting on a stepped square base and a flat square top, pale grey painted wood",
+    "reel": "a large vintage film reel with six round holes in each flange, standing upright on edge in a small low cradle stand, plain silver metal",
+    "cart": "a hotel room-service trolley with two shelves, a push handle at one end and four small castor wheels, an ice bucket holding two champagne bottles on the top shelf, chrome metal frame and white linen cloth",
+    "desk": "a radio broadcast sound mixing console on a sturdy wooden desk, a sloped control panel with rows of large round knobs and two round needle meters, a thick bundle of cables at the back, dark grey metal and dark wood",
+    "chandelier": "a sputnik chandelier, a small central sphere with straight thin rods radiating in all directions, each rod ending in a round frosted bulb, hanging from a short ceiling rod, pewter grey metal and white bulbs",
+    "piano": "a black lacquered baby grand piano with the lid propped half open on a thick stick, black and white keys, three short thick legs",
+    "chair": "an auction room side chair, upholstered padded seat and straight padded back, slim tapered dark wood legs, charcoal fabric",
+    "column": "a tall slender classical fluted column, about six times as tall as it is wide, with a plain square base and a simple square capital, pale grey stone",
+    "cocktail": "a tall round cocktail bar table on a single slim pedestal stem with a heavy round base, dark wood top, pewter grey metal stem",
+    "bar": "a short straight section of a hotel bar counter, about twice as long as it is tall, a front of vertical rounded wooden ribs, a flat dark top with a rounded edge and a foot rail, dark walnut wood and pewter grey metal",
+    "backbar": "a back-bar shelving unit, wide and tall, three shelves full of dark green glass bottles, a plain mirror panel behind them, dark walnut wood",
+    "bust": "a classical stone bust of a man on a short square plinth, pale grey stone",
+    "vase": "a large classical urn vase with two handles on a short square plinth, pale grey stone",
+    "frame": "an empty ornate rectangular picture frame with carved moulding, landscape format, open centre, dark pewter grey metal",
+    "stanchion": "a crowd control stanchion post, a slim pole with a round ball top and a heavy round base, pewter grey metal",
+    "sofa": "a three-seat sofa, low rounded back and arms, tapered dark wood legs, charcoal velvet",
+    "stool": "a bar stool with a round padded seat, a chrome pedestal stem, a foot ring and a round base, charcoal leather",
+    "roadcase": "a black theatrical road case on castor wheels with metal corner protectors, edge trim and latches",
+    "crate": "a wooden shipping crate made of planks with diagonal cross braces, plain unpainted wood",
+    "lightstand": "a vintage film studio spotlight, a big round fresnel lamp head with barn doors, on a tall three-legged stand, black metal",
+    "camera": "a vintage movie camera with two round film reels on top, on a wooden tripod, black metal",
+    "coatrack": "a cloakroom clothes rail on wheels with dark coats and hats hanging from hangers, black metal"
+  }
+}

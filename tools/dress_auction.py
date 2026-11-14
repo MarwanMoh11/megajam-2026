@@ -70,6 +70,8 @@ LIT = {                             # instance: (base colour, roughness)
     "MI_Front_Glass": ((0.02, 0.025, 0.03), 0.1),
     "MI_Front_Marble": ((0.13, 0.125, 0.12), 0.25),
     "MI_Front_Wall": ((0.16, 0.15, 0.14), 0.85),
+    "MI_Front_Damask": ((0.16, 0.15, 0.14), 0.85),      # the front walls: MI_Front_Wall with the damask (PATTERNS)
+    "MI_Front_Runner": ((0.06, 0.035, 0.045), 1.0),     # the side-aisle runners: velvet with the runner pattern
     "MI_Front_Panel": ((0.06, 0.05, 0.045), 0.6),
     "MI_Front_Parquet": ((0.10, 0.09, 0.08), 0.45),
     "MI_Front_Trim": ((0.34, 0.33, 0.31), 0.35),      # pewter, never brass
@@ -115,11 +117,26 @@ SIGNAL = {                          # unlit, masked, stencil set by the mesh: co
 
 # --- 2. surfaces: (built with, zones or None, label prefixes or None, becomes); the first match wins -----------------
 # Zones: street, lobby, hall, dais, north, back (corridor and service rooms), east (vault corridor).
+# Surface patterns in M_Dress: value patterns made of material nodes, no textures (Nov 14, Marwan: PBRgen skipped for
+# its personal-use licence). Each multiplies the instance's colour by (1 + amp x q), q a zero-mean pattern in about
+# -1..1 (SURFACE_HLSL subtracts each mask's measured area), so every surface keeps its average value and §15.11's
+# floor numbers hold; rough moves the roughness by -rough x q. Kept low so the signal colours (marks, frames, tape)
+# stay the loudest things in frame. scale: the repeat's size x this.
+PATTERNS = {                        # instance: (pattern, amp, rough, scale)
+    "MI_Front_Parquet": (1, 0.30, 0.10, 1.0),     # strips 12 x 90 cm along x, a value per strip, grain, seams
+    "MI_Front_Marble": (2, 0.35, 0.05, 1.0),      # clouds, wandering light veins, faint 60 cm tile joints
+    "MI_Front_Damask": (3, 0.10, 0.25, 1.0),      # half-drop medallions, 48 x 64 cm, glossier than the ground
+    "MI_Front_Runner": (4, 0.35, 0.0, 1.0),       # a dark edge, a light band 10 cm in, diamonds (in the box's frame)
+    "MI_Back_Ply": (5, 0.30, 0.0, 1.0),           # 122 x 244 cm sheets, a value each, vertical grain, seams
+    "MI_Back_Concrete": (6, 0.25, 0.0, 1.0),      # mottling, speckle, a few stains, 3 m joints
+}
+PX_ANGLE = 0.0009                   # radians per pixel at 1080 lines (about 52 degrees tall): the patterns' LOD
+
 FRONTS = ("street", "lobby", "hall", "dais", "north")
 BACKS = ("back", "east")
 SURFACES = [
     ("MI_Box_Wall", ("street",), None, "MI_Front_Facade"),
-    ("MI_Box_Wall", ("lobby", "hall", "dais", "north"), None, "MI_Front_Wall"),
+    ("MI_Box_Wall", ("lobby", "hall", "dais", "north"), None, "MI_Front_Damask"),
     ("MI_Box_Wall", None, None, "MI_Back_Ply"),
     ("MI_Box_Floor", ("lobby",), ("Floor",), "MI_Front_Marble"),
     ("MI_Box_Floor", BACKS, ("Floor",), "MI_Back_Concrete"),
@@ -371,6 +388,175 @@ return m;
 """
 
 
+SURFACE_HLSL = r"""
+struct SurfaceNoise
+{
+    float h(float2 p)
+    {
+        float3 p3 = frac(float3(p.x, p.y, p.x) * 0.1031);
+        p3 += dot(p3, p3.yzx + 33.33);
+        return frac((p3.x + p3.y) * p3.z);
+    }
+    float vn(float2 p)
+    {
+        float2 i = floor(p);
+        float2 f = frac(p);
+        f = f * f * (3.0 - 2.0 * f);
+        return lerp(lerp(h(i), h(i + float2(1.0, 0.0)), f.x), lerp(h(i + float2(0.0, 1.0)), h(i + float2(1.0, 1.0)), f.x), f.y);
+    }
+    float fbm(float2 p)
+    {
+        float s = 0.0;
+        float a = 0.5;
+        for (int k = 0; k < 4; k++)
+        {
+            s += a * vn(p);
+            p = p * 2.03 + float2(17.0, 31.0);
+            a *= 0.5;
+        }
+        return s / 0.9375;
+    }
+    float dist(float v, float period) { return abs(frac(v / period + 0.5) - 0.5) * period; }
+    // A line w cm wide, d cm from its middle: never thinner than a pixel (fw cm), dimmed as it widens, so its
+    // average stays w / period at any distance (no shimmer, no drift in value).
+    float stroke(float d, float w, float fw)
+    {
+        float ww = max(w, fw);
+        return (1.0 - smoothstep(0.5 * ww, 0.5 * ww + fw, d)) * (w / ww);
+    }
+};
+SurfaceNoise S;
+if (Pattern < 0.5)
+    return 0.0;
+float3 an = abs(N);
+float2 uv = (an.z >= an.x && an.z >= an.y) ? WP.xy : ((an.x >= an.y) ? WP.yz : WP.xz);   // floors x, y; walls along, z
+float sc = max(Scale, 0.01);
+uv /= sc;
+// cm per pixel here, from depth and the pixel's angle, longer where the surface is seen edge-on (no ddx: some passes
+// have no derivatives)
+float fw = max(Depth * PxAngle / max(abs(dot(N, V)), 0.2) / sc, 0.02);
+float fine = saturate(1.5 - fw);
+float q = 0.0;
+if (Pattern < 1.5)
+{
+    // 1 parquet: strips 12 x 90 cm along x, staggered; a value per strip, grain along it, seams
+    float row = floor(uv.y / 12.0);
+    float x = uv.x + S.h(float2(row, 7.0)) * 90.0;
+    float id = S.h(float2(row, floor(x / 90.0))) - 0.5;
+    float grain = (S.vn(float2(x * 0.15, uv.y * 0.9 + row * 13.0)) - 0.5) * fine;
+    float seam = max(S.stroke(S.dist(uv.y, 12.0), 0.8, fw), S.stroke(S.dist(x, 90.0), 0.8, fw));
+    q = id * 1.1 + grain * 0.6 - (seam - 0.0787) * 0.9;
+}
+else if (Pattern < 2.5)
+{
+    // 2 marble: soft clouds, wandering light veins, faint 60 cm tile joints
+    float cloud = S.fbm(uv / 140.0) - 0.5;
+    float w1 = uv.x / 110.0 + uv.y / 170.0 + S.fbm(uv / 70.0 + 5.0) * 2.5;
+    float w2 = uv.x / 37.0 - uv.y / 53.0 + S.fbm(uv / 30.0) * 1.5;
+    float vein = S.stroke(abs(frac(w1) - 0.5) * 80.0, 1.2, fw);
+    float vein2 = S.stroke(abs(frac(w2) - 0.5) * 25.0, 0.5, fw);
+    float tile = max(S.stroke(S.dist(uv.x, 60.0), 0.4, fw), S.stroke(S.dist(uv.y, 60.0), 0.4, fw));
+    q = cloud * 1.4 + (vein - 0.0154) * 1.2 + (vein2 - 0.0216) * 0.6 - (tile - 0.0147) * 0.5;
+}
+else if (Pattern < 3.5)
+{
+    // 3 damask: half-drop medallions, 48 x 64 cm, tone on tone (the roughness carries most of it)
+    float col = floor(uv.x / 48.0);
+    float2 c = float2(frac(uv.x / 48.0), frac((uv.y + fmod(abs(col), 2.0) * 32.0) / 64.0)) - 0.5;
+    c.x = abs(c.x);
+    float r = length(c * float2(2.0, 1.45));
+    float ang = atan2(c.y, c.x);
+    float petal = r - 0.07 * cos(ang * 6.0) - 0.05 * cos(ang * 2.0);
+    float aa = fw / 48.0 + 0.01;
+    float medal = 1.0 - smoothstep(0.42, 0.42 + aa, petal);
+    float eye = 1.0 - smoothstep(0.12, 0.12 + aa, r);
+    float dc = abs(c.x - 0.5) * 2.0 + abs(abs(c.y) - 0.5) * 1.4;
+    float corner = 1.0 - smoothstep(0.22, 0.22 + aa, dc);
+    float motif = saturate(medal - eye * 0.7 + corner);
+    q = (motif - 0.2169) * 2.0 * saturate(2.0 - fw / 4.0);
+}
+else if (Pattern < 4.5)
+{
+    // 4 runner, in the box's own frame: a dark edge, a light band 10 cm in, diamonds down the middle
+    float2 lc = float2((LP.x + 50.0) * length(AX), (LP.y + 50.0) * length(AY));
+    float2 sz = float2(100.0 * length(AX), 100.0 * length(AY));
+    if (sz.y > sz.x)
+    {
+        lc = lc.yx;
+        sz = sz.yx;
+    }
+    float b = min(lc.y, sz.y - lc.y);
+    float border = S.stroke(abs(b - 10.0), 6.0, fw);
+    float edge = 1.0 - smoothstep(3.0, 3.0 + fw, b);
+    float2 dd = abs(frac(float2(lc.x / 44.0, (lc.y - sz.y * 0.5) / 30.0 + 0.5)) - 0.5) * 2.0;
+    float field = (1.0 - smoothstep(0.55, 0.55 + fw / 15.0 + 0.01, dd.x + dd.y)) * step(18.0, b);
+    q = (field - 0.1156) * 0.9 + (border - 0.1006) * 1.2 - (edge - 0.0507) * 0.8;
+}
+else if (Pattern < 5.5)
+{
+    // 5 plywood flats: 122 x 244 cm sheets with a value each, vertical grain that wanders, seams
+    float sheet = S.h(float2(floor(uv.x / 122.0), floor(uv.y / 244.0)) + 3.0) - 0.5;
+    float figure = (S.vn(float2(uv.x / 1.6 + S.fbm(uv / 45.0) * 7.0, uv.y / 70.0)) - 0.5) * saturate(2.5 - fw);
+    float streak = (S.vn(float2(uv.x / 0.7, uv.y / 25.0)) - 0.5) * fine;
+    float seam = max(S.stroke(S.dist(uv.x, 122.0), 0.6, fw), S.stroke(S.dist(uv.y, 244.0), 0.6, fw));
+    q = sheet * 0.7 + figure * 0.9 + streak * 0.4 - (seam - 0.0080) * 0.9;
+}
+else
+{
+    // 6 concrete: mottling, speckle, a few stains, 3 m joints
+    float mott = S.fbm(uv / 90.0) - 0.5;
+    float speck = (S.vn(uv / 2.5) - 0.5) * fine;
+    float stain = smoothstep(0.62, 0.80, S.fbm(uv / 260.0 + 11.0));
+    float joint = max(S.stroke(S.dist(uv.x, 300.0), 1.0, fw), S.stroke(S.dist(uv.y, 300.0), 1.0, fw));
+    q = mott * 1.3 + speck * 0.4 - (stain - 0.0662) * 0.7 - (joint - 0.0072) * 0.8;
+}
+return q;
+"""
+
+
+def surface_pattern(m):
+    """M_Dress's SurfacePattern node (SURFACE_HLSL) and its inputs; returns the node (its output is q)."""
+    cu = mel.create_material_expression(m, unreal.MaterialExpressionCustom, -700, 760)
+    cu.set_editor_property("code", SURFACE_HLSL)
+    cu.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT1)
+    cu.set_editor_property("description", "SurfacePattern")
+    names = ["WP", "N", "V", "Depth", "LP", "AX", "AY", "Pattern", "Scale", "PxAngle"]
+    inputs = []
+    for n in names:
+        ci = unreal.CustomInput()
+        ci.set_editor_property("input_name", n)
+        inputs.append(ci)
+    cu.set_editor_property("inputs", inputs)
+    wp = mel.create_material_expression(m, unreal.MaterialExpressionWorldPosition, -1400, 760)
+    link(wp, "", cu, "WP")
+    link(expr(m, ("MaterialExpressionVertexNormalWS",), -1400, 840), "", cu, "N")
+    link(expr(m, ("MaterialExpressionCameraVectorWS",), -1400, 900), "", cu, "V")
+    link(mel.create_material_expression(m, unreal.MaterialExpressionPixelDepth, -1400, 960), "", cu, "Depth")
+    if hasattr(unreal, "MaterialExpressionLocalPosition"):           # as M_SignalPattern does
+        lp = mel.create_material_expression(m, unreal.MaterialExpressionLocalPosition, -1100, 1020)
+    else:
+        lp = mel.create_material_expression(m, unreal.MaterialExpressionTransformPosition, -1100, 1020)
+        try_set(lp, transform_source_type=enum_member(unreal.MaterialPositionTransformSource,
+                                                      "TRANSFORMPOSSOURCE_WORLD", "WORLD"),
+                transform_type=enum_member(unreal.MaterialPositionTransformSource,
+                                           "TRANSFORMPOSSOURCE_LOCAL", "LOCAL"))
+        link(wp, "", lp, ("", "Input"))
+    link(lp, "", cu, "LP")
+    for i, (n, v) in enumerate((("AX", (1.0, 0.0, 0.0)), ("AY", (0.0, 1.0, 0.0)))):
+        k3 = mel.create_material_expression(m, unreal.MaterialExpressionConstant3Vector, -1400, 1100 + i * 120)
+        k3.set_editor_property("constant", unreal.LinearColor(v[0], v[1], v[2], 0.0))
+        tv = mel.create_material_expression(m, unreal.MaterialExpressionTransform, -1100, 1100 + i * 120)
+        try_set(tv, transform_source_type=enum_member(unreal.MaterialVectorCoordTransformSource,
+                                                      "TRANSFORMSOURCE_LOCAL", "LOCAL"),
+                transform_type=enum_member(unreal.MaterialVectorCoordTransform, "TRANSFORM_WORLD", "WORLD"))
+        link(k3, "", tv, ("", "Input"))
+        link(tv, "", cu, n)
+    link(ps(m, "Pattern", 0.0, -1100, 1360), "", cu, "Pattern")
+    link(ps(m, "PatternScale", 1.0, -1100, 1420), "", cu, "Scale")
+    link(ps(m, "PxAngle", PX_ANGLE, -1100, 1480), "", cu, "PxAngle")
+    return cu
+
+
 def build_materials():
     # M_Dress: the set (lit).
     m = fresh_material("M_Dress")
@@ -382,8 +568,28 @@ def build_materials():
     mul = mel.create_material_expression(m, unreal.MaterialExpressionMultiply, -350, 200)
     link(emc, "", mul, "A")
     link(ems, "", mul, "B")
-    mel.connect_material_property(col, "", unreal.MaterialProperty.MP_BASE_COLOR)
-    mel.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
+    # The surface patterns (PATTERNS): base colour = Color x (1 + PatternAmp x q), roughness = Roughness -
+    # PatternRough x q. Pattern 0 (every other instance) returns q = 0 first thing.
+    q = surface_pattern(m)
+    aq = mel.create_material_expression(m, unreal.MaterialExpressionMultiply, -450, 560)
+    link(ps(m, "PatternAmp", 0.0, -700, 560), "", aq, "A")
+    link(q, "", aq, "B")
+    one_plus = mel.create_material_expression(m, unreal.MaterialExpressionAdd, -300, 560)
+    link(aq, "", one_plus, "A")
+    try_set(one_plus, const_b=1.0)
+    patterned = mel.create_material_expression(m, unreal.MaterialExpressionMultiply, -150, -200)
+    link(col, "", patterned, "A")
+    link(one_plus, "", patterned, "B")
+    rq = mel.create_material_expression(m, unreal.MaterialExpressionMultiply, -450, 640)
+    link(ps(m, "PatternRough", 0.0, -700, 640), "", rq, "A")
+    link(q, "", rq, "B")
+    rsub = mel.create_material_expression(m, unreal.MaterialExpressionSubtract, -300, 40)
+    link(rough, "", rsub, "A")
+    link(rq, "", rsub, "B")
+    rsat = mel.create_material_expression(m, unreal.MaterialExpressionSaturate, -150, 40)
+    link(rsub, "", rsat, ("", "Input"))
+    mel.connect_material_property(patterned, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    mel.connect_material_property(rsat, "", unreal.MaterialProperty.MP_ROUGHNESS)
     mel.connect_material_property(spec, "", unreal.MaterialProperty.MP_SPECULAR)
     mel.connect_material_property(mul, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     mel.recompile_material(m)
@@ -483,7 +689,9 @@ MI = {}
 def build_instances():
     m, g, s = build_materials()
     for n, (rgb, r) in LIT.items():
-        MI[n] = instance(n, m, {"Roughness": r}, {"Color": rgb})
+        pat, amp, prough, pscale = PATTERNS.get(n, (0, 0.0, 0.0, 1.0))
+        MI[n] = instance(n, m, {"Roughness": r, "Pattern": pat, "PatternAmp": amp, "PatternRough": prough,
+                                "PatternScale": pscale}, {"Color": rgb})
     for n, (rgb, sc) in GLOW.items():
         MI[n] = instance(n, g, {"Scale": sc}, {"Color": rgb})
     for n, (rgb, pat) in SIGNAL.items():
@@ -842,7 +1050,7 @@ def dress_hall():
                 al += PILASTER_STEP
     for s in (1, -1):
         y0, y1 = sorted((s * (RUNNER_Y - RUNNER_W / 2), s * (RUNNER_Y + RUNNER_W / 2)))
-        piece("Runner", (RUNNER_X[0], RUNNER_X[1], y0, y1, 0.0, 0.6), "MI_Front_Velvet")
+        piece("Runner", (RUNNER_X[0], RUNNER_X[1], y0, y1, 0.0, 0.6), "MI_Front_Runner")
 
 
 def dress_dais():
