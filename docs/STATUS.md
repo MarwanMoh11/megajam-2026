@@ -57,7 +57,7 @@ inside ? the line is outside", and "add more props placeholders to make the plac
 (rule 1), the monitor strip, "a crew cut takes about 2 s" (rule 4), The Long Take, the replay "cut where you cut"
 (rule 11), and the 1:45 clean run in a larger building.
 
-## Step 6, audio: phase 1 as built, Nov 15 (outside the editor, branch `step6-audio`)
+## Step 6, audio: as built, Nov 15 (phase 1 outside the editor on `step6-audio`, phase 2 on main)
 
 Built in a parallel session outside the editor; nothing is imported yet (phase 2, when the editor is free). The
 script is `docs/AUDIO_SCRIPT.md`; the tools are `tools/audio/`; the files are in `C:\Jam\Audio`.
@@ -116,6 +116,28 @@ script is `docs/AUDIO_SCRIPT.md`; the tools are `tools/audio/`; the files are in
   "...for two bars" (its voice line needs a retake to say "four seconds": waiting on Marwan's go).
 - Copy note: Vex's existing hint "...Then Maya's pyro. Then run." breaks the copy deck's "nobody runs"; it is voiced
   as written because the game flashes those words.
+
+**Phase 2, Nov 15 (in the editor, on main):** `step6-audio` merged into main; the clock's beat pulse removed once the
+pyro's flare stopped reading it; the 73 files imported into `/Game/Take/Audio` (the bed and the heist cue inline, the
+bed and the two composure loops looping; `/Game/Take/Audio` is in `DirectoriesToAlwaysCook`). The bed plays from the
+take's first frame and the clock follows it (exactly 2 bars per 4 s over a 24 s check).
+- **Fixed in phase 2:** the clock read the last playback reports of the sound it had just stopped (the bed as the
+  alarm cut to the heist cue, the bed before a restore restarted it) as the new music's position, burst into reseeks
+  and gave up following for the rest of the take, leaving the bed out of phase with the warning phrases. Reports now
+  count only from the current sound, not for 0.5 s after a start, and only once they move.
+- **Known, for Marwan's ear:** every music start (a take, a restore, the heist cue) reads about 0.6 s late and is
+  corrected once, within the first bar: a possible hiccup under the clapper.
+- **Tests:** the four scripted tests end as in step 5 (logs `C:\Jam\Builds\step6final_t_*.log`): t_full ROUGH CUT by the
+  trap at bar 82.4, t_s3 ROUGH CUT, t_s3b DIRECTOR'S CUT by the side exit with its two deliberate bloopers, t_fail
+  its three bloopers and both routes (t_full and t_fail now wait for Julian to be on set after the new take: both
+  had lost that race, t_fail in step 5 too). `stat unit` in the editor (Frame / Game / Draw / GPU ms): queue
+  25.71 / 25.75 / 5.61 / 20.67, Maya 25.08 / 25.11 / 5.09 / 19.69, floor 23.93 / 23.94 / 5.22 / 19.29
+  (`Reel/Saved/Screenshots/WindowsEditor/look_s6_*.png`).
+- **Package:** Shipping, all 73 sounds in the package index; `TeamName_GameName.zip` 334 MB. A real-keys run of
+  the exe (`play_final.ps1 -Tag step6`) played the title card and Scene 1 to the crew posted (65 s; shots
+  `C:\Jam\Builds\shots\step6_00` to `step6_10`, the HUD with TIME and steady glyphs in Shipping),
+  then stopped when the window lost focus: Marwan was using the PC. The rest of the take is proven in the editor
+  only.
 
 **Only Marwan can judge (step 6):** the voices picked (`docs/AUDIO_SCRIPT.md`, Voices), the bed loop and its seam,
 the mix levels (bed 0.8, duck 45%, break 20%), whether the warning phrases cut through the bed and sit in its
@@ -1098,7 +1120,7 @@ backstage.
 - **Devices:** the feedback, breaking glass, the banner drop, the curtain thud, sparks.
 - **The finale:** the alarm, the shutters.
 
-**Music source** (*filled in Nov 15: ElevenLabs Music, a looping bed plus one-shot phrases, no stems; see "Step 6, audio: phase 1 as built"; the original text follows*): WeLoveIndies or ElevenLabs music, at a fixed and known 120 BPM, with separate stems (one track per
+**Music source** (*filled in Nov 15: ElevenLabs Music, a looping bed plus one-shot phrases, no stems; see "Step 6, audio: as built"; the original text follows*): WeLoveIndies or ElevenLabs music, at a fixed and known 120 BPM, with separate stems (one track per
 instrument) for the bass, trumpet and drums (the warning instruments) and the piano, so each warning's warning phrase can be triggered. Voice lines
 duck the band's bed, never the warning phrases.
 
@@ -1182,7 +1204,7 @@ characters, audio and polish. Every step ends playable, and the Windows package 
 | Sat, moved ahead of gate 2 on Nov 14 | **4. Look.** Dressing the fronts and backs, the film burn, the letterbox HUD, the stamps | Screenshots pass ART_STYLE §14. **Marwan moved this step in front of gate 2 on Nov 14. Built Nov 14, about 22:00: see "Step 4 as built" (the design is ART_STYLE §15; its checks are §15.11)** |
 | Sat evening, after step 4 | **Gate 2.** Marwan plays a full take cold | They want another go. **Played on the build with the look (step 4 moved ahead of it on Nov 14)** |
 | Sat night to Sun 10:00 | **5. Characters and props.** Tinted mannequins, costume props, the band's instruments, the bob on the beat, the bow. Fab free packs, or generated props if the codes arrive. Niagara (Unreal's particle system) sparks, glass and smoke | Credited in docs/CREDITS.md |
-| Fri night to Sun 10:00, in parallel | **6. Audio.** A separate session, outside the editor. Write the lines, generate them with ElevenLabs once Marwan has set the key, and get the band's tune and the heist cue at 120 BPM, with stems. The editor session imports everything and locks the bar clock to the tune by Sun 10:00 | Content lock **Phase 1 built Nov 15 (script, tools, C++, generation) on branch `step6-audio`: see "Step 6, audio: phase 1 as built". Phase 2 (merge, import, play-in-editor, package) waits for the editor** |
+| Fri night to Sun 10:00, in parallel | **6. Audio.** A separate session, outside the editor. Write the lines, generate them with ElevenLabs once Marwan has set the key, and get the band's tune and the heist cue at 120 BPM, with stems. The editor session imports everything and locks the bar clock to the tune by Sun 10:00 | Content lock **Built Nov 15: phase 1 (script, tools, C++, generation) on `step6-audio`, phase 2 (merge, import, play-in-editor, package) on main. See "Step 6, audio: as built"** |
 | Sun 10:00-18:00 | **7. Polish.** See "Step 7" below | Nothing new after 18:00 |
 | **Sun 22:00** | **Upload and submit.** Then one try at the Web build (proven on the template, 23 min to package) as a second zip that plays in the browser | Downloaded and played once |
 
@@ -1257,6 +1279,6 @@ characters, audio and polish. Every step ends playable, and the Windows package 
 
 - **Game and team name.** The zip must be `TeamName_GameName.zip`. Suggested: *Print It*.
 - ~~The band's tune, the heist cue and their source~~ *Filled in Nov 15:* ElevenLabs Music at 120 BPM, a looping bed
-  and one-shot phrases instead of stems (see "Step 6, audio: phase 1 as built").
+  and one-shot phrases instead of stems (see "Step 6, audio: as built").
 - **Student category:** the Official Rules are still unread.
 - **Perk codes:** none arrived. Retry Tripo before Nov 16; ask the organisers for late-joiner codes if wanted.

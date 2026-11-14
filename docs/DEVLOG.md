@@ -784,3 +784,22 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
 - **What went wrong:** a missing include broke the first build. A session-wide interrupt stopped the work midway;
   the retake of Vex's desk hint ("for four seconds") is held until Marwan says go, so the hint still says "two bars".
   An earlier docs edit had turned a Windows path's `\r` and `\b` into control characters in STATUS.md; fixed.
+
+## Nov 15, about 02:00-03:15 Cairo: step 6 phase 2, the audio in the game (merge, import, tests, package)
+
+- **What changed:** `step6-audio` merged into main (the doc conflicts were two additions at the same place: both
+  kept). The clock's beat pulse removed now that the pyro's flare no longer reads it. The 73 sounds imported into
+  `/Game/Take/Audio` (the bed and heist cue inline, the loops looping). The bed plays from the take's first frame
+  and the clock follows it. A clock fix: see below. Packaged (Shipping, 334 MB zip).
+- **What the agents did:** one Claude Opus 5.5 session drove the editor through MCP: the import script, a band
+  check in play-in-editor, the four scripted tests (twice), `stat unit` at three views, then closed the editor,
+  packaged, played the exe with real keys and rebuilt the editor DLL with the fix.
+- **What went wrong:** the first test round showed the clock reading the last playback reports of the sound it had
+  just stopped (the bed, as the alarm cut to the heist cue or before a restore restarted it) as the new music's
+  position: a burst of reseeks within a few frames, then "the clock stops following the music this take", leaving
+  the bed out of phase with the warning phrases. A first fix (only the current sound, 0.2 s settle) cured most of
+  it; a second (0.5 s settle, and a report must have moved) cured the rest. Each music start still reads about
+  0.6 s late once and is corrected in the first bar: for Marwan's ear. Two tests lost a race with the new take
+  (Julian not yet on set 2.5 s after it; t_fail had in step 5 too): they now wait for him. Marwan used the PC
+  during the real-keys run, so it stopped after Scene 1. Two old docs edits had turned Windows paths' `\v`, `\r`
+  and `\b` into control characters (CREDITS, STATUS): fixed.
