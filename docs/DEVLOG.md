@@ -493,3 +493,23 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   - The spec's sound desk (4 s) left 2.4 s after the flight back, not enough to reach the gold door. It is 6 s
     now, noted in STATUS.md for Marwan.
 
+### 05:20, Sat Nov 14: step 3 packaged and played from the exe with real keys
+- **What changed:** packaged for Windows (Shipping), zipped (326 MB; the step 2 zip is kept beside it). The key
+  script outside the repo (`C:\Jam\Builds\shots\play2.ps1`) now plays on into Scene 3.
+- **The proof:** one run of the packaged exe driven by real keyboard and mouse input, 202 s: the title card, The
+  Door, both crew walks, the floor, a beam blooper on purpose (back to the rope), route 2, the dais cart (x2), the
+  keycard, Vex walked to the winch and Maya to the pyro board, the case, the alarm, the winch, the pyro, past the
+  lots table to the trap, PRINT IT, the stats (take 1, 3:03, 17 cuts, 1 blooper, out by the stage trap), the
+  blooper reel, and R: take 2 on the street with no title card. Screenshots: `docs/shots/step3_pk_*.png`.
+- **What the agents did:** the orchestrator alone: the package, the key script, the runs. No subagents.
+- **What went wrong:** the first exe run died one step from the trap. The game was right and the script was slow:
+  its pauses to settle between legs and its screenshots took 7.5 s from the pyro to the trap, and the pyro's 6 s
+  plus 3.8 s of composure, less the 1.6 s flight back, is 8.2 s. That run did show the Scene 3 blooper in the
+  package (composure zero on bar 93, again from the case with the clock back on bar 86 and the alarm in its hold),
+  but the second run's screenshots overwrote those two. The script now walks one straight leg past the table
+  with no pause. The number is worth Marwan's eye: a player who hesitates more than about four seconds after the
+  pyro loses the take to the drone, not to the 8-bar clock.
+- **Still open:** the finale's fairness cold (above). The guards' frame lines show through the curtain's cloth,
+  which reads as if they could still see him. Route 1 is still tight. The band-break checkpoints of rule 9 are
+  not built. Labels overlap on Maya's camera when several watchers line up.
+

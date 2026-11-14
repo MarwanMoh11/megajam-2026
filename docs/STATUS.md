@@ -122,6 +122,19 @@ through the stage trap to the lorry. The paid way out is the gold side exit past
   still read before it. `FilmSaturation = 1` on the director puts the old look back.
 - GOOD CUTS is not in the stats (good cuts wait for gate 2).
 
+**Proof, Nov 14.** Scripted play-in-editor runs: the whole take from the back of the queue to PRINT IT (163.6 s on
+the band's clock, 16 cuts, no bloopers, ROUGH CUT); a blooper after the keycard (back on the dais mark with the
+keycard); the clock running out (again from the case, the clock back from bar 30 to bar 20, the crew still posted);
+the gold side exit with the desk and The Bow (DIRECTOR'S CUT); and the step 2 tests again. One run of the packaged
+`.exe` with real keys and mouse (`C:\Jam\Builds\shots\play2.ps1`, 202 s): the title card, the whole take with
+one blooper on purpose at the beam, PRINT IT, the stats, the blooper reel, R. Screenshots: `docs/shots/step3_*.png`
+(the editor) and `docs/shots/step3_pk_*.png` (the package).
+
+**How the finale's time adds up** (all tunables): the hold is 2 to 4 s; then 8 bars, 16 s. The drone flies in at
+700 cm/s and is over him 4 to 7 s after the alarm goes live. From then, unblinded, it burns his composure out in
+3.8 s, so the drone is the real clock unless it is blinded. Winch, pyro and the cut back to Julian take about 5 s
+with the crew already posted; the walk to the trap is 4.3 s; the pyro covers 4.4 s of it.
+
 **Only Marwan can judge (step 3):**
 - Whether the finale is fair cold: the prompts, the 8 bars, how fast the drone arrives, how hard the pyro's flash is.
 - The 60% saturation before the alarm, and the bleed.
@@ -129,6 +142,16 @@ through the stage trap to the lorry. The paid way out is the gold side exit past
 - The alarm tone, the sting and the clapper as stand-ins, and every line of text (the title card, the slate, the
   stats, the credits, the guards).
 - The name on the title card and in the credits.
+- The guards' frame lines show through the curtain's cloth: does that read as "they can still see him"?
+
+**Step 3 tunables, all `EditAnywhere`.** On the director (`TakeDirector` in the level): `AlarmHoldBars`,
+`FinaleBars`, `FilmSaturation`, `AlarmSaturation`, `BleedSeconds`, `EndSlateSeconds`, `EndStatsSeconds`,
+`bShowTitleCard`, `bSideExitIsFinalCut`, `FinalCutScenes`, `DeletedScenes`, and every line of the alarm and the
+slate. On the HUD class (`TakeHUD`): `GameTitle`, `TitleTagline`, `TitleLines`, `CreditLines`, `AlarmEdgeAlpha`,
+`ReelScrollSpeed`. On the actors in the level, and as numbers at the top of `tools/build_auction.py` (the map is
+rebuilt from that file, so change them there to keep them): the pyro (`PYRO_RANGE`, `PYRO_CD`, 6 s), the desk
+(`DESK_SECONDS`), the winch's curtain (`CURTAIN_H`, `DropSeconds`), the drone's `ChaseSpeed`, the guards' posts and
+frames (`SEC_*`, `DOOR_RANGE`, `FLANK_RANGE`), the marks' action times, the lots table, the PA stacks, the trap.
 
 ## Step 2 as built, Nov 14 (Scenes 1 and 2 for the walking game)
 
