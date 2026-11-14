@@ -64,7 +64,7 @@ The key is read from the User environment (`ELEVENLABS_API_KEY`) inside the scri
 | MAYA | Lily (`pFZP5JQG7iQjIQuC4Bku`) | velvety, British, unhurried: the gaffer on the earpiece |
 | VEX | Charlie (`IKne3meq5aSn9XLyUdCD`) | young, Australian, quick: props and sound on the earpiece |
 | VANCE | George (`JBFqnCBsd6RMkjVDRZzb`) | warm British storyteller: the auctioneer at the mic |
-| CHIEF | Adam (`pNInz6obpgDQGcFmaJgB`) | dominant, firm: the security chief |
+| CHIEF | Print It - Chief (Voice Design, candidate 2 of 3, picked by Marwan) (`miMOxTjoFH6ibPnOrTEa`) | gruff, older, working-class, unhurried and contemptuous: the security chief (Adam was too recognisable) |
 | DOORMAN | Brian (`nPczCjzI2devNBz1zQrb`) | deep, classy: the doorman on the carpet |
 | GUARD | Chris (`iP95p4xoKVk53GoZ742B`) | down-to-earth: the guard at the rope |
 | BODYGUARD | Harry (`SOYHLrjzK2X1ezoPC6cr`) | rough, fierce: Vance's bodyguard |

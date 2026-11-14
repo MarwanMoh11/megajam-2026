@@ -86,8 +86,13 @@ def main(argv):
     if "--dry-run" in argv or not picked:
         return
     os.makedirs(RAW_DIR, exist_ok=True)
-    before = el_api.subscription()
-    print(f"credits used before: {before['used']} of {before['limit']}")
+    try:
+        before = el_api.subscription()
+    except Exception as e:  # the counter is a report, not a gate
+        before = {"used": None, "limit": None}
+        print(f"credits before: unknown ({e})")
+    else:
+        print(f"credits used before: {before['used']} of {before['limit']}")
     spent_est = 0
     log = open(os.path.join(RAW_DIR, "log.jsonl"), "a")
     for (cat, iid, est, call) in picked:
@@ -108,9 +113,12 @@ def main(argv):
                               "time": time.ctime()}) + "\n")
         log.flush()
         print(f"ok {iid} ({len(data) // 1024} KB, {time.time() - t0:.1f} s)")
-    after = el_api.subscription()
-    print(f"credits used after: {after['used']} of {after['limit']} (this run: {after['used'] - before['used']}, "
-          f"estimated {spent_est})")
+    try:
+        after = el_api.subscription()
+        run = after["used"] - before["used"] if before["used"] is not None else "?"
+        print(f"credits used after: {after['used']} of {after['limit']} (this run: {run}, estimated {spent_est})")
+    except Exception as e:
+        print(f"credits after: unknown ({e}); estimated this run {spent_est}")
 
 
 if __name__ == "__main__":

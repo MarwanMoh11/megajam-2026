@@ -35,12 +35,20 @@ def _request(method, path, body=None, timeout=300):
     req.add_header("xi-api-key", _key())
     if data is not None:
         req.add_header("Content-Type", "application/json")
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            return r.read(), dict(r.headers)
-    except urllib.error.HTTPError as e:
-        detail = e.read()[:400].decode("utf-8", "replace")
-        raise ApiError(f"HTTP {e.code} on {path.split('?')[0]}: {detail}") from None
+    # A connection that never got through (DNS, connect timeout: URLError, not HTTPError) is retried: nothing was
+    # billed. A read timeout (a bare TimeoutError) is not: the server may have done the work.
+    import time
+    for attempt in range(4):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return r.read(), dict(r.headers)
+        except urllib.error.HTTPError as e:
+            detail = e.read()[:400].decode("utf-8", "replace")
+            raise ApiError(f"HTTP {e.code} on {path.split('?')[0]}: {detail}") from None
+        except urllib.error.URLError:
+            if attempt == 3:
+                raise
+            time.sleep(10 * (attempt + 1))
 
 
 def get_json(path):
@@ -78,3 +86,23 @@ def music(prompt, length_ms, output_format="mp3_44100_128", model_id="music_v1")
     body = {"prompt": prompt, "music_length_ms": int(length_ms), "model_id": model_id, "force_instrumental": True}
     raw, _ = _request("POST", f"/v1/music?output_format={output_format}", body, timeout=600)
     return raw
+
+
+def design_voice(description, text, model_id="eleven_multilingual_ttv_v2", guidance_scale=3.5, seed=None,
+                 output_format="mp3_44100_128"):
+    """Voice Design: previews (generated_voice_id, audio bytes) of new voices for a description."""
+    import base64
+    body = {"voice_description": description, "text": text, "model_id": model_id, "guidance_scale": guidance_scale,
+            "loudness": 0.5}
+    if seed is not None:
+        body["seed"] = int(seed)
+    raw, _ = _request("POST", f"/v1/text-to-voice/design?output_format={output_format}", body)
+    d = json.loads(raw)
+    return [(p["generated_voice_id"], base64.b64decode(p["audio_base_64"])) for p in d.get("previews", [])]
+
+
+def save_designed_voice(name, description, generated_voice_id):
+    """Keeps a Voice Design preview as a voice in the account; returns its voice_id."""
+    body = {"voice_name": name, "voice_description": description, "generated_voice_id": generated_voice_id}
+    raw, _ = _request("POST", "/v1/text-to-voice", body)
+    return json.loads(raw)["voice_id"]
