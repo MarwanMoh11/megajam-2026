@@ -4,8 +4,8 @@
 #     "<engine python>" -I tools/ue_mcp.py py tools/build_cast.py
 #
 #   1. guests   every placeholder guest (a grey cylinder and a sphere, Set/Guests) gets a CastMember in its place: a
-#               template mannequin frozen in a pose, costumed from basic shapes (C++ kits in CastMember.cpp), bobbing
-#               on the beat. The cylinder stays, hidden, so its collision is unchanged.
+#               template mannequin frozen in a pose, costumed from basic shapes (C++ kits in CastMember.cpp); some of
+#               them move to the band (the groove). The cylinder stays, hidden, so its collision is unchanged.
 #   2. band     the five band placeholders and their instrument boxes are hidden; the quintet is placed on the riser
 #               with its instruments (singer, trumpet, bass, drums, piano).
 #   3. watchers each PatrolGuard (guards, doorman, Vance, bodyguard) gets a CastMember attached: its mannequin walks
@@ -27,25 +27,40 @@ REPORT = []
 GUEST_TINTS = (0.20, 0.28, 0.35)            # §15.10's three guest values, in rotation
 GUEST_KITS = ("GUEST_TUX", "GUEST_GOWN", "GUEST_TAILS", "GUEST_GOWN_HAT", "GUEST_TUX", "GUEST_GOWN")
 STAFF_AT = ((1200.0, -1700.0), (-2050.0, 1100.0), (-2650.0, 1640.0))   # the bartender, receptionist, cloakroom
-STAND_BOB = (2.5, 3.0)                      # standing guests: dip cm, nod degrees
-SEAT_BOB = (1.5, 2.0)
-BAND_BOB = (5.0, 6.0)
+# The groove (ACastMember's "Groove" properties): only the upper body moves, on smooth curves locked to the beat
+# (deepest on the beat, at rest half a period later), never the whole body. Degrees; periods and phases in beats.
+# The band moves the most, each by instrument. Guests: a small head nod or a weight shift, alternately, and only a
+# share of them moves at all, each with its own phase (some on the off-beat, some at half time) and amplitude.
+GROOVE_BAND = {
+    "BAND_BASS": dict(sway_degrees=4.0, sway_beats=2.0, nod_degrees=3.0),                       # sways
+    "BAND_DRUMS": dict(nod_degrees=7.0, rock_degrees=1.5, rock_beats=2.0),                      # nods
+    "BAND_TRUMPET": dict(rock_degrees=5.0, rock_beats=4.0, nod_degrees=1.5),                    # dips on each bar
+    "BAND_PIANO": dict(rock_degrees=3.0, rock_beats=2.0, nod_degrees=2.0, phase_beats=1.0),     # rocks on 2 and 4
+    "BAND_SINGER": dict(sway_degrees=3.0, sway_beats=4.0, nod_degrees=1.5, nod_beats=2.0),
+}
+GUEST_CROWD = dict(move_chance=0.35, offbeat_chance=0.3, half_time_chance=0.5, phase_spread_beats=0.2, amp_spread=0.6)
+GUEST_NOD = dict(nod_degrees=3.0, nod_beats=1.0)            # every other guest: a head nod...
+GUEST_SHIFT = dict(sway_degrees=1.5, sway_beats=4.0)        # ...or a weight shift over a bar
 SEATED_DROP = 86.0                          # a seated body sits this far below the seat's top (hips at the seat)
 SEATED_TIME = 0.0                           # the idle frame it is bent from, at the hips and knees (CastMember)
 BAND_TINT = 0.04
 GUEST_DRAW = 3500.0                         # guests (and their pieces) are not drawn beyond this, cm
 BAND_DRAW = 6000.0
-# Guests and the band cast no shadow: a body that bobs would redraw every shadow-casting key's cached shadow each
+# Guests and the band cast no shadow: a body that moves would redraw every shadow-casting key's cached shadow each
 # frame (it cost 1.4-3.3 ms of GPU time with shadows on). The watchers and the crew keep theirs.
 RISER_Z = 30.0                              # the band riser's top
 BAND = (                                    # kit, x, y, z (seat top when seated), yaw, seated
-    ("BAND_SINGER", 3725.0, 1365.0, RISER_Z, -90.0, False),
-    ("BAND_TRUMPET", 3800.0, 1385.0, RISER_Z, -110.0, False),
-    ("BAND_BASS", 3665.0, 1455.0, RISER_Z, -120.0, False),
-    ("BAND_DRUMS", 3740.0, 1550.0, RISER_Z + 50.0, -90.0, True),
-    ("BAND_PIANO", 3885.0, 1460.0, RISER_Z + 50.0, 180.0, True),
+    # Laid out across the riser as the hall floor sees it (from the west-north-west, the side aisles and the rope), so
+    # no player stands in another's line of sight: the drums at the back facing the room, the upright piano against
+    # the riser's east edge with the pianist's back to the room, the singer, trumpet and bass in front.
+    ("BAND_SINGER", 3676.0, 1365.0, RISER_Z, -140.0, False),
+    ("BAND_TRUMPET", 3671.0, 1502.0, RISER_Z, -130.0, False),
+    ("BAND_BASS", 3693.0, 1571.0, RISER_Z, -150.0, False),
+    ("BAND_DRUMS", 3811.0, 1561.0, RISER_Z + 50.0, -140.0, True),
+    ("BAND_PIANO", 3830.0, 1420.0, RISER_Z + 50.0, 0.0, True),
 )
 BAND_LIGHT = (3780.0, 1440.0, 620.0, 300.0)  # x, y, z, candelas
+BAND_RIM = (3905.0, 1585.0, 430.0, -140.0, -32.0, 250.0)  # x, y, z, yaw, pitch, candelas: behind the band, at the hall
 TRUMPET_POSE = "/Game/Characters/Mannequins/Anims/Pistol/MF_Pistol_Idle_ADS"
 BODYGUARD_SCALE = 1.1
 FX_DIR = "/Game/Take/FX"
@@ -55,7 +70,9 @@ FX = {                                      # our system: the engine template it
     "NS_Take_Glass": "/Niagara/DefaultAssets/Templates/Systems/RadialBurst",
 }
 DAIS_H = 20.0
-PYRO_CHARGES = [(3670.0, y, DAIS_H) for y in (-900.0, -450.0, 0.0, 450.0, 900.0)]
+# The four charges the dressing stands on the dais lip (tools/dress_auction.py): none at the aisle, Julian's way onto
+# the dais, 30 cm from the dais mark.
+PYRO_CHARGES = [(3670.0, y, DAIS_H) for y in (-900.0, -450.0, 450.0, 900.0)]
 PA_TOPS = [(4130.0, 1250.0, 240.0), (4225.0, 1250.0, 240.0)]
 FX_SCALE = {"pyro": 0.35, "glass": 0.5, "sparks": 0.5}
 
@@ -78,7 +95,7 @@ def hide(a):
         c.set_editor_property("visible", False)
 
 
-def spawn_member(k, x, y, z, yaw, tint, seated=False, bob=STAND_BOB, name=None, **props):
+def spawn_member(k, x, y, z, yaw, tint, seated=False, groove=None, name=None, **props):
     m = EAS.spawn_actor_from_class(unreal.CastMember, unreal.Vector(x, y, z), unreal.Rotator(0.0, 0.0, yaw))
     m.set_actor_label(name or ("Cast_" + k.title().replace("_", "")))
     m.set_folder_path("Cast")
@@ -87,8 +104,8 @@ def spawn_member(k, x, y, z, yaw, tint, seated=False, bob=STAND_BOB, name=None, 
     m.set_editor_property("seated", seated)
     m.set_editor_property("seated_drop", SEATED_DROP)
     m.set_editor_property("seated_time", SEATED_TIME)
-    m.set_editor_property("bob_depth", bob[0])
-    m.set_editor_property("bob_nod", bob[1])
+    for key, val in (groove or {}).items():
+        m.set_editor_property(key, val)
     draw = props.pop("draw_distance", 0.0)
     for key, val in props.items():
         m.set_editor_property(key, val)
@@ -99,7 +116,7 @@ def spawn_member(k, x, y, z, yaw, tint, seated=False, bob=STAND_BOB, name=None, 
 
 # --- 0. remove what an earlier run placed ------------------------------------------------------------------------------
 for a in all_actors():
-    if isinstance(a, (unreal.CastMember, unreal.TakeFX)) or label(a) == "Cast_Band_Light":
+    if isinstance(a, (unreal.CastMember, unreal.TakeFX)) or label(a) in ("Cast_Band_Light", "Cast_Band_Rim"):
         a.destroy_actor()
 
 # --- 1. guests ---------------------------------------------------------------------------------------------------------
@@ -116,7 +133,8 @@ for i, b in enumerate(bodies):
     staff = any(abs(x - sx) < 30.0 and abs(y - sy) < 30.0 for sx, sy in STAFF_AT)
     k = "STAFF" if staff else GUEST_KITS[i % len(GUEST_KITS)]
     tint = GUEST_TINTS[(i * 7) % 3]
-    spawn_member(k, x, y, z0, yaw, tint, seated=seated, bob=SEAT_BOB if seated else STAND_BOB,
+    groove = {} if staff else dict(GUEST_CROWD, **(GUEST_NOD if i % 2 == 0 else GUEST_SHIFT))
+    spawn_member(k, x, y, z0, yaw, tint, seated=seated, groove=groove,
                  name="Cast_Guest_%03d" % i, pose_time=(i * 1.37) % 7.0, body_shadow=False,
                  draw_distance=GUEST_DRAW)
     hide(b)
@@ -136,8 +154,8 @@ for a in all_actors():
 trumpet_pose = EAL.load_asset(TRUMPET_POSE)
 for (k, x, y, z, yaw, seated) in BAND:
     extra = {"pose_anim": trumpet_pose, "pose_time": 0.0} if k == "BAND_TRUMPET" else {}
-    spawn_member(k, x, y, z, yaw, BAND_TINT, seated=seated, bob=BAND_BOB, name="Cast_" + k.title().replace("_", ""),
-                 bob_sharpness=4.0, body_shadow=False, draw_distance=BAND_DRAW, **extra)
+    spawn_member(k, x, y, z, yaw, BAND_TINT, seated=seated, groove=GROOVE_BAND[k], name="Cast_" + k.title().replace("_", ""),
+                 body_shadow=False, draw_distance=BAND_DRAW, **extra)
 # A dim key over the riser, so the dark suits and instruments read as shapes on the film (no shadows: cheap).
 bl = EAS.spawn_actor_from_class(unreal.SpotLight, unreal.Vector(BAND_LIGHT[0], BAND_LIGHT[1], BAND_LIGHT[2]),
                                 unreal.Rotator(0.0, -90.0, 0.0))
@@ -152,6 +170,21 @@ lc.set_editor_property("inner_cone_angle", 20.0)
 lc.set_editor_property("attenuation_radius", 900.0)
 lc.set_editor_property("cast_shadows", False)
 lc.set_editor_property("mobility", unreal.ComponentMobility.MOVABLE)
+# A cool rim from behind the riser toward the hall: the noir backlight that cuts the dark suits, the drum kit and the
+# piano's edges out of the black wall behind them (no shadows: cheap).
+rl = EAS.spawn_actor_from_class(unreal.SpotLight, unreal.Vector(BAND_RIM[0], BAND_RIM[1], BAND_RIM[2]),
+                                unreal.Rotator(0.0, BAND_RIM[4], BAND_RIM[3]))
+rl.set_actor_label("Cast_Band_Rim")
+rl.set_folder_path("Cast")
+rc = rl.spot_light_component
+rc.set_editor_property("intensity_units", unreal.LightUnits.CANDELAS)
+rc.set_intensity(BAND_RIM[5])
+rc.set_light_color(unreal.LinearColor(0.55, 0.70, 1.0, 1.0))
+rc.set_editor_property("outer_cone_angle", 30.0)
+rc.set_editor_property("inner_cone_angle", 16.0)
+rc.set_editor_property("attenuation_radius", 700.0)
+rc.set_editor_property("cast_shadows", False)
+rc.set_editor_property("mobility", unreal.ComponentMobility.MOVABLE)
 REPORT.append("band 5 (hid %d placeholders)" % hidden_band)
 
 # --- 3. watchers -------------------------------------------------------------------------------------------------------
@@ -163,7 +196,7 @@ for g in all_actors():
     k = "VANCE" if "vance" in lb else "BODYGUARD" if "bodyguard" in lb else "DOORMAN" if "doorman" in lb else "GUARD"
     t = g.get_editor_property("body_tint")
     loc, rot = g.get_actor_location(), g.get_actor_rotation()
-    m = spawn_member(k, loc.x, loc.y, loc.z, rot.yaw, t.r, bob=(0.0, 0.0), name="Cast_" + label(g),
+    m = spawn_member(k, loc.x, loc.y, loc.z, rot.yaw, t.r, name="Cast_" + label(g),
                      body_scale=BODYGUARD_SCALE if k == "BODYGUARD" else 1.0)
     m.set_editor_property("tint", t)
     m.attach_to_actor(g, "", unreal.AttachmentRule.KEEP_WORLD, unreal.AttachmentRule.KEEP_WORLD,
@@ -180,7 +213,7 @@ for c in all_actors():
     if not k:
         continue
     loc = c.get_actor_location()
-    m = spawn_member(k, loc.x, loc.y, loc.z, c.get_actor_rotation().yaw, 0.5, bob=(0.0, 0.0), name="Cast_" + label(c))
+    m = spawn_member(k, loc.x, loc.y, loc.z, c.get_actor_rotation().yaw, 0.5, name="Cast_" + label(c))
     m.attach_to_actor(c, "", unreal.AttachmentRule.KEEP_WORLD, unreal.AttachmentRule.KEEP_WORLD,
                       unreal.AttachmentRule.KEEP_WORLD, False)
     REPORT.append("crew %s" % label(c))

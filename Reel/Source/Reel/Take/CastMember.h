@@ -2,7 +2,8 @@
 //
 // Three ways to use it (tools/build_cast.py places them all):
 // - A posed guest or a band player: its own mannequin (Body), frozen in one pose of a template animation, with
-//   costume pieces and an instrument attached to its bones, bobbing on the band's beat (the bar clock's phase).
+//   costume pieces and an instrument attached to its bones (or standing on the floor), moving its upper body to the
+//   band (the groove: on the bar clock's beat, see "Groove" below).
 // - Attached to a watcher (a PatrolGuard: the guards, the doorman, Vance, the bodyguard): its own mannequin replaces
 //   the grey cylinder (hidden at BeginPlay, its collision kept), and walks on the template's idle/walk blend space
 //   at the speed the watcher moves.
@@ -109,21 +110,53 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Cast|Pose")
 	TObjectPtr<UAnimationAsset> WalkBlendSpace;
 
-	/** The bob on the beat: the body dips this far (cm) on each beat line and settles within the beat. 0 = none. */
-	UPROPERTY(EditAnywhere, Category = "Take|Cast|Bob")
-	float BobDepth = 2.5f;
+	// The groove (the bob on the beat): only the upper body moves (spine, neck, head on a poseable copy of the body),
+	// never the whole mesh, on smooth cosine curves locked to the bar clock. Each curve is at its deepest on the beat's
+	// frame (offset by the member's phase) and back at rest half a period later. tools/build_cast.py sets these per
+	// role: the band most, each by instrument; guests a small nod or a weight shift, and many not at all.
 
-	/** ...and nods forward this far (degrees) with it. */
-	UPROPERTY(EditAnywhere, Category = "Take|Cast|Bob")
-	float BobNod = 2.f;
+	/** The chance (0-1) that this member moves at all, drawn once from its name (stable across runs). */
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Groove", meta = (ClampMin = "0", ClampMax = "1"))
+	float MoveChance = 1.f;
 
-	/** The dip's fall-off through the beat: (1 - phase)^BobSharpness. */
-	UPROPERTY(EditAnywhere, Category = "Take|Cast|Bob")
-	float BobSharpness = 3.f;
+	/** The nod: neck and head forward, deepest on the beat; NodBeats is its period in beats (2 = half time). */
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Groove")
+	float NodDegrees = 0.f;
 
-	/** Bob only on every Nth beat (1 = every beat, 2 = beats 1 and 3). */
-	UPROPERTY(EditAnywhere, Category = "Take|Cast|Bob")
-	int32 BobEveryBeats = 1;
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Groove")
+	float NodBeats = 1.f;
+
+	/** The rock: the spine leaning forward and back (a dip on the phrase with RockBeats 4: a bar). */
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Groove")
+	float RockDegrees = 0.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Groove")
+	float RockBeats = 2.f;
+
+	/** The sway: the spine leaning side to side over SwayBeats (one side on the beat), the head kept level. */
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Groove")
+	float SwayDegrees = 0.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Groove")
+	float SwayBeats = 2.f;
+
+	/** The member's own offset in beats (0.5 = on the off-beat). */
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Groove")
+	float PhaseBeats = 0.f;
+
+	/** Drawn from the name: the chance of moving on the off-beat instead, of nodding at half time, a timing spread
+	 *  (beats, evenly around the phase) and how much smaller than the full amplitude it may be (0-1). */
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Groove", meta = (ClampMin = "0", ClampMax = "1"))
+	float OffbeatChance = 0.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Groove", meta = (ClampMin = "0", ClampMax = "1"))
+	float HalfTimeChance = 0.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Groove")
+	float PhaseSpreadBeats = 0.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Groove", meta = (ClampMin = "0", ClampMax = "1"))
+	float AmpSpread = 0.f;
 
 	/** The body casts a shadow (the pieces never do). */
 	UPROPERTY(EditAnywhere, Category = "Take|Cast")
@@ -171,7 +204,13 @@ private:
 	/** Hides a watcher parent's grey stand-in (Body, Cap) without touching its collision. */
 	void HideParentStandIn();
 
-	void TickBob();
+	/** The frame the frozen pose is on the bones: seated or moving members go onto the poseable copy. */
+	void Freeze();
+
+	/** Draws the groove from the name: moves or not, its phase, half time, its amplitude. */
+	void SetupGroove();
+
+	void TickGroove();
 	void TickWalk(float DeltaSeconds);
 	void TickBow(float DeltaSeconds);
 	void ApplyBowPose(float Alpha);
@@ -186,8 +225,8 @@ private:
 	/** Moves the pieces onto Target's bones (the poseable copy or back to the wearer). */
 	void ReattachPieces(USceneComponent* Target);
 
-	/** Seated: the frozen standing pose copied to PoseMesh and bent at the hips and knees; Body hidden. */
-	void MakeSeated();
+	/** The frozen pose copied to PoseMesh (seated: bent at the hips and knees); Body hidden. */
+	void MakePosed();
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UStaticMeshComponent>> Pieces;
@@ -200,13 +239,28 @@ private:
 
 	bool bDressParent = false;
 	bool bWalker = false;
-	bool bSeatedPosed = false;
+	bool bPosed = false;		// shown on the poseable copy (seated, or moving to the band)
 	int32 FramesAlive = 0;
-	FVector BodyBaseLocation = FVector::ZeroVector;
-	FRotator BodyBaseRotation = FRotator::ZeroRotator;
 	FVector LastParentLocation = FVector::ZeroVector;
 	float WalkSpeedSmoothed = 0.f;
-	float LastDip = 1.f;
+
+	/** One bone the groove turns: its rest rotation (parent space), the nod and roll axes in parent space, and its
+	 *  share of each curve. */
+	struct FGrooveBone
+	{
+		int32 Index = INDEX_NONE;
+		FQuat Rest = FQuat::Identity;
+		FVector NodAxis = FVector::ZeroVector;
+		FVector RollAxis = FVector::ZeroVector;
+		float Nod = 0.f;
+		float Rock = 0.f;
+		float Sway = 0.f;
+	};
+	TArray<FGrooveBone> GrooveBones;
+	bool bGrooves = false;
+	float GroovePhase = 0.f;
+	float GrooveNodBeats = 1.f;
+	float GrooveScale = 1.f;
 	bool bBowFiredLast = false;
 	float BowTime = -1.f;
 	float BowCancelAlpha = 1.f;

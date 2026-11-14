@@ -12,6 +12,7 @@
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Misc/Crc.h"
 #include "TakeDirector.h"
 #include "TakeShapes.h"
 #include "TakeTypes.h"
@@ -21,7 +22,8 @@
 namespace CastKits
 {
 	/** One costume piece: a basic shape on a bone, placed in the body's frame (X forward, Y right, Z up, cm) relative
-	 *  to the bone's reference-pose position (NAME_None: the mesh's origin, between the feet), sized in cm. */
+	 *  to the bone's reference-pose position (NAME_None: the actor's location, a standing member's feet or a seated
+	 *  one's seat top; the piece then stands still on the actor's root), sized in cm. */
 	struct FPiece
 	{
 		ETakeShape Shape;
@@ -203,6 +205,17 @@ namespace CastKits
 		return MID;
 	}
 
+	/** A stable number in [0, 1) from a seed and a salt (a hash finaliser, so the draws are independent). */
+	float Draw(uint32 Seed, uint32 Salt)
+	{
+		uint32 X = Seed + Salt * 0x9E3779B9u;
+		X ^= X >> 16; X *= 0x85EBCA6Bu; X ^= X >> 13; X *= 0xC2B2AE35u; X ^= X >> 16;
+		return float(X >> 8) / 16777216.f;
+	}
+
+	/** PieceBones' mark for a piece on the actor's root (it never moves to the poseable copy). */
+	const FName RootPiece(TEXT("__Root"));
+
 	bool IsQuinnKit(ECastKit Kit)
 	{
 		return Kit == ECastKit::GuestGown || Kit == ECastKit::GuestGownHat || Kit == ECastKit::BandSinger;
@@ -275,8 +288,6 @@ void ACastMember::BeginPlay()
 		HideParentStandIn();
 		LastParentLocation = GetAttachParentActor()->GetActorLocation();
 	}
-	BodyBaseLocation = Body->GetRelativeLocation();
-	BodyBaseRotation = Body->GetRelativeRotation();
 	bBowFiredLast = false;
 	BowTime = -1.f;
 }
@@ -364,6 +375,11 @@ void ACastMember::BuildPieces(bool bTransient)
 	CastKits::Build(Kit, Tint, Defs);
 
 	const FQuat MeshFromBody(FRotator(0.f, 90.f, 0.f));		// body X (forward) -> mesh +Y, body Y (right) -> mesh -X
+	// A piece on no bone stands on the floor (an instrument, a stand, a stool, the cane): on our own body it goes on the
+	// actor's root, so the bob and the seated pose never move it. It is placed from the actor's own location (a seated
+	// member's seat top, a standing one's feet), not the seated body's origin SeatedDrop below the seat.
+	FTransform BodyRest = Wearer->GetRelativeTransform();
+	BodyRest.SetLocation(FVector::ZeroVector);
 	for (const CastKits::FPiece& Def : Defs)
 	{
 		const FName Bone = Def.Bone ? FName(Def.Bone) : NAME_None;
@@ -395,12 +411,13 @@ void ACastMember::BuildPieces(bool bTransient)
 			Comp->LDMaxDrawDistance = Wearer->LDMaxDrawDistance;
 			Comp->SetCachedMaxDrawDistance(Wearer->LDMaxDrawDistance);
 		}
-		Comp->SetupAttachment(Wearer, Bone);
-		Comp->SetRelativeTransform(Rel);
+		const bool bOnRoot = Bone == NAME_None && !bDressParent;
+		Comp->SetupAttachment(bOnRoot ? static_cast<USceneComponent*>(Root.Get()) : static_cast<USceneComponent*>(Wearer), Bone);
+		Comp->SetRelativeTransform(bOnRoot ? Rel * BodyRest : Rel);
 		Comp->SetMaterial(0, CastKits::SharedColour(Def.Colour));
 		Comp->RegisterComponent();
 		Pieces.Add(Comp);
-		PieceBones.Add(Bone);
+		PieceBones.Add(bOnRoot ? CastKits::RootPiece : Bone);
 	}
 }
 
@@ -437,36 +454,89 @@ void ACastMember::Tick(float DeltaSeconds)
 		TickWalk(DeltaSeconds);
 		return;
 	}
-	// A frozen pose needs no animation once it is on the bones; a seated one is then bent on its poseable copy.
+	// A frozen pose needs no animation once it is on the bones.
 	if (FramesAlive == 3)
 	{
-		if (bSeated)
-		{
-			MakeSeated();
-		}
-		Body->SetComponentTickEnabled(false);
+		Freeze();
 	}
 	// With its tick off a frozen body no longer picks its LOD: do it here, refreshing the bones only on a change.
 	if (FramesAlive > 3)
 	{
-		USkinnedMeshComponent* Shown = bSeatedPosed ? static_cast<USkinnedMeshComponent*>(PoseMesh.Get()) : static_cast<USkinnedMeshComponent*>(Body.Get());
-		if (Shown && Shown->UpdateLODStatus())
+		USkinnedMeshComponent* Shown = bPosed ? static_cast<USkinnedMeshComponent*>(PoseMesh.Get()) : static_cast<USkinnedMeshComponent*>(Body.Get());
+		if (Shown && Shown->UpdateLODStatus() && !bGrooves)
 		{
 			Shown->RefreshBoneTransforms();
 		}
+		TickGroove();
 	}
-	TickBob();
 }
 
-void ACastMember::TickBob()
+void ACastMember::SetupGroove()
 {
-	if (BobDepth <= 0.f && BobNod == 0.f)
+	const uint32 Seed = FCrc::StrCrc32(*GetFName().ToString());
+	const bool bHasCurve = NodDegrees != 0.f || RockDegrees != 0.f || SwayDegrees != 0.f;
+	bGrooves = !bDressParent && !bWalker && bHasCurve && CastKits::Draw(Seed, 1) < MoveChance;
+	GroovePhase = PhaseBeats + (CastKits::Draw(Seed, 2) < OffbeatChance ? 0.5f : 0.f) + (CastKits::Draw(Seed, 3) - 0.5f) * PhaseSpreadBeats;
+	GrooveNodBeats = FMath::Max(NodBeats, 0.25f) * (CastKits::Draw(Seed, 4) < HalfTimeChance ? 2.f : 1.f);
+	GrooveScale = 1.f - AmpSpread * CastKits::Draw(Seed, 5);
+}
+
+void ACastMember::Freeze()
+{
+	SetupGroove();
+	// A seated member, or one that moves, goes onto the poseable copy; one that stands still keeps its frozen body.
+	if (bSeated || bGrooves)
 	{
+		MakePosed();
+	}
+	Body->SetComponentTickEnabled(false);
+	GrooveBones.Reset();
+	if (!bGrooves || !bPosed || !PoseMesh)
+	{
+		bGrooves = false;
 		return;
 	}
-	USceneComponent* Shown = bSeatedPosed ? static_cast<USceneComponent*>(PoseMesh.Get()) : static_cast<USceneComponent*>(Body.Get());
-	const UPrimitiveComponent* ShownPrim = Cast<UPrimitiveComponent>(Shown);
-	if (!ShownPrim || !ShownPrim->WasRecentlyRendered(0.25f))
+	// Each driven bone's share of the nod, the rock and the sway (they add up to 1 along each chain); the head turns
+	// back against the sway so the eyes stay level.
+	struct FShare { const TCHAR* Bone; float Nod; float Rock; float Sway; };
+	const FShare Shares[] = {
+		{TEXT("spine_01"), 0.f, 0.f, 0.5f},
+		{TEXT("spine_02"), 0.f, 0.35f, 0.f},
+		{TEXT("spine_03"), 0.f, 0.35f, 0.5f},
+		{TEXT("spine_04"), 0.f, 0.30f, 0.f},
+		{TEXT("neck_01"), 0.4f, 0.f, 0.f},
+		{TEXT("head"), 0.6f, 0.f, -0.4f},
+	};
+	const FReferenceSkeleton& Ref = PoseMesh->GetSkinnedAsset()->GetRefSkeleton();
+	for (const FShare& Share : Shares)
+	{
+		const int32 Index = PoseMesh->GetBoneIndex(FName(Share.Bone));
+		if (Index == INDEX_NONE || !PoseMesh->BoneSpaceTransforms.IsValidIndex(Index))
+		{
+			continue;
+		}
+		// The nod (about -X: forward is +Y in mesh space) and the roll (about +Y) are component-space axes; each bone
+		// turns about them in its parent's space, taken at rest (the angles are small).
+		const int32 Parent = Ref.GetParentIndex(Index);
+		const FQuat ParentCS = Parent != INDEX_NONE
+			? PoseMesh->GetBoneTransformByName(Ref.GetBoneName(Parent), EBoneSpaces::ComponentSpace).GetRotation()
+			: FQuat::Identity;
+		FGrooveBone Bone;
+		Bone.Index = Index;
+		Bone.Rest = PoseMesh->BoneSpaceTransforms[Index].GetRotation();
+		Bone.NodAxis = ParentCS.Inverse().RotateVector(FVector(-1.f, 0.f, 0.f));
+		Bone.RollAxis = ParentCS.Inverse().RotateVector(FVector(0.f, 1.f, 0.f));
+		Bone.Nod = Share.Nod;
+		Bone.Rock = Share.Rock;
+		Bone.Sway = Share.Sway;
+		GrooveBones.Add(Bone);
+	}
+	bGrooves = GrooveBones.Num() > 0;
+}
+
+void ACastMember::TickGroove()
+{
+	if (!bGrooves || !PoseMesh || !PoseMesh->WasRecentlyRendered(0.25f))
 	{
 		return;
 	}
@@ -476,25 +546,19 @@ void ACastMember::TickBob()
 	{
 		return;
 	}
-	const double Beats = Clock->GetTotalBeats();
-	const int64 BeatIndex = FMath::FloorToInt64(Beats);
-	float Dip = FMath::Pow(1.f - FMath::Clamp(float(Beats - double(BeatIndex)), 0.f, 1.f), FMath::Max(BobSharpness, 0.1f));
-	if (BobEveryBeats > 1 && (BeatIndex % BobEveryBeats) != 0)
+	// Smooth cosine curves on the clock, never an impulse: 1 (deepest) on the beat's frame, 0 half a period later.
+	const double Beats = Clock->GetTotalBeats() - double(GroovePhase);
+	auto Wave = [Beats](float PeriodBeats) { return float(FMath::Cos(UE_DOUBLE_TWO_PI * Beats / double(FMath::Max(PeriodBeats, 0.25f)))); };
+	const float Nod = NodDegrees * GrooveScale * (0.5f + 0.5f * Wave(GrooveNodBeats));
+	const float Rock = RockDegrees * GrooveScale * (0.5f + 0.5f * Wave(RockBeats));
+	const float Sway = SwayDegrees * GrooveScale * Wave(SwayBeats);
+	for (const FGrooveBone& Bone : GrooveBones)
 	{
-		Dip = 0.f;
+		const float Pitch = FMath::DegreesToRadians(Bone.Nod * Nod + Bone.Rock * Rock);
+		const float Roll = FMath::DegreesToRadians(Bone.Sway * Sway);
+		PoseMesh->BoneSpaceTransforms[Bone.Index].SetRotation(FQuat(Bone.NodAxis, Pitch) * FQuat(Bone.RollAxis, Roll) * Bone.Rest);
 	}
-	// Most of a beat is at rest: move the body (and every piece on it) only while it dips or settles.
-	if (Dip < 0.01f)
-	{
-		Dip = 0.f;
-		if (LastDip == 0.f)
-		{
-			return;
-		}
-	}
-	LastDip = Dip;
-	const FQuat Nod(FRotator(-BobNod * Dip, 0.f, 0.f));
-	Shown->SetRelativeLocationAndRotation(BodyBaseLocation - FVector(0.f, 0.f, BobDepth * Dip), Nod * FQuat(BodyBaseRotation));
+	PoseMesh->RefreshBoneTransforms();
 }
 
 void ACastMember::TickWalk(float DeltaSeconds)
@@ -665,14 +729,14 @@ void ACastMember::ReattachPieces(USceneComponent* Target)
 	}
 	for (int32 i = 0; i < Pieces.Num(); ++i)
 	{
-		if (Pieces[i])
+		if (Pieces[i] && PieceBones[i] != CastKits::RootPiece)
 		{
 			Pieces[i]->AttachToComponent(Target, FAttachmentTransformRules::KeepRelativeTransform, PieceBones[i]);
 		}
 	}
 }
 
-void ACastMember::MakeSeated()
+void ACastMember::MakePosed()
 {
 	EnsurePoseMesh(Body);
 	if (!PoseMesh)
@@ -680,15 +744,18 @@ void ACastMember::MakeSeated()
 		return;
 	}
 	PoseMesh->CopyPoseFromSkeletalComponent(Body);
-	// Mesh space (forward +Y): a turn about +X swings a hanging thigh forward; the knee turns the shin back down.
-	const FVector Swing(1.f, 0.f, 0.f);
-	BendBone(TEXT("thigh_l"), Swing, SeatedHipDegrees);
-	BendBone(TEXT("thigh_r"), Swing, SeatedHipDegrees);
-	BendBone(TEXT("calf_l"), Swing, -SeatedKneeDegrees);
-	BendBone(TEXT("calf_r"), Swing, -SeatedKneeDegrees);
+	if (bSeated)
+	{
+		// Mesh space (forward +Y): a turn about +X swings a hanging thigh forward; the knee turns the shin back down.
+		const FVector Swing(1.f, 0.f, 0.f);
+		BendBone(TEXT("thigh_l"), Swing, SeatedHipDegrees);
+		BendBone(TEXT("thigh_r"), Swing, SeatedHipDegrees);
+		BendBone(TEXT("calf_l"), Swing, -SeatedKneeDegrees);
+		BendBone(TEXT("calf_r"), Swing, -SeatedKneeDegrees);
+	}
 	PoseMesh->RefreshBoneTransforms();
 	ReattachPieces(PoseMesh);
 	PoseMesh->SetVisibility(true);
 	Body->SetVisibility(false);
-	bSeatedPosed = true;
+	bPosed = true;
 }
