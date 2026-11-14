@@ -15,8 +15,8 @@ class UPointLightComponent;
  *
  * Fired: it lands on the same frame (like the sound desk): Blind for Duration (6 s) on every watcher within Range
  * of the effect point. From that frame and for Duration: a gold flare stands at each of FlareOffsets (cones or
- * spheres made at BeginPlay with FTakeShapes::AddShapeAtRuntime, hidden until fired, flickering in size with the
- * clock's pulse or a sine), FlareLight burns gold at the effect point, and the board's body goes white. The clock
+ * spheres made at BeginPlay with FTakeShapes::AddShapeAtRuntime, hidden until fired, flickering in size on their own
+ * sine, never on the beat), FlareLight burns gold at the effect point, and the board's body goes white. The clock
  * crackles (UBarClockComponent::PlayCrackle). When Duration ends the flares and the light go out for good.
  */
 UCLASS()

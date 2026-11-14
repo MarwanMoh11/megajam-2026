@@ -713,3 +713,28 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   feedback (the bob, the one-prop rule) needed its turn stopped first. The one-prop rule still arrived late: Rodin's
   API was fast and seven props were already made (0.5 credits each); Marwan judged them good. Rodin's API refused its
   high tier ("no active subscription" for API use), so the props are Gen-2.5-Low.
+
+## Nov 15, 00:35-02:00 Cairo: step 5, the band and the bob, then no bob at all (Marwan's call)
+- **What changed:** the band now reads from the hall floor. The drums' and the piano's floor pieces had been placed
+  from the seated body's origin, 86 cm under the seat, so the stool, bass drum, snare, bench and most of the piano sat
+  inside the riser; floor pieces now stand on the actor, never moving with the body. The quintet is laid out across
+  the riser as the floor sees it (drums at the back facing the room, the upright against the east edge with the
+  pianist's back to the room), with a cool rim light behind it and lighter keys. The pyro lost its burst at the aisle
+  (no charge stands there; it was 30 cm from the dais mark), so no burst covers a mark on Julian's paths.
+- **The bob, twice, then gone.** Marwan watched the first version: "all the characters are moving jarringly with the
+  beat like jolting forward the whole model all together, feels unnatural and weird". It was rebuilt from the upper
+  body only (spine, neck, head on smooth curves, each player by instrument, a third of the guests). Then his call:
+  "remove the beat thing its dumb just make it like a stealth hitman game normal and use the band as warnings and
+  stuff like that its fine and cool". Built: nothing moves with the beat. Standing guests, staff and the standing band
+  play the template idle looped, each from its own start and at its own rate (0.9-1.1), so no two breathe together;
+  seated guests and the drums and piano are still; the groove code is deleted. The pyro's flares lost their beat
+  swell too (their own wobble stays; the flare light is steady). The band stays the clock and the warnings.
+- **What the agents did:** one Opus session rebuilt the band, the groove and then the idle, shooting frame bursts
+  across beats and diffing them to show what moved; the orchestrator relayed Marwan's notes.
+- **What went wrong:** play-in-editor sessions were torn down a second after starting several times, and the editor
+  was quit at 01:33 Cairo, neither through MCP (someone at the PC, or another session); two scripted runs and the
+  first t_fail retry were lost to it.
+- **Proof so far:** after the idle change the scripted tests end as in step 4: t_full ROUGH CUT by the trap (bar
+  82.4), t_s3 ROUGH CUT, t_s3b DIRECTOR'S CUT by the side exit with The Bow (logs `C:\Jam\Builds\step5_t_*.log`);
+  t_fail still to re-run. Idle check: `C:\Jam\Builds\s5\idle_band_strip.png`, `idle_queue_close.png`,
+  `idle_queue_moved.png`.

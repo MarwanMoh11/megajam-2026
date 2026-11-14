@@ -34,19 +34,17 @@ namespace TakePyroLocal
 	/** FlareLight's reach, cm: the whole dais and the wings around it. */
 	constexpr float FlareAttenuationRadius = 2500.f;
 
-	/** A flare's height swells by up to this share on the beat (the clock's pulse)... */
-	constexpr float FlickerPulse = 0.25f;
-
-	/** ...and wobbles by this share on its own fast sine (each flare a little out of step with the next). */
+	/** A flare's height wobbles by this share on its own fast sine (each flare a little out of step with the next).
+	 *  Nothing on the set moves with the band's beat (Marwan, Nov 15). */
 	constexpr float FlickerWobble = 0.12f;
 	constexpr float FlickerSpeed = 23.f;
 	constexpr float FlickerStep = 1.7f;
 
-	/** The flare's height scale at RunSeconds for flare Index, with the clock's pulse. */
-	float FlareFlicker(float RunSeconds, int32 Index, float Pulse)
+	/** The flare's height scale at RunSeconds for flare Index. */
+	float FlareFlicker(float RunSeconds, int32 Index)
 	{
 		const float Wobble = FMath::Sin(RunSeconds * FlickerSpeed + static_cast<float>(Index) * FlickerStep);
-		return FMath::Max(0.2f, 1.f + FlickerPulse * Pulse + FlickerWobble * Wobble);
+		return FMath::Max(0.2f, 1.f + FlickerWobble * Wobble);
 	}
 }
 
@@ -172,10 +170,7 @@ void APyroDevice::StepDevice(float DeltaSeconds)
 		return;
 	}
 
-	// Burning: each flare's height flickers with the beat and its own sine, foot fixed on its offset.
-	const ATakeDirector* Director = ATakeDirector::Get(this);
-	const UBarClockComponent* Clock = Director ? Director->Clock.Get() : nullptr;
-	const float Pulse = Clock ? Clock->GetPulse() : 0.f;
+	// Burning: each flare's height flickers on its own sine, foot fixed on its offset.
 	const float Tall = FMath::Max(FlareSize.Y, 1.f);
 	const float Across = FMath::Max(FlareSize.X, 1.f);
 	for (int32 Index = 0; Index < Flares.Num(); ++Index)
@@ -185,14 +180,14 @@ void APyroDevice::StepDevice(float DeltaSeconds)
 		{
 			continue;
 		}
-		const float Flicker = TakePyroLocal::FlareFlicker(RunSeconds, Index, Pulse);
+		const float Flicker = TakePyroLocal::FlareFlicker(RunSeconds, Index);
 		const FVector Offset = FlareOffsets.IsValidIndex(Index) ? FlareOffsets[Index] : FVector::ZeroVector;
 		Flare->SetRelativeLocation(Offset + FVector(0.f, 0.f, Tall * Flicker * 0.5f));
 		Flare->SetRelativeScale3D(FVector(Across / 100.f, Across / 100.f, Tall * Flicker / 100.f));
 	}
 	if (FlareLight)
 	{
-		FlareLight->SetIntensity(FlareCandelas * (0.85f + 0.3f * Pulse));
+		FlareLight->SetIntensity(FlareCandelas);
 	}
 }
 
