@@ -7,6 +7,7 @@
 #include "DroneWatcher.generated.h"
 
 class APatrolPoint;
+class USpotLightComponent;
 
 /**
  * Its flight is a pure function of the bar clock, so a checkpoint's bar restores it exactly. PathPoints is a closed
@@ -98,6 +99,19 @@ public:
 	/** The drone's body: a flat dark box with the tally under it. */
 	UPROPERTY(VisibleAnywhere, Category = "Take")
 	TObjectPtr<UStaticMeshComponent> Body;
+
+	/** Step 6: its searchlight, a soft pool on the floor where it looks (the sight frame's cone: ConeRadius at
+	 *  FlyHeight). No shadows. On while it is live; off before it arrives and while blinded. Look only. */
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<USpotLightComponent> SearchLight;
+
+	/** The pool's strength at its centre, candelas (§15.11: a lit floor reads 95-130). */
+	UPROPERTY(EditAnywhere, Category = "Take|Drone", meta = (ClampMin = "0"))
+	float SearchLightCandelas = 600.f;
+
+	/** The beam's glow in the haze (0 = none). */
+	UPROPERTY(EditAnywhere, Category = "Take|Drone", meta = (ClampMin = "0"))
+	float SearchLightHaze = 0.3f;
 
 protected:
 	TWeakObjectPtr<const AActor> ChaseTarget;

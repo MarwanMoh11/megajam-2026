@@ -531,6 +531,7 @@ void ATakeDirector::Tick(float DeltaSeconds)
 	{
 		Julian->StepMarks();
 	}
+	StepFrameCues();
 	for (AWatcher* Watcher : Watchers)
 	{
 		if (Watcher)

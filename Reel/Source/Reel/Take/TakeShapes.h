@@ -72,6 +72,15 @@ struct FTakeShapes
 	 *  when slot 0 is not a dynamic instance or its material has no such parameter (the shape stays solid). */
 	static void SetPattern(UStaticMeshComponent* Comp, float Pattern);
 
+	/** Step 6: /Game/Take/Dress/M_SignalFaint (tools/build_frames.py): M_SignalPattern dithered to "Fade" coverage, so
+	 *  a frame reads faint and still writes its stencil (the grade keeps its red). Null if it is missing. */
+	static UMaterialInterface* GetFaintMaterial();
+
+	/** Step 6, RUNTIME only: slot 0 becomes a dynamic instance of the faint material (keeping its colour; call
+	 *  SetPattern and SetColour after), custom depth on with Stencil, "Fade" set. Without the asset it stays as it is.
+	 *  SetSignal turns it back into the solid signal material. */
+	static void SetFaint(UStaticMeshComponent* Comp, uint8 Stencil, float Fade);
+
 
 	/** CONSTRUCTOR ONLY: creates a click volume: a hidden, query-only box that blocks ECC_Visibility and ignores
 	 *  every other channel, generates no overlaps and never affects navigation. Make it generous: the pointer

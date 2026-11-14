@@ -562,7 +562,7 @@ void ATakeDirector::UpdateObjective()
 		}
 		else
 		{
-			NewObjective = TEXT("Lift VANCE's keycard from the mark behind him when no frame is on it. He turns to speak");
+			NewObjective = TEXT("Lift VANCE's keycard from the mark behind him while he faces the room. He turns to speak");
 		}
 	}
 	else
@@ -591,7 +591,7 @@ void ATakeDirector::UpdateObjective()
 		}
 		else if (Drone && Drone->HasArrived())
 		{
-			NewObjective = TEXT("The DRONE's red circle sees him off a gold mark. Take a side aisle to the rope");
+			NewObjective = TEXT("The DRONE's searchlight sees him off a gold mark. Take a side aisle to the rope");
 		}
 		else
 		{

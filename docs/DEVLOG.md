@@ -803,3 +803,21 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   (Julian not yet on set 2.5 s after it; t_fail had in step 5 too): they now wait for him. Marwan used the PC
   during the real-keys run, so it stopped after Scene 1. Two old docs edits had turned Windows paths' `\v`, `\r`
   and `\b` into control characters (CREDITS, STATUS): fixed.
+
+## Nov 15, about 03:30-04:45 Cairo: step 6, the sight frames on demand (Marwan's call)
+
+- **What changed:** Marwan: the red sight lines of the guards and drones are "too distracting and ugly"; they should be
+  "very subtle and indicated smartly from the environment not to ruin immersion or removed". A `FrameDisplay` switch on
+  the director (Never / Planning / Always, default Planning). In Planning a frame is hidden at rest, faint and outline
+  only while a crew member stands in a device's ring that would catch it (or the follow spot aims at it), and solid red
+  while it holds Julian. The beam's laser stays. The drone got a searchlight pool on the floor. Two objectives that
+  pointed at frames were reworded. The packaged exe was also played with real keys from the title card to PRINT IT
+  (ROUGH CUT, 3:04, 17 cuts, 1 blooper), before this change.
+- **What the agents did:** one Claude Opus 5.5 session wrote the C++ and `tools/build_frames.py` (the faint material
+  is the pattern material's own lines from `dress_auction.py`, dithered so it still writes the red stencil), rebuilt,
+  shot the four views and checked the modes from the components.
+- **What went wrong:** the brief assumed mark hovering and a dotted path, gone since the Nov 13 rework (Julian walks):
+  "planning" became a crew member in a device's ring. UE 5.9 has no Python class for DitherTemporalAA (it is a material
+  function) and returns no input node from a duplicated material, so the faint material is rebuilt from source. The
+  pool sits low in camera A's composed view, so it was measured by diffing the same frozen frame with it on and off.
+  Marwan asked for less testing: "stop with the obsessive testing, just get work done and I will QA in the end".

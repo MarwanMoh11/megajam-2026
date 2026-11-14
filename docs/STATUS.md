@@ -139,6 +139,17 @@ take's first frame and the clock follows it (exactly 2 bars per 4 s over a 24 s 
   then stopped when the window lost focus: Marwan was using the PC. The rest of the take is proven in the editor
   only.
 
+- **The sight frames on demand (Marwan, Nov 15: the red sight lines are "too distracting and ugly").** `FrameDisplay` on
+  the director (Never / Planning / Always, default Planning) for every watcher but the beam, whose laser is a thing
+  in the world. Planning: no frames at rest; faint (dark red, `PlanningOpacity` 0.22, dithered by
+  `M_SignalFaint` from `tools/build_frames.py`, outline only) on the watchers the device in reach would catch and on
+  the follow spot's aim; solid red while a watcher holds Julian. Never hides them all. The sight tests never read it
+  (with Never, the carpet still costs him at bar 6.2, as in t_fail). The drone has a searchlight: a soft pool on the
+  floor where it looks (`SearchLightCandelas` 600, its frame's cone, no shadows, off while blinded): the floor under
+  it reads 99-110 against 54-67 without it (§15.11 lit 95-130). The objectives that named the drone's red circle and
+  "no frame" on Vance now say searchlight and "while he faces the room". Shots: `C:\Jam\Builds\s6\frames_rest.png`,
+  `frames_planning_spot.png`, `frames_seen.png`, `frames_drone_pool.png` (and `_off`).
+
 **Only Marwan can judge (step 6):** the voices picked (`docs/AUDIO_SCRIPT.md`, Voices), the bed loop and its seam,
 the mix levels (bed 0.8, duck 45%, break 20%), whether the warning phrases cut through the bed and sit in its
 key (`C:\Jam\Audio\review\band_warnings_over_bed.wav`), Julian's quips.
@@ -173,7 +184,8 @@ and is being built and checked in the final run; where this section names it, it
   `AlarmSaturation` are no longer on the director.
 
 **The alarm.** When the finale goes live the picture bleeds to full colour over `BleedSeconds` (2 s, on a
-smoothstep), and the live frames turn white (emissive x4), full on the beat and down to 35% within it. Tally lights
+smoothstep), and the live frames turn white (emissive x4, steady 2.5 since Nov 15; and since Nov 15 a frame only shows
+when it holds Julian or is planned on, see Step 6), full on the beat and down to 35% within it. Tally lights
 and tape stay red. A blooper snaps the picture back. *Filled in:* the grade's alarm saturation `AlarmSat` is 1.0, not
 §15.12's 1.15, from the world fix: at 1.15 under the warm keys the dais went amber (14% of the frame in the gold hue),
 so gold stopped meaning the way out. The warm keys go whiter and the reel's key loses its gold gel with it.
@@ -1150,13 +1162,13 @@ The rules live in one director actor, `ATakeDirector`, which ticks after the pla
 | Beat | Nothing on screen (the band alone keeps time) |
 | A bar before a turn or pass | That watcher's instrument phrase |
 | A watcher arrives | "<LABEL> arrives in N s"; its phrase solo the bar before; its tally lit, steady, while the warning is up |
-| Click a mark | A gold ring, the dotted path with its count, Julian turns and walks |
-| Hover a device | Range ring, markers on the watchers it would catch, pips |
+| A crew member in a device's ring | Its ring lights, the prompt; the watchers it would catch show their frames faint (dark red, about 22%, outline only); the follow spot: the watcher it aims at |
 | Device fires | The crew's line, its sound, the effect starting in the hall, a pip goes out |
 | Two or more caught | x2 or x3, and the composure refill |
 | GOOD CUT | Stamp, +15 composure, a gold frame on the next still |
 | Checkpoint | Your last GOOD CUT replays for 4 s in the top letterbox bar |
-| A watcher frames an exposed Julian | Tally light live, the frame solid red, the heartbeat starts |
+| A watcher frames an exposed Julian | Tally light live, its frame appears solid red until he is out, the heartbeat starts |
+| At rest (Nov 15) | No sight frames: the beam's laser, the red tape, the band's warnings and the drone's searchlight pool show where danger is |
 | Composure drains | The gold line flashes red with SEEN, the film burns at the edges, the ringing rises |
 | On a mark | A gold X under Julian, MARK |
 | Lure, Blind, Mask land | The frame swings toward the point / goes dark / a thud with dust |

@@ -4,6 +4,7 @@
 
 #include "BarClockComponent.h"
 #include "Components/BoxComponent.h"
+#include "Components/SpotLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Julian.h"
 #include "PatrolPoint.h"
@@ -56,6 +57,15 @@ ADroneWatcher::ADroneWatcher()
 
 	Body = FTakeShapes::CreateShape(this, TEXT("Body"), ETakeShape::Cube, Root, FVector(0.f, 0.f, 520.f),
 		FVector(0.9f, 0.9f, 0.18f), FRotator::ZeroRotator, false);
+
+	// Step 6: the searchlight under the body, pointing straight down (LayoutDrone sizes its cone).
+	SearchLight = CreateDefaultSubobject<USpotLightComponent>(TEXT("SearchLight"));
+	SearchLight->SetupAttachment(Root);
+	SearchLight->SetRelativeLocation(FVector(0.f, 0.f, 500.f));
+	SearchLight->SetRelativeRotation(FRotator(-90.f, 0.f, 0.f));
+	SearchLight->SetMobility(EComponentMobility::Movable);
+	SearchLight->SetCastShadows(false);
+	SearchLight->bUseInverseSquaredFalloff = true;
 }
 
 void ADroneWatcher::OnConstruction(const FTransform& Transform)
@@ -108,6 +118,12 @@ void ADroneWatcher::StepWatcher(float DeltaSeconds, UBarClockComponent* Clock)
 		SetActorLocation(EvaluatePath(Clock));
 	}
 	Super::StepWatcher(DeltaSeconds, Clock);
+
+	// Step 6: the searchlight is on while it sees (arrived, not blinded): the dark drone's pool goes out with it.
+	if (SearchLight && SearchLight->IsVisible() != IsLive())
+	{
+		SearchLight->SetVisibility(IsLive());
+	}
 }
 
 bool ADroneWatcher::HoldsJulian(const AJulian* Julian) const
@@ -265,6 +281,21 @@ void ADroneWatcher::LayoutDrone()
 	FTakeShapes::SetColour(FrameMesh, TakeColors::Red);
 	FTakeShapes::SetColour(Body, BodyTint);
 	FTakeShapes::SetColour(Tally, TakeColors::RedDark);
+
+	// Step 6: the searchlight just under the body, its outer cone the frame's (ConeRadius on the floor), soft edge.
+	if (SearchLight)
+	{
+		const float Half = FMath::RadiansToDegrees(FMath::Atan2(Radius, Height - 20.f));
+		SearchLight->SetRelativeLocation(FVector(0.f, 0.f, Height - 20.f));
+		SearchLight->SetRelativeRotation(FRotator(-90.f, 0.f, 0.f));
+		SearchLight->SetIntensityUnits(ELightUnits::Candelas);
+		SearchLight->SetIntensity(FMath::Max(SearchLightCandelas, 0.f));
+		SearchLight->SetOuterConeAngle(FMath::Clamp(Half, 1.f, 80.f));
+		SearchLight->SetInnerConeAngle(FMath::Clamp(Half * 0.55f, 0.f, 79.f));
+		SearchLight->SetAttenuationRadius(FMath::Sqrt(Radius * Radius + Height * Height) * 1.4f);
+		SearchLight->SetVolumetricScatteringIntensity(FMath::Max(SearchLightHaze, 0.f));
+		SearchLight->SetCastShadows(false);
+	}
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

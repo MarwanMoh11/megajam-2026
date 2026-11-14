@@ -30,7 +30,10 @@ public:
 	virtual void StepWatcher(float DeltaSeconds, UBarClockComponent* Clock) override;	// BODY: (d)
 
 	/** TouchesJulian. */
-	virtual bool HoldsJulian(const AJulian* Julian) const override;	// BODY: (d)
+	virtual bool HoldsJulian(const AJulian* Julian) const override;
+
+	/** Step 6: the beam is a laser in the world: FrameDisplay never hides it. */
+	virtual bool UsesFrameDisplay() const override { return false; }	// BODY: (d)
 
 	/** Blind and Mask: off for Duration (line dark this frame), returns true. Lure: no effect, false. */
 	virtual bool ApplyEffect(EDeviceEffect Effect, float Duration, const FVector& Point) override;	// BODY: (d)

@@ -285,3 +285,28 @@ void ATakeDirector::StepDevices(float DeltaSeconds)
 		}
 	}
 }
+
+void ATakeDirector::StepFrameCues()
+{
+	// Planning: the watchers a crew member could catch from where they stand. The frames decide what they draw
+	// (AWatcher::RefreshFrameLook); the sight tests never read any of this.
+	TArray<AWatcher*> Planned;
+	if (FrameDisplay == ETakeFrameDisplay::Planning)
+	{
+		if (IsValid(CurrentUse.Watcher))
+		{
+			Planned.Add(CurrentUse.Watcher);	// the follow spot's aim (its own GatherTargets is the last fired one)
+		}
+		else if (IsValid(CurrentUse.Device) && CurrentUse.bCanFire && !Cast<AFollowSpot>(CurrentUse.Device))
+		{
+			CurrentUse.Device->GatherTargets(Watchers, Planned);
+		}
+	}
+	for (AWatcher* EachWatcher : Watchers)
+	{
+		if (EachWatcher)
+		{
+			EachWatcher->SetFrameCue(FrameDisplay, Planned.Contains(EachWatcher));
+		}
+	}
+}

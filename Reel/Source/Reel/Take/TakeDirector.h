@@ -255,6 +255,14 @@ public:
 	 */
 	FTakeUseTarget FindUseTarget(const ATakeCharacter* Who) const;	// BODY: (u)
 
+	/** Step 6: when the watchers' sight frames show, for every watcher but the beam (AWatcher::SetFrameCue). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Frames")
+	ETakeFrameDisplay FrameDisplay = ETakeFrameDisplay::Planning;
+
+	/** Step 6, before the watchers step: the frame display and who is planned this frame (Planning: the watchers the
+	 *  device in reach would catch if it can fire, and the follow spot's aimed watcher) go to every watcher. */
+	void StepFrameCues();
+
 	/** Step 2, after StepFlight, before the presses: NewUse = FindUseTarget(PC current character, or null in a
 	 *  flight). Moves the highlights on this frame when they change: old CurrentUse.Device->SetInReach(false), new
 	 *  one SetInReach(true); old CurrentUse.Watcher->SetHovered(false), new one SetHovered(true). Then

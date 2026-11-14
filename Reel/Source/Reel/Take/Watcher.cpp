@@ -102,6 +102,17 @@ void AWatcher::SetHovered(bool bInHovered)
 	RefreshFrameLook();
 }
 
+void AWatcher::SetFrameCue(ETakeFrameDisplay InMode, bool bInPlanned)
+{
+	if (InMode == FrameMode && bInPlanned == bPlanned)
+	{
+		return;
+	}
+	FrameMode = InMode;
+	bPlanned = bInPlanned;
+	RefreshFrameLook();
+}
+
 void AWatcher::StepWatcher(float DeltaSeconds, UBarClockComponent* Clock)
 {
 	// Subclasses update their own timers / clock flags before calling this. The arrival first: a watcher that
@@ -230,12 +241,39 @@ void AWatcher::RefreshFrameLook()
 	}
 
 	// Off and Dropped (the beam): no frame at all.
-	const bool bShowFrame = State != EWatcherState::Off && State != EWatcherState::Dropped;
-	FrameMesh->SetVisibility(bShowFrame);
+	bool bShowFrame = State != EWatcherState::Off && State != EWatcherState::Dropped;
+
+	// Step 6 (Marwan, Nov 15): the frame display. Never: no frame. Planning: none at rest, faint and outline only while
+	// a crew member plans a device on it, solid red while it holds an exposed Julian. Always: step 4's frames. The
+	// beam opts out (UsesFrameDisplay). Only the look changes: the sight tests read none of this.
+	const bool bDisplayed = UsesFrameDisplay();
+	const bool bSeeing = IsLive() && bTally;
+	bool bFaint = false;
+	bool bSeenSolid = false;
+	if (bShowFrame && bDisplayed && FrameMode == ETakeFrameDisplay::Never)
+	{
+		bShowFrame = false;
+	}
+	else if (bShowFrame && bDisplayed && FrameMode == ETakeFrameDisplay::Planning)
+	{
+		bSeenSolid = bSeeing;
+		bFaint = !bSeeing && bPlanned && IsLive();
+		bShowFrame = bSeenSolid || bFaint;
+	}
+	// A faint frame is its outline only (the lines), unless it has none.
+	FrameMesh->SetVisibility(bShowFrame && !(bFaint && FrameLines.Num() > 0));
 
 	FLinearColor Colour = TakeColors::RedDark;
 	uint8 FrameStencil = TakeStyle::StencilRed;
-	if (IsLive() && bAlarmLook)
+	if (bFaint)
+	{
+		Colour = PlanningColour;
+	}
+	else if (bSeenSolid)
+	{
+		Colour = HoldingColour;	// the one thing the player must see: solid red until he is out
+	}
+	else if (IsLive() && bAlarmLook)
 	{
 		// Step 4 (§15.3): the alarm's frames are steady white and emissive, so they read in full colour.
 		Colour = TakeColors::White * AlarmEmissive;
@@ -251,8 +289,21 @@ void AWatcher::RefreshFrameLook()
 		const float HoverLift = FMath::Clamp(HoverBrightness, 0.f, 1.f);
 		Colour = Colour + (TakeColors::White - Colour) * HoverLift;
 	}
-	FTakeShapes::SetSignal(FrameMesh, FrameStencil);
-	FrameMID = FTakeShapes::SetColour(FrameMesh, Colour);
+	// The material: the solid signal, or the faint one (each switch re-sets the pattern: a new instance forgets it).
+	auto Paint = [&](UStaticMeshComponent* Shape, float Pattern)
+	{
+		if (bFaint && FTakeShapes::GetFaintMaterial())
+		{
+			FTakeShapes::SetFaint(Shape, FrameStencil, PlanningOpacity);
+		}
+		else
+		{
+			FTakeShapes::SetSignal(Shape, FrameStencil);
+		}
+		FTakeShapes::SetPattern(Shape, Pattern);
+		return FTakeShapes::SetColour(Shape, Colour);
+	};
+	FrameMID = Paint(FrameMesh, FramePattern);
 
 	// The frame lines go with the frame: same visibility, same colour.
 	for (const TObjectPtr<UStaticMeshComponent>& LinePtr : FrameLines)
@@ -262,8 +313,7 @@ void AWatcher::RefreshFrameLook()
 			Line->SetVisibility(bShowFrame);
 			if (bShowFrame)
 			{
-				FTakeShapes::SetSignal(Line, FrameStencil);
-				FTakeShapes::SetColour(Line, Colour);
+				Paint(Line, TakeStyle::PatternDash);
 			}
 		}
 	}

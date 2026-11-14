@@ -36,6 +36,13 @@ public:
 	 *  called by ATakeDirector::StepUse: true while the follow spot's aim assist has picked this watcher. */
 	virtual void SetHovered(bool bInHovered) override;	// BODY: (d)
 
+	/** Step 6, from ATakeDirector::StepFrameCues each frame: the frame display and whether a crew member is planning a
+	 *  device on this watcher. Only the look changes (RefreshFrameLook); never the sight test. */
+	void SetFrameCue(ETakeFrameDisplay InMode, bool bInPlanned);
+
+	/** Step 6: false for the beam, whose frame is a laser in the world: it shows whatever FrameDisplay says. */
+	virtual bool UsesFrameDisplay() const { return true; }
+
 	/** The point the follow spot's aim assist measures to (and its beam aims at): the actor location plus AimHeight
 	 *  for the guard; the beam overrides it with the middle of its segment at beam height. */
 	virtual FVector GetAimPoint() const;	// BODY: (d)
@@ -212,6 +219,14 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Watcher")
 	FLinearColor HoldingColour = FLinearColor(1.f, 0.1f, 0.06f);
 
+	/** Step 6, Planning: a planned frame is drawn in this colour (no glow), outline only, at PlanningOpacity. */
+	UPROPERTY(EditAnywhere, Category = "Take|Watcher")
+	FLinearColor PlanningColour = FLinearColor(0.32f, 0.02f, 0.015f);
+
+	/** Step 6, Planning: a planned frame's coverage, 0..1 (M_SignalFaint's "Fade": dithered, resolved by TSR). */
+	UPROPERTY(EditAnywhere, Category = "Take|Watcher", meta = (ClampMin = "0", ClampMax = "1"))
+	float PlanningOpacity = 0.22f;
+
 	/** While hovered the frame's colour moves this far toward white (0..1). The footprint never scales. */
 	UPROPERTY(EditAnywhere, Category = "Take|Watcher", meta = (ClampMin = "0", ClampMax = "1"))
 	float HoverBrightness = 0.3f;
@@ -303,4 +318,8 @@ protected:
 private:
 	/** Keeps FramePivot at scale 1: the drawn frame is the tested frame. */
 	void ApplyFrameScale();
+
+	/** Step 6: the director's frame display and this frame's planning (SetFrameCue). Planning until it says. */
+	ETakeFrameDisplay FrameMode = ETakeFrameDisplay::Planning;
+	bool bPlanned = false;
 };

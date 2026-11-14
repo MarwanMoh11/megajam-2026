@@ -76,6 +76,16 @@ enum class ETakeGrade : uint8
 };
 
 /** What a clickable actor is, for the press routing in rules 3 and 4. */
+/** Step 6 (Marwan, Nov 15: the red sight lines are too loud): when the watchers' sight frames are drawn. The sight
+ *  tests never change; the beam's laser is a thing in the world and always shows. */
+UENUM(BlueprintType)
+enum class ETakeFrameDisplay : uint8
+{
+	Never,		// no frame at all
+	Planning,	// hidden at rest; faint while a crew member plans a device on it; solid red while it sees Julian
+	Always		// step 4's frames, always on
+};
+
 UENUM(BlueprintType)
 enum class ETakeClickKind : uint8
 {

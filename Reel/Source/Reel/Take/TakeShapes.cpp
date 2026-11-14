@@ -146,6 +146,47 @@ void FTakeShapes::SetSignal(UStaticMeshComponent* Comp, uint8 Stencil)
 	}
 }
 
+UMaterialInterface* FTakeShapes::GetFaintMaterial()
+{
+	static TWeakObjectPtr<UMaterialInterface> Cached;
+	if (!Cached.IsValid())
+	{
+		Cached = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Take/Dress/M_SignalFaint.M_SignalFaint"), nullptr,
+			LOAD_NoWarn);
+	}
+	return Cached.Get();
+}
+
+void FTakeShapes::SetFaint(UStaticMeshComponent* Comp, uint8 Stencil, float Fade)
+{
+	static const FName FadeParam(TEXT("Fade"));
+	UMaterialInterface* const Faint = GetFaintMaterial();
+	if (!Comp || !Faint)
+	{
+		return;
+	}
+	Comp->SetCustomDepthStencilValue(Stencil);
+	Comp->SetRenderCustomDepth(Stencil != 0);
+	UMaterialInstanceDynamic* MID = Cast<UMaterialInstanceDynamic>(Comp->GetMaterial(0));
+	if (!MID || MID->Parent != Faint)
+	{
+		FLinearColor Colour = FLinearColor::White;
+		if (MID)
+		{
+			MID->GetVectorParameterValue(FHashedMaterialParameterInfo(ColorParam), Colour);
+		}
+		MID = Comp->CreateDynamicMaterialInstance(0, Faint);
+		if (MID)
+		{
+			MID->SetVectorParameterValue(ColorParam, Colour);
+		}
+	}
+	if (MID)
+	{
+		MID->SetScalarParameterValue(FadeParam, Fade);
+	}
+}
+
 void FTakeShapes::SetPattern(UStaticMeshComponent* Comp, float Pattern)
 {
 	static const FName PatternParam(TEXT("Pattern"));
