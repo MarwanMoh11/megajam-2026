@@ -156,9 +156,9 @@ SKY_FILL = 14.0                   # skylight strength: the fill in every shadow 
 MOON_LUX = 0.35                   # the directional light: cool, from behind the dais
 LAMP_CD = 26.0                    # ceiling lamps under the second floor (candelas)
 FOG_DENSITY = 0.03                # haze: the spots and the follow spot draw shafts in it
-KEY_CD = 2400.0                   # the hall's key spots down the centre aisle
+KEY_CD = 2300.0                   # the hall's key spots down the centre aisle
 RIM_CD = 2200.0                   # the cool rim lights from the dais end
-WARM = (1.0, 0.82, 0.60)
+WARM = (1.0, 0.90, 0.80)          # step 4 pass 3: was (1.0, 0.82, 0.60); at the alarm's full colour it went amber
 COOL = (0.55, 0.70, 1.0)
 WORK = (0.70, 0.92, 1.0)          # backstage and catwalk work light
 REDL = (1.0, 0.10, 0.06)
@@ -1249,7 +1249,7 @@ lamp(SCAN_X - 30.0, SCAN_Y, z=235.0, cd=2.2, radius=320.0, rgb=REDL)
 lamp(VEX_START[0], VEX_START[1] + 150.0, z=400.0, cd=30.0, radius=1100.0, rgb=WORK)
 lamp((PLAT[0] + PLAT[1]) / 2, (PLAT[2] + PLAT[3]) / 2, z=F2 + 300.0, cd=45.0, radius=900.0, rgb=WORK)
 # The lobby: a chandelier's worth over the atrium, a key down the grand stair.
-lamp((VOID_X0 + VOID_X1) / 2, 0.0, z=820.0, cd=420.0, radius=2600.0)
+lamp((VOID_X0 + VOID_X1) / 2, 0.0, z=820.0, cd=250.0, radius=2600.0)   # step 4 pass 3: 420 lit the lobby past Julian
 spot("Key_Stair", VOID_X0 - 200.0, 0.0, 860.0, 0.0, -55.0, 450.0, 26.0, 2400.0, WARM, shadows=True)
 # The hall: warm keys straight down the centre aisle (Julian's path), the last two casting shadows.
 for kx in (-500.0, 400.0, 1300.0):
@@ -1258,7 +1258,7 @@ spot("Key_Rope", MARK_ROPE[0], 0.0, HALL_H - 60.0, 0.0, -90.0, KEY_CD, 22.0, 170
 spot("Key_Tape", (TAPE_X0 + TAPE_X1) / 2, 0.0, HALL_H - 60.0, 0.0, -90.0, KEY_CD, 22.0, 1700.0, WARM, haze=2.0)
 # The dais: a key on Vance at the podium, gold on the reel's case.
 spot("Key_Podium", 3560.0, VANCE[1], 900.0, 0.0, -68.0, 720.0, 17.0, 1500.0, WARM, shadows=True, haze=1.2)
-spot("Fill_Dais", 4000.0, -350.0, 1250.0, 0.0, -90.0, 700.0, 48.0, 1900.0, WARM, haze=0.4)
+spot("Fill_Dais", 4000.0, -350.0, 1250.0, 0.0, -90.0, 1400.0, 48.0, 1900.0, WARM, haze=0.4)   # pass 3: was 700
 spot("Key_Reel", 4160.0, 0.0, 1000.0, 0.0, -90.0, 660.0, 9.0, 1300.0, GOLDL, shadows=True, haze=2.0)
 # Rims: cool back light from the dais end, so everyone between Julian and the dais reads as a silhouette.
 for ry in (-750.0, 750.0):

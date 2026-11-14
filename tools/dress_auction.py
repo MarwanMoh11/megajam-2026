@@ -52,6 +52,7 @@ WARM, COOL = k("WARM", (1.0, 0.82, 0.60)), k("COOL", (0.55, 0.70, 1.0))
 
 # --- §15.2 tokens (linear) --------------------------------------------------------------------------------------------
 BONE = (0.5841, 0.5395, 0.4564)
+PAPER = (0.8796, 0.8228, 0.7084)
 MO_HIGH = (0.7379, 0.9047, 0.9131)
 SIG_RED = (0.85, 0.03, 0.02)        # TakeColors::Red: pass 1's grade calibrates stencil 1 from this to #D3301F
 SIG_GOLD = (1.0, 0.62, 0.08)        # TakeColors::Gold: ...and stencil 2 to #E9B949
@@ -60,13 +61,14 @@ SIG_GOLD = (1.0, 0.62, 0.08)        # TakeColors::Gold: ...and stencil 2 to #E9B
 DRESS = "/Game/Take/Dress"
 DASH_ON, DASH_OFF = 20.0, 10.0      # frames: 20 cm on, 10 cm off, from the eye outwards (§15.8)
 HATCH_W = 20.0                      # tape: 20 cm stripes at 45 degrees
+NEAR_FADE, NEAR_FADE_LEN = 200.0, 100.0   # frames (patterns 1, 2) drop out from 3 m to 2 m from the lens
 LIT = {                             # instance: (base colour, roughness)
     "MI_Front_Street": ((0.025, 0.025, 0.027), 0.35),
     "MI_Front_Pave": ((0.11, 0.105, 0.10), 0.8),
-    "MI_Front_Facade": ((0.20, 0.19, 0.18), 0.7),
+    "MI_Front_Facade": ((0.28, 0.27, 0.255), 0.7),
     "MI_Front_Canopy": ((0.035, 0.033, 0.03), 0.5),
     "MI_Front_Glass": ((0.02, 0.025, 0.03), 0.1),
-    "MI_Front_Marble": ((0.22, 0.21, 0.20), 0.25),
+    "MI_Front_Marble": ((0.13, 0.125, 0.12), 0.25),
     "MI_Front_Wall": ((0.16, 0.15, 0.14), 0.85),
     "MI_Front_Panel": ((0.06, 0.05, 0.045), 0.6),
     "MI_Front_Parquet": ((0.10, 0.09, 0.08), 0.45),
@@ -74,7 +76,8 @@ LIT = {                             # instance: (base colour, roughness)
     "MI_Front_Velvet": ((0.06, 0.035, 0.045), 1.0),
     "MI_Front_Linen": ((0.45, 0.43, 0.40), 0.9),
     "MI_Front_Plinth": ((0.40, 0.39, 0.37), 0.6),
-    "MI_Front_Stage": ((0.05, 0.045, 0.04), 0.5),
+    "MI_Front_Stage": ((0.13, 0.12, 0.11), 0.5),        # was 0.05: the heavies need a mid set to be darkest against
+    "MI_Front_Case": ((0.15, 0.15, 0.15), 0.6),         # the display cases walling the rope aisle (were plinth 0.40)
     "MI_Front_Foliage": ((0.05, 0.07, 0.05), 0.9),
     "MI_Back_Ply": ((0.20, 0.17, 0.13), 0.9),
     "MI_Back_Batten": ((0.28, 0.24, 0.18), 0.9),
@@ -99,7 +102,8 @@ GLOW = {                            # unlit: colour x scale
     "MI_Back_Tube": (MO_HIGH, 6.0),       # fluorescent work tubes (no light of their own)
     "MI_Crew_Ring": (MO_HIGH, 2.0),       # the device rings (C++ sets the same colour on its own MID: CPP.md)
     "MI_Exit_Sign": (BONE, 1.5),
-    "MI_Front_Sconce": (BONE, 1.0),       # sconces, footlights, the chandelier's spheres
+    "MI_Front_Sconce": (BONE, 1.0),       # sconces, the chandelier's spheres
+    "MI_Front_Footlight": (BONE, 0.5),    # the dais's footlights: a low glow, not a row of paper dots
     "MI_Front_Screen": (BONE, 0.4),       # desk screens and phones in the fronts (were saturated blue)
 }
 SIGNAL = {                          # unlit, masked, stencil set by the mesh: colour, pattern
@@ -140,6 +144,7 @@ SURFACES = [
     ("MI_Box_Trim", ("hall", "dais"), ("Rail", "Post"), "MI_Back_Steel"),
     ("MI_Box_Trim", ("street",), ("Terrace_Post",), "MI_Front_Trim"),
     ("MI_Box_Trim", ("street",), ("Terrace", "Bollard", "Lamp_Post", "Lamp_Arm"), "MI_Front_Canopy"),
+    ("MI_Box_Trim", None, ("Grand_Stair", "Fire_Stair"), "MI_Front_Marble"),   # the stair was pewter (77)
     ("MI_Box_Trim", None, None, "MI_Front_Trim"),
     ("MI_Box_Gold", None, ("Bottle", "Bar_Bottles"), "MI_Front_Glass"),
     ("MI_Box_Gold", None, None, "MI_Front_Trim"),     # stanchions, frames, glasses, instruments, fascia: never brass
@@ -152,6 +157,7 @@ SURFACES = [
     ("MI_Box_Dais", None, None, "MI_Front_Stage"),
     ("MI_Box_Case", BACKS, None, "MI_Back_Steel"),
     ("MI_Box_Case", None, ("Table_Foot", "Bar_Shelf"), "MI_Front_Panel"),
+    ("MI_Box_Case", None, ("Cases_",), "MI_Front_Case"),
     ("MI_Box_Case", None, ("Lot",), "MI_Front_Linen"),
     ("MI_Box_Case", None, None, "MI_Front_Plinth"),   # display cases, the scanner's arch
     ("MI_Box_Door", BACKS, None, "MI_Back_Steel"),
@@ -211,25 +217,35 @@ RETUNE = {   # label prefix: properties (intensities stay in build_auction.py: K
     "Key_Tape": dict(cast_shadows=False, volumetric_scattering_intensity=2.0),
     "Key_Rope": dict(cast_shadows=True, volumetric_scattering_intensity=2.0),
     "Key_Podium": dict(cast_shadows=True, volumetric_scattering_intensity=1.2),
-    "Key_Reel": dict(cast_shadows=True, volumetric_scattering_intensity=0.5),   # its gold haze washed the end wall amber at the alarm
+    "Key_Reel": dict(cast_shadows=True, volumetric_scattering_intensity=0.5,   # gold is MI_Gold's, not the light's:
+                     light_color=unreal.Color(r=255, g=242, b=230, a=255)),   # (1.0, 0.95, 0.90), was GOLDL   # its gold haze washed the end wall amber at the alarm
     "Fill_Dais": dict(cast_shadows=False),
     "Rim_Hall": dict(cast_shadows=False, volumetric_scattering_intensity=2.5),
 }
 WORK_HAZE = 0.0             # backstage and catwalk work lamps: no haze (video is clear)
 BACK_DAIS = dict(x=VANCE[0] + 360.0, y=VANCE[1], z=DAIS_H + 400.0, yaw=180.0, pitch=-15.0,
-                 cd=900.0, cone=40.0, radius=3000.0, haze=2.0)   # cone as build_auction's spot(): the outer angle
+                 cd=2000.0, cone=40.0, radius=3000.0, haze=2.0)   # cone as build_auction's spot(): the outer angle
 # Julian's own key (STATUS "Look": Julian is key-lit): a point light riding with him, behind and above (the follow
 # camera's side), on lighting channel 1 only, which only his mesh joins: it lights nothing else and casts no shadow.
 # The house lights at half over the seats (§15.11 check 1: floor between bench rows 45-70 while the aisle pools stay
 # 95-130): two wide top-down spots, no shadows, no haze. The night skylight captures a black sky, so it fills nothing.
+# A cool wash from across the road over the queue and up the facade (the opening frame was 45% black).
+FACADE_WASH = dict(x=PAVE_X0 - 1300.0, y=300.0, z=300.0, yaw=0.0, pitch=2.0, cd=1200.0, cone=40.0, radius=3500.0)
 HOUSE_FILL = dict(cd=1200.0, outer=32.0, inner=20.0, radius=3000.0, x=100.0, ys=(620.0, -620.0))
-JULIAN_KEY = dict(dx=-220.0, dy=60.0, dz=230.0, cd=150.0, radius=700.0)
+# It rides on the follow camera's boom end (socket SpringEndpoint, boom_dz above it), so it always lights the side the
+# camera sees; if the boom is not found it hangs off Julian at dx, dy, dz as before.
+JULIAN_KEY = dict(dx=-220.0, dy=60.0, dz=230.0, boom_dz=60.0, cd=240.0, radius=700.0)
 
 # --- 5. tints (§15.10, linear) -----------------------------------------------------------------------------------------
+# Marks the default follow camera sees at a grazing angle past a stanchion or across the lobby: bigger plates (visual
+# only, AMark::PlateScale; standing on the mark is the director's test, not the plate).
+MARK_PLATES = {"Mark_Scanner": 2.0, "Mark_Desk": 2.0}
 TINTS = {"Julian": (0.80, 0.78, 0.72), "Maya": (0.38, 0.40, 0.42), "Vex": (0.16, 0.17, 0.18)}
 BODY_TINTS = {"Bodyguard": (0.012, 0.012, 0.012), "Vance": (0.03, 0.028, 0.026), "Drone": (0.02, 0.02, 0.02)}
 HEAVY = (0.02, 0.02, 0.022)          # every other watcher (Watcher.h's default after CPP.md; set here too)
 DEVICE_BODY = (0.30, 0.31, 0.33)     # crew kit: light steel, no hue (was TakeColors::WorkBlue)
+BANNER_BODY = (0.15, 0.15, 0.16)     # the banner over the rope: it was the largest light shape after Julian
+RING_IDLE = (0.05, 0.09, 0.13)       # device rings out of reach: mo.shadow side, so only the ring in reach lights
 CURTAIN = (0.06, 0.035, 0.045)       # the house curtain in velvet (was red: a false danger)
 FLARE = (1.0, 0.92, 0.80)            # the pyro's flare light: warm white, not gold
 
@@ -336,12 +352,14 @@ if (Pattern > 0.5 && Pattern < 1.5)
     // 1: dashes along a line (a cube stretched on X), from its start: for a frame line, the eye.
     float along = (LP.x + 50.0) * length(AX);
     m = (frac(along / period) * period < DashOn) ? 1.0 : 0.0;
+    m *= saturate((Depth - NearFade) / max(NearFadeLen, 1.0));
 }
 else if (Pattern > 1.5 && Pattern < 2.5)
 {
     // 2: bands outwards from the watcher (its actor), on the floor: a frame's fill.
     float d = length(Rel.xy);
     m = (frac(d / period) * period < DashOn) ? 1.0 : 0.0;
+    m *= saturate((Depth - NearFade) / max(NearFadeLen, 1.0));
 }
 else if (Pattern > 2.5)
 {
@@ -395,7 +413,7 @@ def build_materials():
     cu.set_editor_property("code", PATTERN_HLSL)
     cu.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT1)
     cu.set_editor_property("description", "SignalPattern")
-    names = ["LP", "AX", "Rel", "WP", "Pattern", "DashOn", "DashOff", "HatchWidth"]
+    names = ["LP", "AX", "Rel", "WP", "Depth", "Pattern", "DashOn", "DashOff", "HatchWidth", "NearFade", "NearFadeLen"]
     inputs = []
     for n in names:
         ci = unreal.CustomInput()
@@ -431,8 +449,10 @@ def build_materials():
     link(ax, "", cu, "AX")
     link(rel, "", cu, "Rel")
     link(wp, "", cu, "WP")
+    link(mel.create_material_expression(s, unreal.MaterialExpressionPixelDepth, -1200, 380), "", cu, "Depth")
     y = 400
-    for n, v in (("Pattern", 0.0), ("DashOn", DASH_ON), ("DashOff", DASH_OFF), ("HatchWidth", HATCH_W)):
+    for n, v in (("Pattern", 0.0), ("DashOn", DASH_ON), ("DashOff", DASH_OFF), ("HatchWidth", HATCH_W),
+                 ("NearFade", NEAR_FADE), ("NearFadeLen", NEAR_FADE_LEN)):
         link(ps(s, n, v, -900, y), "", cu, n)
         y += 80
     mel.connect_material_property(cu, "", unreal.MaterialProperty.MP_OPACITY_MASK)
@@ -582,7 +602,8 @@ def resurface():
 
 def resign():
     """TextRender signs: bone, except the gold side exit and the trap (gold, stencil 2) and LIVE BROADCAST (red, 1)."""
-    special = {"EXIT": (SIG_GOLD, 2), "STAGE TRAP": (SIG_GOLD, 2), "LIVE BROADCAST": (SIG_RED, 1)}
+    special = {"EXIT": (SIG_GOLD, 2), "STAGE TRAP": (SIG_GOLD, 2), "LIVE BROADCAST": (SIG_RED, 1),
+               "LOT 41: THE DIRECTOR'S CUT": (PAPER, 0)}   # the scene's subject: paper, legible in the film
     n = 0
     for a in eas.get_all_level_actors():
         if not isinstance(a, unreal.TextRenderActor) or label(a).startswith("Dress_"):
@@ -830,11 +851,9 @@ def dress_dais():
     for s in (1, -1):
         y0, y1 = sorted((s * 1200.0, s * 1201.5))
         piece("Dais_Lip", (DAIS_X0, HX1, y0, y1, DAIS_H - 4, DAIS_H), "MI_Front_Trim")
-    y = -1180.0
-    while y <= 1180.0:
-        if abs(y) > GAP + 60.0:
-            piece("Footlight", (DAIS_X0 - 2.0, DAIS_X0, y - 5, y + 5, DAIS_H * 0.3, DAIS_H * 0.6), "MI_Front_Sconce")
-        y += FOOT_STEP
+    for s in (1, -1):                                       # one continuous strip each side of the aisle
+        y0, y1 = sorted((s * (GAP + 60.0), s * 1180.0))
+        piece("Footlight", (DAIS_X0 - 2.0, DAIS_X0, y0, y1, DAIS_H * 0.3, DAIS_H * 0.6), "MI_Front_Footlight")
     for (fx, fy) in PYRO_FLARES:
         if abs(fy) <= GAP + 60.0:
             continue                                          # Julian's way onto the dais
@@ -964,7 +983,7 @@ def dress():
 # --- 4. lights ------------------------------------------------------------------------------------------------------------
 def relight():
     for a in eas.get_all_level_actors():
-        if label(a).startswith(("Dress_Back_Dais", "Dress_House_Fill")):
+        if label(a).startswith(("Dress_Back_Dais", "Dress_House_Fill", "Dress_Facade_Wash")):
             eas.destroy_actor(a)
     n = 0
     for a in eas.get_all_level_actors():
@@ -1003,6 +1022,17 @@ def relight():
         try_set(hc, intensity=HOUSE_FILL["cd"], attenuation_radius=HOUSE_FILL["radius"], cast_shadows=False,
                 outer_cone_angle=HOUSE_FILL["outer"], inner_cone_angle=HOUSE_FILL["inner"],
                 volumetric_scattering_intensity=0.0, light_color=unreal.Color(r=255, g=240, b=220, a=255))
+    fw = FACADE_WASH
+    wa = eas.spawn_actor_from_class(unreal.SpotLight, unreal.Vector(fw["x"], fw["y"], fw["z"]),
+                                    unreal.Rotator(roll=0.0, pitch=fw["pitch"], yaw=fw["yaw"]))
+    wa.set_actor_label("Dress_Facade_Wash")
+    wa.set_folder_path("Light/Spots")
+    wc = wa.get_component_by_class(unreal.SpotLightComponent)
+    wc.set_mobility(unreal.ComponentMobility.MOVABLE)
+    try_set(wc, intensity_units=unreal.LightUnits.CANDELAS)
+    try_set(wc, intensity=fw["cd"], attenuation_radius=fw["radius"], outer_cone_angle=fw["cone"],
+            inner_cone_angle=fw["cone"] * 0.6, cast_shadows=False, volumetric_scattering_intensity=0.0,
+            light_color=unreal.Color(r=int(COOL[0] * 255), g=int(COOL[1] * 255), b=int(COOL[2] * 255), a=255))
     julian = next((x for x in eas.get_all_level_actors() if label(x) == "Julian"), None)
     if julian is not None:
         for old in [x for x in eas.get_all_level_actors() if label(x).startswith("Dress_Julian_Key")]:
@@ -1018,8 +1048,19 @@ def relight():
         try_set(kc, intensity=jk["cd"], attenuation_radius=jk["radius"], cast_shadows=False,
                 volumetric_scattering_intensity=0.0, light_color=unreal.Color(r=255, g=240, b=220, a=255),
                 lighting_channels=unreal.LightingChannels(channel0=False, channel1=True, channel2=False))
-        k_.attach_to_actor(julian, unreal.Name(), unreal.AttachmentRule.KEEP_WORLD, unreal.AttachmentRule.KEEP_WORLD,
-                           unreal.AttachmentRule.KEEP_WORLD, False)
+        attached = False
+        booms = julian.get_components_by_class(unreal.SpringArmComponent)
+        if booms:
+            try:
+                k_.attach_to_component(booms[0], unreal.Name("SpringEndpoint"), unreal.AttachmentRule.SNAP_TO_TARGET,
+                                       unreal.AttachmentRule.KEEP_WORLD, unreal.AttachmentRule.KEEP_WORLD, False)
+                k_.get_editor_property("root_component").set_relative_location(unreal.Vector(0.0, 0.0, jk["boom_dz"]), False, True)
+                attached = True
+            except Exception as e:
+                warn("julian key on the boom: %s" % e)
+        if not attached:
+            k_.attach_to_actor(julian, unreal.Name(), unreal.AttachmentRule.KEEP_WORLD,
+                               unreal.AttachmentRule.KEEP_WORLD, unreal.AttachmentRule.KEEP_WORLD, False)
         for mc in julian.get_components_by_class(unreal.PrimitiveComponent):
             if isinstance(mc, (unreal.SkeletalMeshComponent, unreal.StaticMeshComponent)):
                 try_set(mc, lighting_channels=unreal.LightingChannels(channel0=True, channel1=True, channel2=False))
@@ -1039,6 +1080,9 @@ def retint():
     for a in eas.get_all_level_actors():
         lab = label(a)
         cls = a.get_class().get_name()
+        if lab in MARK_PLATES:
+            try_set(a, plate_scale=MARK_PLATES[lab])
+            done.append("%s.plate_scale" % lab)
         if lab in TINTS:
             try_set(a, tint=lc(TINTS[lab]))
             done.append(lab)
@@ -1051,7 +1095,9 @@ def retint():
                 done.append(lab)
             except Exception:
                 pass                                         # before CPP.md's Watcher.h edit: C++ colours stand
-        for prop, rgb in (("body_colour", DEVICE_BODY), ("curtain_colour", CURTAIN), ("flare_colour", FLARE)):
+        body = BANNER_BODY if lab.startswith("Banner") else DEVICE_BODY
+        for prop, rgb in (("body_colour", body), ("curtain_colour", CURTAIN), ("flare_colour", FLARE),
+                          ("ring_idle_colour", RING_IDLE)):
             try:
                 a.get_editor_property(prop)
             except Exception:

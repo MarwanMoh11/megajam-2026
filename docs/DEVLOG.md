@@ -629,3 +629,39 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
 - **Proof:** the standalone game at 1920 x 1080 on this 125% display: composure line 800 px (x 560 to 1359), the
   controls row's lowest pixel at y 1065 of 1080 (`docs/shots/step4_fix_scale_1080.png`); in a 1600 x 900 window the
   line is 667 px from x 468, as at 1080 scaled (`step4_fix_scale_900_windowed.png`). PIE views: `step4_fix_*.png`.
+
+## Nov 14, 21:48-22:30 Cairo: step 4 final run (pass 3 fix after the world critique, package, real keys)
+
+- **What changed:** the world critique's fixes, all from text (`tools/dress_auction.py`, `tools/build_auction.py`,
+  `tools/build_look.py`, small C++). The alarm no longer turns the stage amber: WARM keys (1.0, 0.90, 0.80), the
+  reel's key white (1.0, 0.95, 0.90), and the alarm's saturation **1.0 instead of §15.3's 1.15** (agreed with the
+  lead: gold must own the way out at the alarm); gold-hue share at the alarm 3.5% (case and side exit), was 14%.
+  Julian's own key now rides on his camera boom (lighting channel 1, so it lights only him) and he is the lightest
+  thing in the lobby too (219); the stair was pewter and is marble now, the marble darker, the chandelier lamp lower.
+  The dais reads: stage deck 0.13 (deck 50), `Back_Dais` 2000 cd, `Fill_Dais` 1400. Marks are 1.4x bigger plates
+  (`AMark::PlateScale`, visual only), 2x at the scanner and the desk. Tally lights are dark red when off (the grey ones
+  turned violet under the red floor). Footlights are two low strips (a dotted line read as danger). The rope aisle's
+  cases and the banner are darker, a cool wash lights the facade and the queue, idle device rings are dark blue,
+  frames fade out within 2-3 m of the lens, LOT 41 is in paper. `/Game/Take/Dress` is in the cook list.
+- **What the agents did:** the builder applied a staged patch script (33 exact patches, dry-run first), rebuilt,
+  re-shot every zone, re-ran the checks and the tests, packaged and played the exe with real keys; a critic agent
+  ranked the world picture before it; the HUD agent's fixes landed first.
+- **What went wrong:** the first rebuild hung Julian's key off him instead of the camera boom (the 5.9 Python
+  actor has no `get_root_component`; `root_component` works), caught in the log and fixed. The first package never
+  started: a hidden PowerShell launched with nested quotes died silently and 7 minutes went before the old log's date
+  gave it away; run directly, the package took 2 minutes. The lighter keys put the aisle pool at 131 (over 130):
+  `KEY_CD` 2400 -> 2300. The 1.4x marks still read as slivers at the scanner and across the lobby, so those two
+  marks are 2x. The hall floor's numbers cannot be projected in the Shipping exe, so they are from play-in-editor.
+- **Proof:** the Shipping package played with real keys from the title card to the stats (3:25 wall clock; 3:02 on
+  the band's clock, 17 cuts, 1 blooper at the beam on purpose, out by the stage trap, ROUGH CUT):
+  `docs/shots/step4_01_title_card.png` to `step4_11_stats_grade.png`; before and after pairs
+  `step4_before_*` / `step4_after_*` (queue, maya, floor); `docs/shots/step4_thumb_315x250.png`. Packaged samples:
+  Julian 220, red frame (211, 48, 31) = `#D3301F`, gold mark (231, 183, 71) against `#E9B949`, making-of wall
+  B - R 29; in play-in-editor: lit floor 128, floor between rows 49-65, heavies 31, black point 17, alarm gold-hue
+  share 3.5% (was 14%). The four scripted tests end as before (ROUGH CUT, ROUGH CUT, DIRECTOR'S CUT, the failures)
+  with the same deliberate bloopers. `stat unit` (Frame/Game/Draw/GPU ms) before step 4 -> now: queue
+  22.85/22.83/3.90/8.53 -> 23.26/23.27/4.94/9.23, maya 22.81/22.78/4.03/8.75 -> 23.53/23.50/5.17/9.45, floor
+  22.65/22.66/4.17/8.96 -> 23.53/23.50/5.04/10.23. Zip `TeamName_GameName.zip` 326 MB (the pass 2 zip is kept as
+  `TeamName_GameName_step4p2.zip`).
+- **Needs Marwan's eye:** the amber-free alarm (warm enough?), the 2x marks, the hall's and dais's darkness, the
+  dashes and hatching in motion, the house lights over the seats.

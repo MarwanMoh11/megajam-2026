@@ -132,7 +132,7 @@ void ABeamWatcher::LayoutBeam()
 	FTakeShapes::SetColour(PostA, TakeColors::Grey);
 	FTakeShapes::SetColour(PostB, TakeColors::Grey);
 	FTakeShapes::SetColour(FrameMesh, TakeColors::Red);
-	FTakeShapes::SetColour(Tally, TakeColors::DarkGrey);
+	FTakeShapes::SetColour(Tally, TakeColors::RedDark);
 }
 
 void ABeamWatcher::StepWatcher(float DeltaSeconds, UBarClockComponent* Clock)

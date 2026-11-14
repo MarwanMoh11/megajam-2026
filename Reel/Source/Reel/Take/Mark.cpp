@@ -75,8 +75,13 @@ void AMark::ApplyLook()
 	FTakeShapes::SetColour(Disc, TakeColors::GoldBright);
 	FTakeShapes::SetColour(CrossA, TakeColors::Gold);
 	FTakeShapes::SetColour(CrossB, TakeColors::Gold);
+	const float S = FMath::Clamp(PlateScale, 0.5f, 2.5f);
+	CrossA->SetRelativeLocation(FVector(22.f * S, 0.f, 3.f));
+	CrossA->SetRelativeScale3D(FVector(0.14f * S, 0.8f * S, 0.03f));
+	CrossB->SetRelativeLocation(FVector(-12.f * S, 0.f, 3.f));
+	CrossB->SetRelativeScale3D(FVector(0.56f * S, 0.14f * S, 0.03f));
 	const float Fill = bRunning ? FMath::Clamp(GetActionAlpha(), 0.05f, 1.f) : 1.f;
-	Disc->SetRelativeScale3D(FVector(0.8f * Fill, 0.8f * Fill, 0.02f));
+	Disc->SetRelativeScale3D(FVector(0.8f * Fill * S, 0.8f * Fill * S, 0.02f));
 	Disc->SetVisibility(bIsOccupied || bRunning || bDone);
 	CrossA->SetVisibility(true);
 	CrossB->SetVisibility(true);

@@ -1,9 +1,11 @@
 # Status
 
-Last updated: 2026-11-14, about 05:00 Cairo. **Gate 1 is passed:** Marwan played the rework and the street-start
-build on Nov 13 and said to start step 2. **Steps 2 and 3 are built** (Nov 14), without the parts written for
-fixed cameras and hard cuts (see "Step 3 as built" and "Step 2 as built" below): a whole take plays from the street
-to PRINT IT. Next: **gate 2**, Marwan plays a full take cold. Theme: **Director's Cut**.
+Last updated: 2026-11-14, about 22:40 Cairo. **Gate 1 is passed:** Marwan played the rework and the street-start
+build on Nov 13 and said to start step 2. **Steps 1 to 4 are built** (Nov 13-14), without the parts written for
+fixed cameras and hard cuts: a whole take plays from the street to PRINT IT, with the look (see "Step 4 as built",
+"Step 3 as built" and "Step 2 as built" below). On Nov 14 Marwan moved step 4 (the look) in front of gate 2, so his
+first full take is played on the build with the look. Next: **gate 2**, Marwan plays a full take cold. Theme:
+**Director's Cut**.
 
 ## Gate 1 answer, Nov 13 about 18:15: Marwan changed three rules
 
@@ -54,6 +56,276 @@ inside ? the line is outside", and "add more props placeholders to make the plac
 **Not rethought yet, waiting for the next gate:** good cuts (rule 8), the shot list and the film and making-of split
 (rule 1), the monitor strip, "a crew cut takes about 2 s" (rule 4), The Long Take, the replay "cut where you cut"
 (rule 11), and the 1:45 clean run in a larger building.
+
+## Step 4 as built, Nov 14 (the look)
+
+Step 4 is the look: the film grade, the overlay, the HUD, every word on screen, and the set's materials, dressing,
+lights and tints. On Nov 14 Marwan moved it in front of gate 2 (his words: "start with the look", "I want to test
+with step 4 the look done its much better to get a feel", and "make sure to use /design skill and actually put
+thought into the design like my previous game luxel"), so his first full take is played on the build with the look.
+The design is `docs/ART_STYLE.md` §15, written before the build with the design plugins' skills (design-system,
+frontend-design, ux-copy, accessibility-review); this section says what was built from it and where the build
+differs, and does not repeat it. Two design critiques were then run on real screenshots, one of the HUD and one of
+the world picture, and each was followed by a fix pass. Built on the same terms as steps 2 and 3: nothing written for
+fixed cameras, hard cuts or stills. **Everything here that the spec and §15 did not settle was filled in by Claude:
+§15.12 has the long list, and the ones a player would notice are marked *Filled in* below. Marwan can overrule any
+of it.** Commits: `1af9f34` (the design), `c50b86b` (pass 1: grade, stencil, overlay), `e639b77` (pass 2: HUD,
+stamps, cards, fonts, copy), `1f97c3a` (pass 3: the set), `4870bbc` (the HUD's fix). The world's fix is in the files
+and is being built and checked in the final run; where this section names it, it describes the plan.
+
+**The film and the making-of.**
+- Julian's camera is the film: an Ink-to-Paper monochrome print where only red (danger) and gold (Julian) keep their
+  colour. Everything that carries meaning is drawn in an unlit signal colour and tagged with a custom-depth stencil
+  (a per-object number a post-process material can read): 1 red, 2 gold, 3 the alarm's white. One post-process
+  material, `MI_FilmGrade` (built from text by `tools/build_look.py`), maps a tagged pixel onto its colour token and
+  grades the rest to monochrome (contrast 0.6, vignette 0.30). *Filled in:* a tagged pixel keeps its colour only
+  where the tagged surface is the one seen, so a stanchion in front of a red frame stays grey.
+- Maya's and Vex's cameras are the making-of: steel-blue video at 90% strength, no vignette, and still no hue but
+  red and gold. The picture swaps on the frame of the cut press (to the flight's target, not where the camera is).
+- Two switches on the director: `bMakingOfSplit` off makes all three cameras film (§15's `bAllFilm`), and `bFilmLook`
+  off is the master switch, the picture before step 4. The step 3 saturation stand-in is gone: `FilmSaturation` and
+  `AlarmSaturation` are no longer on the director.
+
+**The alarm.** When the finale goes live the picture bleeds to full colour over `BleedSeconds` (2 s, on a
+smoothstep), and the live frames turn white (emissive x4), full on the beat and down to 35% within it. Tally lights
+and tape stay red. A blooper snaps the picture back. *Filled in:* the grade's alarm saturation `AlarmSat` is 1.0, not
+§15.12's 1.15, from the world fix: at 1.15 under the warm keys the dais went amber (14% of the frame in the gold hue),
+so gold stopped meaning the way out. The warm keys go whiter and the reel's key loses its gold gel with it.
+
+**The letterbox and the overlay** (drawn on Canvas, the HUD's 2D drawing layer, by `TakeFilmOverlay`). The same
+2.39:1 ink bars on all three cameras, so a cut changes only the picture. On the film: grain, flicker, dust and
+scratches at 24 fps, louder after a cut and on cards; at each cut a paper flash and a frame line rolling through
+(the splice). On every camera: a danger burn at the picture's edges once composure is under 50, beating with the
+band. Before the blooper slate, a burn and a paper flash; at PRINT IT, an ink frame. On the crew's cameras a
+viewfinder instead of film: corner marks, scan lines, and a reticle that turns gold while Use is up. *Filled in:*
+grain 0.07 in play (§8 said 0.10); the making-of as a viewfinder, not film; the burn on every camera.
+
+**The HUD in the bars** (`TakeHUD`, drawn with the kit in `TakeHudKit`). The bars hold every lane and nothing moves
+between cameras. Top: the slate strip (scene, name, take); the key tabs, the active one filled, with device uses as
+pips under MAYA and VEX and a line that grows during a flight; the bar clock, or at the alarm ALARM with the bars
+left and eight red squares; the goal line, with a rule that draws out when it changes. Bottom: the Use prompt, or
+for a dead press why not (the pressed tab shakes); Julian's mark action with its gold bar, and the composure line
+(SEEN square, MARK T); the controls row. *Filled in:* top bar for where and what next, bottom bar for hands and
+Julian; flashes take the goal line's place; the REC dot, the timecode and "CUT -> MAYA" are dropped. **The HUD's
+fix:** under Windows display scaling the game gets a canvas smaller than its window, and the HUD drew 1.2x, so the
+controls row and the grade stamp could leave the screen. The HUD now has its own scale (`HudScale`, floor 0.6),
+bars at least 138 px tall (an ultra-wide screen crops the picture instead), and bottom rows that lift clear of the
+edge. The controls show once (Enter lights the bottom row).
+
+**Stamps and cards.** One family: ink plates, paper type, inset rules. Stamps land at 1.30 scale with a tilt (X2,
+CLEARED, DELETED SCENE RESTORED, the grades: ROUGH CUT has an outer border only, DIRECTOR'S CUT is gold with an inner
+rule and diamonds). Slates for the opening, the blooper and PRINT IT; cards for the title card, the stats and the
+blooper reel. Three fonts under the SIL Open Font License, each in one role: Limelight, IM Fell English (roman and
+italic) and Josefin Sans, imported as font faces in `/Game/Take/Fonts` by `tools/build_fonts.py`. *Filled in:* the
+slate is the one bold piece; the opening slate sits in the picture's lower left and Julian can already walk.
+
+**The label rule.** On the crew's cameras, watchers and devices carry camera-tape labels (`bone` tape, `ink` text):
+at most four plus the one being aimed at, by priority, stacked so none overlap, never in the bars, 48 px in from the
+screen's edge, a device's uses as pips under its name. On the film camera, only countdown tags (at most three).
+*Filled in:* this replaces step 2's "labels dimmer on Julian's camera": rule 1 (labels only on set) wins, except the
+countdown tags, because the look must not hide a rule. Since the HUD's fix there is one target label at a time, and
+Maya's platform view shows five.
+
+**The copy** (§15.7: 93 patches in pass 2, 22 in the fix). One name per thing (CHAMPAGNE CART, SOUND DESK, PYRO
+BOARD, CURTAIN WINCH); the first checkpoint is THE STREET; nobody runs; R is "New take". The goal line says what to
+achieve, never repeats the Use prompt, and fits one line; the bars use sentence case with no final full stop. The
+crew's intros are one line each in the director's voice ("Maya, our gaffer, up on the lights. Crew pass: nobody
+watches her."). *Filled in:* the device names, "terrace" for "canopy", the reworded blooper reasons, the intros.
+
+**Danger against Julian without hue** (§15.8, for colour-blind players). Red is broken and moving, gold is solid and
+still: a watcher's frame lines and the beam are dashed from the eye, a frame's fill is banded outwards from the
+watcher, red tape is hatched at 45 degrees, tally lights and the HUD's SEEN and alarm glyphs are squares, and red
+pulses. Julian's marks are solid gold T plates that never move, and the disc under a mark fills with an action's
+progress instead of pulsing. The world fix adds: frame segments within 2 to 3 m of the lens fade out (near the lens
+they crossed Julian as thick slabs); mark plates 1.4x larger (2x at the scanner and the registration desk, where 1.4x was still a sliver), visual only (the street's and lobby's marks were
+slivers at play distance; the trigger and timings do not move); the tally's off state a dark red square (it read
+violet); the dais footlights as two low glow strips instead of 50 boxes, which read as a dotted line.
+
+**The set: materials and dressing** (`tools/dress_auction.py`, run at the end of `tools/build_auction.py` or alone).
+Three master materials in `/Game/Take/Dress` (lit set, unlit practicals, and `M_SignalPattern`, the signal material
+with dashes, bands and hatching) and 40 instances. Every set mesh (1,391) is re-surfaced by what it was built as, its
+label and its zone: the fronts (street, lobby, hall, dais, the north rooms) as an old auction house, the backs
+(backstage and the east) as the raw back of a film set. 312 small dressing pieces with no collision: kerb, queue
+stanchions, press wall, bay trees, wainscot and cornice, chandelier, pilasters with sconces, side-aisle runners, the
+dais lip and footlights, the pyro charges, the flats' battens, braces and weights, cables, work tubes, road cases,
+spike marks, catwalk tape, truss and lamp housings. None stands within 1.2 m of a mark, watcher, device, crew post or
+character. Red and gold left everything that carries no meaning: picture frames, stanchions, bottles, instruments,
+banners, the rope, the curtain (velvet now), extinguishers, cars, the device rings. *Filled in:* crew kit is light
+steel, not work blue; the pyro's flare is warm white, not gold.
+
+**Lighting.** Retuned per zone, with a new `Back_Dais` rim behind Vance and the bodyguard. *Filled in, beyond
+§15.9:* Julian carries his own key light (`Dress_Julian_Key`) on a lighting channel (a light only touches meshes on
+its channel) that only his mesh is on, so it lights him alone and he stays the lightest thing in frame; two house
+lights over the seats (`Dress_House_Fill`), because the night skylight fills nothing (it captures a black sky). The
+world fix, as planned: the key hangs off the film camera's boom instead of off Julian, so it lights the side the
+camera sees (it falls back to Julian if that does not survive into play); the dais deck and the `Back_Dais` rim go
+lighter so Vance, the bodyguard and the mark behind him read; a cool wash up the street's facade
+(`Dress_Facade_Wash`) so the opening frame is not half black; the warm keys whiter (`WARM` 1.0, 0.90, 0.80); the
+banner and the aisle cases at the rope darker, so nothing but Julian is above 160; LOT 41 on the dais legible.
+
+**Tints.** Value carries the cast: Julian alone at the top (a light warm grey), the crew and guests in the middle,
+the band dark, the heavies (guards, the bodyguard, Vance, the drone) near black through `BodyTint`. They are still
+the template mannequins (step 5).
+
+**What changed from the spec and §15, and why.**
+- The grade runs before TSR (Temporal Super Resolution, Unreal's anti-aliasing), not after tonemapping as §15.3
+  says: after TSR the stencil is jittered against the resolved picture and the kept edges crawl. The volume's own
+  tone curve is off and the material applies a filmic curve itself.
+- Its numbers sit on the volume's material instance, not in a parameter collection: `Bleed` is 1 minus §15's
+  `GradeStrength`, `MakingOf` is its `GradeMode`, and `bMakingOfSplit` is the opposite of `bAllFilm`.
+- Grain after a cut is capped at 0.14 (`GrainMax`); §15.4 says 0.16.
+- After the grade the engine brightens the picture by a constant (linear x1.65). It was found with a test pattern
+  the material draws (`DebugFlat`) and divided out (`OutputScale` 0.6); it is measured, not explained.
+- Gold cannot glow: the grade clamps every kept pixel at its token, so the world critique's brighter gold was
+  declined and the mark plates grew instead.
+- Trim is pewter, never the gilt or brass an auction house would have: gold is Julian's.
+- The device rings stay on the lit material: the signal material on an instanced mesh (many copies drawn as one)
+  crashed the GPU at every editor start, for want of a usage flag.
+- `AlarmSat` 1.0 for 1.15, Julian's own key and the house fills (above).
+
+**Held or left out.**
+- Still waiting for gate 2: the shot list and fixed angles, the monitor strip, stills, good cuts and their replay,
+  the edit suite, the contact sheet, the recorder, The Cold Open, The Long Take, The Insert. The film and making-of
+  split that steps 2 and 3 left for gate 2 is built now as a look; the rules written around it still wait.
+- Step 5, characters and props: tinted template mannequins only; no costume props, instruments, bob on the beat,
+  bow or particle effects.
+- Step 6, audio: the clicks, the warning pitches, the alarm tone, the sting and the clapper are still stand-ins.
+- Declined from the HUD critique: #3 (the stats page and the reel disagree) is not a bug: the two shots came from two
+  different test runs, and both pages read the same results. #5's wording: the intros are one line each, but in the
+  director's voice, not the critic's.
+- Not in the HUD's fix: #6 (a tape label shows through the subtitle plate), #8 (DELETED SCENES drawn two ways,
+  "0 of 1" reading as "o of ı"), #9 (the blooper reel's scroll masks run past the card's border). The HUD's builder
+  reports all three were fixed before pass 2 was committed, after the shots the critic saw were taken. Not checked
+  again on a packaged screenshot.
+- Declined from the world critique: #2's brighter gold (it cannot glow, above); moving the queue-lane stanchion that
+  cuts the street's mark in two (it collides). #7 needed nothing: tape never takes the alarm's white, and the white
+  "tape" in the shot was a frame's banded fill.
+
+**Proof.** Proven in the earlier passes: each pass ran the four scripted play-in-editor tests to their ends (the
+whole take, ROUGH CUT by the trap; Scene 3 by the trap; the keycard blooper, the clock running out, and the side exit
+with The Bow for DIRECTOR'S CUT; the carpet and beam bloopers with both routes), logs `C:\Jam\Builds\step4_t_*.log`,
+`step4p2_t_*.log`, `step4p3_t_*.log`. Pass 1's package with real keys: a whole take to PRINT IT in 3:02, 17 cuts, 1
+blooper, out by the trap (`docs/shots/step4_p1_*.png`), red tape (199, 47, 31) against `#D3301F` (211, 48, 31) and a
+gold mark (229, 182, 73) against `#E9B949`. Pass 2's package with real keys: the title card, the queue, a cut to
+Maya, a refused cut and a blooper at the scanner's tape, with the fonts and the HUD in Shipping
+(`docs/shots/step4_p2_*.png`). Pass 3 and the two fix passes were first proven in the editor
+(`step4_p3_pie_*.png`, `step4_fix_*.png`; in a standalone run at 1920 x 1080 on this PC's 125% display the composure
+line is 800 px and the controls' lowest pixel is at y 1065, `step4_fix_scale_1080.png`) and are in the final package
+below. Still editor only: the blooper's burn frames, the composure burn, and full screen at 1920 x 1080 from the
+packaged exe (the packaged run was windowed at 1600 x 900). The final run:
+- The four scripted tests in the normal viewport (logs `C:\Jam\Builds\step4final_t_*.log`) end as they did after
+  pass 3, with the same deliberate bloopers: t_full ROUGH CUT by the trap, t_s3 ROUGH CUT, t_s3b DIRECTOR'S CUT,
+  t_fail both failures and both routes.
+- One run of the packaged `.exe` with real keys and mouse (`C:\Jam\Builds\shots\play_final.ps1`, windowed
+  1600 x 900 on the 125% display, 3:25 on the wall clock): the title card, the whole take to PRINT IT in 3:02 on the
+  band's clock, 17 cuts, 1 blooper (the beam, on purpose), out by the stage trap, ROUGH CUT, the stats. The HUD sits
+  inside the window; the fonts, the dashes, the hatching and the T plates are in the Shipping picture.
+- Its screenshots: `docs/shots/step4_01_title_card.png`, `02_queue_julian`, `03_scanner_red`, `04_maya_making_of`,
+  `05_scene2_floor`, `06_cut_frame`, `07_blooper_slate`, `08_alarm_bleed`, `10_print_it`, `11_stats_grade`,
+  `step4_thumb_315x250.png`, and `step4_after_{queue,maya,floor}.png` beside `step4_before_*`.
+- **Not caught from the final package: the pyro's flash** (there is no `step4_09`; the run's frame at that moment
+  was the same as the alarm's). The pyro is on screen in pass 1's packaged run (`step4_p1_09_bleed_pyro.png`, with
+  the old HUD) and in the editor with the new one (`step4_p2_pie_13_pyro.png`). A retry was stopped when Marwan
+  asked to play the build.
+- The §15.11 checks on the final build: the last column of the first table below. The hall's floor, the heavies
+  and the alarm's hue share are sampled in play-in-editor, because the Shipping exe cannot project a point.
+- The frame time after the final run: the last column of the second table below.
+- The zip `C:\Jam\Builds\TeamName_GameName.zip`, 326 MB, made with 7-Zip without the `.pdb` (pass 2's is kept as
+  `TeamName_GameName_step4p2.zip`).
+
+| §15.11 check | Pass | Pass 3, editor, before the world fix | Final run, package |
+|---|---|---|---|
+| 1 Hero: Julian's back | 200 or more | 217 | (229, 222, 208), 220: pass (package) |
+| 1 Heavies: the nearest guard's torso | 45 or less | 31 | 31: pass (editor) |
+| 1 Lit floor, in an aisle key | 95-130 | 111-132 | 128: pass (editor; `KEY_CD` 2400 to 2300 after the whiter keys gave 131) |
+| 1 Floor in shadow, between bench rows | 45-70 | 52-83 (house fills at 1600 cd, since 1200) | 49 and 65: pass (editor) |
+| 1 Black point | within 5 of the bars' (13, 12, 11) | 16-17 | 17: a point or two over (editor) |
+| 2 Stencil red: the scanner's red tape | within 15 of `#D3301F` (211, 48, 31) a channel | (198, 45, 30) | a frame line (211, 48, 31): pass (package). The carpet (187, 49, 35) is darker: 24 under on red, outside the 15 |
+| 2 Stencil gold: a gold mark | within 15 of `#E9B949` (233, 185, 73) a channel | (213, 169, 67) seat mark, (232, 184, 72) case | (231, 183, 71): pass (package) |
+| 3 Making-of: a wall on camera 2 | B at least R + 25 | B - R 25-30 | B - R 29: pass (package) |
+| 4 Thumbnail, 315 x 250 | the letterbox, Julian lightest, one red, one gold mark | the gold T hidden under Julian at the floor mark | partial: the letterbox and Julian as the lightest shape read, the red is faint, and the only gold is the composure line in the bar (no mark in that frame) |
+| 6 Labels on Maya's platform | 5 or fewer, none overlapping | 6 (5 since the HUD's fix) | 5, none overlapping, none in the bars: pass (package, `step4_04_maya_making_of.png`) |
+| 7 Alarm | full colour, frames white, gold hue under 6% of the frame | 14% | 3.5%: pass (editor); full colour and white dashed frames in the package (`step4_08_alarm_bleed.png`) |
+
+| Frame / Game / Draw / GPU, ms (editor, `stat unit`) | Before step 4 | After pass 3 | After the final run |
+|---|---|---|---|
+| Queue (camera 1, the start) | 22.85 / 22.83 / 3.90 / 8.53 | 23.71 / 23.69 / 4.88 / 9.09 | 23.26 / 23.27 / 4.94 / 9.23 |
+| Maya (camera 2, the terrace) | 22.81 / 22.78 / 4.03 / 8.75 | 23.78 / 23.78 / 5.13 / 9.23 | 23.53 / 23.50 / 5.17 / 9.45 |
+| Floor (camera 1, the hall) | 22.65 / 22.66 / 4.17 / 8.96 | 23.55 / 23.56 / 5.02 / 9.54 | 23.53 / 23.50 / 5.04 / 10.23 |
+
+The game thread's 22.8 ms is the editor and the test script; Draw and GPU are the columns step 4 moves (the
+custom-depth pass and the dressing's draws).
+
+**Only Marwan can judge (step 4):**
+- The split against `bMakingOfSplit` off: does the cut to steel-blue video read as "the making-of", or as a
+  different game?
+- Grain, flicker and dust, the burn's strength as composure falls, the vignette.
+- The bleed at the alarm and the white pulse; whether the alarm without amber still feels warm enough.
+- The mood: how dark the hall and backstage are, the street's opening frame, the house lights over the seats
+  against the noir pools, the footlights and sconces.
+- The three fonts and their sizes; the 16 px controls row through Moonlight on the Mac.
+- The words: the director's intros and lines, "Walked into the beam", the title card's two rule lines.
+- Hatched tape and dashed frames: still clearly "red tape" and "camera frames"? The T marks; the red hatch's
+  loudness at the rope in motion.
+- The opening slate in the lower left while Julian can already walk: charming or in the way?
+- Tape labels on Maya's platform, and whether the film camera is fair without them.
+
+**Step 4 tunables, all `EditAnywhere` unless they are a script's numbers.**
+- On the director (`TakeDirector`): `bFilmLook`, `bMakingOfSplit`, `BleedSeconds`, `FilmGradeMaterial`, and
+  `ForceBleed` (for checks; -1 is off).
+- On the HUD class (`TakeHUD`): the label rule (`bLabelsOnFilmCamera`, `MaxLabels`, `MaxCountdownTags`,
+  `LabelMaxDistance`, `OffLabelMaxDistance`, `LabelMergeDistance`, `LabelMaxLifts`, `LabelLiftPx`); the timings
+  (`FlashHoldSeconds`, `RefusalHoldSeconds`, `SubtitleBaseSeconds`, `SubtitlePerCharSeconds`, `SubtitleQueueMax`,
+  `StampHoldFrames`, `StampTitleHoldFrames`, `GoalRuleFrames`, `StatsRowSeconds`, `GradeDelayFrames`); the words
+  (`ControlsHint`, `TitleControls`, `TitlePitch`, `TitleCast`, `TitleRules`, `TitlePrompt`, `DirectorWord`,
+  `SceneNames`, `EndKeys`, `EndKeysLast`). The overlay is under `Film`: a switch per effect (`bLetterbox`, `bGrain`,
+  `bFlicker`, `bDust`, `bScratch`, `bSplice`, `bViewfinder`, `bBurn`, `bBlooperBurn`, `bPrintItSnap`),
+  `LetterboxAspect`, the grain (`GrainOpacity` 0.07, `GrainCutOpacity`, `GrainCardOpacity`, `GrainMax` 0.14), the
+  flicker (`FlickerMax` and its cut, card and low-composure versions), dust and scratches, the splice
+  (`SpliceFlashOpacity`, `SpliceBandPx`, `SpliceBandFrames`), the viewfinder (`CornerArmPx`, `CornerAlpha`,
+  `ScanLineAlpha`), the burn (`BurnBelow` 50, `BurnAlpha`, `BurnBeatAlpha`) and the blooper burn
+  (`BlooperBurnFrames`, `BlooperPaperFrames`).
+- On the actors: watchers' `AlarmEmissive` (4), `AlarmPulseBrightness`, `BodyTint`, `FramePattern`; marks'
+  `PlateScale` (1.4, and 2 on the scanner's and the desk's marks; the world fix); devices' `BodyColour`, `RingReachColour`, `RingIdleColour`. The map is rebuilt
+  from text, so change them in the scripts below to keep them.
+- In `Reel/Source/Reel/Take/TakeStyle.h` (a recompile): the colour tokens, the stencil numbers (`StencilRed`,
+  `StencilGold`, `StencilWhite`), the patterns, `LetterboxAspect`, `FilmFps`, `HudScale`, and every HUD size and
+  timing (the rows `RowT1` to `RowB3Down`, `MinBar` 138, `BottomSafe`, glyphs, keycaps, stamps, slates and cards,
+  `FramesBeat`, `FramesHold`).
+- In `MI_FilmGrade`, through the numbers in `tools/build_look.py` (run in the editor, not in play): `ColourExposure`
+  0.45, `FilmBlack`, `FilmWhite`, `FilmContrast` 0.6, `Vignette` 0.30, `MoBlack`, `MoRange`, `MoKeep` 0.9,
+  `StencilSat`, `KeptGain` 1.7, `RedFloor` 0.20, `GoldFloor` 0.45, `AlarmSat` 1.0, `OutputScale` 0.6, `DebugFlat`
+  (the test pattern). The director drives `Bleed` and `MakingOf`.
+- At the top of `tools/dress_auction.py`: the material tables (`LIT`, `GLOW`, `SIGNAL`, `SURFACES`), `HATCH_W`,
+  `KEEP_OUT`, `TAPE_MARGIN`, `FOOT_STEP`, the per-zone light retune (`RETUNE`, `WORK_HAZE`), `BACK_DAIS`,
+  `HOUSE_FILL`, `JULIAN_KEY`, `FACADE_WASH`, the tints (`TINTS`, `BODY_TINTS`, `HEAVY`, `DEVICE_BODY`, `BANNER_BODY`,
+  `RING_IDLE`, `CURTAIN`, `FLARE`), and the near fade (`NEAR_FADE`, `NEAR_FADE_LEN`).
+- At the top of `tools/build_auction.py`: `EXPOSURE_EV`, `SKY_FILL`, `KEY_CD`, `RIM_CD`, `WARM`.
+
+**Known issues carried forward.**
+- The engine's x1.65 after the grade is measured, not explained: rerun the `DebugFlat` check if the exposure or the
+  post-process volume changes.
+- `M_SignalPattern` is cached per editor session: after rebuilding it, restart the editor before judging the dashes.
+- A material put at runtime on an instanced mesh without its usage flag kills the GPU on the editor's first frame:
+  if the editor dies on start, look for "usage flag" in `Reel.log`.
+- A file-scope `using namespace` in a `.cpp` leaks into the next file of Unreal's unity build (error C4459): keep
+  them inside functions.
+- The 1600 x 900 floating play window runs at about 12 fps: shoot views there, run the tests in the normal
+  viewport. The editor's wide viewport has almost no letterbox.
+- 150% Windows scaling is untried (this PC runs 125%).
+- The CLEARED stamp never fires in the built take (the keycard shows the checkpoint and SCENE 3 instead), and the
+  FINAL CUT stamp has not been seen on screen.
+- The blooper burn has not been caught on a packaged screenshot.
+- Julian's key rides on the camera's boom in the editor. In the package it was not checked on its own (Julian
+  samples 220 at the queue there); if the attachment fails it falls back to hanging off Julian.
+- The lobby's floor samples 30, below the critic's 45 to 70 (Julian is still the lightest thing there).
+- The pyro's flash has no screenshot from the final package (Proof, above).
+- The 315 x 250 thumbnail of the queue frame shows no gold mark, only the gold composure line.
+- The near fade drops frame segments within 2 to 3 m of the lens; Julian stands 3.6 m out, so frames at his feet
+  stay.
+- On Maya's platform the FOLLOW SPOT, VANCE SPEAKING and BODYGUARD labels stack on the red frame box.
+- Only four hall pilasters fit between the paintings and the openings.
+- HUD critique #6, #8 and #9 are reported fixed but not checked again on a packaged screenshot (above).
 
 ## Step 3 as built, Nov 14 (Scene 3 and the ends, for the walking game)
 
@@ -291,12 +563,14 @@ K's spec is archived in `docs/ideas/k-meanwhile-spec.md`, and nothing in `protot
 `docs/ART_STYLE.md` was written for K: only the parts named under "Look" apply, and where it differs from this file,
 this file wins.
 
-State: **step 3 is built** (Nov 14, about 05:00). The C++ is in `Reel/Source/Reel/Take/`, the map is
-`/Game/Take/Lvl_Auction` (the project starts in it), and `tools/build_auction.py` rebuilds the map from its numbers
-(`Lvl_TestBox` and `tools/build_testbox.py` are the old step 1 and no longer load cleanly). From the street start
-the take plays through Scene 1 (The Door), Scene 2 (The Floor) and Scene 3 (The Getaway) to PRINT IT, the stats
-and grade and the blooper reel, with a checkpoint at each scene, at the rope, on the dais and at the case. Next:
-**gate 2**. Nothing past step 3 is built.
+State: **steps 1 to 4 are built** (step 4, the look, Nov 14, about 22:00). The C++ is in `Reel/Source/Reel/Take/`,
+the map is `/Game/Take/Lvl_Auction` (the project starts in it), and `tools/build_auction.py` rebuilds the map from its
+numbers, then dresses it with `tools/dress_auction.py`; `tools/build_look.py` builds the film grade (`Lvl_TestBox`
+and `tools/build_testbox.py` are the old step 1 and no longer load cleanly). From the street start the take plays
+through Scene 1 (The Door), Scene 2 (The Floor) and Scene 3 (The Getaway) to PRINT IT, the stats and grade and the
+blooper reel, with a checkpoint at each scene, at the rope, on the dais and at the case, on the film and making-of
+look with the HUD in the letterbox bars. Next: **gate 2**: on Nov 14 Marwan moved step 4 ahead of it, so his first
+full take is on the build with the look. Steps 5 and 6 are not started.
 
 ## The pitch
 
@@ -840,8 +1114,8 @@ characters, audio and polish. Every step ends playable, and the Windows package 
 | Fri about 22:30 | **Gate 1.** Marwan plays for 5 minutes. If they don't want another go, change a rule (windows, drain, uses), not the art | A yes, or the rule changed. **First answer Nov 13, 18:15: three rules changed (top of this file). Passed Nov 13, about 23:45: Marwan played the rework and the street-start build and said to start step 2** |
 | Fri night to Sat morning | **2. The set, its look, Scenes 1 and 2.** See "Step 2" below. Package | Scenes 1-2 play in the package, and screenshots show the film and the making-of. **Built Nov 14, about 04:00, for the walking game: see "Step 2 as built". The film and making-of split waits for gate 2** |
 | Sat (midterm 12:30) | **3. Scene 3 and the ends.** See "Step 3" below. Package | Title card to blooper reel in the package. **Built Nov 14, about 05:00, for the walking game: see "Step 3 as built". The replay, the edit suite and the contact sheet wait for gate 2** |
-| Sat evening | **Gate 2.** Marwan plays a full take cold | They want another go |
-| Sat evening and night | **4. Look.** Dressing the fronts and backs, the film burn, the letterbox HUD, the stamps | Screenshots pass ART_STYLE §14 |
+| Sat, moved ahead of gate 2 on Nov 14 | **4. Look.** Dressing the fronts and backs, the film burn, the letterbox HUD, the stamps | Screenshots pass ART_STYLE §14. **Marwan moved this step in front of gate 2 on Nov 14. Built Nov 14, about 22:00: see "Step 4 as built" (the design is ART_STYLE §15; its checks are §15.11)** |
+| Sat evening, after step 4 | **Gate 2.** Marwan plays a full take cold | They want another go. **Played on the build with the look (step 4 moved ahead of it on Nov 14)** |
 | Sat night to Sun 10:00 | **5. Characters and props.** Tinted mannequins, costume props, the band's instruments, the bob on the beat, the bow. Fab free packs, or generated props if the codes arrive. Niagara (Unreal's particle system) sparks, glass and smoke | Credited in docs/CREDITS.md |
 | Fri night to Sun 10:00, in parallel | **6. Audio.** A separate session, outside the editor. Write the lines, generate them with ElevenLabs once Marwan has set the key, and get the band's tune and the heist cue at 120 BPM, with stems. The editor session imports everything and locks the bar clock to the tune by Sun 10:00 | Content lock |
 | Sun 10:00-18:00 | **7. Polish.** See "Step 7" below | Nothing new after 18:00 |

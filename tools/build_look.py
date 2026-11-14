@@ -42,7 +42,7 @@ SCALARS = {
     "KeptGain": 1.7,         # a signal colour at full strength (TakeColors::Red, Gold) reaches its token
     "RedFloor": 0.20,        # ...and a value floor: red never darker than Y 0.20
     "GoldFloor": 0.45,       # gold never darker than Y 0.45 (always lighter than red)
-    "AlarmSat": 1.15,        # after the bleed: saturation on the whole picture
+    "AlarmSat": 1.0,         # after the bleed: saturation on the whole picture
     "KeepStencil": 1.0,      # 0 = everything graded (a check)
     "OutputScale": 0.6,      # measured with DebugFlat: after the grade the engine shows linear x1.65 (display x1.25)
     "DebugFlat": 0.0,        # 1 = known values instead of the picture (a check of what the engine does after the grade)

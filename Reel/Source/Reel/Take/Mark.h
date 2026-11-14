@@ -40,6 +40,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Mark")
 	bool bGoal = false;
 
+	/** Step 4, pass 3 (critique): the T plate's and the disc's size, x the pass-3 plate (80 cm bar). Visual only:
+	 *  standing on the mark is the director's test, not these meshes. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Look", meta = (ClampMin = "0.5", ClampMax = "2.5"))
+	float PlateScale = 1.4f;
+
 	// Step 2: checkpoints are no longer a mark's own business. An ASceneTrigger box saves one and names the mark
 	// Julian restarts on (ASceneTrigger::CheckpointMark).
 

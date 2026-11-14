@@ -264,7 +264,7 @@ void ADroneWatcher::LayoutDrone()
 
 	FTakeShapes::SetColour(FrameMesh, TakeColors::Red);
 	FTakeShapes::SetColour(Body, BodyTint);
-	FTakeShapes::SetColour(Tally, TakeColors::DarkGrey);
+	FTakeShapes::SetColour(Tally, TakeColors::RedDark);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

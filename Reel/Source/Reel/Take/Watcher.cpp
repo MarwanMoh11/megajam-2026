@@ -87,7 +87,7 @@ void AWatcher::BeginPlay()
 	}
 
 	FrameMID = FTakeShapes::SetColour(FrameMesh, TakeColors::Red);
-	TallyMID = FTakeShapes::SetColour(Tally, TakeColors::DarkGrey);
+	TallyMID = FTakeShapes::SetColour(Tally, TakeColors::RedDark);
 	FTakeShapes::SetSignal(FrameMesh, TakeStyle::StencilRed);
 	FTakeShapes::SetPattern(FrameMesh, FramePattern);
 	FTakeShapes::SetSignal(Tally, TakeStyle::StencilRed);
@@ -289,10 +289,10 @@ void AWatcher::RefreshFrameLook()
 	if (Tally)
 	{
 		Tally->SetVisibility(HasArrived());
-		FLinearColor TallyColour = bTally ? HoldingColour : TakeColors::DarkGrey;
+		FLinearColor TallyColour = bTally ? HoldingColour : TakeColors::RedDark;
 		if (IsArrivalBlinking())
 		{
-			TallyColour = LastPulse > TakeWatcherLocal::BlinkPulseThreshold ? HoldingColour : TakeColors::DarkGrey;
+			TallyColour = LastPulse > TakeWatcherLocal::BlinkPulseThreshold ? HoldingColour : TakeColors::RedDark;
 		}
 		TallyMID = FTakeShapes::SetColour(Tally, TallyColour);
 	}
