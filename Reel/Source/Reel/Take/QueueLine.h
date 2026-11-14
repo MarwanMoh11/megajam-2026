@@ -79,6 +79,11 @@ struct FQueueGuest
 	/** Its inside spot (an index into InsideSpots, -1 none yet). */
 	int32 InsideSpot = -1;
 
+	/** Where its last WalkTo goes, how long ago it was given (world time) and how long the walk should take. */
+	FVector LegTarget = FVector::ZeroVector;
+	float OrderAge = 0.f;
+	float OrderExpect = 0.f;
+
 	bool bInside = false;
 };
 
@@ -245,6 +250,14 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Queue|Tutor", meta = (ClampMin = "0"))
 	float LineVoiceStartSeconds = 0.35f;
 
+	/** An unvoiced line (no voice rose after it) is done this long after its reading time, s. */
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Tutor", meta = (ClampMin = "0"))
+	float LineUnvoicedPad = 0.4f;
+
+	/** A line is done this long after its reading time whatever the voice does (the beats never hang), s. */
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Tutor", meta = (ClampMin = "1"))
+	float LineMaxExtraSeconds = 8.f;
+
 	/** Maya's own searchlight line (the audio's, on the fire): the back line waits this long for it at least, s. */
 	UPROPERTY(EditAnywhere, Category = "Take|Queue|Tutor", meta = (ClampMin = "0"))
 	float FireLineSeconds = 2.2f;
@@ -300,6 +313,18 @@ protected:
 	/** The guest is put at Point at once (a later take: already inside). */
 	void PutGuest(FQueueGuest& Guest, const FVector& Point, float Yaw);
 
+	/** The guest has reached its last WalkTo's point (or stopped walking a moment after it was given). */
+	bool GuestArrived(const FQueueGuest& Guest) const;
+
+	/** No guest is walking to or standing at the scan point. */
+	bool ScanPointClear() const;
+
+	/** The guest's blocker on or off (on: it follows the guest). */
+	void SetBlocker(FQueueGuest& Guest, bool bOn);
+
+	/** Real seconds since the world began (undilated). */
+	double RealNow() const;
+
 	/** The next inside spot (spread when they repeat). */
 	FVector NextInsideSpot(FQueueGuest& Guest);
 
@@ -322,6 +347,8 @@ protected:
 	bool bTeachingNow = false;
 	bool bUseStarted = false;
 	bool bBackSaid = false;
+	bool bBackTaught = false;
+	bool bLineVoiceSeen = false;
 
 	float StepTimer = 0.f;
 	int32 InsideCount = 0;

@@ -1,7 +1,15 @@
 {
   "_comment": "Package devices (QA Nov 14, notes 17 and 10): the things Maya and Vex use, as period objects. Same shape as props.json; generate.py adds STYLE to every prompt. Run with RODIN_PROPS_FILE=tools/rodin/props_devices.json. tools/sets/devices.py imports and places them.",
   "style": "1940s American period piece, realistic proportions, single object, centred, matte, neutral flat lighting, no baked shadows, no text, no logos, plain background",
-  "params": {"tier": "Gen-2.5-Low", "texture_mode": "high", "mesh_mode": "Raw", "quality_override": "15000", "geometry_file_format": "glb", "material": "PBR", "preview_render": "true"},
+  "params": {
+    "tier": "Gen-2.5-Low",
+    "texture_mode": "high",
+    "mesh_mode": "Raw",
+    "quality_override": "15000",
+    "geometry_file_format": "glb",
+    "material": "PBR",
+    "preview_render": "true"
+  },
   "props": {
     "devices_searchlight": "a 1940s Hollywood movie premiere carbon-arc searchlight: one large round drum-shaped lamp barrel with a big glass front lens and a ribbed rear housing, held in a U-shaped steel yoke on a turntable, mounted on a small low four-wheeled steel trailer trolley with a tow bar, painted dark olive green steel with brass fittings",
     "devices_followspot": "a 1940s theatre follow spot: a long cylindrical spotlight barrel with a round glass lens at the front, cooling vents on the top, a long straight operator's handle sticking out of the back, on a tall cast-iron pedestal stand with three splayed feet, black painted steel with brass trim",
@@ -9,6 +17,7 @@
     "devices_pyro": "a 1940s theatre pyrotechnic firing board: a black lacquered wooden control box on four short legs, a sloped front panel with one row of eight brass toggle switches each with a small red jewel indicator lamp above it, a large brass key switch at one end, thick black cables coming out of the back, black wood and brass",
     "devices_gate": "a 1940s art deco brass ticket gate arch for a grand hotel entrance: two tall slender square brass posts joined by a flat stepped art deco crossbeam on top, a small brass ticket reader box with a round electric eye lens mounted on one post at waist height, two round signal lamps on the crossbeam, a wide open walkway between the posts, polished brass and black enamel",
     "devices_dimmer": "a 1940s theatre resistance dimmer board: a tall black slate and cast-iron cabinet standing on the floor, a row of six large brass levers with black round knobs in vertical slots, a round dial plate above each lever, one big master handle on the side, black iron, grey slate and brass",
-    "devices_rail": "a 1940s theatre counterweight rope-lock rail: a vertical black steel arbor frame stacked with rectangular dark iron counterweight bricks, two thick hemp ropes running up out of the top, a rope lock with a long brass lever at waist height on a short steel rail, black iron and hemp"
+    "devices_rail": "a 1940s theatre counterweight rope-lock rail: a vertical black steel arbor frame stacked with rectangular dark iron counterweight bricks, two thick hemp ropes running up out of the top, a rope lock with a long brass lever at waist height on a short steel rail, black iron and hemp",
+    "devices_fresnel": "a 1940s theatre fresnel stage lantern: a short round black sheet-metal lamp housing with a stepped glass lens at the front, cooling louvres on top, held in a U-shaped steel yoke with a pipe clamp on top for hanging from a pipe, black painted steel"
   }
 }

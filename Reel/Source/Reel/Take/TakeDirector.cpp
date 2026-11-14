@@ -176,6 +176,7 @@ void ATakeDirector::BeginPlay()
 		SceneHints.Add(TEXT("VEX: \"My desk blinds the whole room for two bars. Then lift it.\""));
 		SceneHints.Add(TEXT("VEX: \"Winch first: the curtain hides him from the guards and opens the trap. Then Maya's pyro. Then run.\""));
 	}
+	BeginHeist();	// --- QA heist: the dimmer, the case mark swaps the reel (TakeDirectorHeist.cpp)
 
 	// Step 3: the alarm and the ends start over; the restore (first tick) starts the alarm again if the checkpoint
 	// holds the case.
@@ -561,6 +562,7 @@ void ATakeDirector::Tick(float DeltaSeconds)
 	StepMarkActions(DeltaSeconds);
 	StepScene(DeltaSeconds);
 	UpdateObjective();
+	StepHeist(DeltaSeconds);	// --- QA heist: the swap in the dark, and its goal line over UpdateObjective's
 	StepLook(DeltaSeconds);
 
 	// For next frame's swept beam test.

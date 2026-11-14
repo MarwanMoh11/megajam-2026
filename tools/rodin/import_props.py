@@ -101,12 +101,14 @@ RULES = [
          on=r"Plinth_\d+|Preview_Plinth_\d+|Lot_Plinth_\d+", every_other=True),
     dict(prop="column", parts=[r"Column_\d+"], mode="stretchz", face=0, grow=1.08),   # flutes stretch, base too
     dict(prop="chair", parts=[r"Bench_\d+"], mode="row", face=0, spacing=62.0, height=90.0),
-    dict(prop="cocktail", parts=[r"Cocktail_Table_\d+", r"Cocktail_Stem_\d+"], mode="fit", face=0),
+    # --- QA front (note 13): stretchz, so the top lands on the box's top and the glasses stand on it (was fit)
+    dict(prop="cocktail", parts=[r"Cocktail_Table_\d+", r"Cocktail_Stem_\d+"], mode="stretchz", face=0),
     dict(prop="bar", parts=[r"Bar_\d+"], mode="modules", n=4, face=90),
     dict(prop="backbar", parts=[r"Bar_Shelf_\d+"], mode="modules", n=2, face=90, hide=[r"Bar_Bottles_\d+"]),
     dict(prop="stool", parts=[r"Stool_\d+"], mode="fit", face=90),
     dict(prop="frame", parts=[r"Frame_\d+"], mode="frame", face="wall", depth=8.0),
-    dict(prop="stanchion", parts=[r"(Dress_)?Stanchion_\d+", r"(Dress_)?Stanchion_Foot_\d+"], mode="fit", face=0),
+    # --- QA front (note 13): stretchz, so the post's top is the box's 94 cm and the velvet rope hooks on it (was fit)
+    dict(prop="stanchion", parts=[r"(Dress_)?Stanchion_\d+", r"(Dress_)?Stanchion_Foot_\d+"], mode="stretchz", face=0),
     dict(prop="sofa", parts=[r"Sofa_\d+", r"Sofa_Back_\d+"], mode="fit", face="away:Sofa_Back_"),
     dict(prop="roadcase", parts=[r"Flight_Case_\d+", r"Dress_Road_Case_\d+"], mode="stretch", face="auto"),
     dict(prop="crate", parts=[r"Crate_\d+", r"Stock_Crate_\d+", r"Stock_Crate_Top_\d+", r"Dress_Crate_\d+"],

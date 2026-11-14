@@ -47,6 +47,7 @@ void ATakeDirector::StepBlooperCheck(float DeltaSeconds)
 	LastBlooperReason = Reason;
 	SetPhase(ETakePhase::BlooperFreeze);
 	FreezeSecondsLeft = BlooperFreezeSeconds;
+	OnHeistBlooper();	// QA heist: the house lights back up under the slate (the reload restores the rest)
 	if (Audio)
 	{
 		Audio->OnBlooper();	// step 6: the tape-stop, the film burn, the buzzer, "Cut!", the rewind
@@ -80,6 +81,10 @@ void ATakeDirector::StepBlooperCheck(float DeltaSeconds)
 					break;
 				}
 			}
+		}
+		else if (Reason == EBlooperReason::SeenAtCase)
+		{
+			Record.CaughtBy = TEXT("WHOLE ROOM");	// QA heist ("Caught by the WHOLE ROOM.")
 		}
 		GI->BlooperReel.Add(Record);
 		GI->NoteBlooper(Reason);

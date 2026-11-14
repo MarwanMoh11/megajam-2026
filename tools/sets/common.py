@@ -298,7 +298,7 @@ def _rt(w, h):
     return _RT[(w, h)]
 
 
-def _capture(name, out_dir, w, h, setup, hidden=(), unlit=False, ev=0.0):
+def _capture(name, out_dir, w, h, setup, hidden=(), unlit=False):
     out_dir = out_dir or SHOTS
     os.makedirs(out_dir, exist_ok=True)
     name = name if name.endswith(".png") else name + ".png"
@@ -312,12 +312,6 @@ def _capture(name, out_dir, w, h, setup, hidden=(), unlit=False, ev=0.0):
         c.set_editor_property("capture_on_movement", False)
         if unlit:                                               # base colour only: for unlit corners
             c.set_editor_property("show_flag_settings", [unreal.EngineShowFlagsSetting("Lighting", False)])
-        if ev:                                                  # exposure bias in stops: for dark rooms
-            pp = c.get_editor_property("post_process_settings")
-            pp.set_editor_property("override_auto_exposure_bias", True)
-            pp.set_editor_property("auto_exposure_bias", float(ev))
-            c.set_editor_property("post_process_settings", pp)
-            c.set_editor_property("post_process_blend_weight", 1.0)
         for a in hidden:
             c.hide_actor_components(a, False)
         setup(cam, c)
@@ -328,16 +322,16 @@ def _capture(name, out_dir, w, h, setup, hidden=(), unlit=False, ev=0.0):
     return os.path.join(out_dir, name)
 
 
-def shot(name, pos, look_at, fov=70.0, w=1280, h=720, out_dir=None, unlit=False, ev=0.0):
+def shot(name, pos, look_at, fov=70.0, w=1280, h=720, out_dir=None, unlit=False):
     """A perspective PNG from pos looking at look_at, final colour with the level's post-process. The editor
-    viewport is not used or moved. ev: exposure bias in stops (+2 to +4 shows a dark room; the game is darker).
-    unlit: no lighting at all. Returns the path."""
+    viewport is not used or moved. unlit=True: base colour with no lighting, to see shapes in a dark room (an
+    exposure override has no effect on these captures). Returns the path."""
     r = unreal.MathLibrary.find_look_at_rotation(unreal.Vector(*pos), unreal.Vector(*look_at))
 
     def setup(cam, c):
         cam.set_actor_location_and_rotation(unreal.Vector(*pos), r, False, False)
         c.set_editor_property("fov_angle", float(fov))
-    return _capture(name, out_dir, w, h, setup, unlit=unlit, ev=ev)
+    return _capture(name, out_dir, w, h, setup, unlit=unlit)
 
 
 def plan(name, x0, x1, y0, y1, z_cut, px=1600, out_dir=None, unlit=False):

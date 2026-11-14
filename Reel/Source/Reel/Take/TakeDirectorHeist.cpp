@@ -226,7 +226,8 @@ void ATakeDirector::StepHeist(float DeltaSeconds)
 
 	// 5. The house comes up. With the dummy in the case, Vance presents Lot 41, opens the can, and the old Case
 	// trigger starts the alarm and the getaway; the case's checkpoint is saved as the case mark used to save it.
-	if (bHeistWasDark && !bDark)
+	const bool bDarkNow = Dimmer->IsHouseDark();	// the swap may have ended the dark on this frame
+	if (bHeistWasDark && !bDarkNow)
 	{
 		if (HasFired(SwapName) && !HasFired(CaseName))
 		{
@@ -247,7 +248,7 @@ void ATakeDirector::StepHeist(float DeltaSeconds)
 			TAKE_LOG(TEXT("HEIST the preview ended with no swap"));
 		}
 	}
-	bHeistWasDark = Dimmer->IsHouseDark();
+	bHeistWasDark = bDarkNow;
 
 	// 6. The goal line, over UpdateObjective's, from the keycard until the case is open.
 	if (!bKeycard || HasFired(CaseName) || Phase != ETakePhase::Rolling)
@@ -264,8 +265,8 @@ void ATakeDirector::StepHeist(float DeltaSeconds)
 	else if (Dimmer->IsHouseDark())
 	{
 		const int32 Left = FMath::CeilToInt(Dimmer->GetDarkSecondsLeft());
-		LogKey = CurrentCamera == ETakeCamera::A ? TEXT("Lights down: swap the reel at the case")
-			: TEXT("[1] JULIAN: swap the reel at the case while it is dark");
+		LogKey = CurrentCamera == ETakeCamera::A ? FString(TEXT("Lights down: swap the reel at the case"))
+			: FString(TEXT("[1] JULIAN: swap the reel at the case while it is dark"));
 		Line = FString::Printf(TEXT("%s.   %d s"), *LogKey, Left);
 	}
 	else if (CurrentCamera == ETakeCamera::A)
@@ -288,8 +289,8 @@ void ATakeDirector::StepHeist(float DeltaSeconds)
 				}
 			}
 			Line = bVexPosted
-				? TEXT("[2] MAYA: dim the HOUSE LIGHTS. In the dark, JULIAN swaps the reel at the case")
-				: TEXT("Post [3] VEX at the CURTAIN WINCH. Then [2] MAYA dims the HOUSE LIGHTS for the swap");
+				? FString(TEXT("[2] MAYA: dim the HOUSE LIGHTS. In the dark, JULIAN swaps the reel at the case"))
+				: FString(TEXT("Post [3] VEX at the CURTAIN WINCH. Then [2] MAYA dims the HOUSE LIGHTS for the swap"));
 		}
 	}
 	else if (CurrentCamera == ETakeCamera::B)

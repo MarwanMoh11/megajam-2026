@@ -891,6 +891,45 @@ public:
 	/** Sets Phase and zeroes PhaseSeconds, logs "PHASE -> X". */
 	void SetPhase(ETakePhase NewPhase);
 
+	// --- QA heist ---
+	// The swap in the dark (Marwan's QA note 6). BODY: heist, TakeDirectorHeist.cpp; the device is AHouseDimmer
+	// (HouseDimmer.h tells the trick). After the keycard Maya's house dimmer takes the hall dark for the preview of
+	// Lot 41; the case mark swaps the reel for Vex's dummy, safe only in the dark (in the light the room sees him: the
+	// blooper SeenAtCase); the house comes up, Vance opens the dummy and the old Case trigger starts the alarm.
+
+	/** The switch. Off (or no house dimmer or case mark in the level): the old flow, the case trips the alarm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Heist")
+	bool bHeistTrick = true;
+
+	/** The trick is in play this take: bHeistTrick, a house dimmer and the case mark. */
+	bool IsHeistOn() const;
+
+	/** BeginPlay, after GatherActors: finds the dimmer and the case mark; on, the case mark fires "Swap" instead of
+	 *  Case and saves no checkpoint itself, and the hint at the keycard's checkpoint names the dimmer. */
+	void BeginHeist();
+
+	/** Step 6, right after UpdateObjective, while Rolling: the teach line, the room seeing him at the case, the swap,
+	 *  the house coming up (FireTrigger(Case) and the case's checkpoint), and the goal line until the case is open. */
+	void StepHeist(float DeltaSeconds);
+
+	/** StepBlooperCheck, on the blooper's frame: the house lights back up at once under the slate. */
+	void OnHeistBlooper();
+
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|Heist")
+	TObjectPtr<ADevice> HeistDimmer;
+
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|Heist")
+	TObjectPtr<AMark> HeistCaseMark;
+
+	FString HeistCaseCheckpointName;
+	FString HeistLoggedObjective;
+	bool bHeistPrimed = false;
+	bool bHeistTaught = false;
+	bool bHeistSwapHandled = false;
+	bool bHeistWasDark = false;
+	bool bHeistReaching = false;
+	// --- end QA heist ---
+
 protected:
 	/** Finds the local ATakePlayerController the first time it exists: the director ticks after it, and so does every
 	 *  character and its movement component (AddTickPrerequisiteActor); then PC->SnapTo(Julian), the take's start

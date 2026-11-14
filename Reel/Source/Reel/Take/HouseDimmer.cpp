@@ -223,9 +223,11 @@ void AHouseDimmer::StepDevice(float DeltaSeconds)
 void AHouseDimmer::GatherTargets(const TArray<TObjectPtr<AWatcher>>& All, TArray<AWatcher*>& Out) const
 {
 	Super::GatherTargets(All, Out);	// every watcher within Range of the hall's middle
-	Out.RemoveAll([](const AWatcher* W)
+	const FBox House = TakeHouseDimmerLocal::HouseBox(HouseMin, HouseMax);
+	Out.RemoveAll([&House](const AWatcher* W)
 	{
-		return !W || W->IsInstantBlooper();	// the beam is a laser: it does not watch films
+		// The beam is a laser: it does not watch films. A watcher outside the hall (backstage) cannot see the screen.
+		return !W || W->IsInstantBlooper() || !House.IsInsideOrOn(W->GetActorLocation());
 	});
 }
 
@@ -256,6 +258,14 @@ void AHouseDimmer::EndPreviewIn(float Seconds)
 		return;
 	}
 	TAKE_LOG(TEXT("%s: the house comes up in %.1f s"), *DeviceName, DarkSecondsLeft);
+}
+
+void AHouseDimmer::HoldPreviewFor(float Seconds)
+{
+	if (IsHouseDark() && Seconds > DarkSecondsLeft)
+	{
+		DarkSecondsLeft = Seconds;
+	}
 }
 
 void AHouseDimmer::RestoreHouseNow()

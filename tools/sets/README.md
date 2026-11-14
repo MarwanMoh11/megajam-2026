@@ -35,8 +35,8 @@ C.save_level()
   z0, z1)`, mesh on z0, centred; modes fit, fitxy, stretch, stretchz. Check a Rodin mesh's front (import_props `FRONT`).
 - `bounds(actor_or_label)` -> `[x0, x1, y0, y1, z0, z1]` (union of matches); `top_of(label)` (z to stand on);
   `find(pattern)` -> actors; `near(x, y, r, z=None)` -> labels near a point (to find culprits).
-- `shot(name, pos, look_at, fov=70, w=1280, h=720, out_dir=, ev=0, unlit=False)`: a SceneCapture to PNG in one call,
-  final colour with the level's post-process; the editor viewport is untouched. `ev=3` lifts a dark room.
+- `shot(name, pos, look_at, fov=70, w=1280, h=720, out_dir=, unlit=False)`: a SceneCapture to PNG in one call, final
+  colour with the level's post-process; the editor viewport is untouched. Rooms are dark: `unlit=True` shows shapes.
 - `plan(name, x0, x1, y0, y1, z_cut, px=1600, out_dir=, unlit=False)`: orthographic top-down; actors whose bottom is
   above `z_cut` are left out. **Image right = +X, image down = +Y**: pixel (u, v) = world (x0 + u*s, y0 + v*s).
 - `save_level()`. Shots default to `C:\Jam\Builds\qa\shots`: use `C:\Jam\Builds\qa\<package>\`. Read the PNG yourself.

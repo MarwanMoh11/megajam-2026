@@ -63,7 +63,8 @@ enum class EBlooperReason : uint8
 	None,
 	ComposureZero,
 	BeamTouched,
-	ClockRanOut		// step 3: the finale's 8 bars ran out (rule 9)
+	ClockRanOut,	// step 3: the finale's 8 bars ran out (rule 9)
+	SeenAtCase		// --- QA heist: he took the reel with the house lights up, in front of the whole hall
 };
 
 /** The cut the take earns (rule 11, the grade). */
@@ -301,6 +302,7 @@ namespace TakeText
 		case EBlooperReason::ComposureZero: return TEXT("Composure ran out");
 		case EBlooperReason::BeamTouched: return TEXT("Walked into the beam");
 		case EBlooperReason::ClockRanOut: return TEXT("The clock ran out");
+		case EBlooperReason::SeenAtCase: return TEXT("The whole room saw him at the case");	// --- QA heist
 		default: return TEXT("");
 		}
 	}
@@ -312,6 +314,7 @@ namespace TakeText
 		case EBlooperReason::ComposureZero: return TEXT("COMPOSURE ZERO");
 		case EBlooperReason::BeamTouched: return TEXT("BEAM TOUCHED");
 		case EBlooperReason::ClockRanOut: return TEXT("THE CLOCK RAN OUT");
+		case EBlooperReason::SeenAtCase: return TEXT("THE ROOM SAW HIM");	// --- QA heist
 		default: return TEXT("NONE");
 		}
 	}

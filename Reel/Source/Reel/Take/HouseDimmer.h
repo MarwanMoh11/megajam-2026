@@ -68,7 +68,8 @@ public:
 	 *  of the preview the beam goes out and the house eases back up over RaiseSeconds. */
 	virtual void StepDevice(float DeltaSeconds) override;
 
-	/** Every watcher within Range of the effect point (the hall), except the beam: a laser does not watch films. */
+	/** Every watcher within Range of the effect point and inside HouseMin..HouseMax, except the beam: a laser does
+	 *  not watch films. */
 	virtual void GatherTargets(const TArray<TObjectPtr<AWatcher>>& All, TArray<AWatcher*>& Out) const override;
 
 	/** The actor transform applied to EffectOffset (the middle of the hall). */
@@ -85,6 +86,10 @@ public:
 
 	/** The swap: the house comes up within Seconds (only ever sooner). 0: the beam goes out on this frame. */
 	void EndPreviewIn(float Seconds);
+
+	/** Maya holds the house while Julian is half way through the swap: dark for at least Seconds more (only ever
+	 *  longer, only while dark). */
+	void HoldPreviewFor(float Seconds);
 
 	/** A blooper: the house lights back to where they were, the beam and the screen off, at once. */
 	void RestoreHouseNow();

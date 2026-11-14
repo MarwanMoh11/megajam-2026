@@ -29,3 +29,6 @@ Thumbs.db
 
 # Generated on each machine by prototypes/style/make_luts.py (kept out of git: binaries are not committed from the Mac)
 prototypes/style/luts/*.png
+
+# Python caches
+__pycache__/

@@ -895,17 +895,55 @@ for c in (900.0, 1300.0, 1700.0):
             deco("Window", FRONT - 4, FRONT, s * c - 120, s * c + 120, z0, z1, m_window, folder="Set/Street")
         prop("Planter", FRONT - 70, FRONT - 10, s * c - 110, s * c + 110, 0, 50, m_trim, folder="Set/Street")
         deco("Hedge", FRONT - 66, FRONT - 14, s * c - 104, s * c + 104, 50, 95, m_plant, folder="Set/Street")
+# --- QA front (note 13: "the queue rope isn't realistic and floaty") ------------------------------------------------
+# The street's and lobby's velvet ropes hang in a sagging curve (a short chain along a catenary) from hooks just under
+# the posts' tops (94 cm: import_props stretches the Rodin post to that height). Where the straight rope stood, an
+# unseen pawn-only box still stops the walker; cameras and sight lines pass. tools/sets/front.py does the same to a
+# level built before this.
+ROPE_HOOK, ROPE_DIA = 88.0, 3.6
+
+
+def velvet_span(a, b, z=0.0, folder="Set/Props"):
+    (ax, ay), (bx, by) = a, b
+    L = math.hypot(bx - ax, by - ay)
+    ux, uy = (bx - ax) / L, (by - ay) / L
+    hx0, hy0, hx1, hy1 = ax + ux * 4.0, ay + uy * 4.0, bx - ux * 4.0, by - uy * 4.0   # the hooks, on the posts' sides
+    sag, n = min(28.0, 0.06 * L + 4.0), max(6, min(24, int(L / 16.0)))
+    pts = [(hx0 + (hx1 - hx0) * i / n, hy0 + (hy1 - hy0) * i / n, z + ROPE_HOOK - 4.0 * sag * (i / n) * (1 - i / n))
+           for i in range(n + 1)]
+    for (p, q) in zip(pts, pts[1:]):
+        dx, dy, dz = q[0] - p[0], q[1] - p[1], q[2] - p[2]
+        ln = math.sqrt(dx * dx + dy * dy + dz * dz)
+        ghost(shape(CYL, "Rope_Sag", (p[0] + q[0]) / 2, (p[1] + q[1]) / 2, (p[2] + q[2]) / 2, ROPE_DIA, ROPE_DIA,
+                    ln + ROPE_DIA * 0.6, m_rope, yaw=math.degrees(math.atan2(dy, dx)),
+                    pitch=math.degrees(math.atan2(dz, math.hypot(dx, dy))) - 90.0, folder=folder))
+    blk = soft(box("Rope_Block", min(ax, bx) - 2, max(ax, bx) + 2, min(ay, by) - 2, max(ay, by) + 2, z + 76, z + 82,
+                   m_rope, folder="Set/Blockers"))
+    blk.set_actor_hidden_in_game(True)
+    blk.static_mesh_component.set_visibility(False, False)
+
+
+def velvet_rope(pts, z=0.0):
+    """rope_line's posts (import_props replaces them with the Rodin stanchion) with sagging velvet between them."""
+    for (x, y) in pts:
+        soft(shape(CYL, "Stanchion", x, y, z + 47, 7.0, 7.0, 94.0, m_gold))
+        ghost(shape(CYL, "Stanchion_Foot", x, y, z + 1.5, 28.0, 28.0, 3.0, m_gold))
+    for a, b in zip(pts, pts[1:]):
+        velvet_span(a, b, z)
+
+
 # Ropes: both sides of the carpet from the kerb to the doors (and a little way inside), the queue lane's north side,
 # a rope across the carpet at the doors (the doorman lifts it for an invitation), a rope across the crew lane.
 CARPET_X = (PAVE_X0 + 150.0, -3760.0, -3560.0, -3330.0, FRONT - 6.0)   # the carpet's foot is open: 1.5 m of it
 for ry in (LANE_ROPE, -LANE_ROPE):
-    rope_line([(rx, ry) for rx in CARPET_X])
-    rope_line([(LX0 + 12.0, ry), (LX0 + 250.0, ry)])
-rope_line([(-3900.0, LANE_Y1 + 10.0), (-3710.0, LANE_Y1 + 10.0), (SCAN_X, LANE_Y1 + 10.0)])
-prop("Rope", FRONT - 22, FRONT - 18, -LANE_ROPE, LANE_ROPE, 76, 82, m_rope, folder="Set/Street")
+    velvet_rope([(rx, ry) for rx in CARPET_X])                         # QA front: velvet_rope was rope_line (4 calls)
+    velvet_rope([(LX0 + 12.0, ry), (LX0 + 250.0, ry)])
+velvet_rope([(-3900.0, LANE_Y1 + 10.0), (-3710.0, LANE_Y1 + 10.0), (SCAN_X, LANE_Y1 + 10.0)])
+velvet_span((FRONT - 6.0, -LANE_ROPE), (FRONT - 6.0, LANE_ROPE), folder="Set/Street")   # QA front: was a straight bar
 blocker("Carpet_Rope_Block", FRONT - 26, FRONT - 14, -LANE_ROPE, LANE_ROPE, 0, 260)
-prop("Rope", SCAN_X - 2, SCAN_X + 2, -FRONT_DOOR_HALF, -LANE_ROPE, 76, 82, m_rope, folder="Set/Street")
+velvet_rope([(SCAN_X, -LANE_ROPE - 12.0), (SCAN_X, -FRONT_DOOR_HALF + 10.0)])   # QA front: was a bar with no posts
 blocker("Crew_Lane_Block", SCAN_X - 6, SCAN_X + 6, -FRONT_DOOR_HALF, -LANE_ROPE, 0, 260)
+# --- end QA front
 # The queue: two in the lane against its north rope, the rest backed up along the kerb to Julian's start.
 for qx in (-3880.0, -3800.0):
     guest(qx, LANE_Y1 - 35.0, facing=0.0)
@@ -1493,6 +1531,33 @@ setp(pyro, device_name="PYRO BOARD", effect=unreal.DeviceEffect.BLIND, range=PYR
 setp(pyro, use_offset=use_offset(pyro, (PYRO_USE[0], PYRO_USE[1], F2)),
      effect_offset=use_offset(pyro, (PYRO_POINT[0], PYRO_POINT[1], DAIS_H)),
      flare_offsets=[use_offset(pyro, (fx, fy, DAIS_H)) for (fx, fy) in PYRO_FLARES])
+
+# --- QA heist ---
+# The swap in the dark (QA note 6; Reel/Source/Reel/Take/HouseDimmer.h tells the trick). Maya's house dimmer at the
+# west rail of her platform: after the keycard it takes the hall's lights down for the preview of Lot 41, the
+# projector on the platform's east rail lights the dark screen on the end wall, and every head turns to it. In the
+# dark Julian swaps the reel for Vex's dummy at the case. The case mark above keeps action_trigger="Case": with
+# ATakeDirector.bHeistTrick on, the C++ makes it fire "Swap" at runtime; off, the old flow plays.
+# The board's model is package devices': a 1940s theatre dimmer board, a bank of brass levers (here a plain box).
+DIMMER = (470.0, -640.0)                  # the board, at the platform's west rail
+DIMMER_USE = (545.0, -640.0)              # where Maya stands: 1.4 m from the pyro board's use point
+PROJECTOR = (745.0, -600.0, F2 + 160.0)   # the preview projector's lens, at the platform's east rail
+SCREEN_FACE = (HX1 - 12.0, 0.0, 600.0)    # the face of the dark screen on the end wall (box "Screen")
+HOUSE_POINT = (1700.0, 0.0)               # the hall's middle: the preview's range (35 m) is measured from here
+if hasattr(unreal, "HouseDimmer"):
+    dimmer = spawn(unreal.HouseDimmer, (DIMMER[0], DIMMER[1], F2), label="HouseDimmer", folder="Take")
+    setp(dimmer, device_name="HOUSE DIMMER", effect=unreal.DeviceEffect.BLIND, range=3500.0, duration=0.75, uses=0,
+         fired_from=B, use_verb="Bring the house lights down for the preview", use_radius=100.0,
+         locked_until="Keycard", locked_why="for the preview, after the keycard",
+         fire_line='MAYA: "House lights down. Rolling the preview."', preview_seconds=12.0,
+         house_min=unreal.Vector(HX0, HY0, -100.0), house_max=unreal.Vector(HX1, HY1, HALL_H + 100.0),
+         screen_size=unreal.Vector2D(1400.0, 600.0))
+    setp(dimmer, use_offset=use_offset(dimmer, (DIMMER_USE[0], DIMMER_USE[1], F2)),
+         effect_offset=use_offset(dimmer, (HOUSE_POINT[0], HOUSE_POINT[1], 0.0)),
+         projector_offset=use_offset(dimmer, PROJECTOR), screen_offset=use_offset(dimmer, SCREEN_FACE))
+else:
+    unreal.log_warning("QA heist: unreal.HouseDimmer is missing (C++ not built yet): no house dimmer, the old case flow")
+# --- end QA heist ---
 
 # Vex's counterweight winch, in the wings at the east end of the corridor. The curtain: across the front of the
 # dais and down both its sides.

@@ -10,6 +10,15 @@ Change a line there, not here.
 - **The band** is a noir jazz quintet at exactly 120 BPM in 4/4 (1 bar = 2 s): a looping bed (`mus_bed`) plus
   one-shot warning phrases a bar ahead of a watcher (rule 2): the upright bass for the guard, the muted trumpet for
   the drone, a drum roll for Vance's speech, the hi-hat splash on the beam's drop. The phrases are never ducked.
+- **QA, Nov 14 (Marwan's note 9): the warnings tell the player something.** A turn warning plays only when its
+  watcher is within range of Julian (guard 16 m, drone 22 m, Vance 18 m); the first turn after he comes into range
+  plays in full, later turns wait out a cooldown (14 s, or 5 s within 9 m) and play at 70%. Arrivals always play.
+  Each phrase has two variants (`band_*_2`, `band_*_3`, tuned to the bed's G minor): never the same sample twice
+  running, with a little level, pitch and late-timing variation. The beam's hi-hat is a quiet sound at the beam,
+  attenuated, not a 2D splash. `bSmartWarnings` off on the clock restores the old behaviour.
+- **QA, Nov 14 (note 2): slow time** (`ATakeDirector::BeginSlow`/`EndSlow`): the world and the clock slow together;
+  the music holds under a low-pass at 30% and comes back in where the clock is, on a beat line. Voices run at
+  normal speed.
 - **The clock follows the music** (`UBarClockComponent`). The bed starts on the take's first frame at the clock's place
   in its loop: bar N plays loop bar ((N - 1) mod 16), so a blooper, a checkpoint or R restarts the music together
   with the clock, in phase, wherever the clock restarts. Each frame the clock reads the music's playback position
@@ -161,6 +170,14 @@ Model `eleven_multilingual_v2`. Earpiece lines (BROADCAST, MAYA, VEX) are band-p
 | `band_trumpet` | Warning, a bar before the drone passes | one-shot, trimmed | ElevenLabs SFX, 1.5 s generated | Two short staccato notes on a muted jazz trumpet, falling minor third, bah-dah, then silence, dry studio, solo |
 | `band_drumroll` | Warning, a bar before Vance speaks | one-shot, trimmed | ElevenLabs SFX, 2.2 s generated | Jazz snare drum roll, one bar long, crescendo from soft to loud, ending on a short cymbal hit, dry studio |
 | `band_hihat` | The beam drops (one beat in every 4 bars) | one-shot, trimmed | ElevenLabs SFX, 0.8 s generated | A single open hi-hat cymbal splash on a jazz drum kit, dry, short |
+| `band_bass_2` | Warning, a bar before the guard turns (variant) | one-shot, trimmed | ElevenLabs Music, 10 s generated | Solo upright jazz bass in G minor, nothing else: no drums, no piano, no horns. Dry studio, exactly 120 BPM in 4/4. A sly noir figure: four low plucked quarter notes walking down G, F, E-flat, D, one on each beat, then a bar of rest; the same figure again and again. |
+| `band_bass_3` | Warning, a bar before the guard turns (variant) | one-shot, trimmed | ElevenLabs Music, 10 s generated | Solo upright jazz bass in G minor, nothing else: no drums, no piano, no horns. Dry studio, exactly 120 BPM in 4/4. A creeping noir figure: four low plucked quarter notes, D, E-flat, F-sharp, G, one on each beat, then a bar of rest; the same figure again and again. |
+| `band_trumpet_2` | Warning, a bar before the drone passes (variant) | one-shot, trimmed | ElevenLabs SFX, 1.5 s generated | Two short staccato notes on a harmon-muted jazz trumpet, G falling to D, bah-dah, soft, then silence, dry studio, solo |
+| `band_trumpet_3` | Warning, a bar before the drone passes (variant) | one-shot, trimmed | ElevenLabs SFX, 1.5 s generated | Three short soft staccato notes on a muted jazz trumpet, B-flat, A, G, swung, then silence, dry studio, solo |
+| `band_drumroll_2` | Warning, a bar before Vance speaks (variant) | one-shot, trimmed | ElevenLabs SFX, 2.2 s generated | Jazz snare drum roll with wire brushes, one bar long, swelling from soft to loud, ending on a short cymbal choke, dry studio |
+| `band_drumroll_3` | Warning, a bar before Vance speaks (variant) | one-shot, trimmed | ElevenLabs SFX, 2.2 s generated | Jazz snare drum press roll with sticks, one bar long, crescendo from soft to medium, ending on a single rim click, dry studio |
+| `band_hihat_2` | The beam drops, at the beam (variant) | one-shot, trimmed | ElevenLabs SFX, 0.8 s generated | A single soft hi-hat chick opening into a short splash on a jazz drum kit, quiet, dry, short |
+| `band_hihat_3` | The beam drops, at the beam (variant) | one-shot, trimmed | ElevenLabs SFX, 0.8 s generated | A single quiet hi-hat foot splash, a soft metallic chick with a brief shimmer, jazz drum kit, dry, short |
 
 ### Loudness
 
