@@ -1534,3 +1534,8 @@ world.get_world_settings().set_editor_property("default_game_mode", unreal.TakeG
 
 les.save_current_level()
 print("AUCTION built: %d actors; world %s" % (len(eas.get_all_level_actors()), world.get_path_name()))
+
+# Step 4, pass 3: dress the set (docs/ART_STYLE.md §15.9, §15.10). Runs last, with this file's numbers; it re-runs
+# alone too ("<engine python>" -I tools/ue_mcp.py py tools/dress_auction.py) and saves the level itself.
+_dress = unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir() + "../tools/dress_auction.py")
+exec(open(_dress, encoding="utf-8").read(), dict(globals(), __name__="dress_auction"))

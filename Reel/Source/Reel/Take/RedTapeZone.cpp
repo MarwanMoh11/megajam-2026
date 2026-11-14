@@ -81,6 +81,7 @@ void ARedTapeZone::LayoutTape()
 		Strip.Comp->SetRelativeScale3D(Strip.Scale);
 		FTakeShapes::SetSignal(Strip.Comp, TakeStyle::StencilRed);
 		FTakeShapes::SetColour(Strip.Comp, TakeColors::Red);
+		FTakeShapes::SetPattern(Strip.Comp, TakeStyle::PatternHatch);	// §15.8: hatched at 45 degrees
 	}
 }
 

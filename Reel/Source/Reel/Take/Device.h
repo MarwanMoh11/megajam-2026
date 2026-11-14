@@ -180,6 +180,16 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Device")
 	FLinearColor BodyColour = TakeColors::WorkBlue;
 
+	/** Step 4, pass 3 (§15.9 MI_Crew_Ring): the use ring in reach, mo.high cyan-white: gold is Julian's. Lit
+	 *  BasicShapeMaterial: the ring is an instanced mesh, and the unlit signal material has no instanced-mesh usage
+	 *  (setting it at runtime crashed the GPU on the editor's first frame). */
+	UPROPERTY(EditAnywhere, Category = "Take|Look")
+	FLinearColor RingReachColour = FLinearColor(0.738f, 0.905f, 0.913f);
+
+	/** ...and out of reach (silver x 0.5). */
+	UPROPERTY(EditAnywhere, Category = "Take|Look")
+	FLinearColor RingIdleColour = FLinearColor(0.097f, 0.089f, 0.076f);
+
 	UPROPERTY(VisibleInstanceOnly, Transient, BlueprintReadOnly, Category = "Take|State")
 	int32 UsesLeft = 1;
 

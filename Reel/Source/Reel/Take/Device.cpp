@@ -46,7 +46,7 @@ void ADevice::SetInReach(bool bInReach)
 	bIsInReach = bInReach;
 	if (UseRing)
 	{
-		FTakeShapes::SetColour(UseRing, bIsInReach ? TakeColors::GoldBright : TakeColors::Grey);
+		FTakeShapes::SetColour(UseRing, bIsInReach ? RingReachColour : RingIdleColour);
 	}
 }
 
@@ -81,7 +81,7 @@ void ADevice::LayOutUseRing()
 	}
 	UseRing->AddInstances(Dashes, false, false, false);
 
-	FTakeShapes::SetColour(UseRing, bIsInReach ? TakeColors::GoldBright : TakeColors::Grey);
+	FTakeShapes::SetColour(UseRing, bIsInReach ? RingReachColour : RingIdleColour);
 }
 
 void ADevice::BeginPlay()

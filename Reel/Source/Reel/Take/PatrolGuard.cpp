@@ -115,7 +115,7 @@ void APatrolGuard::LayoutGuard()
 	FrameMesh->SetRelativeScale3D(FVector(TakeSliceDGuard::WedgeThicknessScale, Width / 100.f, Range / 100.f));
 
 	FTakeShapes::SetColour(FrameMesh, TakeColors::Red);
-	FTakeShapes::SetColour(Body, TakeColors::Grey);
+	FTakeShapes::SetColour(Body, BodyTint);	// §15.10: heavies are the darkest thing on set
 	FTakeShapes::SetColour(Cap, TakeColors::DarkGrey);
 	FTakeShapes::SetColour(Tally, TakeColors::DarkGrey);
 }

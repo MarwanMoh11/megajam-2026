@@ -102,7 +102,13 @@ UMaterialInterface* FTakeShapes::GetSignalMaterial()
 	static TWeakObjectPtr<UMaterialInterface> Cached;
 	if (!Cached.IsValid())
 	{
-		Cached = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Take/Look/M_TakeSignal.M_TakeSignal"));
+		// Pass 3's patterned signal material (tools/dress_auction.py); pass 1's solid one if it is missing.
+		Cached = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Take/Dress/M_SignalPattern.M_SignalPattern"),
+			nullptr, LOAD_NoWarn);
+		if (!Cached.IsValid())
+		{
+			Cached = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Take/Look/M_TakeSignal.M_TakeSignal"));
+		}
 	}
 	return Cached.Get();
 }
@@ -137,6 +143,15 @@ void FTakeShapes::SetSignal(UStaticMeshComponent* Comp, uint8 Stencil)
 	if (UMaterialInstanceDynamic* const MID = Comp->CreateDynamicMaterialInstance(0, Signal))
 	{
 		MID->SetVectorParameterValue(ColorParam, Colour);
+	}
+}
+
+void FTakeShapes::SetPattern(UStaticMeshComponent* Comp, float Pattern)
+{
+	static const FName PatternParam(TEXT("Pattern"));
+	if (UMaterialInstanceDynamic* const MID = Comp ? Cast<UMaterialInstanceDynamic>(Comp->GetMaterial(0)) : nullptr)
+	{
+		MID->SetScalarParameterValue(PatternParam, Pattern);
 	}
 }
 

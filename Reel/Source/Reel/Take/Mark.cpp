@@ -18,11 +18,11 @@ AMark::AMark()
 	// An 80 cm gold disc, 2 cm thick, sitting on the floor.
 	Disc = FTakeShapes::CreateShape(this, TEXT("Disc"), ETakeShape::Cylinder, Root, FVector(0.f, 0.f, 1.f), FVector(0.8f, 0.8f, 0.02f), FRotator::ZeroRotator, false);
 
-	// The gold X under Julian, hidden until he stands here.
-	CrossA = FTakeShapes::CreateShape(this, TEXT("CrossA"), ETakeShape::Cube, Root, FVector(0.f, 0.f, 3.f), FVector(1.0f, 0.12f, 0.02f), FRotator(0.f, 45.f, 0.f), false);
-	CrossB = FTakeShapes::CreateShape(this, TEXT("CrossB"), ETakeShape::Cube, Root, FVector(0.f, 0.f, 3.f), FVector(1.0f, 0.12f, 0.02f), FRotator(0.f, -45.f, 0.f), false);
-	CrossA->SetVisibility(false);
-	CrossB->SetVisibility(false);
+	// Step 4, pass 3 (§15.8): a solid T plate, CrossA the bar where the toes go (+X), CrossB the stem behind it.
+	// The disc under it shows while Julian stands here, and fills with an action's progress.
+	CrossA = FTakeShapes::CreateShape(this, TEXT("CrossA"), ETakeShape::Cube, Root, FVector(22.f, 0.f, 3.f), FVector(0.14f, 0.8f, 0.02f), FRotator::ZeroRotator, false);
+	CrossB = FTakeShapes::CreateShape(this, TEXT("CrossB"), ETakeShape::Cube, Root, FVector(-12.f, 0.f, 3.f), FVector(0.56f, 0.14f, 0.02f), FRotator::ZeroRotator, false);
+	Disc->SetVisibility(false);
 }
 
 void AMark::OnConstruction(const FTransform& Transform)
@@ -64,25 +64,22 @@ void AMark::ApplyLook()
 		return;
 	}
 
-	// An action running: the disc pulses brighter (two pulses a second, from its progress); done: bright gold.
-	FLinearColor DiscColour = TakeColors::Gold;
-	if (IsActionMark() && bActionDone)
-	{
-		DiscColour = TakeColors::GoldBright;
-	}
-	else if (IsActionMark() && ActionProgress > 0.f)
-	{
-		const float Pulse = 0.5f + 0.5f * FMath::Cos(ActionProgress * 2.f * UE_PI * 2.f);
-		DiscColour = FMath::Lerp(TakeColors::GoldBright, TakeColors::White, 0.2f + 0.5f * Pulse);
-	}
+	// §15.8: gold never moves and never pulses. The T is always Gold; the disc under it (GoldBright, a value step
+	// lighter) shows while Julian stands on the mark, and on an action mark it fills outwards with the progress and
+	// stays full when done. Growth once, no oscillation.
+	const bool bRunning = IsActionMark() && !bActionDone && ActionProgress > 0.f;
+	const bool bDone = IsActionMark() && bActionDone;
 	FTakeShapes::SetSignal(Disc, TakeStyle::StencilGold);
 	FTakeShapes::SetSignal(CrossA, TakeStyle::StencilGold);
 	FTakeShapes::SetSignal(CrossB, TakeStyle::StencilGold);
-	FTakeShapes::SetColour(Disc, DiscColour);
-	FTakeShapes::SetColour(CrossA, TakeColors::GoldBright);
-	FTakeShapes::SetColour(CrossB, TakeColors::GoldBright);
-	CrossA->SetVisibility(bIsOccupied);
-	CrossB->SetVisibility(bIsOccupied);
+	FTakeShapes::SetColour(Disc, TakeColors::GoldBright);
+	FTakeShapes::SetColour(CrossA, TakeColors::Gold);
+	FTakeShapes::SetColour(CrossB, TakeColors::Gold);
+	const float Fill = bRunning ? FMath::Clamp(GetActionAlpha(), 0.05f, 1.f) : 1.f;
+	Disc->SetRelativeScale3D(FVector(0.8f * Fill, 0.8f * Fill, 0.02f));
+	Disc->SetVisibility(bIsOccupied || bRunning || bDone);
+	CrossA->SetVisibility(true);
+	CrossB->SetVisibility(true);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

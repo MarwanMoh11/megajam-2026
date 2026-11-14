@@ -580,3 +580,33 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   326 MB; the pass 1 zip is kept as `TeamName_GameName_step4p1.zip`.
 - **Needs Marwan's eye:** the fonts and sizes, the opening slate over the street while he walks, the tape labels on
   Maya's platform, every line of the new copy.
+
+## Nov 14, 19:52-20:55 Cairo: step 4 pass 3, the set dressed for the film (not committed)
+
+- **What changed:** the set is dressed for the look in `docs/ART_STYLE.md` §15.9 and §15.10, from text. A new
+  `tools/dress_auction.py` runs at the end of `tools/build_auction.py` (and alone): three master materials
+  (`/Game/Take/Dress`: lit set, unlit practicals, and `M_SignalPattern`, the unlit signal material with dashes, bands
+  and hatching), 40 instances, every set mesh re-surfaced by what it was built with, its label and its zone (1,391
+  of them), 312 small NoCollision dressing pieces (kerb, queue stanchions, press wall, bay trees, wainscot and
+  cornice, chandelier, pilasters with sconces, side-aisle runners, the dais lip and footlights, pyro charges, the raw
+  backs of the flats with battens, braces, weights, cables and work tubes, road cases, spike marks, catwalk tape,
+  truss and lamp housings), the lights retuned per zone with a new `Back_Dais` rim, and the §15.10 tints. Gold and red
+  left everything that does not carry meaning: picture frames, stanchions, bottles, instruments, banners, the rope,
+  the curtain, extinguishers, cars, device rings. In C++: frame lines and the beam are dashed from the eye, frame
+  fills banded outwards from the watcher, red tape hatched at 45 degrees, tally lights square, marks solid gold T
+  plates (the disc under them fills with an action's progress instead of pulsing), heavies' bodies by `BodyTint`.
+- **What the agents did:** one builder session: phase 1 staged the script, the C++ edits and the checks while passes 1
+  and 2 held the editor; phase 2 applied them, rebuilt the map, shot every zone in play-in-editor, tuned by the §15.11
+  numbers, and re-ran the scripted tests.
+- **What went wrong:** the first build crashed the GPU on every editor start (device removed on frame 0): the device
+  rings are an instanced mesh, and the unlit signal material had no instanced-mesh usage flag, which the editor tried
+  to set while drawing. The rings went back to the lit material. The signal material is cached per editor session,
+  so the dashes only appeared after a restart. Julian read dark under the top-down keys, so he now carries his own
+  key on a lighting channel only he is on. The night skylight fills nothing (it captures a black sky), so the floor
+  between the bench rows got two house lights over the seats. The reel's gold gel washed the end wall amber at the
+  alarm: its haze went down.
+- **Proof:** `docs/shots/step4_p3_pie_*.png` (street, lobby, floor, rope, dais both ways, backstage on Vex, platform
+  and catwalk on Maya, the alarm); §15.11 numbers in the session report; the four scripted tests (same results and bloopers as pass 2); stat unit at pass 1's
+  three views.
+- **Needs Marwan's eye:** dashes and hatch as "camera frames" and "red tape"; the T marks; the hall's and
+  backstage's darkness; the footlights and sconces; the house lights over the seats against the noir pools.

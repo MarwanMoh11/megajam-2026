@@ -263,7 +263,7 @@ void ADroneWatcher::LayoutDrone()
 	ClickVolume->SetBoxExtent(TakeDroneLocal::BodyClickExtent);
 
 	FTakeShapes::SetColour(FrameMesh, TakeColors::Red);
-	FTakeShapes::SetColour(Body, TakeColors::DarkGrey);
+	FTakeShapes::SetColour(Body, BodyTint);
 	FTakeShapes::SetColour(Tally, TakeColors::DarkGrey);
 }
 

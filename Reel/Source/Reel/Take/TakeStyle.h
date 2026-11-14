@@ -39,6 +39,12 @@ namespace TakeStyle
 	/** The alarm's white frames (§15.3): kept, with no colour calibration. */
 	constexpr uint8 StencilWhite = 3;
 
+	// --- the signal material's patterns (§15.8; scalar "Pattern" on /Game/Take/Dress/M_SignalPattern) ----------
+	constexpr float PatternSolid = 0.f;	// gold, tally lights, the scanner's bar
+	constexpr float PatternDash = 1.f;	// frame lines and the beam: 20 cm on, 10 cm off, from the eye outwards
+	constexpr float PatternBands = 2.f;	// frame fills: bands outwards from the watcher
+	constexpr float PatternHatch = 3.f;	// red tape: 45-degree stripes, 20 cm
+
 	// --- sizes (§15.2, px at 1080 tall) -------------------------------------------------------------------------------
 	constexpr float LetterboxAspect = 2.39f;
 	constexpr float FilmFps = 24.f;

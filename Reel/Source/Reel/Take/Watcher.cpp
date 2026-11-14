@@ -37,6 +37,7 @@ namespace TakeWatcherLocal
 		if (Line)
 		{
 			FTakeShapes::SetSignal(Line, TakeStyle::StencilRed);
+			FTakeShapes::SetPattern(Line, TakeStyle::PatternDash);	// §15.8: dashed from the eye (From) outwards
 			Line->SetRelativeRotation(Dir.Rotation());
 		}
 		return Line;
@@ -57,7 +58,7 @@ AWatcher::AWatcher()
 
 	FrameMesh = FTakeShapes::CreateShape(this, TEXT("FrameMesh"), ETakeShape::Cube, FramePivot, FVector::ZeroVector, FVector::OneVector, FRotator::ZeroRotator, false);
 
-	Tally = FTakeShapes::CreateShape(this, TEXT("Tally"), ETakeShape::Sphere, Root, FVector(0.f, 0.f, 200.f), FVector(0.15f, 0.15f, 0.15f), FRotator::ZeroRotator, false);
+	Tally = FTakeShapes::CreateShape(this, TEXT("Tally"), ETakeShape::Cube, Root, FVector(0.f, 0.f, 200.f), FVector(0.15f, 0.15f, 0.15f), FRotator::ZeroRotator, false);
 
 	ClickVolume = FTakeShapes::CreateClickVolume(this, TEXT("ClickVolume"), Root, FVector(70.f, 70.f, 100.f), FVector(0.f, 0.f, 100.f));
 }
@@ -88,6 +89,7 @@ void AWatcher::BeginPlay()
 	FrameMID = FTakeShapes::SetColour(FrameMesh, TakeColors::Red);
 	TallyMID = FTakeShapes::SetColour(Tally, TakeColors::DarkGrey);
 	FTakeShapes::SetSignal(FrameMesh, TakeStyle::StencilRed);
+	FTakeShapes::SetPattern(FrameMesh, FramePattern);
 	FTakeShapes::SetSignal(Tally, TakeStyle::StencilRed);
 
 	SyncState();

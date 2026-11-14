@@ -153,6 +153,15 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Watcher", meta = (ClampMin = "0"))
 	float AlarmEmissive = 4.f;
 
+	/** Step 4, pass 3 (§15.10): the body's tint (PatrolGuard, DroneWatcher). Heavies are the darkest thing on set. */
+	UPROPERTY(EditAnywhere, Category = "Take|Look")
+	FLinearColor BodyTint = FLinearColor(0.02f, 0.02f, 0.022f);
+
+	/** Step 4, pass 3 (§15.8): the frame mesh's pattern (TakeStyle::Pattern*): bands outwards from the watcher; the
+	 *  beam, which is a line, uses dashes. The frame lines are always dashed. */
+	UPROPERTY(EditAnywhere, Category = "Take|Look")
+	float FramePattern = 2.f;
+
 	// --- tunables ---------------------------------------------------------------------------------------------------
 
 	/** The trigger this watcher arrives on (ATakeDirector::FireTrigger). None: it is there from the take's start. */

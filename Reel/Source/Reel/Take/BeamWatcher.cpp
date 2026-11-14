@@ -7,6 +7,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Julian.h"
 #include "TakeShapes.h"
+#include "TakeStyle.h"
 
 namespace TakeSliceDBeam
 {
@@ -52,6 +53,7 @@ namespace TakeSliceDBeam
 
 ABeamWatcher::ABeamWatcher()
 {
+	FramePattern = TakeStyle::PatternDash;	// the beam is a line from post A: dashed, not banded
 	Label = TEXT("BEAM");
 
 	// Two 120 cm posts; post B at EndB. OnConstruction re-places post B, the line and the click volume.

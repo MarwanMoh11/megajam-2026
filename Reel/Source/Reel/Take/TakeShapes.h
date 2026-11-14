@@ -68,6 +68,11 @@ struct FTakeShapes
 	 *  Cheap when nothing changes; SetColour keeps working on the same component afterwards. */
 	static void SetSignal(UStaticMeshComponent* Comp, uint8 Stencil);
 
+	/** Step 4, pass 3: sets "Pattern" (TakeStyle::Pattern*) on slot 0's dynamic instance; call after SetSignal. A no-op
+	 *  when slot 0 is not a dynamic instance or its material has no such parameter (the shape stays solid). */
+	static void SetPattern(UStaticMeshComponent* Comp, float Pattern);
+
+
 	/** CONSTRUCTOR ONLY: creates a click volume: a hidden, query-only box that blocks ECC_Visibility and ignores
 	 *  every other channel, generates no overlaps and never affects navigation. Make it generous: the pointer
 	 *  trace (ECC_Visibility under the cursor) must find it before the floor. */
