@@ -57,6 +57,50 @@ inside ? the line is outside", and "add more props placeholders to make the plac
 (rule 1), the monitor strip, "a crew cut takes about 2 s" (rule 4), The Long Take, the replay "cut where you cut"
 (rule 11), and the 1:45 clean run in a larger building.
 
+## Step 6, audio: phase 1 as built, Nov 15 (outside the editor, branch `step6-audio`)
+
+Built in a parallel session outside the editor; nothing is imported yet (phase 2, when the editor is free). The
+script is `docs/AUDIO_SCRIPT.md`; the tools are `tools/audio/`; the files are in `C:\Jam\Audio`.
+
+**Filled in by the orchestrator (Marwan can overrule any of it):**
+- The band is a noir jazz quintet at exactly 120 BPM, 4/4, from ElevenLabs Music (Starter includes it, with
+  commercial use). Stems are not used: the band is a looping bed (16 bars) plus one-shot warning phrases (the upright
+  bass for the guard, the muted trumpet for the drone, a drum roll for Vance's speech, the hi-hat splash on the
+  beam's drop), the heist cue (10 bars, its last bar the deadline), the sting, and a tape-stop on failure. Every
+  generated loop is measured for tempo and cut or resampled to exactly 120 BPM and a whole number of bars.
+- The feedback knocks the bed out for its 2 bars and it comes back on the next bar line, in phase. Voice ducks the
+  bed, never the warning phrases. The click track and the engine stand-ins go once the bed is imported.
+- **The bar clock follows the music.** The bed starts at the clock's place in its loop (bar N plays loop bar
+  (N - 1) mod 16), so a blooper, a checkpoint retry or R restarts the music with the clock wherever the clock
+  restarts. Each frame the clock steers toward the music's reported playback position (at most 10% fast or slow); a
+  gap of more than half a beat seeks the music back onto the clock instead (after four in a take it stops following).
+- Every press is still answered in its frame: the cut's switcher click plays on the press frame.
+
+**Filled in by Claude (phase 1):**
+- **Voices play when their subtitle comes on screen** in the HUD's queue, so voice and words never drift apart, and
+  a voiced subtitle holds at least as long as its voice. The table that ties words to files is generated from
+  `tools/audio/manifest.py`; existing lines are matched by their words, so no level data changed.
+- **Variants:** Vance's speech cue in the level is one line, flashed on every band break; the table gives him five
+  speeches that play in turn, each with its own subtitle (the first is the existing words). The doorman, the guard,
+  the drone's producer, the alarm guards and the follow spot have a second line for repeats.
+- **New lines:** Julian's six quips on the scene triggers (through the doors, onto the floor, past the rope, the
+  keycard, the reel, The Bow), and Maya's and Vex's lines for the devices that had none (searchlight, follow spot,
+  banner, both carts, sound desk). They come from the table by event, so the level needs no new data.
+- The band's break bar drops the bed to 20% rather than silence; an arriving watcher's solo bar takes it out.
+- The alarm rings a bell, stops the bed dead and rolls the shutters; the heist cue starts on its own first bar
+  (the case's bar) or at once from the matching point.
+- Camera C (Vex, backstage) hears the band low-passed (900 Hz). Composure: a heartbeat while a watcher holds him,
+  a ringing that rises below 60 composure.
+- Devices have a `FireSound` (lamp strike, banner drop, glass smash, winch release); the pyro's crackle, the desk's
+  feedback, the clapper, the chime, the thud and the sting keep their existing calls on the clock, which now play
+  the imported sound or, if it is missing, the old synthesised one.
+- Earpiece lines (Maya, Vex, the broadcast producer) are band-passed like a radio.
+- Copy note: Vex's existing hint "...Then Maya's pyro. Then run." breaks the copy deck's "nobody runs"; it is voiced
+  as written because the game flashes those words.
+
+**Only Marwan can judge (step 6):** the voices picked (`docs/AUDIO_SCRIPT.md`, Voices), the bed loop and its seam,
+the mix levels (bed 0.8, duck 45%, break 20%), whether the warning phrases cut through the bed, Julian's quips.
+
 ## Step 4 as built, Nov 14 (the look)
 
 Step 4 is the look: the film grade, the overlay, the HUD, every word on screen, and the set's materials, dressing,
@@ -1033,7 +1077,7 @@ backstage.
 - **Devices:** the feedback, breaking glass, the banner drop, the curtain thud, sparks.
 - **The finale:** the alarm, the shutters.
 
-**Music source:** WeLoveIndies or ElevenLabs music, at a fixed and known 120 BPM, with separate stems (one track per
+**Music source** (*filled in Nov 15: ElevenLabs Music, a looping bed plus one-shot phrases, no stems; see "Step 6, audio: phase 1 as built"; the original text follows*): WeLoveIndies or ElevenLabs music, at a fixed and known 120 BPM, with separate stems (one track per
 instrument) for the bass, trumpet and drums (the warning instruments) and the piano, so each warning's warning phrase can be triggered. Voice lines
 duck the band's bed, never the warning phrases.
 
@@ -1117,7 +1161,7 @@ characters, audio and polish. Every step ends playable, and the Windows package 
 | Sat, moved ahead of gate 2 on Nov 14 | **4. Look.** Dressing the fronts and backs, the film burn, the letterbox HUD, the stamps | Screenshots pass ART_STYLE §14. **Marwan moved this step in front of gate 2 on Nov 14. Built Nov 14, about 22:00: see "Step 4 as built" (the design is ART_STYLE §15; its checks are §15.11)** |
 | Sat evening, after step 4 | **Gate 2.** Marwan plays a full take cold | They want another go. **Played on the build with the look (step 4 moved ahead of it on Nov 14)** |
 | Sat night to Sun 10:00 | **5. Characters and props.** Tinted mannequins, costume props, the band's instruments, the bob on the beat, the bow. Fab free packs, or generated props if the codes arrive. Niagara (Unreal's particle system) sparks, glass and smoke | Credited in docs/CREDITS.md |
-| Fri night to Sun 10:00, in parallel | **6. Audio.** A separate session, outside the editor. Write the lines, generate them with ElevenLabs once Marwan has set the key, and get the band's tune and the heist cue at 120 BPM, with stems. The editor session imports everything and locks the bar clock to the tune by Sun 10:00 | Content lock |
+| Fri night to Sun 10:00, in parallel | **6. Audio.** A separate session, outside the editor. Write the lines, generate them with ElevenLabs once Marwan has set the key, and get the band's tune and the heist cue at 120 BPM, with stems. The editor session imports everything and locks the bar clock to the tune by Sun 10:00 | Content lock **Phase 1 built Nov 15 (script, tools, C++, generation) on branch `step6-audio`: see "Step 6, audio: phase 1 as built". Phase 2 (merge, import, play-in-editor, package) waits for the editor** |
 | Sun 10:00-18:00 | **7. Polish.** See "Step 7" below | Nothing new after 18:00 |
 | **Sun 22:00** | **Upload and submit.** Then one try at the Web build (proven on the template, 23 min to package) as a second zip that plays in the browser | Downloaded and played once |
 
@@ -1191,7 +1235,7 @@ characters, audio and polish. Every step ends playable, and the Windows package 
 ## Not decided yet
 
 - **Game and team name.** The zip must be `TeamName_GameName.zip`. Suggested: *Print It*.
-- **The band's tune, the heist cue and their source,** before step 6: WeLoveIndies or ElevenLabs music, at 120 BPM,
-  with stems.
+- ~~The band's tune, the heist cue and their source~~ *Filled in Nov 15:* ElevenLabs Music at 120 BPM, a looping bed
+  and one-shot phrases instead of stems (see "Step 6, audio: phase 1 as built").
 - **Student category:** the Official Rules are still unread.
 - **Perk codes:** none arrived. Retry Tripo before Nov 16; ask the organisers for late-joiner codes if wanted.

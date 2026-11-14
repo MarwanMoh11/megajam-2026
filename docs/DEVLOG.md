@@ -665,3 +665,21 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   `TeamName_GameName_step4p2.zip`).
 - **Needs Marwan's eye:** the amber-free alarm (warm enough?), the 2x marks, the hall's and dais's darkness, the
   dashes and hatching in motion, the house lights over the seats.
+
+## Nov 15, about 00:00 Cairo: step 6, audio, phase 1 (a parallel session outside the editor)
+
+- **What changed:** a branch `step6-audio` in a worktree (`.wt-audio`), so the step 5 session keeps the editor.
+  `docs/AUDIO_SCRIPT.md` (48 voice lines, 18 sound effects, 7 music cues, each with its event, file and subtitle),
+  generated from `tools/audio/manifest.py`, which also writes the C++ voice table. `tools/audio/`: the ElevenLabs
+  generator (resumable, with a dry run that counts credits), a numpy stand-in synth for every sound effect and the
+  band, the processing step (decode, trim, earpiece filter, tempo measurement and fit to 120 BPM, loop seam,
+  BS.1770 loudness, a peak limiter) and the editor import script for phase 2. C++: `TakeAudio` on the director, the
+  bar clock now following the music's playback position, one-line calls at the event sites, `FireSound` on devices.
+  The game target compiles in the worktree (no editor build, no assets touched).
+- **What the agents did:** one Claude Opus 5.5 subagent wrote the script, the tools and the C++, generated the voices
+  first (ElevenLabs multilingual v2, eleven premade voices), sent one line per character and the first band loop to
+  Marwan through the orchestrator, then the sound effects. The first generated bed measured 120.01 BPM.
+- **What went wrong:** no Python on the PC outside the engine, so a venv was made from the engine's Python 3.11;
+  scipy and pyloudnorm would not download (pip read timeouts), so resampling, filtering and loudness were written in
+  numpy (a 1 kHz sine at -20 dBFS reads -23.0 LUFS, as BS.1770 says). Three ElevenLabs requests timed out and were
+  retried. The account's credit counter lags by minutes, so the run log keeps its own estimate.
