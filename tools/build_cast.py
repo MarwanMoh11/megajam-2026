@@ -4,8 +4,8 @@
 #     "<engine python>" -I tools/ue_mcp.py py tools/build_cast.py
 #
 #   1. guests   every placeholder guest (a grey cylinder and a sphere, Set/Guests) gets a CastMember in its place: a
-#               template mannequin frozen in a pose, costumed from basic shapes (C++ kits in CastMember.cpp); some of
-#               them move to the band (the groove). The cylinder stays, hidden, so its collision is unchanged.
+#               template mannequin in a pose, costumed from basic shapes (C++ kits in CastMember.cpp); standing
+#               ones idle like NPCs in a stealth game, seated ones are still. The cylinder stays, hidden, so its collision is unchanged.
 #   2. band     the five band placeholders and their instrument boxes are hidden; the quintet is placed on the riser
 #               with its instruments (singer, trumpet, bass, drums, piano).
 #   3. watchers each PatrolGuard (guards, doorman, Vance, bodyguard) gets a CastMember attached: its mannequin walks
@@ -27,20 +27,9 @@ REPORT = []
 GUEST_TINTS = (0.20, 0.28, 0.35)            # §15.10's three guest values, in rotation
 GUEST_KITS = ("GUEST_TUX", "GUEST_GOWN", "GUEST_TAILS", "GUEST_GOWN_HAT", "GUEST_TUX", "GUEST_GOWN")
 STAFF_AT = ((1200.0, -1700.0), (-2050.0, 1100.0), (-2650.0, 1640.0))   # the bartender, receptionist, cloakroom
-# The groove (ACastMember's "Groove" properties): only the upper body moves, on smooth curves locked to the beat
-# (deepest on the beat, at rest half a period later), never the whole body. Degrees; periods and phases in beats.
-# The band moves the most, each by instrument. Guests: a small head nod or a weight shift, alternately, and only a
-# share of them moves at all, each with its own phase (some on the off-beat, some at half time) and amplitude.
-GROOVE_BAND = {
-    "BAND_BASS": dict(sway_degrees=4.0, sway_beats=2.0, nod_degrees=3.0),                       # sways
-    "BAND_DRUMS": dict(nod_degrees=7.0, rock_degrees=1.5, rock_beats=2.0),                      # nods
-    "BAND_TRUMPET": dict(rock_degrees=5.0, rock_beats=4.0, nod_degrees=1.5),                    # dips on each bar
-    "BAND_PIANO": dict(rock_degrees=3.0, rock_beats=2.0, nod_degrees=2.0, phase_beats=1.0),     # rocks on 2 and 4
-    "BAND_SINGER": dict(sway_degrees=3.0, sway_beats=4.0, nod_degrees=1.5, nod_beats=2.0),
-}
-GUEST_CROWD = dict(move_chance=0.35, offbeat_chance=0.3, half_time_chance=0.5, phase_spread_beats=0.2, amp_spread=0.6)
-GUEST_NOD = dict(nod_degrees=3.0, nod_beats=1.0)            # every other guest: a head nod...
-GUEST_SHIFT = dict(sway_degrees=1.5, sway_beats=4.0)        # ...or a weight shift over a bar
+# No one moves with the band's beat (Marwan, Nov 15). Standing members play the template idle looped, each from its
+# own time and at its own rate (ACastMember: bIdle, IdleRateSpread); seated ones and the drums and piano are still.
+IDLE_RATE_SPREAD = 0.1                      # rates 0.9 to 1.1
 SEATED_DROP = 86.0                          # a seated body sits this far below the seat's top (hips at the seat)
 SEATED_TIME = 0.0                           # the idle frame it is bent from, at the hips and knees (CastMember)
 BAND_TINT = 0.04
@@ -95,7 +84,7 @@ def hide(a):
         c.set_editor_property("visible", False)
 
 
-def spawn_member(k, x, y, z, yaw, tint, seated=False, groove=None, name=None, **props):
+def spawn_member(k, x, y, z, yaw, tint, seated=False, name=None, **props):
     m = EAS.spawn_actor_from_class(unreal.CastMember, unreal.Vector(x, y, z), unreal.Rotator(0.0, 0.0, yaw))
     m.set_actor_label(name or ("Cast_" + k.title().replace("_", "")))
     m.set_folder_path("Cast")
@@ -104,8 +93,7 @@ def spawn_member(k, x, y, z, yaw, tint, seated=False, groove=None, name=None, **
     m.set_editor_property("seated", seated)
     m.set_editor_property("seated_drop", SEATED_DROP)
     m.set_editor_property("seated_time", SEATED_TIME)
-    for key, val in (groove or {}).items():
-        m.set_editor_property(key, val)
+    m.set_editor_property("idle_rate_spread", IDLE_RATE_SPREAD)
     draw = props.pop("draw_distance", 0.0)
     for key, val in props.items():
         m.set_editor_property(key, val)
@@ -133,8 +121,7 @@ for i, b in enumerate(bodies):
     staff = any(abs(x - sx) < 30.0 and abs(y - sy) < 30.0 for sx, sy in STAFF_AT)
     k = "STAFF" if staff else GUEST_KITS[i % len(GUEST_KITS)]
     tint = GUEST_TINTS[(i * 7) % 3]
-    groove = {} if staff else dict(GUEST_CROWD, **(GUEST_NOD if i % 2 == 0 else GUEST_SHIFT))
-    spawn_member(k, x, y, z0, yaw, tint, seated=seated, groove=groove,
+    spawn_member(k, x, y, z0, yaw, tint, seated=seated,
                  name="Cast_Guest_%03d" % i, pose_time=(i * 1.37) % 7.0, body_shadow=False,
                  draw_distance=GUEST_DRAW)
     hide(b)
@@ -154,7 +141,7 @@ for a in all_actors():
 trumpet_pose = EAL.load_asset(TRUMPET_POSE)
 for (k, x, y, z, yaw, seated) in BAND:
     extra = {"pose_anim": trumpet_pose, "pose_time": 0.0} if k == "BAND_TRUMPET" else {}
-    spawn_member(k, x, y, z, yaw, BAND_TINT, seated=seated, groove=GROOVE_BAND[k], name="Cast_" + k.title().replace("_", ""),
+    spawn_member(k, x, y, z, yaw, BAND_TINT, seated=seated, name="Cast_" + k.title().replace("_", ""),
                  body_shadow=False, draw_distance=BAND_DRAW, **extra)
 # A dim key over the riser, so the dark suits and instruments read as shapes on the film (no shadows: cheap).
 bl = EAS.spawn_actor_from_class(unreal.SpotLight, unreal.Vector(BAND_LIGHT[0], BAND_LIGHT[1], BAND_LIGHT[2]),

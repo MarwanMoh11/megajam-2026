@@ -4,7 +4,7 @@
 #include "AnimationRuntime.h"
 #include "Animation/AnimSingleNodeInstance.h"
 #include "Animation/AnimationAsset.h"
-#include "BarClockComponent.h"
+#include "Animation/AnimSequenceBase.h"
 #include "Components/PoseableMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -45,6 +45,7 @@ namespace CastKits
 	const FLinearColor Metal = Grey(0.20f);		// pewter, never brass: gold is Julian's
 	const FLinearColor Skin = Grey(0.28f);		// drum heads, the keys
 	const FLinearColor BassWood = Grey(0.10f);	// the bass a step lighter than the suits, so its shape reads
+	const FLinearColor Keys = Grey(0.40f);		// the piano's keys: the light line that says "piano" either side of him
 
 	void Hair(TArray<FPiece>& Out, const FLinearColor& C) { Out.Add({ETakeShape::Sphere, TEXT("head"), FVector(-3.5f, 0.f, 11.f), FRotator::ZeroRotator, FVector(19.f, 17.5f, 15.f), C}); }
 	void Bun(TArray<FPiece>& Out, const FLinearColor& C) { Out.Add({ETakeShape::Sphere, TEXT("head"), FVector(-11.f, 0.f, 9.f), FRotator::ZeroRotator, FVector(10.f, 10.f, 10.f), C}); }
@@ -159,7 +160,7 @@ namespace CastKits
 			Out.Add({ETakeShape::Cube, nullptr, FVector(0.f, 0.f, -25.f), FRotator::ZeroRotator, FVector(36.f, 70.f, 50.f), Wood});				// the bench
 			Out.Add({ETakeShape::Cube, nullptr, FVector(64.f, 0.f, 15.f), FRotator::ZeroRotator, FVector(52.f, 140.f, 130.f), Wood});				// the case
 			Out.Add({ETakeShape::Cube, nullptr, FVector(64.f, 0.f, 81.f), FRotator::ZeroRotator, FVector(58.f, 146.f, 3.f), Wood});				// the lid
-			Out.Add({ETakeShape::Cube, nullptr, FVector(30.f, 0.f, 22.f), FRotator::ZeroRotator, FVector(24.f, 124.f, 6.f), Skin});				// the keys
+			Out.Add({ETakeShape::Cube, nullptr, FVector(30.f, 0.f, 22.f), FRotator::ZeroRotator, FVector(24.f, 124.f, 6.f), Keys});				// the keys
 			break;
 		case ECastKit::BandSinger:
 			Hair(Out, Dark); Bun(Out, Dark); Skirt(Out, Tint);
@@ -344,7 +345,20 @@ void ACastMember::SetupBody()
 	{
 		UAnimationAsset* Anim = bSeated ? SeatedAnim.Get() : PoseAnim.Get();
 		const float Time = bSeated ? SeatedTime : PoseTime;
-		if (Anim)
+		const UAnimSequenceBase* Sequence = Cast<UAnimSequenceBase>(Anim);
+		bIdling = bIdle && !bSeated && Sequence && Sequence->GetPlayLength() > 0.f;
+		if (bIdling)
+		{
+			// Like an NPC in a stealth game: the idle looped, each from its own time and at its own rate (drawn once from
+			// the name, so the same in every run), so no two breathe together. Never on the band's beat.
+			const uint32 Seed = FCrc::StrCrc32(*GetFName().ToString());
+			const float Start = CastKits::Draw(Seed, 1) * Sequence->GetPlayLength();
+			const float Rate = 1.f + (2.f * CastKits::Draw(Seed, 2) - 1.f) * IdleRateSpread;
+			Body->OverrideAnimationData(Anim, true, true, Start, Rate);
+			Body->bEnableUpdateRateOptimizations = true;	// far ones update less often
+			Body->SetComponentTickEnabled(true);
+		}
+		else if (Anim)
 		{
 			Body->OverrideAnimationData(Anim, false, false, Time, 0.f);
 		}
@@ -376,7 +390,7 @@ void ACastMember::BuildPieces(bool bTransient)
 
 	const FQuat MeshFromBody(FRotator(0.f, 90.f, 0.f));		// body X (forward) -> mesh +Y, body Y (right) -> mesh -X
 	// A piece on no bone stands on the floor (an instrument, a stand, a stool, the cane): on our own body it goes on the
-	// actor's root, so the bob and the seated pose never move it. It is placed from the actor's own location (a seated
+	// actor's root, so the seated pose never moves it. It is placed from the actor's own location (a seated
 	// member's seat top, a standing one's feet), not the seated body's origin SeatedDrop below the seat.
 	FTransform BodyRest = Wearer->GetRelativeTransform();
 	BodyRest.SetLocation(FVector::ZeroVector);
@@ -454,111 +468,29 @@ void ACastMember::Tick(float DeltaSeconds)
 		TickWalk(DeltaSeconds);
 		return;
 	}
-	// A frozen pose needs no animation once it is on the bones.
-	if (FramesAlive == 3)
+	// A standing member idles on its own; a frozen one needs no animation once the pose is on the bones.
+	if (FramesAlive == 3 && !bIdling)
 	{
 		Freeze();
 	}
 	// With its tick off a frozen body no longer picks its LOD: do it here, refreshing the bones only on a change.
-	if (FramesAlive > 3)
+	if (FramesAlive > 3 && !bIdling)
 	{
 		USkinnedMeshComponent* Shown = bPosed ? static_cast<USkinnedMeshComponent*>(PoseMesh.Get()) : static_cast<USkinnedMeshComponent*>(Body.Get());
-		if (Shown && Shown->UpdateLODStatus() && !bGrooves)
+		if (Shown && Shown->UpdateLODStatus())
 		{
 			Shown->RefreshBoneTransforms();
 		}
-		TickGroove();
 	}
-}
-
-void ACastMember::SetupGroove()
-{
-	const uint32 Seed = FCrc::StrCrc32(*GetFName().ToString());
-	const bool bHasCurve = NodDegrees != 0.f || RockDegrees != 0.f || SwayDegrees != 0.f;
-	bGrooves = !bDressParent && !bWalker && bHasCurve && CastKits::Draw(Seed, 1) < MoveChance;
-	GroovePhase = PhaseBeats + (CastKits::Draw(Seed, 2) < OffbeatChance ? 0.5f : 0.f) + (CastKits::Draw(Seed, 3) - 0.5f) * PhaseSpreadBeats;
-	GrooveNodBeats = FMath::Max(NodBeats, 0.25f) * (CastKits::Draw(Seed, 4) < HalfTimeChance ? 2.f : 1.f);
-	GrooveScale = 1.f - AmpSpread * CastKits::Draw(Seed, 5);
 }
 
 void ACastMember::Freeze()
 {
-	SetupGroove();
-	// A seated member, or one that moves, goes onto the poseable copy; one that stands still keeps its frozen body.
-	if (bSeated || bGrooves)
+	if (bSeated)
 	{
 		MakePosed();
 	}
 	Body->SetComponentTickEnabled(false);
-	GrooveBones.Reset();
-	if (!bGrooves || !bPosed || !PoseMesh)
-	{
-		bGrooves = false;
-		return;
-	}
-	// Each driven bone's share of the nod, the rock and the sway (they add up to 1 along each chain); the head turns
-	// back against the sway so the eyes stay level.
-	struct FShare { const TCHAR* Bone; float Nod; float Rock; float Sway; };
-	const FShare Shares[] = {
-		{TEXT("spine_01"), 0.f, 0.f, 0.5f},
-		{TEXT("spine_02"), 0.f, 0.35f, 0.f},
-		{TEXT("spine_03"), 0.f, 0.35f, 0.5f},
-		{TEXT("spine_04"), 0.f, 0.30f, 0.f},
-		{TEXT("neck_01"), 0.4f, 0.f, 0.f},
-		{TEXT("head"), 0.6f, 0.f, -0.4f},
-	};
-	const FReferenceSkeleton& Ref = PoseMesh->GetSkinnedAsset()->GetRefSkeleton();
-	for (const FShare& Share : Shares)
-	{
-		const int32 Index = PoseMesh->GetBoneIndex(FName(Share.Bone));
-		if (Index == INDEX_NONE || !PoseMesh->BoneSpaceTransforms.IsValidIndex(Index))
-		{
-			continue;
-		}
-		// The nod (about -X: forward is +Y in mesh space) and the roll (about +Y) are component-space axes; each bone
-		// turns about them in its parent's space, taken at rest (the angles are small).
-		const int32 Parent = Ref.GetParentIndex(Index);
-		const FQuat ParentCS = Parent != INDEX_NONE
-			? PoseMesh->GetBoneTransformByName(Ref.GetBoneName(Parent), EBoneSpaces::ComponentSpace).GetRotation()
-			: FQuat::Identity;
-		FGrooveBone Bone;
-		Bone.Index = Index;
-		Bone.Rest = PoseMesh->BoneSpaceTransforms[Index].GetRotation();
-		Bone.NodAxis = ParentCS.Inverse().RotateVector(FVector(-1.f, 0.f, 0.f));
-		Bone.RollAxis = ParentCS.Inverse().RotateVector(FVector(0.f, 1.f, 0.f));
-		Bone.Nod = Share.Nod;
-		Bone.Rock = Share.Rock;
-		Bone.Sway = Share.Sway;
-		GrooveBones.Add(Bone);
-	}
-	bGrooves = GrooveBones.Num() > 0;
-}
-
-void ACastMember::TickGroove()
-{
-	if (!bGrooves || !PoseMesh || !PoseMesh->WasRecentlyRendered(0.25f))
-	{
-		return;
-	}
-	const ATakeDirector* Director = ATakeDirector::Get(this);
-	const UBarClockComponent* Clock = Director ? Director->Clock.Get() : nullptr;
-	if (!Clock)
-	{
-		return;
-	}
-	// Smooth cosine curves on the clock, never an impulse: 1 (deepest) on the beat's frame, 0 half a period later.
-	const double Beats = Clock->GetTotalBeats() - double(GroovePhase);
-	auto Wave = [Beats](float PeriodBeats) { return float(FMath::Cos(UE_DOUBLE_TWO_PI * Beats / double(FMath::Max(PeriodBeats, 0.25f)))); };
-	const float Nod = NodDegrees * GrooveScale * (0.5f + 0.5f * Wave(GrooveNodBeats));
-	const float Rock = RockDegrees * GrooveScale * (0.5f + 0.5f * Wave(RockBeats));
-	const float Sway = SwayDegrees * GrooveScale * Wave(SwayBeats);
-	for (const FGrooveBone& Bone : GrooveBones)
-	{
-		const float Pitch = FMath::DegreesToRadians(Bone.Nod * Nod + Bone.Rock * Rock);
-		const float Roll = FMath::DegreesToRadians(Bone.Sway * Sway);
-		PoseMesh->BoneSpaceTransforms[Bone.Index].SetRotation(FQuat(Bone.NodAxis, Pitch) * FQuat(Bone.RollAxis, Roll) * Bone.Rest);
-	}
-	PoseMesh->RefreshBoneTransforms();
 }
 
 void ACastMember::TickWalk(float DeltaSeconds)
