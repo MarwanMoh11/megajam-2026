@@ -23,6 +23,12 @@ PLACES = {
     "office": (-500.0, 2450.0, 450.0, 0.0, -10.0),          # the director's office upstairs
     "cue_doorman": (-3750.0, -420.0, 0.0, 70.0, -25.0),     # the doorman's torch down the carpet (red tape beside)
     "cue_guard": (2450.0, -1000.0, 0.0, 50.0, -22.0),       # the hall guard's torch at the front of the house
+    "hall_rows": (250.0, -350.0, 0.0, 0.0, -6.0),           # W3 round C: down the house to the dais
+    "hall_flank": (1400.0, 1450.0, 0.0, 15.0, -8.0),         # the north flank
+    "cue_guard2": (2900.0, -1300.0, 0.0, 65.0, -20.0),      # the guard at the front of the house
+    "cue_guard3": (2650.0, -250.0, 0.0, -40.0, -18.0),      # the guard facing south (his away yaw)
+    "cue_drone": (100.0, -550.0, 0.0, 140.0, -15.0),         # the drone's searchlight over the reception
+    "vex": (3250.0, -2800.0, 0.0, -40.0, -12.0),            # Vex at the dock
     "cue_chief": (-2930.0, -420.0, 0.0, 90.0, -28.0),       # the chief's torch at the foot of the stair
 }
 PIE_WORLD = None

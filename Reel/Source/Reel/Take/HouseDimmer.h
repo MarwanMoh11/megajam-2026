@@ -118,6 +118,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Dimmer", meta = (ClampMin = "0", ClampMax = "1"))
 	float RoomSeesAboveLevel = 0.5f;
 
+	/** W3 heist2: lights this close to the board or the projector stay up (the catwalk's work lights), cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Dimmer", meta = (ClampMin = "0"))
+	float KeepNearRadius = 450.f;
+
 	/** W3 heist2: lights at or above this height (world z) are not the house: the catwalk keeps its work lights, so
 	 *  Maya can read her board and the projector in the dark. Off by default (chandeliers hang high). */
 	UPROPERTY(EditAnywhere, Category = "Take|Dimmer")

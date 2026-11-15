@@ -334,6 +334,7 @@ protected:
 	FRotator GlanceFromRotation = FRotator::ZeroRotator;
 	float GlanceFromFOV = 90.f;
 	bool bLookPanThroughWalk = false;	// W3 opening
+	bool bUseHeld = false;	// W3 round C: an E pressed mid-cut waits for the landing (TakePresses)
 
 	bool bLookPan = false;
 	float LookPanElapsed = 0.f;

@@ -114,7 +114,7 @@ STREET_EXTRA = [
 HALL = dict(bar_cd=150.0, bar_r=380.0, phone_cd=130.0, phone_r=330.0, band_cd=650.0, band_cone=34.0, band_r=1300.0,
             tv_cd=0.0, sconce_cd=75.0, sconce_r=330.0, sconce_z=300.0, sconce_every=1200.0, mark_clear=320.0,
             # the house light (the dimmer takes it): a wide wash over each half of the rows and over the front floor
-            house_cd=700.0, house_cone=46.0, house_r=2200.0, front_cd=900.0, front_cone=40.0,
+            house_cd=700.0, house_cone=46.0, house_r=2200.0, front_cd=500.0, front_cone=40.0,
             # the room's focus: a warm front key from the catwalk's height onto the lot and the lectern
             focus_cd=1300.0, focus_cone=16.0, focus_r=2600.0,
             # the reception end (lobby doors to the last row): two warm chandelier glows over the cocktail tables
@@ -238,8 +238,8 @@ def work_lights():
 # --- W3 lights (round C notes): Vex read as a silhouette at his start on the dock and his post; his devices (the winch)
 # dark. A key on him from the camera side at his start, a caged work bulb over his post (hall_zones vex_post) and one
 # over each WinchDevice, ATTACHED to the device so the house dimmer leaves it on. From the placed actors.
-VEX = dict(key_cd=260.0, key_cone=40.0, key_r=700.0, key_off=(-170.0, 170.0, 300.0), post_cd=110.0, post_r=420.0,
-           winch_cd=90.0, winch_r=320.0, winch_up=170.0)
+VEX = dict(key_cd=160.0, key_cone=40.0, key_r=700.0, key_off=(-170.0, 170.0, 300.0), post_cd=70.0, post_r=380.0,
+           winch_cd=60.0, winch_r=300.0, winch_up=170.0)
 
 
 def vex_lights():

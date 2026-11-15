@@ -228,8 +228,38 @@ void ATakePlayerController::QueuePress(const FTakePress& Press)
 
 void ATakePlayerController::TakePresses(TArray<FTakePress>& Out)
 {
-	Out = MoveTemp(PendingPresses);
-	PendingPresses.Reset();
+	// W3 round C: an E pressed mid-cut is not dead: it waits (one of it) and fires on the landing frame, and a cue
+	// says so on the frame it is pressed.
+	if (!IsInFlight())
+	{
+		bUseHeld = false;
+		Out = MoveTemp(PendingPresses);
+		PendingPresses.Reset();
+		return;
+	}
+	Out.Reset();
+	TArray<FTakePress> Held;
+	for (const FTakePress& Press : PendingPresses)
+	{
+		if (Press.Type != ETakePressType::Use)
+		{
+			Out.Add(Press);
+		}
+		else if (Held.Num() == 0)
+		{
+			Held.Add(Press);
+		}
+	}
+	PendingPresses = MoveTemp(Held);
+	if (PendingPresses.Num() > 0 && !bUseHeld)
+	{
+		bUseHeld = true;
+		if (ATakeDirector* const Director = ATakeDirector::Get(this))
+		{
+			Director->Flash(TEXT("[E] as the cut lands"), ETakeFlashKind::Note, 1.2f);
+		}
+		TAKE_LOG(TEXT("USE held: mid-cut, fires on landing"));
+	}
 }
 
 void ATakePlayerController::SnapTo(ATakeCharacter* To)

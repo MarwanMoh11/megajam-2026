@@ -96,7 +96,7 @@ MARK_ROPE = (2200.0, 0.0)         # the safe mark before the rope, and a checkpo
 ROPE_X = 2400.0
 GAP = 150.0                       # half-width of the gap in the rope: the beam crosses it
 AISLE_X1 = 3185.0                 # the reserved rows wall the aisle from the rope to here (W3 stage: cases to 3550)
-TAPE_X0, TAPE_X1 = 2450.0, 3550.0 # red tape inside the aisle: 11 m = 4.4 s at 250 cm/s
+TAPE_X0, TAPE_X1 = 2450.0, 2850.0 # red tape inside the aisle: 4 m = 1.6 s at 250 cm/s  # --- W3 heist2 --- was 3550: the front rows' aisle (2850..3185) is among the bidders, where Julian waits for the dark (the front floor beyond is the room's)
 DAIS_X0, DAIS_H = 3600.0, 20.0
 MARK_DAIS = (3700.0, 0.0)         # the mark past the rope: a checkpoint no frame covers
 GUARD = (3250.0, -450.0)          # W3 stage: at the front of the house (was 3000, -600 in what are now seats)
@@ -1677,6 +1677,10 @@ if hasattr(unreal, "RoomWatch"):
          dais_max=unreal.Vector(_hz_dais["max"][0], _hz_dais["max"][1], _hz_dz + 300.0))
 else:
     unreal.log_warning("QA heist2: unreal.RoomWatch is missing (C++ not built yet): the room does not watch")
+# --- W3 heist2 --- where Julian waits for the dark: the front rows' aisle, off the red tape (TAPE_X1), out of the
+# room's view; a mark, so the drone's off-mark rule never catches him while he waits as long as he likes.
+FRONT_ROW = (_hz_front["min"][0] - 85.0, -60.0)
+mark("Mark_FrontRow", "THE FRONT ROW", FRONT_ROW)
 # --- end QA heist ---
 
 # Vex's counterweight winch, in the wings at the east end of the corridor. The curtain: across the front of the

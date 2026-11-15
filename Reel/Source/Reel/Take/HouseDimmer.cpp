@@ -383,30 +383,53 @@ void AHouseDimmer::GatherHouseLights()
 	{
 		return;
 	}
+	// W3 heist2: every movable local light in the house, on any actor (lamp props, torcheres, the lot's focus spot,
+	// the marks' pools), not only free-standing light actors. Kept up: lights on (or riding) a crew character, this
+	// device's own beam and glow, and anything within KeepNearRadius of the board or the projector (the catwalk's work
+	// lights, so Maya can read her board), and above KeepLightsAboveZ.
 	const FBox House = TakeHouseDimmerLocal::HouseBox(HouseMin, HouseMax);
-	for (TActorIterator<ALight> It(World); It; ++It)
+	const FVector Board = GetActorLocation();
+	const FVector Lens = GetActorTransform().TransformPosition(ProjectorOffset);
+	const float KeepSq = FMath::Square(KeepNearRadius);
+	TArray<ULocalLightComponent*> Comps;
+	for (TActorIterator<AActor> It(World); It; ++It)
 	{
-		ALight* const LightActor = *It;
-		// A light riding someone (Julian's key on his camera boom) is his, not the house's.
-		if (!IsValid(LightActor) || LightActor->GetAttachParentActor())
+		AActor* const LightOwner = *It;
+		if (!IsValid(LightOwner) || LightOwner == this)
 		{
 			continue;
 		}
-		ULightComponent* const Comp = LightActor->GetLightComponent();
-		if (!Comp || !Comp->IsA<ULocalLightComponent>() || Comp->GetMobility() == EComponentMobility::Static
-			|| !Comp->IsVisible() || !House.IsInsideOrOn(Comp->GetComponentLocation())
-			|| Comp->GetComponentLocation().Z >= KeepLightsAboveZ)	// W3 heist2: the catwalk keeps its work lights
+		AActor* TopActor = LightOwner;
+		while (TopActor->GetAttachParentActor())
 		{
-			continue;
+			TopActor = TopActor->GetAttachParentActor();
 		}
-		HouseLights.Add(Comp);
-		HouseBaseIntensity.Add(Comp->Intensity);
+		if (Cast<ATakeCharacter>(TopActor))
+		{
+			continue;	// Julian's key light, the crew's own lights
+		}
+		Comps.Reset();
+		LightOwner->GetComponents<ULocalLightComponent>(Comps);
+		for (ULocalLightComponent* const Comp : Comps)
+		{
+			const FVector At = Comp ? Comp->GetComponentLocation() : FVector::ZeroVector;
+			if (!Comp || Comp->GetMobility() == EComponentMobility::Static || !Comp->IsVisible()
+				|| !House.IsInsideOrOn(At) || At.Z >= KeepLightsAboveZ
+				|| FVector::DistSquared(At, Board) <= KeepSq || FVector::DistSquared(At, Lens) <= KeepSq)
+			{
+				continue;
+			}
+			HouseLights.Add(Comp);
+			HouseBaseIntensity.Add(Comp->Intensity);
+		}
 	}
 }
 
 void AHouseDimmer::ApplyHouseLevel(float Level)
 {
-	if (FMath::IsNearlyEqual(Level, AppliedLevel, 0.0005f))
+	// W3 heist2: re-applied every frame while below full (a cue light's owner may set it back; SetIntensity does
+	// nothing when the value is unchanged).
+	if (FMath::IsNearlyEqual(Level, AppliedLevel, 0.0005f) && Level >= 1.f)
 	{
 		return;
 	}

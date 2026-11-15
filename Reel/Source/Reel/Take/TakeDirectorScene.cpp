@@ -119,7 +119,12 @@ void ATakeDirector::FireTrigger(FName Name)
 	TAKE_LOG(TEXT("TRIGGER %s bar %d"), *Name.ToString(), Bar);
 	if (Audio)
 	{
-		Audio->OnTrigger(Name);	// step 6: Julian's line for it, if the script has one
+		// W3 opening: through the doors the clerk speaks first; AQueueLine says Julian's answer after him.
+		const AQueueLine* const OpeningLine = AQueueLine::Get(this);
+		if (!(Name == FName(TakeTriggers::Door) && OpeningLine && OpeningLine->TakesDoorLine()))
+		{
+			Audio->OnTrigger(Name);	// step 6: Julian's line for it, if the script has one
+		}
 	}
 
 	// Watchers that arrive on it: on the next arrival line (the case: as the alarm goes live), plus their own extra

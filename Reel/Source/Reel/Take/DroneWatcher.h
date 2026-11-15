@@ -107,11 +107,11 @@ public:
 
 	/** The pool's strength at its centre, candelas (§15.11: a lit floor reads 95-130). */
 	UPROPERTY(EditAnywhere, Category = "Take|Drone", meta = (ClampMin = "0"))
-	float SearchLightCandelas = 1800.f;	// --- W3 lights --- was 600: under the hall's keys (12 vs 13 lux)
+	float SearchLightCandelas = 4000.f;	// --- W3 lights --- was 600 (under the hall keys), 1800 still faint in play; 4000 seen reading
 
 	/** The beam's glow in the haze (0 = none). QA sight: 0.3 -> 1.0, so the beam reads on its own now the cone is gone. */
 	UPROPERTY(EditAnywhere, Category = "Take|Drone", meta = (ClampMin = "0"))
-	float SearchLightHaze = 1.f;
+	float SearchLightHaze = 3.f;	// --- W3 lights --- was 1: the shaft reads at 3
 
 	// --- QA sight: the searchlight is the cue (Marwan's note 19: no cone) ---------------------------------------------
 
@@ -128,7 +128,7 @@ public:
 	float HoldPoolRadius = 90.f;
 
 	UPROPERTY(EditAnywhere, Category = "Take|Drone", meta = (ClampMin = "0"))
-	float HoldLightCandelas = 4000.f;	// --- W3 lights --- was 1600: brighter than the new rest searchlight
+	float HoldLightCandelas = 7000.f;	// --- W3 lights --- was 1600: brighter than the new rest searchlight
 
 	UPROPERTY(EditAnywhere, Category = "Take|Drone")
 	FLinearColor HoldLightColour = FLinearColor(1.f, 0.9f, 0.78f);

@@ -16,6 +16,7 @@
 #include "Mark.h"
 #include "ScannerWatcher.h"
 #include "TakeCharacter.h"
+#include "TakeAudio.h"
 #include "TakeDirector.h"
 #include "TakeGameInstance.h"
 #include "TakePlayerController.h"
@@ -301,6 +302,10 @@ void AQueueLine::SetupLine(ATakeDirector& Director)
 			}
 		}
 	}
+	if (Searchlight.IsValid() && SearchlightAimHeight >= 0.f && !bOldFlow)
+	{
+		Searchlight->BeamTargetHeight = SearchlightAimHeight;	// W3 round C: the pool lands in the arch
+	}
 	if (!bOldFlow && !bPastStreet)
 	{
 		SpawnDoorman(Director);
@@ -551,6 +556,11 @@ void AQueueLine::StepLamps(ATakeDirector& Director)
 	Ease(ClerkLamp, ClerkSpeaksUntil);
 }
 
+bool AQueueLine::TakesDoorLine() const
+{
+	return bLobbyGreet && !bOldFlow && Clerk.IsValid() && Beat != EQueueBeat::Done;
+}
+
 bool AQueueLine::ClaimsSpotLine(const AFollowSpot* Spot, const AActor* Target) const
 {
 	return !bOldFlow && Doorman && Spot && Spot == Searchlight.Get() && Beat != EQueueBeat::Lobby && Beat != EQueueBeat::Done;
@@ -620,6 +630,15 @@ void AQueueLine::StepLobby(ATakeDirector& Director)
 	AJulian* const Julian = Director.Julian.Get();
 	ACastMember* const Desk = Clerk.Get();
 	const double Now = RealNow();
+	// W3 round C: one at a time: the clerk's greeting, then (its voice done) Julian's answer.
+	if (!bJulianAnswered && LineDone(Director))
+	{
+		bJulianAnswered = true;
+		if (Director.Audio)
+		{
+			Director.Audio->SayEvent(TEXT("trigger_Door"));
+		}
+	}
 	if (Desk && Julian && Now >= ClerkFaceAt)
 	{
 		ClerkFaceAt = Now + 0.4;
@@ -1177,8 +1196,9 @@ void AQueueLine::StepBeats(ATakeDirector& Director)
 		}
 		else if (bUseStarted && !bBlind && !bInFlight && On && On != Maya)
 		{
-			// Left Maya without the light: the director's own lines take it from here.
-			EnterBeat(Director, EQueueBeat::Through);
+			// W3 round C: left Maya without the light: the tutor waits for it (back to [2], Maya's line again).
+			SetSlow(Director, false);
+			EnterBeat(Director, EQueueBeat::AskCut);
 		}
 		break;
 	}

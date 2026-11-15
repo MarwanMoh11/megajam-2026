@@ -132,6 +132,10 @@ public:
 	 *  its landing frame (ATakeDirector::HandleUse then holds back the spot's own @fire line, so his comes first). */
 	bool ClaimsSpotLine(const AFollowSpot* Spot, const AActor* Target) const;
 
+	/** W3 round C: the clerk greets first and Julian's door line ("@trigger_Door") answers him: the director holds
+	 *  it back on the Door trigger (FireTrigger) while this is true. */
+	bool TakesDoorLine() const;
+
 	// --- level data (tools/build_auction.py, Scene 1). Points are local to the actor, which stands at the origin ----
 
 	/** The places in the line, front first. Place 0 is the gold mark where the front guest waits for the scanner. */
@@ -390,6 +394,11 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Queue|Doorman")
 	float DazzleRadius = 450.f;
 
+	/** The searchlight aims this high over the scanner's feet (its BeamTargetHeight, set at the take's start; was 120,
+	 *  which sent the beam through the open gate onto the queue): the pool lands in the arch, by the doorman. <0: leave. */
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Doorman")
+	float SearchlightAimHeight = 15.f;
+
 	/** Maya's searchlight line after his (untaught takes; on the first take her lesson line follows instead). */
 	UPROPERTY(EditAnywhere, Category = "Take|Queue|Doorman")
 	FString MayaFireLine = TEXT("MAYA: \"Searchlight's on the scanner. Walk him through.\"");
@@ -540,6 +549,7 @@ protected:
 	TObjectPtr<class UPointLightComponent> ClerkLamp;
 
 	double DoormanSpeaksUntil = 0.0;
+	bool bJulianAnswered = false;
 	double ClerkSpeaksUntil = 0.0;
 
 	UPointLightComponent* MakeLamp(const ACastMember* Who, float Yaw);
