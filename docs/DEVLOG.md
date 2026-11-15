@@ -1728,3 +1728,4 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
   `import`; Mixamo sign-in was lost twice (a reboot, then the session driving the Mac's Chrome instead of the PC's).
   The direct test hook (`Reel.S7Fight.Start`) still reports "no Vance" in PIE, so the fight has not been seen
   running yet: it needs one look through the real route (`Reel.Script.Jump 702`).
+- **Placed and checked (23:25):** I ran scene5.py, saved Lvl_Auction and took one PIE look. The speech, mouth, second angle, exit walk, sneak HUD chips and the film title on the screen all show up. Known issue: the mid-speech cutaway and the dark seat shot put the camera among the standing guests, so the seat camera needs re-placing (scene5.py `SeatCam`). There was no free aisle seat either, so Vance shares SEAT_WANT with a guest.
