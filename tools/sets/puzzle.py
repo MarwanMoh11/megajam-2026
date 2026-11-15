@@ -12,8 +12,9 @@
 #   gate     the aisle's steel shutter (it fell 8 m out of nothing on the alarm) is the bidders' gate: two low walnut
 #            leaves at the aisle's front mouth, open against the front floor, that swing shut on the alarm (AShutter
 #            bSwingGate: needs the editor built after Nov 15 13:30). Newel posts at the hinges. Same in build_auction.py.
-#   sale     what the room is watching: a lantern slide of the lot on the screen in house light (LOT 41, the bid);
-#            the preview's film panel covers it while the house is down
+#   sale     what the room is watching (Scene 5, Pendleton's private screening): the film's title card as a lantern
+#            slide on the screen in house light (THE GRAND LUMIERE PRESENTS / LE SOLEIL NOIR / 1974); the preview's
+#            film panel covers it while the house is down
 # Switches: PUZZLE_PARTS (a tuple of the names above) runs only those; PUZZLE_OFF = True only clears.
 import sys, importlib, math, traceback
 sys.path.insert(0, r"C:\Jam\megajam\tools\sets")
@@ -36,7 +37,7 @@ N = [0]
 # From build_auction.py (the hall) and hall_zones.json (the screen).
 ROPE_X, GAP, HY = 2400.0, 150.0, 2000.0
 SCREEN_FACE, SCREEN_HW, SCREEN_Z0, SCREEN_Z1 = 4390.0, 500.0, 235.0, 965.0
-BID = "$410,000"
+TITLE, PRESENTS = "LE SOLEIL NOIR", "THE GRAND LUMIÈRE PRESENTS"
 
 
 def mi(name, vectors=None, scalars=None):
@@ -225,14 +226,12 @@ def sale():
         box("Slide_Rule", ink_x, card_x, -SCREEN_HW + 40.0, SCREEN_HW - 40.0, z0, z1, "WalnutDark")
     for y in (-SCREEN_HW + 40.0, SCREEN_HW - 44.0):
         box("Slide_Rule", ink_x, card_x, y, y + 4.0, SCREEN_Z0 + 40.0, SCREEN_Z1 - 40.0, "WalnutDark")
-    text("NOW SELLING", ink_x, 0.0, 880.0, 180.0, 34.0, ink)
-    text("LOT 41", ink_x, 0.0, 760.0, 180.0, 150.0, ink)
-    text("THE DIRECTOR'S CUT", ink_x, 0.0, 625.0, 180.0, 74.0, ink)
-    text("the only print in existence", ink_x, 0.0, 545.0, 180.0, 32.0, ink)
+    text(PRESENTS, ink_x, 0.0, 860.0, 180.0, 30.0, ink)
+    text(TITLE, ink_x, 0.0, 715.0, 180.0, 108.0, ink)
+    text("1974", ink_x, 0.0, 570.0, 180.0, 72.0, gold)
     box("Slide_Rule", ink_x, card_x, -230.0, 230.0, 478.0, 481.0, "WalnutDark")
-    text("CURRENT BID", ink_x, 0.0, 425.0, 180.0, 32.0, ink)
-    text(BID, ink_x, 0.0, 335.0, 180.0, 92.0, gold)
-    REPORT.append("sale: lantern slide on the screen (LOT 41, %s), glow %.2f" % (BID, SLIDE_GLOW))
+    text("the only surviving print", ink_x, 0.0, 420.0, 180.0, 34.0, ink)
+    REPORT.append("sale: the film's title card on the screen (%s, 1974), glow %.2f" % (TITLE, SLIDE_GLOW))
 
 
 # --- run -----------------------------------------------------------------------------------------------------------------
