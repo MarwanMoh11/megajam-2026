@@ -6,7 +6,7 @@
 # monitor bank on the south wall sits at fight X -280..-295. s7-route's AScene7Booth drives it
 # (AScene7Fight::Find(this)->StartFight(this)). Then saves the level. The report goes to C:\Jam\Builds\script\s7fight\place.txt.
 # Switches: S7F_OFF = True only clears. S7F_ANIMS = {role: asset path} replaces the MIXAMO table below.
-import sys, importlib, traceback
+import os, sys, importlib, traceback
 sys.path.insert(0, r"C:\Jam\megajam\tools\sets")
 import common as C
 importlib.reload(C)
@@ -57,3 +57,9 @@ def run():
 
 run()
 print("\n".join(str(r) for r in REPORT))
+try:
+    os.makedirs(r"C:\Jam\Builds\script\s7fight", exist_ok=True)
+    with open(r"C:\Jam\Builds\script\s7fight\place.txt", "w") as _f:
+        _f.write("\n".join(str(r) for r in REPORT))
+except Exception:                                           # noqa: BLE001
+    pass
