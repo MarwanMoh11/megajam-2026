@@ -454,6 +454,9 @@ void AScene2Van::DrawSceneHud(UCanvas* Canvas)
 
 	// SYNC meter
 	const float SyY = K.Px(96.f) + K.Px(300.f) + K.Px(22.f);
+	// a dark backing under the sync bar, dials and patch prompt, so they read over the lilies and the bulb
+	Fill(Canvas, SX - K.Px(16.f), SyY - K.Px(16.f), PanelW + K.Px(32.f), K.Px(190.f) + K.Px(92.f) + K.Px(110.f),
+		FLinearColor(0.01f, 0.015f, 0.015f, 0.62f));
 	{
 		const bool bReady = Sync >= 1.f;
 		const float Blink = bReady ? 0.5f + 0.5f * FMath::Sin(static_cast<float>(K.Now) * 12.f) : 0.f;
@@ -493,6 +496,8 @@ void AScene2Van::DrawSceneHud(UCanvas* Canvas)
 	if (Phase == EScene2Phase::Tune)
 	{
 		const FTakeInk Teach = FTakeInk::Of(Paper, Phosphor);
+		const float TeachW = FMath::Min(K.W - 2.f * M, K.Px(1400.f));
+		Fill(Canvas, K.CX() - TeachW * 0.5f, K.Px(22.f), TeachW, K.Px(44.f), FLinearColor(0.01f, 0.015f, 0.015f, 0.62f));
 		K.Rich(EType::Goal, TEXT("Match the scanner's amber wave:  [A] [D] frequency   [LEFT] [RIGHT] gain   then [SPACE] patch"),
 			K.CX(), K.Px(44.f), K.W - 2.f * M, 1, Teach);
 	}
