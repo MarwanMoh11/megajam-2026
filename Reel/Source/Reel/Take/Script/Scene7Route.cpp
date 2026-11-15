@@ -21,7 +21,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogScene7Route, Log, All);
 
 namespace
 {
-	FScene7RouteStep Step(const FVector& At, float Radius, const TCHAR* Objective, const TCHAR* Speaker = TEXT(""),
+	FScene7RouteStep S7RouteStepOf(const FVector& At, float Radius, const TCHAR* Objective, const TCHAR* Speaker = TEXT(""),
 		const TCHAR* Line = TEXT(""))
 	{
 		FScene7RouteStep S;
@@ -65,16 +65,16 @@ AScene7Route::AScene7Route()
 
 	// The route, west from the oak door to the booth (world cm; build_auction.py's plan).
 	Steps = {
-		Step(FVector(3650.f, -2300.f, 0.f), 200.f, TEXT("Through the door"), TEXT("NORA (V.O.)"),
+		S7RouteStepOf(FVector(3650.f, -2300.f, 0.f), 200.f, TEXT("Through the door"), TEXT("NORA (V.O.)"),
 			TEXT("I see you, Vance. Corridor's clear all the way west. Every guard's watching the film.")),
-		Step(FVector(1700.f, -2310.f, 0.f), 260.f, TEXT("West along the backstage corridor")),
-		Step(FVector(-300.f, -2300.f, 0.f), 200.f, TEXT("West along the backstage corridor"), TEXT("MAX (V.O.)"),
+		S7RouteStepOf(FVector(1700.f, -2310.f, 0.f), 260.f, TEXT("West along the backstage corridor")),
+		S7RouteStepOf(FVector(-300.f, -2300.f, 0.f), 200.f, TEXT("West along the backstage corridor"), TEXT("MAX (V.O.)"),
 			TEXT("Staff door on your right. West end of the hall's dark, the rope's behind you.")),
-		Step(FVector(-300.f, -1860.f, 0.f), 160.f, TEXT("Through the staff door")),
-		Step(FVector(-680.f, -1240.f, 0.f), 170.f, TEXT("The projectionist's stair"), TEXT("VANCE"),
+		S7RouteStepOf(FVector(-300.f, -1860.f, 0.f), 160.f, TEXT("Through the staff door")),
+		S7RouteStepOf(FVector(-680.f, -1240.f, 0.f), 170.f, TEXT("The projectionist's stair"), TEXT("VANCE"),
 			TEXT("Reel two. Right on cue.")),
-		Step(FVector(-680.f, -330.f, 450.f), 150.f, TEXT("Up the stair to the booth")),
-		Step(FVector(-690.f, -60.f, 450.f), 140.f, TEXT("Into the booth")),
+		S7RouteStepOf(FVector(-680.f, -330.f, 450.f), 150.f, TEXT("Up the stair to the booth")),
+		S7RouteStepOf(FVector(-690.f, -60.f, 450.f), 140.f, TEXT("Into the booth")),
 	};
 }
 

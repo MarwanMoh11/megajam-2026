@@ -44,10 +44,10 @@ static FAutoConsoleVariableRef GS7AutoVar(TEXT("Reel.S7.Auto"), GS7Auto,
 
 namespace
 {
-	const FName SlowPrompt(TEXT("S7Prompt"));
-	const FName SlowFall(TEXT("S7Fall"));
+	const FName S7BSlowPrompt(TEXT("S7Prompt"));
+	const FName S7BSlowFall(TEXT("S7Fall"));
 
-	UStaticMeshComponent* MakeMesh(AActor* Owner, USceneComponent* Parent, FName Name, UStaticMesh* Mesh,
+	UStaticMeshComponent* S7BMakeMesh(AActor* Owner, USceneComponent* Parent, FName Name, UStaticMesh* Mesh,
 		const FVector& Loc, const FRotator& Rot, const FVector& Scale, UMaterialInterface* Mat = nullptr)
 	{
 		UStaticMeshComponent* C = Owner->CreateDefaultSubobject<UStaticMeshComponent>(Name);
@@ -62,7 +62,7 @@ namespace
 		return C;
 	}
 
-	UPointLightComponent* MakeLight(AActor* Owner, USceneComponent* Parent, FName Name, const FVector& Loc,
+	UPointLightComponent* S7BMakeLight(AActor* Owner, USceneComponent* Parent, FName Name, const FVector& Loc,
 		const FColor& Colour, float Candela, float Radius, bool bShadows)
 	{
 		UPointLightComponent* L = Owner->CreateDefaultSubobject<UPointLightComponent>(Name);
@@ -76,7 +76,7 @@ namespace
 		return L;
 	}
 
-	USkeletalMeshComponent* MakePuppet(AActor* Owner, USceneComponent* Parent, FName Name)
+	USkeletalMeshComponent* S7BMakePuppet(AActor* Owner, USceneComponent* Parent, FName Name)
 	{
 		USkeletalMeshComponent* M = Owner->CreateDefaultSubobject<USkeletalMeshComponent>(Name);
 		M->SetupAttachment(Parent);
@@ -88,7 +88,7 @@ namespace
 	}
 
 	/** The player walks Vance only in the approach; from the swap on the scene drives him. */
-	void FreezeVance(ATakeCharacter* V, bool bFrozen)
+	void S7BFreezeVance(ATakeCharacter* V, bool bFrozen)
 	{
 		UCharacterMovementComponent* M = V ? V->GetCharacterMovement() : nullptr;
 		if (!M) { return; }
@@ -96,7 +96,7 @@ namespace
 		else if (M->MovementMode == MOVE_None) { M->SetMovementMode(MOVE_Walking); }
 	}
 
-	FScene7Shot MakeShot(const FVector& From, const FVector& To, float Fov)
+	FScene7Shot S7BMakeShot(const FVector& From, const FVector& To, float Fov)
 	{
 		FScene7Shot S;
 		S.Location = From;
@@ -132,73 +132,73 @@ AScene7Booth::AScene7Booth()
 
 	// The projector: the rooms' 35 mm model, lens to +X; the upper magazine (a drum standing on edge, its face to -Y)
 	// with a lid on a hinge; the master print on the drum's spindle; the take-up reel below.
-	Projector = MakeMesh(this, Root, TEXT("Projector"), ProjF.Object, FVector(40.f, -150.f, 0.f), FRotator::ZeroRotator, FVector(1.f));
+	Projector = S7BMakeMesh(this, Root, TEXT("Projector"), ProjF.Object, FVector(40.f, -150.f, 0.f), FRotator::ZeroRotator, FVector(1.f));
 	Projector->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	Projector->SetCollisionProfileName(TEXT("BlockAll"));
-	Magazine = MakeMesh(this, Root, TEXT("Magazine"), Cyl, FVector(30.f, -150.f, 205.f), FRotator(0.f, 0.f, 90.f), FVector(0.9f, 0.9f, 0.22f), TrimF.Object);
+	Magazine = S7BMakeMesh(this, Root, TEXT("Magazine"), Cyl, FVector(30.f, -150.f, 205.f), FRotator(0.f, 0.f, 90.f), FVector(0.9f, 0.9f, 0.22f), TrimF.Object);
 	MagazineHinge = CreateDefaultSubobject<USceneComponent>(TEXT("MagazineHinge"));
 	MagazineHinge->SetupAttachment(Root);
 	MagazineHinge->SetRelativeLocation(FVector(-15.f, -162.f, 205.f));
-	MagazineLid = MakeMesh(this, MagazineHinge, TEXT("MagazineLid"), Cyl, FVector(45.f, 0.f, 0.f), FRotator(0.f, 0.f, 90.f), FVector(0.9f, 0.9f, 0.03f), TrimF.Object);
-	MasterReel = MakeMesh(this, Root, TEXT("MasterReel"), ReelF.Object, FVector(30.f, -150.f, 205.f), FRotator::ZeroRotator, FVector(1.f));
-	DummyReel = MakeMesh(this, Root, TEXT("DummyReel"), ReelF.Object, FVector(-70.f, -330.f, 92.f), FRotator::ZeroRotator, FVector(1.f));
-	LowerReel = MakeMesh(this, Root, TEXT("LowerReel"), ReelF.Object, FVector(30.f, -150.f, 40.f), FRotator::ZeroRotator, FVector(1.f));
+	MagazineLid = S7BMakeMesh(this, MagazineHinge, TEXT("MagazineLid"), Cyl, FVector(45.f, 0.f, 0.f), FRotator(0.f, 0.f, 90.f), FVector(0.9f, 0.9f, 0.03f), TrimF.Object);
+	MasterReel = S7BMakeMesh(this, Root, TEXT("MasterReel"), ReelF.Object, FVector(30.f, -150.f, 205.f), FRotator::ZeroRotator, FVector(1.f));
+	DummyReel = S7BMakeMesh(this, Root, TEXT("DummyReel"), ReelF.Object, FVector(-70.f, -330.f, 92.f), FRotator::ZeroRotator, FVector(1.f));
+	LowerReel = S7BMakeMesh(this, Root, TEXT("LowerReel"), ReelF.Object, FVector(30.f, -150.f, 40.f), FRotator::ZeroRotator, FVector(1.f));
 
 	// The silver canister lies open on the bench; its lid stands beside it until it latches.
-	Canister = MakeMesh(this, Root, TEXT("Canister"), Cyl, FVector(-70.f, -260.f, 90.f), FRotator::ZeroRotator, FVector(0.42f, 0.42f, 0.07f), TrimF.Object);
-	CanisterLid = MakeMesh(this, Canister, TEXT("CanisterLid"), Cyl, FVector(0.f, 120.f, -45.f), FRotator(0.f, 0.f, 0.f), FVector(1.02f, 1.02f, 0.25f), TrimF.Object);
+	Canister = S7BMakeMesh(this, Root, TEXT("Canister"), Cyl, FVector(-70.f, -260.f, 90.f), FRotator::ZeroRotator, FVector(0.42f, 0.42f, 0.07f), TrimF.Object);
+	CanisterLid = S7BMakeMesh(this, Canister, TEXT("CanisterLid"), Cyl, FVector(0.f, 120.f, -45.f), FRotator(0.f, 0.f, 0.f), FVector(1.02f, 1.02f, 0.25f), TrimF.Object);
 	CanisterLid->SetUsingAbsoluteScale(false);
 
 	// The red manual fire alarm by the north door.
-	AlarmBox = MakeMesh(this, Root, TEXT("AlarmBox"), Cube, FVector(-110.f, 492.f, 140.f), FRotator::ZeroRotator, FVector(0.16f, 0.06f, 0.24f), RedF.Object);
-	AlarmLever = MakeMesh(this, AlarmBox, TEXT("AlarmLever"), Cube, FVector(0.f, -70.f, 15.f), FRotator::ZeroRotator, FVector(0.5f, 0.6f, 0.15f), GoldF.Object);
+	AlarmBox = S7BMakeMesh(this, Root, TEXT("AlarmBox"), Cube, FVector(-110.f, 492.f, 140.f), FRotator::ZeroRotator, FVector(0.16f, 0.06f, 0.24f), RedF.Object);
+	AlarmLever = S7BMakeMesh(this, AlarmBox, TEXT("AlarmLever"), Cube, FVector(0.f, -70.f, 15.f), FRotator::ZeroRotator, FVector(0.5f, 0.6f, 0.15f), GoldF.Object);
 
 	// The viewing glass in the front wall (the overlay cuts the opening and frames it).
-	Glass = MakeMesh(this, Root, TEXT("Glass"), Cube, FVector(190.f, 150.f, 210.f), FRotator::ZeroRotator, FVector(0.02f, 2.6f, 2.0f), WindowF.Object);
+	Glass = S7BMakeMesh(this, Root, TEXT("Glass"), Cube, FVector(190.f, 150.f, 210.f), FRotator::ZeroRotator, FVector(0.02f, 2.6f, 2.0f), WindowF.Object);
 
 	// Two doors, hinged at their west jamb: north (Pendleton) and south (the stairwell: Cole).
 	DoorNorthHinge = CreateDefaultSubobject<USceneComponent>(TEXT("DoorNorthHinge"));
 	DoorNorthHinge->SetupAttachment(Root);
 	DoorNorthHinge->SetRelativeLocation(FVector(60.f, 500.f, 0.f));
-	DoorNorth = MakeMesh(this, DoorNorthHinge, TEXT("DoorNorth"), Cube, FVector(50.f, 0.f, 110.f), FRotator::ZeroRotator, FVector(1.0f, 0.06f, 2.2f), DoorF.Object);
+	DoorNorth = S7BMakeMesh(this, DoorNorthHinge, TEXT("DoorNorth"), Cube, FVector(50.f, 0.f, 110.f), FRotator::ZeroRotator, FVector(1.0f, 0.06f, 2.2f), DoorF.Object);
 	DoorSouthHinge = CreateDefaultSubobject<USceneComponent>(TEXT("DoorSouthHinge"));
 	DoorSouthHinge->SetupAttachment(Root);
 	DoorSouthHinge->SetRelativeLocation(FVector(60.f, -500.f, 0.f));
-	DoorSouth = MakeMesh(this, DoorSouthHinge, TEXT("DoorSouth"), Cube, FVector(50.f, 0.f, 110.f), FRotator::ZeroRotator, FVector(1.0f, 0.06f, 2.2f), DoorF.Object);
+	DoorSouth = S7BMakeMesh(this, DoorSouthHinge, TEXT("DoorSouth"), Cube, FVector(50.f, 0.f, 110.f), FRotator::ZeroRotator, FVector(1.0f, 0.06f, 2.2f), DoorF.Object);
 
-	Stiletto = MakeMesh(this, Root, TEXT("Stiletto"), Cube, FVector::ZeroVector, FRotator::ZeroRotator, FVector(0.25f, 0.012f, 0.03f), GoldF.Object);
+	Stiletto = S7BMakeMesh(this, Root, TEXT("Stiletto"), Cube, FVector::ZeroVector, FRotator::ZeroRotator, FVector(0.25f, 0.012f, 0.03f), GoldF.Object);
 	Stiletto->SetHiddenInGame(true);
-	Grenade = MakeMesh(this, Root, TEXT("Grenade"), Cyl, FVector::ZeroVector, FRotator::ZeroRotator, FVector(0.07f, 0.07f, 0.12f), TrimF.Object);
+	Grenade = S7BMakeMesh(this, Root, TEXT("Grenade"), Cyl, FVector::ZeroVector, FRotator::ZeroRotator, FVector(0.07f, 0.07f, 0.12f), TrimF.Object);
 	Grenade->SetHiddenInGame(true);
-	CurtainHeap = MakeMesh(this, Root, TEXT("CurtainHeap"), SphereF.Object, FVector(330.f, 150.f, -450.f), FRotator::ZeroRotator, FVector(3.2f, 2.2f, 0.45f), RedF.Object);
+	CurtainHeap = S7BMakeMesh(this, Root, TEXT("CurtainHeap"), SphereF.Object, FVector(330.f, 150.f, -450.f), FRotator::ZeroRotator, FVector(3.2f, 2.2f, 0.45f), RedF.Object);
 	CurtainHeap->SetHiddenInGame(true);
 
 	for (int32 i = 0; i < 12; ++i)
 	{
-		UStaticMeshComponent* S = MakeMesh(this, Root, *FString::Printf(TEXT("Shard%d"), i), Cube, FVector(190.f, 150.f, 210.f),
+		UStaticMeshComponent* S = S7BMakeMesh(this, Root, *FString::Printf(TEXT("Shard%d"), i), Cube, FVector(190.f, 150.f, 210.f),
 			FRotator::ZeroRotator, FVector(0.01f, 0.18f + 0.04f * (i % 3), 0.14f + 0.05f * (i % 4)), WindowF.Object);
 		S->SetHiddenInGame(true);
 		Shards.Add(S);
 	}
 	for (int32 i = 0; i < 7; ++i)
 	{
-		UStaticMeshComponent* P = MakeMesh(this, Root, *FString::Printf(TEXT("Smoke%d"), i), SphereF.Object, FVector::ZeroVector,
+		UStaticMeshComponent* P = S7BMakeMesh(this, Root, *FString::Printf(TEXT("Smoke%d"), i), SphereF.Object, FVector::ZeroVector,
 			FRotator::ZeroRotator, FVector(0.2f));
 		P->SetHiddenInGame(true);
 		P->SetCastShadow(false);
 		SmokePuffs.Add(P);
 	}
 
-	LampSpill = MakeLight(this, Root, TEXT("LampSpill"), FVector(-10.f, -150.f, 150.f), FColor(255, 196, 130), LampCandela, 650.f, true);
-	KeyLight = MakeLight(this, Root, TEXT("KeyLight"), FVector(-60.f, 250.f, 280.f), FColor(200, 210, 255), 12.f, 700.f, false);
-	StrobeA = MakeLight(this, Root, TEXT("StrobeA"), FVector(-150.f, 470.f, 270.f), FColor(255, 20, 10), 0.f, 900.f, true);
-	StrobeB = MakeLight(this, Root, TEXT("StrobeB"), FVector(-150.f, -420.f, 270.f), FColor(255, 20, 10), 0.f, 900.f, false);
-	FireLight = MakeLight(this, Root, TEXT("FireLight"), FVector(10.f, -150.f, 230.f), FColor(255, 120, 40), 0.f, 500.f, false);
+	LampSpill = S7BMakeLight(this, Root, TEXT("LampSpill"), FVector(-10.f, -150.f, 150.f), FColor(255, 196, 130), LampCandela, 650.f, true);
+	KeyLight = S7BMakeLight(this, Root, TEXT("KeyLight"), FVector(-60.f, 250.f, 280.f), FColor(200, 210, 255), 12.f, 700.f, false);
+	StrobeA = S7BMakeLight(this, Root, TEXT("StrobeA"), FVector(-150.f, 470.f, 270.f), FColor(255, 20, 10), 0.f, 900.f, true);
+	StrobeB = S7BMakeLight(this, Root, TEXT("StrobeB"), FVector(-150.f, -420.f, 270.f), FColor(255, 20, 10), 0.f, 900.f, false);
+	FireLight = S7BMakeLight(this, Root, TEXT("FireLight"), FVector(10.f, -150.f, 230.f), FColor(255, 120, 40), 0.f, 500.f, false);
 
-	Pendleton = MakePuppet(this, Root, TEXT("Pendleton"));
-	Bodyguard = MakePuppet(this, Root, TEXT("Bodyguard"));
+	Pendleton = S7BMakePuppet(this, Root, TEXT("Pendleton"));
+	Bodyguard = S7BMakePuppet(this, Root, TEXT("Bodyguard"));
 	Bodyguard->SetRelativeScale3D(FVector(1.12f));
-	Cole = MakePuppet(this, Root, TEXT("Cole"));
+	Cole = S7BMakePuppet(this, Root, TEXT("Cole"));
 
 	HumAudio = CreateDefaultSubobject<UAudioComponent>(TEXT("HumAudio"));
 	HumAudio->SetupAttachment(Projector);
@@ -263,24 +263,24 @@ AScene7Booth::AScene7Booth()
 	StilettoInHand = FTransform(FRotator(0.f, 0.f, 0.f), FVector(14.f, 0.f, 0.f), FVector(0.25f, 0.012f, 0.03f));
 
 	// Cameras, booth space (+X to the glass, +Y north to Pendleton's door, floor at z 0).
-	Shots.Add(TEXT("Swap"), MakeShot(FVector(-30.f, -340.f, 210.f), FVector(-30.f, -160.f, 185.f), 45.f));
-	Shots.Add(TEXT("Door"), MakeShot(FVector(-150.f, -100.f, 170.f), FVector(110.f, 500.f, 110.f), 45.f));
-	Shots.Add(TEXT("Insert"), MakeShot(FVector(-130.f, 100.f, 125.f), FVector(-50.f, 40.f, 100.f), 30.f));
-	Shots.Add(TEXT("Line"), MakeShot(FVector(-140.f, -10.f, 175.f), FVector(60.f, 300.f, 165.f), 35.f));
-	Shots.Add(TEXT("Alarm"), MakeShot(FVector(40.f, 330.f, 150.f), FVector(-110.f, 470.f, 140.f), 45.f));
-	Shots.Add(TEXT("Screen"), MakeShot(FVector(700.f, 100.f, 120.f), FVector(5188.f, -300.f, 150.f), 30.f));
-	Shots.Add(TEXT("Parry"), MakeShot(FVector(150.f, -200.f, 90.f), FVector(-20.f, 150.f, 140.f), 50.f));
-	Shots.Add(TEXT("ParryHit"), MakeShot(FVector(160.f, 60.f, 140.f), FVector(10.f, -60.f, 140.f), 50.f));
-	Shots.Add(TEXT("Block"), MakeShot(FVector(60.f, -40.f, 100.f), FVector(0.f, 170.f, 160.f), 40.f));
-	Shots.Add(TEXT("BlockHit"), MakeShot(FVector(60.f, 120.f, 165.f), FVector(-30.f, 60.f, 160.f), 30.f));
-	Shots.Add(TEXT("Throw"), MakeShot(FVector(-150.f, 280.f, 120.f), FVector(60.f, 160.f, 100.f), 45.f));
-	Shots.Add(TEXT("Fall"), MakeShot(FVector(700.f, 350.f, -400.f), FVector(250.f, 150.f, 0.f), 50.f));
-	Shots.Add(TEXT("Cole"), MakeShot(FVector(170.f, -90.f, 175.f), FVector(110.f, -450.f, 120.f), 55.f));
+	Shots.Add(TEXT("Swap"), S7BMakeShot(FVector(-30.f, -340.f, 210.f), FVector(-30.f, -160.f, 185.f), 45.f));
+	Shots.Add(TEXT("Door"), S7BMakeShot(FVector(-150.f, -100.f, 170.f), FVector(110.f, 500.f, 110.f), 45.f));
+	Shots.Add(TEXT("Insert"), S7BMakeShot(FVector(-130.f, 100.f, 125.f), FVector(-50.f, 40.f, 100.f), 30.f));
+	Shots.Add(TEXT("Line"), S7BMakeShot(FVector(-140.f, -10.f, 175.f), FVector(60.f, 300.f, 165.f), 35.f));
+	Shots.Add(TEXT("Alarm"), S7BMakeShot(FVector(40.f, 330.f, 150.f), FVector(-110.f, 470.f, 140.f), 45.f));
+	Shots.Add(TEXT("Screen"), S7BMakeShot(FVector(700.f, 100.f, 120.f), FVector(5188.f, -300.f, 150.f), 30.f));
+	Shots.Add(TEXT("Parry"), S7BMakeShot(FVector(150.f, -200.f, 90.f), FVector(-20.f, 150.f, 140.f), 50.f));
+	Shots.Add(TEXT("ParryHit"), S7BMakeShot(FVector(160.f, 60.f, 140.f), FVector(10.f, -60.f, 140.f), 50.f));
+	Shots.Add(TEXT("Block"), S7BMakeShot(FVector(60.f, -40.f, 100.f), FVector(0.f, 170.f, 160.f), 40.f));
+	Shots.Add(TEXT("BlockHit"), S7BMakeShot(FVector(60.f, 120.f, 165.f), FVector(-30.f, 60.f, 160.f), 30.f));
+	Shots.Add(TEXT("Throw"), S7BMakeShot(FVector(-150.f, 280.f, 120.f), FVector(60.f, 160.f, 100.f), 45.f));
+	Shots.Add(TEXT("Fall"), S7BMakeShot(FVector(700.f, 350.f, -400.f), FVector(250.f, 150.f, 0.f), 50.f));
+	Shots.Add(TEXT("Cole"), S7BMakeShot(FVector(170.f, -90.f, 175.f), FVector(110.f, -450.f, 120.f), 55.f));
 	// World cameras for the venue cut, the stair and the security room.
-	WorldShots.Add(TEXT("Venue"), MakeShot(FVector(2250.f, 900.f, 300.f), FVector(4300.f, -250.f, 480.f), 55.f));
-	WorldShots.Add(TEXT("Pendleton"), MakeShot(FVector(3480.f, -260.f, 230.f), FVector(3890.f, -480.f, 185.f), 32.f));
-	WorldShots.Add(TEXT("Stair"), MakeShot(FVector(-1350.f, 420.f, 700.f), FVector(-2350.f, 0.f, 230.f), 60.f));
-	WorldShots.Add(TEXT("Caught"), MakeShot(FVector(-2900.f, -1930.f, 650.f), FVector(-2620.f, -1420.f, 580.f), 70.f));
+	WorldShots.Add(TEXT("Venue"), S7BMakeShot(FVector(2250.f, 900.f, 300.f), FVector(4300.f, -250.f, 480.f), 55.f));
+	WorldShots.Add(TEXT("Pendleton"), S7BMakeShot(FVector(3480.f, -260.f, 230.f), FVector(3890.f, -480.f, 185.f), 32.f));
+	WorldShots.Add(TEXT("Stair"), S7BMakeShot(FVector(-1350.f, 420.f, 700.f), FVector(-2350.f, 0.f, 230.f), 60.f));
+	WorldShots.Add(TEXT("Caught"), S7BMakeShot(FVector(-2900.f, -1930.f, 650.f), FVector(-2620.f, -1420.f, 580.f), 70.f));
 	StrobesVenue = { FVector(3000.f, 1200.f, 900.f), FVector(1500.f, -1200.f, 900.f) };
 	StrobesEscape = { FVector(-1300.f, -500.f, 820.f), FVector(-2650.f, -1700.f, 820.f) };
 	{
@@ -296,7 +296,7 @@ AScene7Booth::AScene7Booth()
 	}
 	GuardPath = { FVector(-2750.f, 60.f, 0.f), FVector(-2560.f, 60.f, 0.f), FVector(-1500.f, 60.f, 450.f),
 		FVector(-1380.f, -250.f, 450.f) };
-	Shots.Add(TEXT("Miss"), MakeShot(FVector(60.f, 150.f, 170.f), FVector(-30.f, 40.f, 160.f), 35.f));
+	Shots.Add(TEXT("Miss"), S7BMakeShot(FVector(60.f, 150.f, 170.f), FVector(-30.f, 40.f, 160.f), 35.f));
 }
 
 void AScene7Booth::BeginPlay()
@@ -694,7 +694,7 @@ void AScene7Booth::BeginScene()
 		LampSpill->SetIntensity(0.f);
 	}
 	bPlayerWalks = false;
-	FreezeVance(V, true);
+	S7BFreezeVance(V, true);
 	SetStage(EScene7Stage::Approach);
 	UE_LOG(LogScene7, Log, TEXT("S7 booth: begin (swap actor %d)"), bSwapActor ? 1 : 0);
 }
@@ -728,7 +728,7 @@ void AScene7Booth::EndScene()
 	}
 	if (UTakeGuideSubsystem* G = UTakeGuideSubsystem::Get(this)) { G->ClearGoal(); }
 	bPlayerWalks = true;
-	FreezeVance(GetPovCharacter(), false);
+	S7BFreezeVance(GetPovCharacter(), false);
 	Super::EndScene();
 }
 
@@ -775,7 +775,7 @@ void AScene7Booth::ResetScene()
 	bLeftMark = false;
 	VanceBackToBlueprint();
 	bPlayerWalks = true;
-	FreezeVance(GetPovCharacter(), false);
+	S7BFreezeVance(GetPovCharacter(), false);
 	Stage = EScene7Stage::Approach;
 	StageT = PrevT = StageReal = 0.f;
 }
@@ -905,7 +905,7 @@ void AScene7Booth::TickScene(float DeltaSeconds)
 				PutCanisterOnVance(false);
 				bSwapDone = true;
 				SetFlag(TEXT("Canister"));
-				FreezeVance(V, true);
+				S7BFreezeVance(V, true);
 				Say(TEXT("VANCE"), SwappedLine);
 				SetStage(EScene7Stage::Swapped);
 			}
@@ -989,7 +989,7 @@ void AScene7Booth::TickScene(float DeltaSeconds)
 			VanceBackToBlueprint();
 			Shot(NAME_None);
 			if (V && V->GetCharacterMovement()) { V->GetCharacterMovement()->MaxWalkSpeed = EscapeSpeed; }
-			FreezeVance(V, false);
+			S7BFreezeVance(V, false);
 			bPlayerWalks = true;
 			EscapeStep = 0;
 			bStairShot = false;
@@ -1019,7 +1019,7 @@ void AScene7Booth::TickScene(float DeltaSeconds)
 					Act(Pendleton, TEXT("Walk"), true, 0.75f);
 					Act(Bodyguard, TEXT("Walk"), true, 0.75f);
 					Shot(TEXT("Stair"));
-					FreezeVance(V, true);
+					S7BFreezeVance(V, true);
 					bPlayerWalks = false;
 				}
 				EscapeStep = i + 1;
@@ -1034,7 +1034,7 @@ void AScene7Booth::TickScene(float DeltaSeconds)
 			{
 				StairShotT = -1.f;
 				Shot(NAME_None);
-				FreezeVance(V, false);
+				S7BFreezeVance(V, false);
 				bPlayerWalks = true;
 			}
 		}
