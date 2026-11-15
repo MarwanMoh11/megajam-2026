@@ -1029,3 +1029,30 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   - The doorman at first reacted to the beam's position mid-swing, 44 m away; the fix (react to where it settles) waits
     for the next build.
   - The orchestrator's time estimates for the rounds ran ahead of the clock.
+
+## Sun Nov 15, 03:40 - 04:12 (Cairo): rounds E and F, the package
+
+- **First package candidate (03:34-03:38):** a ship agent built the Shipping package from the round D tree: BUILD
+  SUCCESSFUL in 210 s, no cook errors or warnings, `C:\Jam\Builds\TeamName_GameName.zip` 562 MiB without the .pdb (the
+  old zip kept as `TeamName_GameName_preqa.zip`); the exe stayed alive 25 s in a smoke test. It shipped with the
+  sideways film, as a safety copy. The commits were pushed as a backup (8804f4b..3aceae9, LFS 617 MB).
+- **Round E (03:50):** both targets built (the editor in 10 s), level rebuilt, saved, no source edits. The film no longer
+  sideways or doubled, but upside down. The dais's gold marks no longer show in house light; they appear with the first
+  dark. `t_s3b` and `t_full` pass (`t_full`: TRAP, ROUGH CUT, 134.1 s, 0 bloopers).
+- **The heist agent got the editor to close its own loop:** it rolled the placed dimmer actor 180 degrees
+  (`screen_picture_roll`, also in its `build_auction.py` block) and looked at the leader: the "5" stands upright.
+- **Round F (04:08):** both targets built, level rebuilt, saved. After the leader the film is one upright frame with two
+  figures the right way up. `t_s3b`: exit SIDE, DIRECTOR'S CUT, 46.6 s, 11 cuts, 2 bloopers. `t_full`: exit TRAP,
+  ROUGH CUT, 134.2 s, 14 cuts, 0 bloopers. The opening agent's last fixes (doorman at the detector post, aim height
+  130, the clerk's greeting waits for the street's lines) were in.
+- **The final package (04:08-04:10):** BUILD SUCCESSFUL, no cook errors or warnings,
+  `C:\Jam\Builds\TeamName_GameName.zip`, 562 MiB without the .pdb; the exe was alive after 25 s in a smoke test.
+  Nobody has played the packaged build.
+- **What went wrong:**
+  - The film fix took three tries (sideways, upside down, upright): the first two were written without a look in play;
+    only the third, with the editor open, was checked on the screen.
+  - The searchlight pool still lands on Julian in the queue, 3.25 m from the doorman (who stands beyond the gate on
+    the red carpet), after three aim changes. Left as a known issue for Marwan.
+  - `t_s3b`'s second blooper is COMPOSURE_ZERO, not the one the test meant (the drone seeing Julian, which the test
+    tried to avoid by hiding him behind the PA); left as it is.
+  - The doorman's subtitle is still up when Julian reaches the lobby door; the clerk's greeting follows 1.2 s later.
