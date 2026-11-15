@@ -7,7 +7,10 @@
 #include "Components/AudioComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/PointLightComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Components/SplineComponent.h"
+#include "Animation/AnimationAsset.h"
+#include "Engine/SkeletalMesh.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/Canvas.h"
 #include "Engine/TargetPoint.h"
@@ -93,6 +96,9 @@ AScene8Alley::AScene8Alley()
 	bPlayerWalks = true;
 	CarClass = AScene8Car::StaticClass();
 	SparkSystem = TSoftObjectPtr<UNiagaraSystem>(FSoftObjectPath(TEXT("/Game/Take/FX/NS_Take_Sparks.NS_Take_Sparks")));
+	GuardMesh = TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(TEXT("/Game/Take/Cast/NPCs/Guard/SKM_NPC_Guard.SKM_NPC_Guard")));
+	GuardPose = TSoftObjectPtr<UAnimationAsset>(FSoftObjectPath(
+		TEXT("/Game/Characters/Mannequins/Anims/Pistol/MF_Pistol_Idle_ADS.MF_Pistol_Idle_ADS")));
 	DoorKickSound = S8Sound(TEXT("s8_door_kick"));
 	GunshotSounds = { S8Sound(TEXT("s8_gunshot_1")), S8Sound(TEXT("s8_gunshot_2")), S8Sound(TEXT("s8_gunshot_3")) };
 	RicochetSounds = { S8Sound(TEXT("s8_ricochet_1")), S8Sound(TEXT("s8_ricochet_2")), S8Sound(TEXT("s8_ricochet_3")) };
@@ -141,6 +147,17 @@ AScene8Alley::AScene8Alley()
 
 	Guard0 = MakeGuard(this, TEXT("Guard0"), Root);
 	Guard1 = MakeGuard(this, TEXT("Guard1"), Root);
+	// The rigged guard on each grey-box guard's root: the mannequin faces +Y, the guard root aims +X.
+	Guard0Mesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("Guard0Mesh"));
+	Guard1Mesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("Guard1Mesh"));
+	Guard0Mesh->SetupAttachment(Guard0);
+	Guard1Mesh->SetupAttachment(Guard1);
+	for (USkeletalMeshComponent* M : { Guard0Mesh.Get(), Guard1Mesh.Get() })
+	{
+		M->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));
+		M->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		M->SetCanEverAffectNavigation(false);
+	}
 
 	auto MakeLight = [this](FName Name, float Radius, const FLinearColor& C) {
 		UPointLightComponent* L = CreateDefaultSubobject<UPointLightComponent>(Name);
@@ -170,6 +187,18 @@ void AScene8Alley::BeginPlay()
 	FTakeShapes::SetColour(MuzzleFlash, FLinearColor(1.f, 0.85f, 0.5f));
 	PaintGuard(Guard0);
 	PaintGuard(Guard1);
+	USkeletalMesh* GM = GuardMesh.IsNull() ? nullptr : GuardMesh.LoadSynchronous();
+	UAnimationAsset* GP = GuardPose.IsNull() ? nullptr : GuardPose.LoadSynchronous();
+	for (USkeletalMeshComponent* M : { Guard0Mesh.Get(), Guard1Mesh.Get() })
+	{
+		if (!GM) { M->SetVisibility(false); continue; }
+		M->SetSkeletalMeshAsset(GM);
+		if (GP) { M->PlayAnimation(GP, true); }
+		// The rigged guard replaces the grey box: hide its shapes (the muzzle point stays on the root).
+		TArray<USceneComponent*> Kids;
+		M->GetAttachParent()->GetChildrenComponents(false, Kids);
+		for (USceneComponent* K : Kids) { if (K != M) { K->SetHiddenInGame(true); } }
+	}
 
 	UWorld* World = GetWorld();
 	if (!World) { return; }

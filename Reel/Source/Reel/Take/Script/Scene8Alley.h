@@ -26,6 +26,9 @@ class UNiagaraSystem;
 class UPointLightComponent;
 class USoundBase;
 class USplineComponent;
+class USkeletalMesh;
+class USkeletalMeshComponent;
+class UAnimationAsset;
 class UStaticMeshComponent;
 
 UENUM()
@@ -170,6 +173,13 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Scene8|Assets")
 	TSoftObjectPtr<UNiagaraSystem> SparkSystem;
 
+	/** The guards' rigged model and their aiming pose; unset or missing: grey-box guards. */
+	UPROPERTY(EditAnywhere, Category = "Scene8|Assets")
+	TSoftObjectPtr<USkeletalMesh> GuardMesh;
+
+	UPROPERTY(EditAnywhere, Category = "Scene8|Assets")
+	TSoftObjectPtr<UAnimationAsset> GuardPose;
+
 	UPROPERTY(EditAnywhere, Category = "Scene8|Assets")
 	TSoftObjectPtr<USoundBase> DoorKickSound;
 
@@ -234,6 +244,12 @@ public:
 
 	UPROPERTY(VisibleAnywhere, Category = "Scene8")
 	TObjectPtr<USceneComponent> Guard1;
+
+	UPROPERTY(VisibleAnywhere, Category = "Scene8")
+	TObjectPtr<USkeletalMeshComponent> Guard0Mesh;
+
+	UPROPERTY(VisibleAnywhere, Category = "Scene8")
+	TObjectPtr<USkeletalMeshComponent> Guard1Mesh;
 
 	UPROPERTY(VisibleAnywhere, Category = "Scene8")
 	TObjectPtr<UPointLightComponent> MuzzleLight;
