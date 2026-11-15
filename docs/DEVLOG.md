@@ -1432,3 +1432,9 @@ Max in the car is s2's seated clerk. The C++ fixes go in at 18:10.
   canister, the screen shot showed a dark wall, and the slam and Cole's entrance were out of frame. The audio script
   couldn't run inside the editor (its import isn't at the top level), so a separate import script was written. Five
   restart windows were lost to the usage limit between 14:50 and 17:20.
+
+### Nov 15, 18:15 Cairo: Spine, checked on the 18:10 build
+`spine_pie.py` ran again. The title card now shows at play start, all eight scenes cut in order (Scenes 7 and 8 are in
+the level now), the retake restarts Scene 3 with no stale subtitle, and s8's credits roll. One more bug, fixed for 18:50:
+every credit line was drawn as a gold heading. In Unreal, `FString ==` ignores case, so the "is it in capitals" test was
+always true.

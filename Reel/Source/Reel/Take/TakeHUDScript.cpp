@@ -69,7 +69,7 @@ void ATakeHUD::DrawScript(const ATakeDirector& Dir, const FTakeFilmFrame& F)
 		{
 			if (Y > -LineH && Y < H + LineH && !Line.IsEmpty())
 			{
-				const bool bHead = Line == Line.ToUpper();
+				const bool bHead = Line.Equals(Line.ToUpper(), ESearchCase::CaseSensitive);	// FString == ignores case
 				Kit.Text(bHead ? EType::Goal : EType::Line, Line, Kit.CX(), Y, bHead ? Julian : Bone, ETakeAlign::Centre);
 			}
 			Y += LineH;
