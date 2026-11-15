@@ -311,6 +311,8 @@ USkeletalMeshComponent* AScene8Car::Sitter(const TSoftObjectPtr<USkeletalMesh>& 
 	K->RegisterComponent();
 	AddInstanceComponent(K);
 	K->SetSkeletalMeshAsset(SM);
+	K->bForceMipStreaming = true;	// the mirror's capture doesn't drive texture streaming: his face came out blank skin
+	K->PrestreamTextures(30.f, true);
 	if (UAnimationAsset* A = Anim.IsNull() ? nullptr : Anim.LoadSynchronous()) { K->PlayAnimation(A, true); }
 	return K;
 }
@@ -570,7 +572,7 @@ void AScene8Car::SetShot(bool bB)
 		Look = FVector(-34.f, 41.f, 92.f);
 		Fov = FMath::Max(Fov, 66.f);
 	}
-	if (bB) { Fov = FMath::Min(Fov, 21.f); }	// tight on the glass: the mirror fills the frame
+	if (bB) { Fov = FMath::Min(Fov, 14.5f); }	// tight on the glass: the mirror fills the frame
 	GS8FinaleShotCam = Cam;
 	GS8FinaleShotLook = Look;
 	FinaleCam->SetRelativeLocationAndRotation(Cam, (Look - Cam).Rotation());
