@@ -1416,3 +1416,19 @@ Max in the car is s2's seated clerk. The C++ fixes go in at 18:10.
   played, and the retake opened at the blackout with the film already running.
 - **Went wrong:** the first lock acquire died on a race over the queue's mutex file (PermissionError on
   `editor.queue.mtx`); retrying kept the queue place.
+
+## Nov 15, 18:10: Scene 7, the projection booth (s7-booth)
+- **Changed:** `AScene7Booth` went live for the first time in the 17:19 build. With the lock, s7 imported the 18 Scene 7
+  sounds and voices into `/Game/Take/Audio/Script/S7` (`tools/script/scene7_audio_import.py`), ran
+  `tools/script/scene7.py` to place the booth actor and its start mark, and saved the level (5dd4a6c, 27c3b61, f9c93f9).
+  `tools/script/scene7_pie.py` plays the scene by itself (`Reel.S7.Auto 1`) and shoots it every ~1.7 s.
+- **Checked in play:** from `Reel.Script.Jump 7` the scene runs all the way through: the 1.2 s reel swap, Pendleton and
+  his bodyguard, "Lock the building. Nobody leaves.", the alarm and its strobes, the film burning out on the screen,
+  PARRY / BLOCK WITH THE CANISTER / COUNTER in slow time, Pendleton through the glass, Cole's "Max is out back! Move!",
+  then the cut to Scene 8. A missed prompt gives "CUT! He missed the block", Take 2, and the retake starts at the alarm.
+- **Went wrong:** the cast's Mixamo clips (Talk, Stand, Use, Lift, Refuse) are on the YBot skeleton and didn't play on
+  the cast's Mannequin meshes. Pendleton lay flat by the alarm until the scene switched to the copies in
+  `/Game/Take/Anim/Mocap`. Five cameras moved after the shots: the swap was crowded into Vance's head, the line was half
+  canister, the screen shot showed a dark wall, and the slam and Cole's entrance were out of frame. The audio script
+  couldn't run inside the editor (its import isn't at the top level), so a separate import script was written. Five
+  restart windows were lost to the usage limit between 14:50 and 17:20.
