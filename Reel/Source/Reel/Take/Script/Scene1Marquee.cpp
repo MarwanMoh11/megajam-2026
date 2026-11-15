@@ -21,6 +21,7 @@
 #include "Sound/SoundBase.h"
 #include "TakeDirector.h"
 #include "TakeGuide.h"
+#include "TakeTicketCard.h"
 #include "TakePlayerController.h"
 #include "TakeShapes.h"
 
@@ -774,18 +775,9 @@ void AScene1Marquee::DrawSceneHud(UCanvas* Canvas)
 	}
 	if (CardAlpha > 0.f)
 	{
-		const float CW = 300.f * S, CH = 180.f * S;
-		const float Jitter = bFlicker ? 9.f * S : 0.f;
-		const float X = W - CW - 60.f * S + Jitter;
-		const float Y = H - CH - 150.f * S + CardDrop;
-		Box(X - 3.f * S, Y - 3.f * S, CW + 6.f * S, CH + 6.f * S, FLinearColor(0.8f, 0.62f, 0.3f, CardAlpha));
-		Box(X, Y, CW, CH, FLinearColor(0.06f, 0.05f, 0.05f, CardAlpha));
-		Box(X, Y + CH * 0.62f, CW, CH * 0.16f, FLinearColor(0.f, 0.f, 0.f, CardAlpha));	// the mag stripe
-		Text(TEXT("V . I . P"), X + CW * 0.5f, Y + 18.f * S, 1.6f * S, FLinearColor(Gold.R, Gold.G, Gold.B, CardAlpha), true);
-		Text(TEXT("THE GRAND LUMIERE  -  ADMIT ONE"), X + CW * 0.5f, Y + 70.f * S, 0.8f * S, FLinearColor(0.85f, 0.8f, 0.7f, CardAlpha), true);
-		if (bVoid)
-		{
-			Text(TEXT("VOID"), X + CW * 0.5f, Y + CH * 0.3f, 2.6f * S, FLinearColor(0.9f, 0.08f, 0.06f, 0.9f), true);
-		}
+		// hud-guidance's ink ticket (TakeTicketCard.h): the HUD's own type, a VIP stub, VOID as the kit's red stamp
+		FTakeHudKit Kit;
+		Kit.Begin(Canvas, T, 138.f);
+		TakeTicket::Draw(Kit, CardAlpha, CardDrop, bFlicker ? 9.f * S : 0.f, bVoid ? static_cast<float>(VoidAge) : -1.f);
 	}
 }
