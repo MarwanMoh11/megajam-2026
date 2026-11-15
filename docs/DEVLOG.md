@@ -1742,3 +1742,16 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
 - Still unverified: how the ?/! icons and the torch look (the shots frame Julian, not the guard), light-based detection
   in a dark spot (the hall read light 1.00 throughout), crouch, the body reaction, and catch.
 - No scene uses it yet: s5, s6 and s8 kept their own scripted guards, and s4 never replied.
+
+## Nov 16, 00:05 Cairo: Vance remodelled in Blender (vance-blender)
+- **Changed:** a new Vance built by Claude in Blender 5.3, headless (`tools/vance/build_vance.py`), from the UE
+  mannequin's own body and skeleton (SKM_Manny_Simple exported from the editor). The clothes are the mannequin's
+  surface relaxed and pushed out per region (ivory dinner jacket with a shirt-front V, black trousers, shoes, shirt
+  collar and cuffs), so every vertex keeps the mannequin's skin weights; added a jacket skirt, bow tie, buttons, red
+  carnation, pocket square, and a face (nose, ears, eyes, brows, pencil moustache, slicked hair built off the skull).
+  The FBX's skeleton was checked against the mannequin's: 88 bones, same names, same positions, so the template clips
+  and the 40 retargeted Mixamo clips play on him with no retargeting.
+- **Not in the game yet:** Marwan approves the look first. `tools/vance/import_vance.py` then imports it over
+  `SKM_Hero_Julian` (the Rodin mesh kept as `SKM_Hero_Julian_Rodin`). Previews: `C:\Jam\Art\Vance\preview_*.png`.
+- **Went wrong:** the Blender MCP connection dropped when Blender was closed, so the build moved to a headless script;
+  the first import dropped the leaf bones (head, ball, finger tips) until `ignore_leaf_bones` was turned off.
