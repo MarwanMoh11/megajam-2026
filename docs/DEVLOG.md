@@ -1499,3 +1499,6 @@ a reverse shot. `Reel.Script.Jump N` while scene N has only just started no long
   cross with no car under it, the van outside and Max's interior.
 - **Went wrong:** Rodin and Tripo both had 0 credits, so a generated van mesh was not possible; the van stays built
   from shapes. The editor was held closed for the packaging run and Marwan's playtest until about 19:40.
+- **Correction (19:55):** Marwan's "cars in the bottom right" note meant the HUD cards in the bottom right ("fix UI for
+  the cards"), which hud-guidance owns. The hidden kerb sedan stays: Scene 2's cross is cleaner without half a car and
+  its glowing wheel ring in the corner.

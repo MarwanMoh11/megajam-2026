@@ -731,9 +731,11 @@ if ON["signs"]:
 
 
 # --- 5. the street cars: the kerb sedan in the Scene 2 cross ------------------------------------------------------------
-# Marwan's QA: "the cars in the bottom right look ugly". Scene 2's opening crosses from the steps (-3400, 250) to the
+# Scene 2's opening crosses from the steps (-3400, 250) to the
 # van's windshield (-5380, 1080), and front.py's kerb sedan at y 1000 sits right under that line: the camera skims its
-# roof and whitewall wheel in the bottom right of the frame. The kerb at the entrance is the arrival zone, so it goes.
+# roof and whitewall wheel in the bottom right of the frame (a half car with a glowing wheel ring). The kerb at
+# the entrance is the arrival zone, so it goes. (First read as Marwan's "cars in the bottom right" note; he meant the
+# HUD cards, which hud-guidance owns. Kept because the cross is cleaner without it.)
 CROSS_CARS = (r"Set_set_front_Front_sedan_004",)
 if ON["cars"]:
     say("cars: hid %s" % C.hide(list(CROSS_CARS), TAG))
