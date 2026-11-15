@@ -80,6 +80,11 @@ The key is read from the User environment (`ELEVENLABS_API_KEY`) inside the scri
 | BODYGUARD | Harry (`SOYHLrjzK2X1ezoPC6cr`) | rough, fierce: Vance's bodyguard |
 | BROADCAST | Print It - Broadcast (Voice Design, candidate 1 of 2, picked by Marwan) (`zp7wscOG54kLZi18OhAE`) | harried 1950s live-TV producer, fast and clipped: the drone's producer on talkback |
 | SECURITY | Print It - Security (Voice Design, candidate 2 of 2, picked by Marwan) (`BKCBzTejPWQ1UuUOlatr`) | young, burly, breathless Brooklyn guard: the guards who come in at the alarm |
+| CLERK | Eric (`cjVigY5qzO86Huf0OWal`) | smooth, trustworthy, classy American: the reception clerk |
+| GUEST | Bella (`hpp4J3VqNfWAUOO0d1Us`) | a woman in the front rows, curious, hushed |
+| GUEST_OLD | George (`JBFqnCBsd6RMkjVDRZzb`) | an older gentleman at the sale, mildly scandalised |
+| GUEST_GRUFF | Brian (`nPczCjzI2devNBz1zQrb`) | a gruff man in the rows, irritated |
+| GUEST_QUEUE | Liam (`TX3LPaxmHKxFdv7VOQHJ`) | a brash young man in the queue outside |
 
 Model `eleven_multilingual_v2`. Earpiece lines (BROADCAST, MAYA, VEX) are band-passed like a radio in `process.py`.
 
@@ -143,9 +148,20 @@ Model `eleven_multilingual_v2`. Earpiece lines (BROADCAST, MAYA, VEX) are band-p
 | `vo_vance_preview` | VANCE | Ladies and gentlemen: a first glimpse of Lot 41. (said: *Ladies and gentlemen: a first glimpse of Lot forty-one.*) | Scene 3, the house goes down | its words | ~3.8 s |
 | `vo_maya_swap` | MAYA | Clean swap. Bringing the house up. | Scene 3, Julian swaps the reel in the dark | its words | ~2.6 s |
 | `vo_vance_discover` | VANCE | And here it is... a newsreel?! | Scene 3, the house comes up and Vance opens the dummy (the alarm's line follows) | its words | ~2.6 s |
-| `vo_maya_noswap` | MAYA | House is up. Get him beside the case and I'll roll it again. | Scene 3, the preview ends with no swap | its words | ~5.3 s |
+| `vo_maya_noswap` | MAYA | House is coming up. Get him back in the crowd, I'll roll it again. | Scene 3, the preview ends with no swap | its words | ~5.7 s |
 | `vo_vance_seen` | VANCE | Sir! Step away from that case! | Scene 3, Julian at the case with the house up (THE ROOM SAW HIM follows) | its words | ~2.6 s |
-| `vo_maya_hint_case` | MAYA | Not in the light. Get him beside the case, cut to me, I take the house down, then swap it. | Scene 3, the crew hint after two bloopers at the keycard's checkpoint | its words | ~8.0 s |
+| `vo_maya_hint_case` | MAYA | Not in the light. Get him to the front row, cut to me, I take the house down. Then he goes up. | Scene 3, the crew hint after two bloopers at the keycard's checkpoint | its words | ~8.8 s |
+| `vo_doorman_nomatch` | DOORMAN | No match. Hold there, sir. | Scene 1, the scanner refuses Julian (the doorman at the scanner) | its words | ~2.2 s |
+| `vo_doorman_light` | DOORMAN | Who turned that light on?! | Scene 1, the searchlight lands on the scanner; the doorman shields his eyes | its words | ~2.2 s |
+| `vo_doorman_onetime` | DOORMAN | One at a time, sir. | Scene 1, Julian pushes toward the scanner before his turn | its words | ~2.2 s |
+| `vo_guest_turn` | GUEST | Wait your turn, pal. | Scene 1, Julian tries to pass the guest ahead of him in the queue | its words | ~1.8 s |
+| `vo_clerk_greet` | CLERK | Good evening, sir. Bidders sign in here, at the desk. | Lobby, the clerk greets Julian through the doors | its words | ~4.1 s |
+| `vo_clerk_paddle` | CLERK | Paddle forty-one, sir. The sale is through the hall doors. | Lobby, Julian takes his paddle at the desk | its words | ~4.1 s |
+| `vo_vex_teach_room` | VEX | Not in front of the whole room. Back in the crowd. Maya: take the house lights down. | Scene 3, the room's first murmur of a take (the lesson) | its words | ~6.8 s |
+| `vo_guest_stage` | GUEST | Who's that up by the stage? | Scene 3, a later murmur (a woman in the front rows) | its words | ~2.6 s |
+| `vo_guest_house` | GUEST | Is he with the auction house? | Scene 3, a later murmur (an older man) | its words | ~2.6 s |
+| `vo_guest_sit` | GUEST | Sit down, man, we can't see. | Scene 3, a later murmur (a gruff man) | its words | ~2.6 s |
+| `vo_vance_stage` | VANCE | Sir! Step back from the stage! | Scene 3, the room saw him at the front (THE ROOM SAW HIM follows) | its words | ~2.6 s |
 
 ### Sound effects
 
@@ -169,6 +185,7 @@ Model `eleven_multilingual_v2`. Earpiece lines (BROADCAST, MAYA, VEX) are band-p
 | `sfx_chime` | Keycard lifted, a checkpoint, an arrival | 0.8 s |  | A soft bright two-note vibraphone chime, short and pleasant |
 | `sfx_heartbeat` | Loop: a watcher holds him | 2.0 s | yes | Tense heartbeat, two heavy thumps per second, close and muffled, seamless loop |
 | `sfx_ringing` | Loop: composure falling | 4.0 s | yes | High-pitched tinnitus ear ringing tone, steady and thin, seamless loop |
+| `sfx_murmur` | The room notices Julian: heads turn, a murmur rises (RoomWatch) | 3.0 s |  | A crowd of a hundred people in a 1940s black-tie auction hall: a murmur rises as heads turn, hushed voices, no clear words, then a low steady murmur, indoor, slightly reverberant |
 
 ### The band and the score
 
