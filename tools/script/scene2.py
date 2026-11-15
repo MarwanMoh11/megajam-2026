@@ -27,8 +27,9 @@ POINTS = dict(
     inside_pos=V(VAN_X - 20.0, 1400.0, 160.0),  # through the glass, in the cab
     max_cam_pos=V(-5450.0, 1450.0, 150.0),     # the settled shot on Max at his CRT
     max_look=V(-5340.0, 1690.0, 120.0),
-    feed_from=V(-3450.0, 130.0, 330.0),        # the security camera by the doors, looking down at the plate
+    feed_from=V(-3480.0, 290.0, 210.0),        # the security camera by the doors: Vance in profile at the plate
     feed_at=V(-3610.0, 239.0, 112.0),          # the palm plate (runtime: Scene 1 GetPlatePoint)
+    feed_fov=45.0,
 )
 
 # the sounds (tools/script/scene2_audio.py imports them): property -> asset name under /Game/Take/Audio/Script/S2
