@@ -23,7 +23,7 @@ REPORT = []
 
 # World cm (hall_zones.json): rows x 1900..3150, chairs |y| <= 583; dais x 3600..4400; south wall face y -2000.
 SCENE_AT = (3650.0, -1900.0, 0.0)
-START = (2650.0, -690.0, 100.0, 20.0)           # Vance at his aisle seat, looking up at the stage
+START = (2600.0, -900.0, 100.0, 25.0)           # Vance at his aisle seat, looking up at the stage
 CAMERA = (3330.0, -260.0, 205.0)                # Pendleton's close shot, from the front floor
 PENDLETON_AT = (3890.0, -480.0, 170.0)
 DOOR_MARK = (3650.0, -1900.0, 0.0)
@@ -68,7 +68,7 @@ def build():
     for (name, npc, kit, x, y, yaw0, ya, yb, secs, phase, speaker) in WATCHERS:
         m = tagged(EAS.spawn_actor_from_class(unreal.CastMember, unreal.Vector(x, y, 0.0), unreal.Rotator(0.0, 0.0, yaw0)))
         m.set_actor_label("Script_S5_" + name)
-        m.set_editor_property("kit", getattr(unreal.CastKit, kit))
+        m.set_editor_property("kit", getattr(unreal.CastKit, kit.upper()))
         m.set_editor_property("seated", False)
         skm = NPC % (npc, npc)
         if EAL.does_asset_exist(skm):
@@ -99,6 +99,7 @@ def build():
     scene.set_editor_property("door_mark", unreal.Vector(*DOOR_MARK))
     scene.set_editor_property("door_lamp_at", unreal.Vector(*DOOR_LAMP))
     scene.set_editor_property("booth_point", unreal.Vector(*BOOTH_PORT))
+    scene.set_editor_property("pendleton_spot_candelas", 22000.0)
     if dimmer:
         # The beam leaves s7's booth port (the projection box over the lobby doors), not Maya's platform.
         local = dimmer.get_actor_transform().inverse_transform_location(unreal.Vector(*BOOTH_PORT))

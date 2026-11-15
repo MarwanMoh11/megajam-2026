@@ -481,7 +481,7 @@ void AScene5Auditorium::UpdateLamp()
 		bOn = FMath::Fmod(PhaseTime, 0.25f) < 0.125f;	// the refusal: a fast red blink
 	}
 	const FLinearColor C = bDoorUnlocked ? Scene5Local::LampGreen : Scene5Local::LampRed;
-	FTakeShapes::SetCueLight(DoorLamp, bOn ? 40.f : 0.f, C);
+	FTakeShapes::SetCueLight(DoorLamp, bOn ? 6.f : 0.f, C);
 	BulbMID = FTakeShapes::SetColour(DoorBulb, bOn ? C * 4.f : C * 0.05f);
 	FTakeShapes::SetSignal(DoorBulb, bOn ? TakeStyle::StencilRed : static_cast<uint8>(0));
 }
