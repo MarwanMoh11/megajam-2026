@@ -617,6 +617,18 @@ void ATakeDirector::Flash(const FString& Text, ETakeFlashKind Kind, float Second
 {
 	FTakeFlash& Line = Flashes.AddDefaulted_GetRef();
 	Line.Text = Text;
+	if (bScriptDriven)
+	{
+		// The script's names: old device and crew lines still name the auction take's crew.
+		static const TCHAR* Old[] = { TEXT("JULIAN"), TEXT("Julian"), TEXT("MAYA"), TEXT("Maya"), TEXT("VEX"), TEXT("Vex"),
+			TEXT("AURELIA AUCTION HOUSE"), TEXT("Aurelia Auction House") };
+		static const TCHAR* New[] = { TEXT("VANCE"), TEXT("Vance"), TEXT("NORA"), TEXT("Nora"), TEXT("COLE"), TEXT("Cole"),
+			TEXT("GRAND LUMIERE"), TEXT("Grand Lumiere") };
+		for (int32 i = 0; i < UE_ARRAY_COUNT(Old); ++i)
+		{
+			Line.Text.ReplaceInline(Old[i], New[i], ESearchCase::CaseSensitive);
+		}
+	}
 	Line.Kind = Kind;
 	Line.Serial = ++FlashSerial;
 	Line.Tab = Tab;

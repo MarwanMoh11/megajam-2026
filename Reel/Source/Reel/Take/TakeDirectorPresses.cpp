@@ -139,7 +139,7 @@ void ATakeDirector::HandleUse(const FTakePress& Press)
 
 	if (Who == Julian.Get())
 	{
-		Flash(TEXT("JULIAN has nothing to use. [2] MAYA and [3] VEX work the set."), ETakeFlashKind::Refusal, 1.5f);
+		Flash(TEXT("Nothing to use here."), ETakeFlashKind::Refusal, 1.5f);
 		TAKE_LOG(TEXT("USE %s: refused, the crew work the set"), WhoName);
 		return;
 	}

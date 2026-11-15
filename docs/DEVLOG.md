@@ -1313,3 +1313,26 @@ animation, you can't move it or change it." He was looking at the searchlight on
   a parameter named `Role` hid `AActor::Role` (s5 renamed it), and `GWhiteTexture` lives in RenderCore, which Reel
   doesn't link. My snapshot compile check had passed because UBT never compiled the new file in a copied snapshot
   (its makefile was stale). Delete `Makefile.bin` and check that the log names the file.
+
+## Nov 15, 14:40: Spine: the script's sequencer is live (Director's Cut pivot)
+
+- **Why:** Marwan pivoted the game to an 8-scene script (`docs/SCRIPT.md`) at 13:00; nine sessions build it in
+  parallel, one per scene plus Spine, which owns the contract and the shared core.
+- **What changed:** `AScriptSequencer` plays `AScriptScene` subclasses in order. On each scene: reset, a splice cut
+  (white flash, a frame line rolling down, a scratch, the clapper), the slug line, the POV character teleported to
+  the scene's `StartSpot` and the player put on it (Max, in the van, is only a camera). Vance (camera A) keeps the
+  letterbox, grain and a warm, slightly faded 70s grade; Nora, Cole and Max get no bars, no grain, no viewfinder and a
+  neutral grade. `Say` goes through the HUD's subtitle lane; `FailScene` burns the frame, shows "CUT!" with the
+  reason and retakes the scene; R retakes it too; after the last scene "Cut. PRINT IT." and credits over rolling
+  sprockets. Every key edge goes to the active scene first (`HandleSceneKey`); `DrawSceneHud` draws over the picture.
+  Consoles: `Reel.Script.Jump N`, `Reel.Script.Finish`, `Reel.Script.Fail`. The old take's flow (alarm, intro lines,
+  composure bloopers, scene triggers, heist, opening slate, free 1/2/3 switching) stands down behind
+  `ATakeDirector::bScriptDriven`, nothing deleted; `bScriptOn` on the sequencer turns the whole script off. Title
+  card: THE DIRECTOR'S CUT, Vance/Nora/Cole, the new controls; old crew names in lines are remapped on screen.
+- **What the agents did:** Spine wrote the contract bodies and the HUD layer (`TakeHUDScript.cpp`), placed the
+  sequencer with `tools/script/spine.py`, and wrote the API for the scene sessions in the shared notes.
+- **What went wrong:** scene sessions dropped headers into `Source/` before their .cpp existed, so the shared tree
+  would not link. Spine built a snapshot copy of the project without them to prove the contract compiled; the lock
+  went stale during that 4-minute build and s5 took it for its own restart (which shipped the contract). Rule since:
+  a scene's .h and .cpp land together. The editor lock is not a queue, so Spine waited 25 minutes to place the
+  sequencer. Checked in PIE: Jump 1 (Vance, letterbox, slug), Jump 6 (Cole, raw, subtitle), Fail (scene restarts).

@@ -253,9 +253,9 @@ namespace TakeText
 	{
 		switch (C)
 		{
-		case ETakeCamera::A: return TEXT("JULIAN");
-		case ETakeCamera::B: return TEXT("MAYA");
-		default: return TEXT("VEX");
+		case ETakeCamera::A: return TEXT("VANCE");
+		case ETakeCamera::B: return TEXT("NORA");
+		default: return TEXT("COLE");
 		}
 	}
 
