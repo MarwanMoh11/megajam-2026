@@ -550,6 +550,7 @@ protected:
 
 	double DoormanSpeaksUntil = 0.0;
 	bool bJulianAnswered = false;
+	bool bBeamSettleLogged = true;
 	double ClerkSpeaksUntil = 0.0;
 
 	UPointLightComponent* MakeLamp(const ACastMember* Who, float Yaw);

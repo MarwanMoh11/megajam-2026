@@ -463,6 +463,18 @@ void AQueueLine::StepDoorman(ATakeDirector& Director)
 		}
 	}
 
+	// W3 round D: where the beam really ended once the lamp has swung onto the scanner (for the log and the QA).
+	if (!bBeamSettleLogged && ReactUntil > 0.0 && Now > ReactUntil - ReactSeconds + 0.8)
+	{
+		bBeamSettleLogged = true;
+		if (const AFollowSpot* const Settled = Searchlight.Get())
+		{
+			const AActor* const SettledHit = Settled->GetBeamHitActor();
+			TAKE_LOG(TEXT("QUEUE doorman: the beam settled %.0f cm from him on %s"), FVector::Dist(Settled->GetBeamEnd(), Here),
+				SettledHit ? *SettledHit->GetName() : TEXT("nothing"));
+		}
+	}
+
 	// Each guest at the scanner: he waves it on through the gate.
 	for (int32 Index = 0; Index < Guests.Num(); ++Index)
 	{
@@ -483,7 +495,11 @@ void AQueueLine::StepDoorman(ATakeDirector& Director)
 		return;
 	}
 	const FVector Lamp = Spot->GetActorLocation();
-	const FVector End = Spot->GetBeamEnd();
+	// On the press frame the lamp is still swinging (GetBeamEnd sweeps): where it settles is its aim point, the
+	// scanner's feet plus SearchlightAimHeight. GetBeamEnd is logged once it has settled (StepDoorman, below).
+	const AScannerWatcher* const AimScanner = FindScanner(Director);
+	const FVector End = AimScanner ? AimScanner->GetActorLocation() + FVector(0.f, 0.f, Spot->BeamTargetHeight) : Spot->GetBeamEnd();
+	bBeamSettleLogged = false;
 	const AActor* const Hit = Spot->GetBeamHitActor();
 	const AScannerWatcher* const Scanner = FindScanner(Director);
 	const bool bDazzled = Hit == Doorman.Get() || (Scanner && Hit == Scanner) || FVector::Dist(End, Here) <= DazzleRadius;
