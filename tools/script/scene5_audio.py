@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.join(REPO, "tools", "audio"))
 
 # id, voice_id, text, (stability, similarity, style)
 VO = [
-    ("vo_s5_pendleton", "oDQy4IsGdMzP2p0Mj1UU",
+    ("vo_s5_pendleton", "onwK4e9ZLuTAKqWW03F9",
      "Tonight, you witness history. Le Soleil Noir. The only surviving print in existence. Tomorrow, it enters my "
      "private vault, never to be seen by common eyes again.", (0.6, 0.8, 0.3)),
     ("vo_s5_vance_cuff", "N2lVS1w4EtoT3dr4eOWO", "Booth door is mag-locked from the inside. Cole, you're up.",
