@@ -13,7 +13,7 @@ WORLD = {"world": {"refPath": "/Game/Take/UEDPIE_0_Lvl_Auction.Lvl_Auction"}, "m
 # (x, y, shot name or None): the route walk (330 cm/s), then the escape (470 cm/s)
 ROUTE = [(3650, -2300, "r1_through_door"), (1700, -2310, None), (-300, -2300, "r2_corridor_west"),
          (-300, -1850, "r3_staff_door"), (-680, -1300, None), (-680, -1050, "r4_stair_foot"),
-         (-680, -330, "r5_stair_top"), (-690, -60, "r6_booth_door"), (-860, 150, "r7_projector")]
+         (-680, -330, "r5_stair_top"), (-690, -60, "r6_booth_door"), (-745, 166, "r7_projector")]
 ESCAPE = [(-1180, 0, "e1_balcony"), (-1350, -1050, "e2_balcony_south"), (-2650, -1300, "e3_room_door"),
           (-2650, -1650, "e4_caught")]
 
@@ -56,9 +56,11 @@ def main():
         time.sleep(3.0)
         walk(s, ROUTE, 330.0, (3650, -1900), prefix)
         time.sleep(1.5)                     # the settle and the cut into the booth part
-    time.sleep(1.2)
-    snap(s, "s1_swap", prefix)
-    time.sleep(2.2)
+    time.sleep(1.5)
+    snap(s, "s1_swap", prefix)              # s7-reelswap's four beats, a press every 1.6 s (Reel.S7.Auto)
+    time.sleep(4.0)
+    snap(s, "s1b_swap", prefix)
+    time.sleep(9.0)
     snap(s, "s2_venue", prefix)
     time.sleep(1.4)
     snap(s, "s3_pendleton", prefix)
@@ -66,7 +68,7 @@ def main():
     snap(s, "s4_alarm", prefix)
     time.sleep(1.5)
     snap(s, "s5_back_on_vance", prefix)
-    walk(s, ESCAPE[:1], 470.0, (-860, 150), prefix)
+    walk(s, ESCAPE[:1], 470.0, (-745, 166), prefix)
     time.sleep(0.4)
     snap(s, "e1b_stair_cut", prefix)
     time.sleep(1.6)
@@ -75,6 +77,8 @@ def main():
     snap(s, "e5_line", prefix)
     time.sleep(2.5)
     snap(s, "e6_handoff", prefix)
+    time.sleep(3.0)
+    snap(s, "e7_fight", prefix)
 
 
 if __name__ == "__main__":
