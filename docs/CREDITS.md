@@ -51,6 +51,7 @@ both. Add a row when you import something.
 | three.js 0.160.0, with its GLTFLoader, SkeletonUtils and postprocessing passes | `prototypes/style/nitrate.js`, `prototypes/style/nitrate-three.html` (from the unpkg CDN) | npm `three` | MIT |
 | numpy 2.4 (audio tools only, not shipped) | `tools/audio`: stand-in synthesis, tempo measurement, resampling, loudness (BS.1770) | PyPI `numpy`, in a venv at `C:\Jam\venv-audio` made from the engine's Python 3.11 | BSD 3-Clause |
 | miniaudio 1.73 (pyminiaudio; audio tools only, not shipped): the MP3 decoder for ElevenLabs' 128 kbps output, chosen because ffmpeg is not installed and it needs no admin rights | `tools/audio/audio_io.py` | PyPI `miniaudio` (Irmen de Jong; wraps David Reid's miniaudio / dr_mp3) | MIT (the C library: public domain or MIT-0) |
+| Blender 5.3.0 with the Blender MCP add-on 2.0 and server (asset tools only, not shipped; added Nov 15): lets Claude model assets in Blender | Blender on the PC, add-on in Blender's user add-ons, server run by uv from `C:\Jam\Builds\uv` | blender.org; github.com/ahujasid/blender-mcp, PyPI `blender-mcp` | Blender: GPL (its output is ours); Blender MCP: MIT |
 
 ## AI tools
 
