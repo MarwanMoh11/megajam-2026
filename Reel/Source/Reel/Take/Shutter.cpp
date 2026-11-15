@@ -17,6 +17,35 @@ AShutter::AShutter()
 	RootComponent = Root;
 
 	Panel = FTakeShapes::CreateShape(this, TEXT("Panel"), ETakeShape::Cube, Root);
+	// A gate's top rail, in the panel's own (scaled) space: a little wider than the leaf, sitting on its top edge.
+	Rail = FTakeShapes::CreateShape(this, TEXT("Rail"), ETakeShape::Cube, Panel, FVector(0.f, 0.f, 50.f),
+		FVector(1.9f, 1.01f, 0.05f), FRotator::ZeroRotator, false);
+	if (Rail)
+	{
+		Rail->SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
+		Rail->SetVisibility(false);
+	}
+}
+
+void AShutter::LayOutOpen()
+{
+	if (Panel)
+	{
+		Panel->SetRelativeScale3D(FVector(FMath::Max(Size.X, 1.f) / 100.f, FMath::Max(Size.Y, 1.f) / 100.f, FMath::Max(Size.Z, 1.f) / 100.f));
+		Panel->SetRelativeRotation(FRotator::ZeroRotator);
+		Panel->SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
+		FTakeShapes::SetColour(Panel, Colour);
+	}
+	if (Rail)
+	{
+		Rail->SetVisibility(bSwingGate);
+		Rail->SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
+		if (bSwingGate)
+		{
+			FTakeShapes::SetColour(Rail, RailColour);
+		}
+	}
+	SetDrop(0.f);
 }
 
 namespace TakeShutterLocal
@@ -32,15 +61,8 @@ void AShutter::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
 
-	// Open in the editor: sized, coloured, hanging OpenHeight up, no collision.
-	if (Panel)
-	{
-		Panel->SetRelativeScale3D(FVector(FMath::Max(Size.X, 1.f) / 100.f, FMath::Max(Size.Y, 1.f) / 100.f, FMath::Max(Size.Z, 1.f) / 100.f));
-		Panel->SetRelativeRotation(FRotator::ZeroRotator);
-		Panel->SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
-		FTakeShapes::SetColour(Panel, Colour);
-	}
-	SetDrop(0.f);
+	// Open in the editor: sized, coloured, hanging OpenHeight up (a gate: swung open), no collision.
+	LayOutOpen();
 }
 
 void AShutter::BeginPlay()
@@ -55,13 +77,16 @@ void AShutter::BeginPlay()
 	if (Panel)
 	{
 		Panel->SetMobility(EComponentMobility::Movable);
-		Panel->SetRelativeScale3D(FVector(FMath::Max(Size.X, 1.f) / 100.f, FMath::Max(Size.Y, 1.f) / 100.f, FMath::Max(Size.Z, 1.f) / 100.f));
-		Panel->SetRelativeRotation(FRotator::ZeroRotator);
-		Panel->SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
-		Panel->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		FTakeShapes::SetColour(Panel, Colour);
 	}
-	SetDrop(0.f);
+	if (Rail)
+	{
+		Rail->SetMobility(EComponentMobility::Movable);
+	}
+	LayOutOpen();
+	if (Panel)
+	{
+		Panel->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
 }
 
 void AShutter::StartDrop()
@@ -145,8 +170,18 @@ void AShutter::SetDrop(float Alpha)
 	{
 		return;
 	}
-	// The cube's pivot is its middle: the foot is OpenHeight up when open, on the floor when down.
 	const float Fall = FMath::Clamp(Alpha, 0.f, 1.f);
+	if (bSwingGate)
+	{
+		// A leaf hinged at the actor: swung OpenSwingDegrees when open, along the actor's +Y when shut. The cube's
+		// pivot is its middle, so it sits half a leaf out from the hinge along the swung direction.
+		const FRotator Swing(0.f, OpenSwingDegrees * (1.f - Fall), 0.f);
+		const FVector Middle = Swing.RotateVector(FVector(0.f, FMath::Max(Size.Y, 1.f) * 0.5f, 0.f));
+		Panel->SetRelativeRotation(Swing);
+		Panel->SetRelativeLocation(Middle + FVector(0.f, 0.f, GateFootHeight + FMath::Max(Size.Z, 1.f) * 0.5f));
+		return;
+	}
+	// The cube's pivot is its middle: the foot is OpenHeight up when open, on the floor when down.
 	const float FootHeight = OpenHeight * (1.f - Fall);
 	Panel->SetRelativeLocation(FVector(0.f, 0.f, FootHeight + FMath::Max(Size.Z, 1.f) * 0.5f));
 }

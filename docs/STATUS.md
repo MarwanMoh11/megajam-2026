@@ -50,11 +50,14 @@ PRINT IT. Notes from the agents are in `C:\Jam\Builds\qa\REPORTS.md`.
   of the aisle's electric eye, on Maya's platform: 1 use, the eye is dark for 10 s (its lamps go green).
 - **The rope** is velvet on brass posts, wall to wall, with RESERVED cards at the gap; the old `Rope_*` boxes are
   hidden and still block. The gap's beam is the ELECTRIC EYE (its own posts, lamps and glint).
+- **The aisle's shutter is the bidders' gate:** two low walnut leaves at the aisle's front mouth (`Shutter_Aisle`,
+  `Shutter_Aisle_North`, `AShutter` `bSwingGate`), open along the front floor, shut in 0.35 s on the alarm. Not seen
+  swinging in play.
 - **The sale:** in house light the screen shows the lot's lantern slide (LOT 41, CURRENT BID $410,000); the preview
   film covers it.
 - Built by `tools/sets/puzzle.py` (tag `set_puzzle`; `PUZZLE_PARTS`, `PUZZLE_OFF`, `PUZZLE_SLIDE_GLOW`), shots in
   `C:\Jam\Builds\qa\puzzle`. Unverified in play: the breaker firing, the slide under the film filter. Open: the
-  aisle shutter still drops 8 m from nothing on the alarm; the breaker has no sound; the platform model is still the
+  breaker has no sound; the platform model is still the
   winch until the devices session swaps it.
 
 ### What replaced what

@@ -9,6 +9,9 @@
 #   breaker  the banner is gone from the room. The same device (ABannerDevice, label Banner) is now the breaker of the
 #            aisle's electric eye on Maya's platform: no matte, it lands at once, the eye's lamps go green for 10 s.
 #            The same values are in build_auction.py, so a level rebuild keeps them.
+#   gate     the aisle's steel shutter (it fell 8 m out of nothing on the alarm) is the bidders' gate: two low walnut
+#            leaves at the aisle's front mouth, open against the front floor, that swing shut on the alarm (AShutter
+#            bSwingGate: needs the editor built after Nov 15 13:30). Newel posts at the hinges. Same in build_auction.py.
 #   sale     what the room is watching: a lantern slide of the lot on the screen in house light (LOT 41, the bid);
 #            the preview's film panel covers it while the house is down
 # Switches: PUZZLE_PARTS (a tuple of the names above) runs only those; PUZZLE_OFF = True only clears.
@@ -19,7 +22,7 @@ importlib.reload(C)
 import unreal
 
 TAG = "set_puzzle"
-PARTS = globals().get("PUZZLE_PARTS") or ("rope", "breaker", "sale")
+PARTS = globals().get("PUZZLE_PARTS") or ("rope", "breaker", "gate", "sale")
 OFF = bool(globals().get("PUZZLE_OFF"))
 eal = unreal.EditorAssetLibrary
 mel = unreal.MaterialEditingLibrary
@@ -179,6 +182,36 @@ def breaker():
         except Exception as e:                                  # noqa: BLE001
             REPORT.append("breaker: beam label: %s" % str(e)[:120])
     REPORT.append("breaker: set %s" % ", ".join(done))
+
+
+# --- gate ----------------------------------------------------------------------------------------------------------------
+GATE_X, GATE_HINGE, GATE_LEAF = 3200.0, GAP + 22.0, GAP + 20.0
+
+
+def gate():
+    done = []
+    for label, side, yaw in (("Shutter_Aisle", -1.0, 0.0), ("Shutter_Aisle_North", 1.0, 180.0)):
+        found = C.find(label)
+        if found:
+            a = found[0]
+        else:
+            a = eas.spawn_actor_from_class(unreal.Shutter, unreal.Vector(GATE_X, side * GATE_HINGE, 0.0))
+            a.set_actor_label(label)
+            a.set_folder_path("Take")
+        a.set_actor_location_and_rotation(unreal.Vector(GATE_X, side * GATE_HINGE, 0.0), unreal.Rotator(0.0, 0.0, yaw),
+                                          False, False)
+        for k, v in (("swing_gate", True), ("open_swing_degrees", side * 90.0),
+                     ("size", unreal.Vector(5.0, GATE_LEAF, 88.0)), ("gate_foot_height", 10.0),
+                     ("blocks_walkers", True), ("drop_seconds", 0.35), ("drop_on", "Case"),
+                     ("colour", unreal.LinearColor(0.16, 0.075, 0.035, 1.0))):
+            a.set_editor_property(k, v)
+        done.append(label + ("" if found else " (new)"))
+        y0, y1 = sorted((side * GATE_HINGE, side * (GATE_HINGE + 14.0)))
+        box("Gate_Newel", GATE_X - 7.0, GATE_X + 7.0, y0, y1, 0.0, 104.0, "WalnutDark", shadow=True)
+        box("Gate_Newel_Cap", GATE_X - 9.0, GATE_X + 9.0, y0 - 2.0, y1 + 2.0, 104.0, 107.0, "Brass")
+        C.spawn(SPH, (GATE_X, (y0 + y1) / 2, 112.0), 0.0, 0.11, tag=TAG, label=_lbl("Gate_Newel_Ball"), shadow=False,
+                mat=M["Brass"])
+    REPORT.append("gate: %s as swing leaves, newel posts" % ", ".join(done))
 
 
 # --- sale ----------------------------------------------------------------------------------------------------------------

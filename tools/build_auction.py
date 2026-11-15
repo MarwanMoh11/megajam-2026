@@ -1716,8 +1716,15 @@ def shutter(label, x, y, yaw, width, height, walkers=False):
 
 
 # The shutters: the aisle at the dais end (no way back), and the hall's side doors.
-setp(shutter("Shutter_Aisle", AISLE_SHUTTER_X, 0.0, 0.0, 2 * GAP + 40.0, 330.0, walkers=True),   # --- W3 stage ---
-     open_height=AISLE_SHUTTER_OPEN, colour=unreal.LinearColor(0.035, 0.012, 0.016, 1.0))   # high and dark while open
+# Nov 15 puzzle redesign: the aisle's steel shutter fell 8 m out of nothing. It is the bidders' gate now: two low
+# walnut leaves at the aisle's front mouth, standing open against the front floor, that swing shut on the alarm
+# (AShutter bSwingGate; tools/sets/puzzle.py sets the same on a built level and stands the newel posts).
+GATE_HINGE, GATE_LEAF = GAP + 22.0, GAP + 20.0
+for g_label, g_side, g_yaw in (("Shutter_Aisle", -1.0, 0.0), ("Shutter_Aisle_North", 1.0, 180.0)):
+    g_leaf = spawn(unreal.Shutter, (AISLE_SHUTTER_X, g_side * GATE_HINGE, 0), yaw=g_yaw, label=g_label, folder="Take")
+    setp(g_leaf, swing_gate=True, open_swing_degrees=g_side * 90.0, size=unreal.Vector(5.0, GATE_LEAF, 88.0),
+         gate_foot_height=10.0, blocks_walkers=True, drop_seconds=0.35,
+         colour=unreal.LinearColor(0.16, 0.075, 0.035, 1.0))
 shutter("Shutter_North_1", 150.0, HY1 + 10.0, 90.0, 200.0, D_H)
 shutter("Shutter_North_2", 1900.0, HY1 + 10.0, 90.0, 200.0, D_H)
 shutter("Shutter_Staff", -300.0, HY0 - 10.0, 90.0, 2 * D_HALF, D_H)

@@ -1205,3 +1205,18 @@ animation, you can't move it or change it." He was looking at the searchlight on
   board, the dimmer board and the sound desk (`C:\Jam\Builds\qa\props`). Not checked in play: the swing's feel, the
   beam landing on the doorman from the new mount, the head following Maya's aim, the lever easing and the jolts; the
   scripted tests were not re-run.
+
+## Nov 15, 13:45: the aisle's shutter is a gate that swings shut
+
+- **Why:** on the alarm a steel shutter fell 8 m out of the dark into the middle of the auction to close the aisle
+  behind Julian. After the banner went, Marwan said to fix that too.
+- **What changed:** `AShutter` has a gate mode (`bSwingGate`, `OpenSwingDegrees`, `GateFootHeight`, `RailColour`, a
+  brass `Rail` on the leaf). The aisle's shutter is now the bidders' gate: two low walnut leaves hinged on newel
+  posts at the aisle's front mouth (`Shutter_Aisle`, `Shutter_Aisle_North`). They stand open along the front floor
+  and swing shut in 0.35 s on the same trigger, blocking from that frame, with the same thud. The door shutters are
+  unchanged. `tools/sets/puzzle.py` part `gate` sets it on the built level; `build_auction.py` has the same.
+- **How:** the header change needed an editor restart, taken under the lock and announced to the other sessions:
+  `ExitEditor` (it refuses when anything is unsaved), `Build.bat` (38 s), start (MCP in 10 s, level loaded soon
+  after), then the overlay. The build also put another session's Live-Coding-only `CastMember.cpp` fixes into the DLL.
+- **What went wrong:** the first walnut read as black in the shots and was lightened. Seen open and shut in editor
+  shots (`gate_open_dais.png`, `gate_shut.png`, the shut one by setting the swing to 0), not swinging in play.

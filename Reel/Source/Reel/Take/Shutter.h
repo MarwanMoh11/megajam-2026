@@ -63,6 +63,25 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Shutter")
 	float DropSeconds = 0.6f;
 
+	/** A gate leaf, not a shutter (Nov 15: the aisle's steel shutter fell 8 m out of nothing). The actor stands at the
+	 *  hinge post; the leaf (Size.X thick, Size.Y long, Size.Z tall) runs from the hinge along the actor's +Y when
+	 *  shut. Open, it stands swung OpenSwingDegrees about the hinge (yaw, in the actor's frame) with no collision;
+	 *  StartDrop swings it shut in DropSeconds and it blocks from that frame. OpenHeight is not used. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Shutter")
+	bool bSwingGate = false;
+
+	/** A gate: how far the leaf stands swung open, degrees of yaw about the hinge (the sign picks the side). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Shutter", meta = (EditCondition = "bSwingGate"))
+	float OpenSwingDegrees = 90.f;
+
+	/** A gate: the gap under the leaf, cm. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Take|Shutter", meta = (EditCondition = "bSwingGate"))
+	float GateFootHeight = 10.f;
+
+	/** A gate: the colour of the rail along the leaf's top. */
+	UPROPERTY(EditAnywhere, Category = "Take|Shutter", meta = (EditCondition = "bSwingGate"))
+	FLinearColor RailColour = FLinearColor(0.30f, 0.21f, 0.08f);
+
 	UPROPERTY(EditAnywhere, Category = "Take|Shutter")
 	FLinearColor Colour = FLinearColor(0.20f, 0.21f, 0.23f);
 
@@ -72,11 +91,18 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Take")
 	TObjectPtr<UStaticMeshComponent> Panel;
 
+	/** A gate's top rail: rides on Panel, shown only when bSwingGate. No collision. */
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<UStaticMeshComponent> Rail;
+
 protected:
 	bool bDropping = false;
 	bool bDown = false;
 	float DropElapsed = 0.f;
 
-	/** Puts the panel Alpha along its fall (0 open .. 1 on the floor), this frame. */
+	/** Puts the panel Alpha along its fall (0 open .. 1 on the floor; a gate: 0 swung open .. 1 shut), this frame. */
 	void SetDrop(float Alpha);
+
+	/** Sizes and colours the panel and the gate's rail, open, no collision (OnConstruction and BeginPlay). */
+	void LayOutOpen();
 };
