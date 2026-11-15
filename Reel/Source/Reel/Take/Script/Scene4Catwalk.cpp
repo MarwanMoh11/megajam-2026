@@ -470,6 +470,7 @@ void AScene4Catwalk::PressSpot()
 	FlashLeft = 0.12f;
 	if (UTakeAudioComponent* A = UTakeAudioComponent::Get(this))
 	{
+		A->PlayCue(TEXT("Hall/sfx_hall_clamp"));	// the clamp gives, the lamp creaks round
 		A->PlayCue(TEXT("sfx_lamp_strike"));
 	}
 	StepRigs(0.f);
@@ -1374,6 +1375,7 @@ void AScene4Catwalk::StepRigs(float Dt)
 			if (UTakeAudioComponent* Au = UTakeAudioComponent::Get(this))
 			{
 				Au->PlayCue(TEXT("sfx_thud"));
+				Au->PlayCue(TEXT("Hall/sfx_hall_gasp"));	// the room gasps as the champagne goes
 			}
 			TAKE_LOG(TEXT("S4 LATCH: the cart rolls"));
 		}
