@@ -1057,29 +1057,21 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
     tried to avoid by hiding him behind the PA); left as it is.
   - The doorman's subtitle is still up when Julian reaches the lobby door; the clerk's greeting follows 1.2 s later.
 
-## Sun Nov 15, 10:45-11:30: set props pass (one session, no agents)
+## Nov 15, 11:20: the drone gets a body and a hum
 
-Marwan sent a screenshot from the lobby: the pictures were horizontal streaks, one frame was a black hole, and the wall
-showed through a frame. Goal for the session: every prop you can't interact with should make sense and look right.
-- **Streaked pictures (all 45):** `tools/sets/pictures.py` stored each plane's aspect with
-  `set_custom_primitive_data_float`, which only lasts while the editor runs. The saved level had no aspect, the material read
-  0, and its crop collapsed to one column of pixels. It now uses `set_default_custom_primitive_data_float` (saved with the
-  level), and the 45 planes in the level were patched in place.
-- **Black mirrors:** the lobby's pier glass and gilt mirror, the three restroom mirrors and the prop store's cheval
-  glass used `MI_Front_Glass` (near-black, made for windows). New `M_Front_Mirror`: metallic, smooth, smoky, with a
-  faint diagonal sheen so it reads as glass even facing a dark room.
-- **The wall in the frame:** the pier glass hung from 55 cm, and the 90 cm wainscot, which stands 4 cm off the wall,
-  cut through its foot. It now starts at 100 cm.
-- **The paddle board's back** faces the way to the hall and was a bare 2 m black slab. It now has a pewter cap and plinth,
-  a velvet inset, and a house notice under a brass picture lamp (`lights.py` lobby `Board_Notice`, 5 cd).
-- **Palms:** the lobby's corner palms pushed up to 20 cm of fronds into the walls. Their fit box now stops 5 cm short
-  of each wall (the hall's west wall stands 20 cm inside the lobby box). The street door's palm also stopped going
-  into the front wall.
-- **Kitchen:** a brown ball on the prep table's shelf is now a tied flour sack.
-- **How it was checked:** about 40 scene-capture shots across every room, a ray "pick" from shot pixels to name each
-  odd object, an automated search for props touching nothing (41 found: all hung from rails, rope lines or walls, or
-  the guards' grey-box tally lamps the cast hides at runtime), and a search for props more than 5 cm inside a wall (19,
-  down to 3 harmless ones). Every fix went into the set scripts and was also patched live, then saved.
-- **What went wrong:** the first mirror material was right but the capture showed no reflections (scene captures and
-  Lumen), so a mirror facing the dark lobby still read black. The sheen fixed it. Moving the palms the first time used the
-  lobby box, not the hall wall's real face, which needed a second pass.
+- **What changed:** the broadcast drone was a flat black box. At BeginPlay it now builds a quadcopter out of basic
+  shapes (`DroneWatcher.cpp`, `TakeDroneLocal::BuildSkin`): a rounded hull and canopy, four diagonal arms with motors
+  and two-blade rotors, a camera gimbal with the lens in it, skids, and red/green nav lights. Every frame
+  (`UpdateSkin`, from `UpdateWorldCues`) the rotors spin (neighbours opposite ways, faster with speed), the body banks
+  into its flight and turns to face it (or Julian while it holds him), bobs and sways, and reels while blinded; the
+  nav lights blink while it can see. A quiet looping hum (`sfx_drone_hum`, made here by `tools/audio/drone_hum.py`:
+  four detuned motor tones and a breathy rotor wash, a seamless 4 s loop) plays from it, spatial, with its pitch
+  rising with speed.
+- **How:** one Claude session, with three other sessions working in the same editor. The skin lives only in the
+  .cpp (its state in a file-local map, its tunables as constants) so it needs no header change. The plan was Live
+  Coding, but other sessions had unbuilt header changes in the tree, and Live Coding would have pulled those into the
+  shared editor too. So the change was compile-checked in a throwaway worktree instead (`Build.bat ...
+  -NoHotReloadFromIDE`: UBT otherwise refuses any build while an editor has Live Coding on). The hum asset was
+  imported under the editor lock. It shows in play after the next editor rebuild. The constants should become
+  `UPROPERTY`s at the next header change.
+- **What went wrong:** nothing was seen in play yet: look, feel and loudness are unverified.
