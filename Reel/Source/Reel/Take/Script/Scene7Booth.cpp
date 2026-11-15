@@ -967,6 +967,16 @@ void AScene7Booth::TickScene(float DeltaSeconds)
 			for (TActorIterator<AHouseDimmer> It(GetWorld()); It; ++It) { It->FlashScreen(1.f); It->EndScreening(); }
 			Cue(TEXT("sfx_film_burn"));
 			Shot(TEXT("Venue"));
+			// While we're on the venue: the swap hands him back wedged between its bench and projector, so he stands
+			// clear, west of the bench, facing the gallery door, for the run (off screen; nothing is seen to jump).
+			if (bSwapActor && V)
+			{
+				const float Half = V->GetCapsuleComponent() ? V->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() : 90.f;
+				const FVector S7BEscapeStart(-880.f, 120.f, 450.f);
+				V->SetActorLocationAndRotation(S7BEscapeStart + FVector(0.f, 0.f, Half + 2.f), FRotator(0.f, 180.f, 0.f),
+					false, nullptr, ETeleportType::TeleportPhysics);
+				if (AController* C = V->GetController()) { C->SetControlRotation(FRotator(0.f, 180.f, 0.f)); }
+			}
 			SetStage(EScene7Stage::Venue);
 		}
 		break;

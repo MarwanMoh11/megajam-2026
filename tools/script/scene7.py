@@ -161,8 +161,8 @@ def dress():
     ox, oy, oz = ORIGIN
     # The bench by the projector, where the canister and the dummy reel lie (AScene7Booth: Canister (-70,-260,90),
     # DummyReel (-70,-330,92) in booth space): its top at z F+88.
-    box("Bench", ox - 120.0, ox - 20.0, oy - 380.0, oy - 200.0, F + 80.0, F + 88.0, "trim")
-    box("Bench_Leg", ox - 115.0, ox - 25.0, oy - 375.0, oy - 205.0, F, F + 80.0, "wall")
+    box("Bench", ox - 120.0, ox - 20.0, oy + 300.0, oy + 480.0, F + 80.0, F + 88.0, "trim")
+    box("Bench_Leg", ox - 115.0, ox - 25.0, oy + 305.0, oy + 475.0, F, F + 80.0, "wall")
     # A film shelf on the back wall and spare reels and cans on it.
     a = prop("Rooms_filmshelf", (X0 + 30.0, oy + 250.0, F), 90.0, 1.0)
     out.append("shelf" if a else "no shelf")
@@ -182,7 +182,7 @@ def dress():
 def hide():
     # The old box's insides, and Scene 5's Pendleton ("Vance" PatrolGuard) and his bodyguard at the podium with their
     # attached CastMembers: Scene 7 plays both as its own puppets.
-    rx = re.compile(r"^(Booth_(Stair|Landing|Front|Port)(_\d+)?|Vance|Bodyguard)$")
+    rx = re.compile(r"^(Booth_(Stair|Landing|Front|Port)\w*|Vance|Bodyguard)$")
     n = 0
     for a in eas.get_all_level_actors():
         if rx.match(a.get_actor_label()):
@@ -193,7 +193,7 @@ def hide():
                 n += 1
     gone = 0
     for a in eas.get_all_level_actors():
-        if re.match(r"^Booth_(Stair|Landing|Front|Port|Top)(_\d+)?$", a.get_actor_label()):
+        if re.match(r"^Booth_(Stair|Landing|Front|Port|Top)\w*$", a.get_actor_label()):
             a.set_actor_hidden_in_game(True)
             a.set_actor_enable_collision(False)
             a.set_is_temporarily_hidden_in_editor(True)

@@ -68,7 +68,7 @@ def main():
     snap(s, "s4_alarm", prefix)
     time.sleep(1.5)
     snap(s, "s5_back_on_vance", prefix)
-    walk(s, ESCAPE[:1], 470.0, (-745, 166), prefix)
+    walk(s, ESCAPE[:1], 470.0, (-880, 120), prefix)
     time.sleep(0.4)
     snap(s, "e1b_stair_cut", prefix)
     time.sleep(1.6)
