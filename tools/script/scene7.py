@@ -319,6 +319,7 @@ def route():
     r.set_folder_path("Script/S7")
     C._set_tags(r, [TAG])
     r.set_editor_property("start_spot", sp)
+    r.set_editor_property("arrive_radius", 220.0)     # anywhere in the booth past the door: the swap's bench blocks the mark
     oak = None
     for a in eas.get_all_level_actors():
         if SLAB_TAG in C.tags(a) and isinstance(a, unreal.StaticMeshActor) and "Door_Slab" in a.get_actor_label():
@@ -405,6 +406,11 @@ def shots():
 
 
 def run():
+    # s7-reelswap's placed swap actor also carries our tag: keep it (drop the tag) so the clear doesn't destroy it.
+    for a in eas.get_all_level_actors():
+        ts = C.tags(a)
+        if "s7_swap" in ts and TAG in ts:
+            C._set_tags(a, [t for t in ts if t != TAG])
     gone, shown = C.clear(TAG)
     REPORT.append("cleared %d" % gone)
     if OFF:

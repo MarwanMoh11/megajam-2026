@@ -335,6 +335,16 @@ void AScene7Booth::BeginPlay()
 	}
 	// The stair door (south) stands open: part 0 walks Vance in through it. The alarm shuts it (mag-lock).
 	DoorSouthHinge->SetRelativeRotation(FRotator(0.f, DoorOpenDegrees, 0.f));
+	// s7-reelswap's projector stands in the booth: ours would double it from the start (part 0 walks in on it).
+	if (AScene7Swap::Find(this))
+	{
+		for (UStaticMeshComponent* C : { Projector.Get(), Magazine.Get(), MagazineLid.Get(), MasterReel.Get(), DummyReel.Get(),
+			LowerReel.Get(), Canister.Get(), CanisterLid.Get() })
+		{
+			if (C) { C->SetHiddenInGame(true, true); }
+		}
+		LampSpill->SetIntensity(0.f);
+	}
 
 	// The rest pose of everything that moves.
 	TArray<USceneComponent*> Movers = { Magazine, MagazineHinge, MasterReel, DummyReel, LowerReel, Canister, CanisterLid,
@@ -746,17 +756,20 @@ void AScene7Booth::ResetScene()
 		if (R.Key) { R.Key->SetRelativeTransform(R.Value); }
 	}
 	DoorSouth->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	MasterReel->SetHiddenInGame(false);
+	MasterReel->SetHiddenInGame(AScene7Swap::Find(this) != nullptr);
 	if (AScene7Swap* Swap = AScene7Swap::Find(this))
 	{
 		Swap->ResetSwap();
 		if (Swap->GetCanister()) { Swap->GetCanister()->SetHiddenInGame(false, true); }
 	}
 	if (AScene7Fight* Fight = AScene7Fight::Find(this)) { Fight->ResetFight(); }
-	for (UStaticMeshComponent* C : { Projector.Get(), Magazine.Get(), MagazineLid.Get(), DummyReel.Get(), LowerReel.Get(),
-		Canister.Get(), CanisterLid.Get() })
+	if (!AScene7Swap::Find(this))
 	{
-		if (C) { C->SetHiddenInGame(false, true); }
+		for (UStaticMeshComponent* C : { Projector.Get(), Magazine.Get(), MagazineLid.Get(), DummyReel.Get(), LowerReel.Get(),
+			Canister.Get(), CanisterLid.Get() })
+		{
+			if (C) { C->SetHiddenInGame(false, true); }
+		}
 	}
 	bFightActor = false;
 	for (USkeletalMeshComponent* P : { Pendleton.Get(), Bodyguard.Get(), Cole.Get() })

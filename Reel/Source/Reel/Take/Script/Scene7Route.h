@@ -97,7 +97,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Scene7|Walk") FVector ProjectorMark = FVector(-745.f, 166.f, 450.f);
 	UPROPERTY(EditAnywhere, Category = "Scene7|Walk") float ProjectorYaw = 52.f;
 	/** Within this (flat cm, and above ArriveMinZ) the scene takes him the last steps onto the mark. */
-	UPROPERTY(EditAnywhere, Category = "Scene7|Walk") float ArriveRadius = 130.f;
+	UPROPERTY(EditAnywhere, Category = "Scene7|Walk") float ArriveRadius = 220.f;
 	UPROPERTY(EditAnywhere, Category = "Scene7|Walk") float ArriveMinZ = 330.f;
 
 	// ---- timing ----

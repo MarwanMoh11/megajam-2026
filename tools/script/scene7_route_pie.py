@@ -13,7 +13,7 @@ WORLD = {"world": {"refPath": "/Game/Take/UEDPIE_0_Lvl_Auction.Lvl_Auction"}, "m
 # (x, y, shot name or None): the route walk (330 cm/s), then the escape (470 cm/s)
 ROUTE = [(3650, -2300, "r1_through_door"), (1700, -2310, None), (-300, -2300, "r2_corridor_west"),
          (-300, -1850, "r3_staff_door"), (-680, -1300, None), (-680, -1050, "r4_stair_foot"),
-         (-680, -330, "r5_stair_top"), (-690, -60, "r6_booth_door"), (-745, 166, "r7_projector")]
+         (-680, -330, "r5_stair_top"), (-690, -60, "r6_booth_door"), (-720, 30, "r7_projector")]
 ESCAPE = [(-1180, 0, "e1_balcony"), (-1350, -1050, "e2_balcony_south"), (-2650, -1300, "e3_room_door"),
           (-2650, -1650, "e4_caught")]
 
