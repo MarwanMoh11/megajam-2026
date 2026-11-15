@@ -1599,3 +1599,17 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
   `tools/stealth/guard_pie.py` is the PIE test, to run after the next restart.
 - **Went wrong:** `SetActive` clashed with `UActorComponent::SetActive` (renamed `SetBrainActive`). About 8 sessions'
   builds queued on UBT's lock at once, and the first compile check waited 20 min.
+
+## Nov 15, 20:35 Cairo: Scene 7, from the rigged door to the fight (s7-route)
+- **Changed:** Marwan's "party system doesn't make sense". The crew's hand-offs didn't meet in space, so Scene 7 is now
+  parts the sequencer plays in order (actor tag `Part=N`, `Reel.Script.Jump 702`, retakes restart the failed part).
+  Part 0 is the new `AScene7Route`: Scene 5's oak door swings open, Cole sends Vance on, and Vance walks the backstage
+  corridor, the staff door and a new enclosed projectionist's stair up to the booth (it replaces the stairs that
+  floated over the hall entrance). Part 1 is s7-reelswap's swap. Part 2 is `AScene7Booth`, rewritten: a cut to the
+  auditorium (the film dies, Pendleton: "Lock the building", the alarm), then Vance runs across the lobby balcony while
+  Pendleton and his bodyguard come up the grand stair, and he's caught in the security room. Part 3 is s7-fight's
+  fight. `tools/script/scene7.py` cuts the hall wall at the oak door and builds the stair (0d65439).
+- **Went wrong:** messages crossed with s7-fight and s7-reelswap: they briefly had two different hand-off designs (a
+  driven actor, then scene parts) before settling on parts. Snapshot builds broke on other sessions' half-written
+  files and on the shared Build.bat queue, so the code was checked with single-file compiles instead.
+- **Not yet run in the editor:** it needs a Build.bat restart for the new class, then the overlay and a PIE run.
