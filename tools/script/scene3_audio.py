@@ -9,7 +9,7 @@ Inside the editor (hold the editor lock):
 Then rerun tools/script/scene3.py so the scene actor picks the sounds up.
 
 Same shape as tools/script/scene2_audio.py (tools/audio read-only). Voices: VANCE = Julian's (Callum), MAX = the voice
-s2-van designed (extuKh6lOtuXuEDVJn7l, on the earpiece band-pass), the GUARD = the rope guard's (Chris), the CRITIC =
+s2-van designed (v2: W61sMqsWccdiqyhEKpI7, higher and faster than the doorman, on the earpiece band-pass), the GUARD = the rope guard's (Chris), the CRITIC =
 George (an older gentleman, pushed tipsy and theatrical).
 """
 import os
@@ -24,7 +24,7 @@ OUT = r"C:\Jam\Audio\Script\S3"
 RAW = os.path.join(OUT, "raw")
 DEST = "/Game/Take/Audio/Script/S3"
 REPO = r"C:\Jam\megajam"
-MAX_VOICE = "extuKh6lOtuXuEDVJn7l"
+MAX_VOICE = "W61sMqsWccdiqyhEKpI7"
 
 SFX = [("S3_Splash", 0.6, "A splash of champagne thrown from a coupe glass onto a dinner jacket: a short wet slosh "
         "and spatter on cloth, a tiny glass clink, close, dry, indoors")]
@@ -41,7 +41,7 @@ VO = [
     ("S3_BrushOffReply", "GUEST_OLD", "Hmph! Philistine. Zurich was much better dressed.", (0.3, 0.75, 0.7, 1.0),
      False),
     ("S3_MaxVo", None, "Too many eyes on the velvet rope, Vance. You walk up there without a seat assignment, they'll "
-     "tackle you into the shrimp cocktail. Nora, you in position?", (0.4, 0.8, 0.5, 1.08), True),
+     "tackle you into the shrimp cocktail. Nora, you in position?", (0.4, 0.8, 0.5, 1.12), True),
     ("S3_GuardTackle", "GUARD", "You're not on the list. Down you go!", (0.4, 0.8, 0.4, 1.0), False),
     ("S3_GuardAlibi", "GUARD", "Name? ...Ah, the gentleman from Zurich. Your seat isn't ready, sir. Wait by the bar.",
      (0.5, 0.8, 0.3, 1.0), False),

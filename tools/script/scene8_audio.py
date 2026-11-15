@@ -103,6 +103,8 @@ def generate(ids, force, dry):
             print(f"skip {lid}: no voice id for {who} yet (session s2-van designs it)")
             continue
         s = {"stability": st, "similarity_boost": sim, "style": style, "use_speaker_boost": True}
+        if key is None:
+            s["speed"] = 1.1   # Max talks faster than the doorman
         todo.append((lid, len(text), lambda t=text, v=vid, s=s: el_api.tts(v, t, M.TTS_MODEL, s)))
     todo = [t for t in todo if (not ids or t[0] in ids)
             and (force or not os.path.exists(os.path.join(RAW, t[0] + ".mp3")))]

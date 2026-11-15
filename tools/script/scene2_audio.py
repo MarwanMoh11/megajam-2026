@@ -14,7 +14,7 @@ Follows tools/script/scene8_audio.py: tools/audio's API wrapper and DSP (read-on
 (in-scene, no band-pass); the doorman's two lines come through Max's CRT security feed (a light monitor-speaker
 band-pass, lighter than process.earpiece).
 """
-# MAX voice_id: extuKh6lOtuXuEDVJn7l
+# MAX voice_id: W61sMqsWccdiqyhEKpI7
 import json
 import os
 import re
@@ -50,11 +50,11 @@ SFX = [
 # id, character, voice key in tools/audio/manifest.VOICES (None = MAX), text, (stability, similarity, style, speed)
 VO = [
     ("vo_s2_max_open", "MAX", None, "Palm reader? Seriously?! Give me three seconds, Vance. Do not touch that glass "
-     "yet!", (0.3, 0.8, 0.65, 1.12)),
-    ("vo_s2_max_retake", "MAX", None, "Again. Three seconds, Vance. Don't touch that glass.", (0.45, 0.8, 0.45, 1.05)),
-    ("vo_s2_max_close", "MAX", None, "Come on, come on... that's it, hold it...", (0.5, 0.8, 0.35, 1.0)),
-    ("vo_s2_max_notyet", "MAX", None, "Not yet, not yet! Sync first!", (0.3, 0.8, 0.6, 1.12)),
-    ("vo_s2_max_lock", "MAX", None, "You're a French duke now. Drop the hand.", (0.4, 0.8, 0.6, 1.0)),
+     "yet!", (0.3, 0.8, 0.65, 1.15)),
+    ("vo_s2_max_retake", "MAX", None, "Again. Three seconds, Vance. Don't touch that glass.", (0.45, 0.8, 0.45, 1.12)),
+    ("vo_s2_max_close", "MAX", None, "Come on, come on... that's it, hold it...", (0.5, 0.8, 0.35, 1.08)),
+    ("vo_s2_max_notyet", "MAX", None, "Not yet, not yet! Sync first!", (0.3, 0.8, 0.6, 1.15)),
+    ("vo_s2_max_lock", "MAX", None, "You're a French duke now. Drop the hand.", (0.4, 0.8, 0.6, 1.08)),
     ("vo_s2_bouncer_a", "BOUNCER", "DOORMAN", "Sir? The glass.", (0.55, 0.8, 0.2, 1.0)),
     ("vo_s2_bouncer_b", "BOUNCER", "DOORMAN", "Is there a problem, monsieur?", (0.55, 0.8, 0.2, 1.0)),
 ]
