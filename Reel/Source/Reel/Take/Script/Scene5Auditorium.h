@@ -157,6 +157,21 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Script|S5")
 	TObjectPtr<AActor> ExitCamera;
 
+	/** Scene 4's last shot (QA Nov 16): Vance sits down in his seat on camera, before this scene opens. */
+	void SeatVanceNow() { SitVance(true); }
+	/** Keeps Vance in his seat while he is seated: every tick of the seat shots (QA Nov 16: something switched his
+	 *  movement back on with his capsule off, he fell through the floor and the seat shots showed an empty chair). */
+	void HoldVanceSeated();
+	/** Places the seat camera from the seat (SeatCamOffset, turned by SeatYaw) at SeatCamFov: the wide seat shot. */
+	void FrameSeatCamera();
+
+	/** The seat camera's place from the seat's floor point (seat space: +X ahead of the chair, +Z up), and its FOV.
+	 *  QA Nov 16 (Marwan): "zoom out the camera more at the seating area". */
+	UPROPERTY(EditAnywhere, Category = "Script|S5")
+	FVector SeatCamOffset = FVector(200.f, -190.f, 300.f);
+	UPROPERTY(EditAnywhere, Category = "Script|S5")
+	float SeatCamFov = 56.f;
+
 	/** Vance's seat: the chair's floor point (world) and the way it faces. He sits there through the speech. */
 	UPROPERTY(EditAnywhere, Category = "Script|S5")
 	FVector SeatAt = FVector(2550.f, -583.f, 0.f);

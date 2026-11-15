@@ -5,6 +5,7 @@
 #include "TakeCharacter.h"
 #include "GuardBrain.h"
 #include "Script/Scene5Auditorium.h"
+#include "Script/ScriptHudWidgets.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -1572,40 +1573,26 @@ FVector AScene6Backstage::ObjectivePoint() const
 
 void AScene6Backstage::DrawSceneHud(UCanvas* Canvas)
 {
-	if (!Canvas || !GEngine)
+	if (!Canvas || !GetWorld())
 	{
 		return;
 	}
-	UFont* Font = GEngine->GetMediumFont();	// the large engine font draws boxes here
+	// QA Nov 16 (Marwan): the HUD's own widgets (ScriptHudWidgets.h), not plain text: the objective plate, the stance
+	// icon (a small yellow figure), the guard's alert diamond, the waypoint, the bottom-centre action prompt.
+	using ScriptHudWidgets::ETone;
+	FTakeHudKit Kit;
+	Kit.Begin(Canvas, GetWorld()->GetRealTimeSeconds(), 138.f);
 	const float W = Canvas->ClipX, H = Canvas->ClipY;
-	const float S = FMath::Max(0.6f, H / 1080.f);
-	auto Text = [&](const FString& Str, float X, float Y, const FLinearColor& C, float Scale, bool bCentre)
-	{
-		FCanvasTextItem It(FVector2D(X, Y), FText::FromString(Str), Font, C);
-		It.Scale = FVector2D(Scale, Scale);
-		It.bCentreX = bCentre;
-		It.EnableShadow(FLinearColor(0.f, 0.f, 0.f, 0.85f));
-		Canvas->DrawItem(It);
-	};
-	auto Box = [&](float X, float Y, float BW, float BH, const FLinearColor& C)
-	{
-		FCanvasTileItem T(FVector2D(X, Y), FVector2D(BW, BH), C);
-		T.BlendMode = SE_BLEND_Translucent;
-		Canvas->DrawItem(T);
-	};
-	const FLinearColor Amber(1.f, 0.62f, 0.12f), Grey(0.75f, 0.75f, 0.75f), Red(1.f, 0.18f, 0.12f), Green(0.4f, 1.f, 0.5f);
 	const bool bPlayable = Step == EStep::Sneak || Step == EStep::Down || Step == EStep::ToPanel || Step == EStep::ToExit;
-	const float X0 = 48.f * S, Y0 = 130.f * S;
 
 	if (!Objective.IsEmpty())
 	{
-		Text(Objective, X0, Y0, FLinearColor(0.92f, 0.92f, 0.92f), 1.35f * S, false);
+		ScriptHudWidgets::Objective(Kit, Objective);
 	}
 	if (bPlayable)
 	{
 		// The stance: crouched is silent.
-		const FString Stance = bColeCrouched ? TEXT("CROUCHED - silent   [C] stand") : TEXT("STANDING - he can hear your steps   [C] crouch");
-		Text(Stance, X0, Y0 + 30.f * S, bColeCrouched ? Green : Amber, 1.2f * S, false);
+		ScriptHudWidgets::StanceIcon(Kit, bColeCrouched);
 	}
 
 	APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
@@ -1615,66 +1602,61 @@ void AScene6Backstage::DrawSceneHud(UCanvas* Canvas)
 		FVector2D Scr;
 		if (PC->ProjectWorldLocationToScreen(G.Body->GetActorLocation() + FVector(0.f, 0.f, 215.f), Scr, true))
 		{
-			const bool bBang = G.Alert >= 0.6f;
-			Text(bBang ? TEXT("!") : TEXT("?"), Scr.X, Scr.Y - 20.f * S, bBang ? Red : FLinearColor(1.f, 0.85f, 0.2f), (2.2f + 2.4f * G.Alert) * S, true);
+			ScriptHudWidgets::Alert(Kit, Scr, G.Alert);
 		}
 	}
-	// Where to go: a small marker on the next thing to use (clamped to the screen's edge when it's off screen).
+	// Where to go: a waypoint on the next thing to use (clamped to the screen's edge when it's off screen).
 	if (PC && bPlayable)
 	{
 		const FVector P = ObjectivePoint();
 		FVector2D Scr;
 		if (!P.IsZero() && PC->ProjectWorldLocationToScreen(P, Scr, true))
 		{
-			const float M = 40.f * S;
+			const float M = Kit.Px(48.f);
 			const bool bOff = Scr.X < M || Scr.X > W - M || Scr.Y < M || Scr.Y > H - M;
 			Scr.X = FMath::Clamp(Scr.X, M, W - M);
 			Scr.Y = FMath::Clamp(Scr.Y, M, H - M);
-			const float D = 14.f * S;
-			Box(Scr.X - D * 0.5f, Scr.Y - D * 0.5f, D, D, FLinearColor(1.f, 0.85f, 0.3f, bOff ? 0.5f : 0.9f));
-			const float Metres = static_cast<float>(FVector::Dist2D(P, ColeLocation())) / 100.f;
-			Text(FString::Printf(TEXT("%.0f m"), Metres), Scr.X, Scr.Y + 10.f * S, FLinearColor(1.f, 0.9f, 0.6f, 0.9f), 1.0f * S, true);
+			ScriptHudWidgets::Waypoint(Kit, Scr, bOff, static_cast<float>(FVector::Dist2D(P, ColeLocation())) / 100.f);
 		}
 	}
 
 	// The prompt (bottom centre).
 	FString Prompt;
-	FLinearColor PromptC = FLinearColor::White;
+	ETone PromptTone = ETone::Action;
 	if (bPlayable)
 	{
 		const FVector Cole = ColeLocation();
 		auto Near = [&](const FVector& At, float Reach) { return FVector::Dist2D(Cole, At) <= Reach && FMath::Abs(Cole.Z - At.Z) < 150.f; };
 		if (Step == EStep::Sneak && !G.bDown && G.Body && Near(G.Body->GetActorLocation(), TakedownReach + 60.f))
 		{
-			if (!IsBehind(Cole)) { Prompt = TEXT("He's facing you"); PromptC = Red; }
-			else { Prompt = TEXT("[E]  Choke-hold from behind"); PromptC = Amber; }
+			if (!IsBehind(Cole)) { Prompt = TEXT("He's facing you: get behind him"); PromptTone = ETone::Danger; }
+			else { Prompt = TEXT("[E] Choke-hold from behind"); }
 		}
 		else if (Step == EStep::Sneak && Near(LeverPoint, UseReach))
 		{
 			const bool bReady = bLeverArmed && GuardState != EGuard::ToLook && GuardState != EGuard::Looking;
-			Prompt = bReady ? TEXT("[E]  Throw the counterweight lever") : TEXT("Counterweight lever - he's still looking");
-			PromptC = bReady ? FLinearColor::White : Grey;
+			Prompt = bReady ? TEXT("[E] Throw the counterweight lever") : TEXT("Counterweight lever: he's still looking");
+			PromptTone = bReady ? ETone::Action : ETone::Muted;
 		}
 		else if (Step == EStep::Down && Near(BodyAt, 200.f))
 		{
-			Prompt = TEXT("[E]  Drag him into the costume trunk");
+			Prompt = TEXT("[E] Drag him into the costume trunk");
 		}
 		else if (Step == EStep::ToPanel && Near(PanelStand, UseReach))
 		{
-			Prompt = TEXT("[E]  Rig the door scanner");
+			Prompt = TEXT("[E] Rig the door scanner");
 		}
 		else if (Step == EStep::ToExit && Near(ExitStand, UseReach))
 		{
-			Prompt = TEXT("[E]  Kill the alarm, wedge the door open");
+			Prompt = TEXT("[E] Kill the alarm, wedge the door open");
 		}
 	}
 	if (!Prompt.IsEmpty())
 	{
-		Text(Prompt, W * 0.5f, H * 0.74f, PromptC, 2.0f * S, true);
+		ScriptHudWidgets::Prompt(Kit, Prompt, PromptTone);
 	}
 	if (ToastLeft > 0.f && !Toast.IsEmpty())
 	{
-		const float Alpha = FMath::Clamp(ToastLeft / 0.4f, 0.f, 1.f);
-		Text(Toast, W * 0.5f, H * 0.36f, FLinearColor(1.f, 0.9f, 0.7f, Alpha), 2.4f * S, true);
+		ScriptHudWidgets::Toast(Kit, Toast, ETone::Action, FMath::Clamp(ToastLeft / 0.4f, 0.f, 1.f));
 	}
 }

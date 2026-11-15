@@ -16,6 +16,36 @@
 #include "TakeGameInstance.h"
 #include "TakePlayerController.h"
 #include "Script/ScriptSequencer.h"
+#include "Camera/CameraActor.h"
+
+// QA Nov 16 (Marwan): no letterbox while the player has control; a very slight one in cutscenes (the seat shot, the
+// tracking shot, a scene's scripted cameras). The script's bars only; the old take mode keeps Film.LetterboxAspect.
+namespace TakeHudBarsLocal
+{
+	constexpr float CutsceneShare = 0.035f;	// each bar, as a share of the screen's height: 38 px at 1080
+	constexpr float EaseRate = 8.f;			// the bars ease in and out (1/s), so a hand-over to the player is soft
+	static float BarShare = 0.f;
+	static double BarLastTime = -1.0;
+	static float DesignAspect = -1.f;		// Film.LetterboxAspect as the HUD was set up (restored outside the script)
+
+	static bool IsScriptCutscene(const ATakeHUD& Hud, const APlayerController* PC)
+	{
+		const AScriptSequencer* Seq = AScriptSequencer::Get(&Hud);
+		const AScriptScene* Scene = Seq ? Seq->GetActiveScene() : nullptr;
+		const ATakePlayerController* TPC = Cast<ATakePlayerController>(PC);
+		if (!Scene || !TPC || Seq->GetEndSeconds() >= 0.f)
+		{
+			return true;
+		}
+		if (!Scene->bPlayerWalks || !TPC->GetCurrentCharacter())
+		{
+			return true;
+		}
+		// The player walks, but the scene has cut away to one of its own cameras (not the one it plays under).
+		const AActor* View = TPC->GetViewTarget();
+		return View && View != TPC->GetCurrentCharacter() && View->IsA<ACameraActor>() && View != Scene->SceneCamera;
+	}
+}
 
 
 ATakeHUD::ATakeHUD()
@@ -66,6 +96,27 @@ void ATakeHUD::DrawHUD()
 
 	FTakeFilmFrame FilmFrame = MakeFilmFrame(*Dir, Canvas->ClipX, Canvas->ClipY);
 	UpdateStress(*Dir, FilmFrame);	// QA hud: composure as the picture (and the grade's Stress scalar)
+	{
+		using namespace TakeHudBarsLocal;
+		if (DesignAspect < 0.f)
+		{
+			DesignAspect = Film.LetterboxAspect;
+		}
+		const AScriptSequencer* BarSeq = Dir->bScriptDriven ? AScriptSequencer::Get(this) : nullptr;
+		if (BarSeq && BarSeq->IsRunning() && Canvas->ClipY > 1.f)
+		{
+			const float Want = IsScriptCutscene(*this, PlayerOwner) ? CutsceneShare : 0.f;
+			const float Dt = BarLastTime < 0.0 ? 1.f : FMath::Clamp(static_cast<float>(FilmFrame.RealTime - BarLastTime), 0.f, 0.25f);
+			BarShare = FMath::FInterpConstantTo(BarShare, Want, Dt, CutsceneShare * EaseRate);
+			// The picture's aspect that leaves bars of BarShare: at 0 it is the screen's own (no bars at all).
+			Film.LetterboxAspect = Canvas->ClipX / FMath::Max(1.f, Canvas->ClipY * (1.f - 2.f * BarShare));
+		}
+		else
+		{
+			Film.LetterboxAspect = DesignAspect;
+		}
+		BarLastTime = FilmFrame.RealTime;
+	}
 	const float BarH = Film.DrawsLetterbox(FilmFrame) ? Film.BarHeight(FilmFrame)
 		: (FilmFrame.bScriptRaw ? 0.f : TakeStyle::LetterboxBar(Canvas->ClipX, Canvas->ClipY, Film.LetterboxAspect));
 	Kit.Begin(Canvas, FilmFrame.RealTime, BarH);
@@ -74,7 +125,7 @@ void ATakeHUD::DrawHUD()
 
 	// Under everything: the picture's film or viewfinder, the burn, the splice, the bars in ink.
 	Film.DrawUnder(*this, *Canvas, FilmFrame);
-	if (!FilmFrame.bScriptRaw && (!Film.DrawsLetterbox(FilmFrame) || Kit.Bar > BarH + 0.5f))
+	if (!FilmFrame.bScriptRaw && !Dir->bScriptDriven && (!Film.DrawsLetterbox(FilmFrame) || Kit.Bar > BarH + 0.5f))
 	{
 		using namespace TakeStyle;
 		// The look is off, or the screen is wider than 2.39:1: the bars are still the HUD's lanes (MinBar tall).

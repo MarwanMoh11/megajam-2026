@@ -1,6 +1,8 @@
 // Scene 4: the catwalks (Nora), then the tracking shot of Vance. Owner: s4-catwalk. See Scene4Catwalk.h.
 
 #include "Script/Scene4Catwalk.h"
+#include "Script/ScriptHudWidgets.h"
+#include "Script/Scene5Auditorium.h"
 
 #include "Script/ScriptSequencer.h"
 #include "FollowSpot.h"
@@ -58,28 +60,22 @@ namespace
 		return D.IsNearlyZero() ? 0.f : static_cast<float>(D.Rotation().Yaw);
 	}
 
-	UFont* HudFont(bool bLarge)
-	{
-		if (!GEngine)
-		{
-			return nullptr;
-		}
-		return bLarge ? GEngine->GetLargeFont() : GEngine->GetMediumFont();
-	}
-
 	void HudText(UCanvas* C, const FString& S, float X, float Y, const FLinearColor& Col, bool bLarge, bool bCentre = false)
 	{
-		UFont* F = HudFont(bLarge);
-		if (!F)
+		// QA Nov 16: the HUD's type on a small ink plate (TakeHudKit), not the engine font. Y is the label's top.
+		if (!C || S.IsEmpty())
 		{
 			return;
 		}
-		FCanvasTextItem T(FVector2D(X, Y), FText::FromString(S), F, Col);
-		T.EnableShadow(FLinearColor(0.f, 0.f, 0.f, 0.85f));
-		T.bCentreX = bCentre;
-		const float Scale = FMath::Max(C->ClipY / 1080.f, 0.5f) * (bLarge ? 1.0f : 1.15f);
-		T.Scale = FVector2D(Scale, Scale);
-		C->DrawItem(T);
+		FTakeHudKit K;
+		K.Begin(C, 0.0, 138.f);
+		const TakeStyle::EType Type = bLarge ? TakeStyle::EType::Goal : TakeStyle::EType::Tag;
+		const float TW = K.Measure(Type, S);
+		const float Em = K.Em(Type);
+		const float CY = Y + Em * 0.7f;
+		const float X0 = bCentre ? X - TW * 0.5f : X;
+		K.Rect(X0 - K.Px(6.f), CY - Em * 0.75f, TW + K.Px(12.f), Em * 1.5f, FTakeHudKit::A(TakeStyle::Ink, 0.6f * Col.A));
+		K.Text(Type, S, X0, CY, Col);
 	}
 
 	void HudRect(UCanvas* C, float X, float Y, float W, float H, const FLinearColor& Col)
@@ -418,6 +414,10 @@ void AScene4Catwalk::TickScene(float DeltaSeconds)
 	{
 		StepTrack(Dt);	// the camera settles; Vance walks on into the dark
 		StepDoors(Dt);
+	}
+	else if (Phase == EPhase::Seat)
+	{
+		StepSeat(Dt);
 	}
 }
 
@@ -1030,12 +1030,97 @@ void AScene4Catwalk::StepDoors(float Dt)
 	SetDoors(A * A);	// they gather speed as they swing shut
 	if (PhaseSeconds >= DoorCloseSeconds + HoldAfterDoors && Phase != EPhase::Done)
 	{
+		if (Phase == EPhase::Doors && BeginSeat())
+		{
+			return;
+		}
 		Phase = EPhase::Done;
 		if (ATakeCharacter* V = GetVance())
 		{
 			V->GetCharacterMovement()->MaxWalkSpeed = V->WalkSpeed;
 		}
 		TAKE_LOG(TEXT("S4 FINISH"));
+		FinishScene();
+	}
+}
+
+// QA Nov 16 (Marwan): "when Vance crosses into the reserved seating we should see him go and sit in his seat, and
+// stay seated for when the camera finds him". After the doors: a cut to Scene 5's seat camera, Vance walking the last
+// of the row's leg room into his seat, sitting (Scene 5's own SitVance, so the two scenes agree on the seat), a held
+// beat, then the scene ends. Scene 5 opens with him in that seat.
+bool AScene4Catwalk::BeginSeat()
+{
+	ATakeCharacter* const V = GetVance();
+	AScene5Auditorium* S5 = nullptr;
+	for (TActorIterator<AScene5Auditorium> It(GetWorld()); It; ++It)
+	{
+		S5 = *It;
+		break;
+	}
+	if (!V || !S5 || !S5->SeatCamera || SeatWalkIn <= 0.f)
+	{
+		return false;
+	}
+	SeatScene = S5;
+	bSeatSat = false;
+	SeatSatAt = 0.f;
+	// Off camera, on the cut: a few steps along his row's leg room toward the centre aisle, facing his seat.
+	const FVector Stand = S5->StandAt;
+	const FVector Along(0.f, Stand.Y < 0.f ? 1.f : -1.f, 0.f);
+	const FVector From = Stand + Along * SeatWalkIn;
+	const float Half = V->GetCapsuleComponent() ? V->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() : 90.f;
+	const FRotator Face(0.f, (-Along).Rotation().Yaw, 0.f);
+	GhostVance(true);	// the row's seated knees don't hold him up
+	V->TeleportTo(FVector(From.X, From.Y, Stand.Z + Half + 2.f), Face, false, true);
+	V->SetActorRotation(Face);
+	V->SetLook(Face.Yaw, -4.f);
+	if (UCharacterMovementComponent* Move = V->GetCharacterMovement())
+	{
+		Move->SetComponentTickEnabled(true);
+		Move->SetMovementMode(MOVE_Walking);
+		Move->MaxWalkSpeed = StrollSpeed * 0.8f;
+	}
+	S5->FrameSeatCamera();
+	CutTo(EScriptPov::Vance, S5->SeatCamera);
+	Phase = EPhase::Seat;
+	PhaseSeconds = 0.f;
+	TAKE_LOG(TEXT("S4 SEAT: Vance walks into his seat (%.0f cm)"), SeatWalkIn);
+	return true;
+}
+
+void AScene4Catwalk::StepSeat(float Dt)
+{
+	ATakeCharacter* const V = GetVance();
+	AScene5Auditorium* const S5 = SeatScene.Get();
+	if (!bSeatSat)
+	{
+		const FVector Stand = S5 ? S5->StandAt : FVector::ZeroVector;
+		const bool bThere = !V || !S5 || FVector::Dist2D(V->GetActorLocation(), Stand) < 25.f;
+		if (bThere || PhaseSeconds > SeatWalkMaxSeconds)
+		{
+			GhostVance(false);
+			if (S5)
+			{
+				S5->SeatVanceNow();
+			}
+			bSeatSat = true;
+			SeatSatAt = PhaseSeconds;
+			TAKE_LOG(TEXT("S4 SEAT: seated after %.1f s"), PhaseSeconds);
+		}
+		else if (V)
+		{
+			V->MoveToward(FVector(Stand.X, Stand.Y, V->GetActorLocation().Z));
+		}
+		return;
+	}
+	if (S5)
+	{
+		S5->HoldVanceSeated();
+	}
+	if (PhaseSeconds - SeatSatAt >= SeatHoldSeconds)
+	{
+		Phase = EPhase::Done;
+		TAKE_LOG(TEXT("S4 FINISH (seated)"));
 		FinishScene();
 	}
 }
@@ -1620,18 +1705,26 @@ void AScene4Catwalk::DrawSceneHud(UCanvas* Canvas)
 	{
 		HudText(Canvas, TEXT("REC"), W - 110.f * S, 16.f * S, ConeRed, false);
 	}
-	const bool bClear = Watchers.Num() == 0;
-	if (bClear)
+	// QA Nov 16: the job and the keys on the HUD's plates with keycaps (ScriptHudWidgets.h), not plain text.
 	{
-		const float Pulse = 0.75f + 0.25f * FMath::Sin(Now * 7.f);
-		HudText(Canvas, TEXT("LANE CLEAR  -  PRESS [SPACE] TO SEND VANCE"), W * 0.5f, 72.f * S, FLinearColor(ConeAlibi.R, ConeAlibi.G, ConeAlibi.B, Pulse), true, true);
+		using ScriptHudWidgets::ETone;
+		const bool bClear = Watchers.Num() == 0;
+		if (bClear)
+		{
+			const float Pulse = 0.8f + 0.2f * FMath::Sin(Now * 7.f);
+			ScriptHudWidgets::RichPlate(Kit, TakeStyle::EType::Goal, TEXT("Lane clear: [SPACE] Send Vance"), Kit.CX(),
+				Kit.Px(96.f), ETone::Good, Pulse, Kit.W * 0.6f);
+		}
+		else
+		{
+			ScriptHudWidgets::RichPlate(Kit, TakeStyle::EType::Goal,
+				FString::Printf(TEXT("Clear Vance's lane: watched by %s"), *FString::Join(Watchers, TEXT(", "))), Kit.CX(),
+				Kit.Px(96.f), ETone::Danger, 1.f, Kit.W * 0.6f);
+		}
+		ScriptHudWidgets::RichPlate(Kit, TakeStyle::EType::Label,
+			TEXT("[1] Spotlight clamp     [2] Sandbag line     [SPACE] Send Vance when no guard sees the gold lane"),
+			Kit.CX(), Kit.H - Kit.Px(56.f), ETone::Action, 1.f, Kit.W * 0.8f);
 	}
-	else
-	{
-		HudText(Canvas, FString::Printf(TEXT("CLEAR VANCE'S LANE  -  WATCHED BY %s"), *FString::Join(Watchers, TEXT(", "))), W * 0.5f, 72.f * S, ConeRed, true, true);
-	}
-	HudText(Canvas, TEXT("[1] Spotlight clamp       [2] Sandbag line       [SPACE] Send Vance when no guard sees the gold lane"),
-		W * 0.5f, H - 50.f * S, FLinearColor(0.95f, 0.95f, 0.9f, 1.f), false, true);
 
 	if (FlashLeft > 0.f)
 	{

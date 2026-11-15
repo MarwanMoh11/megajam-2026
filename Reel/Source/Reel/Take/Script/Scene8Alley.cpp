@@ -1,6 +1,7 @@
 // Scene 8, the escape and the getaway (see Scene8Alley.h). Owner: s8-escape.
 
 #include "Script/Scene8Alley.h"
+#include "Script/ScriptHudWidgets.h"
 
 #include "Algo/BinarySearch.h"
 #include "Camera/CameraActor.h"
@@ -882,14 +883,13 @@ void AScene8Alley::DrawSceneHud(UCanvas* Canvas)
 	if (!Canvas || !GetWorld()) { return; }
 	FTakeHudKit Kit;
 	Kit.Begin(Canvas, GetWorld()->GetRealTimeSeconds(), 0.f);
-	// At the top of the picture, as in Scene 3, off the subtitle lane at the bottom.
-	const float GoalY = Kit.PicY + Kit.Px(34.f);
+	// At the top of the picture on the HUD's plates (ScriptHudWidgets.h), off the subtitle lane at the bottom.
 	if (Beat == EScene8Beat::Escape)
 	{
-		Kit.Text(TakeStyle::EType::Goal, TEXT("Run! Follow Cole to the exit"), Kit.CX(), GoalY, TakeStyle::Paper, ETakeAlign::Centre);
+		ScriptHudWidgets::Objective(Kit, TEXT("Run! Follow Cole to the exit"));
 		if (StallT > 0.4f)
 		{
-			Kit.Text(TakeStyle::EType::Goal, TEXT("KEEP MOVING"), Kit.CX(), GoalY + Kit.Px(34.f), TakeStyle::Danger, ETakeAlign::Centre);
+			ScriptHudWidgets::SubObjective(Kit, TEXT("KEEP MOVING"), ScriptHudWidgets::ETone::Danger);
 		}
 	}
 	else if (Beat == EScene8Beat::Alley)
@@ -897,8 +897,8 @@ void AScene8Alley::DrawSceneHud(UCanvas* Canvas)
 		// The goal and the fire closing in: a bar that drains over AlleySeconds.
 		const float Left = FMath::Clamp(1.f - BeatT / AlleySeconds, 0.f, 1.f);
 		const float BW = Kit.Px(420.f), BH = Kit.Px(8.f);
-		const float Y = Kit.PicY + Kit.Px(62.f);
-		Kit.Text(TakeStyle::EType::Goal, TEXT("Get in the car"), Kit.CX(), GoalY, TakeStyle::Paper, ETakeAlign::Centre);
+		const float Y = Kit.Px(64.f) + Kit.Em(TakeStyle::EType::Goal) * 2.3f;
+		ScriptHudWidgets::Objective(Kit, TEXT("Get in the car"));
 		Kit.Rect(Kit.CX() - BW * 0.5f, Y, BW, BH, FTakeHudKit::A(TakeStyle::Ink, 0.7f));
 		Kit.Rect(Kit.CX() - BW * 0.5f, Y, BW * Left, BH, Left < 0.3f ? TakeStyle::Danger : TakeStyle::Julian);
 	}

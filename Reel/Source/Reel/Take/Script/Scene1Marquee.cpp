@@ -1,6 +1,7 @@
 // See Scene1Marquee.h (the beats). Owner: s1-marquee.
 
 #include "Script/Scene1Marquee.h"
+#include "Script/ScriptHudWidgets.h"
 
 #include "CanvasItem.h"
 #include "CastMember.h"
@@ -718,22 +719,12 @@ void AScene1Marquee::DrawSceneHud(UCanvas* Canvas)
 	const float H = Canvas->ClipY;
 	const float S = H / 1080.f;
 	const double T = Now();
-	UFont* const Font = GEngine->GetMediumFont();
-	const FLinearColor Gold(0.95f, 0.78f, 0.42f, 1.f);
 
 	auto Box = [Canvas](float X, float Y, float BW, float BH, const FLinearColor& C)
 	{
 		FCanvasTileItem Tile(FVector2D(X, Y), FVector2D(BW, BH), C);
 		Tile.BlendMode = SE_BLEND_Translucent;
 		Canvas->DrawItem(Tile);
-	};
-	auto Text = [Canvas, Font](const FString& Str, float X, float Y, float Scale, const FLinearColor& C, bool bCentre)
-	{
-		FCanvasTextItem Item(FVector2D(X, Y), FText::FromString(Str), Font, C);
-		Item.Scale = FVector2D(Scale, Scale);
-		Item.bCentreX = bCentre;
-		Item.EnableShadow(FLinearColor(0.f, 0.f, 0.f, 0.8f));
-		Canvas->DrawItem(Item);
 	};
 
 	// The composure flicker: two dark frames as "void" lands.
@@ -750,9 +741,10 @@ void AScene1Marquee::DrawSceneHud(UCanvas* Canvas)
 	else if (Beat == EScene1Beat::Turn) { Goal = StepGoal; }
 	if (!Goal.IsEmpty())
 	{
-		const float Bar = FMath::Max(0.f, 0.5f * (H - W / 2.39f));
-		const float Y = Bar > 30.f * S ? Bar * 0.5f - 12.f * S : 24.f * S;
-		Text(Goal.ToUpper(), W * 0.04f, Y, 1.1f * S, Gold, false);
+		// QA Nov 16: the objective plate (ScriptHudWidgets.h), not plain text in a letterbox bar that is gone.
+		FTakeHudKit Kit;
+		Kit.Begin(Canvas, T, 138.f);
+		ScriptHudWidgets::Objective(Kit, Goal);
 	}
 
 	// The forged card: up from the bottom right at the start, back with VOID on the directive, then it drops away.

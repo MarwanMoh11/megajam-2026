@@ -1,10 +1,13 @@
 // Scene 5. INT. PRIVATE AUDITORIUM. Owner: s5-auditorium. See Scene5Auditorium.h for the beats.
 #include "Script/Scene5Auditorium.h"
+#include "Script/ScriptHudWidgets.h"
 
 #include "AnimationRuntime.h"
 #include "Animation/AnimSequenceBase.h"
 #include "CastMember.h"
 #include "Camera/PlayerCameraManager.h"
+#include "Camera/CameraActor.h"
+#include "Camera/CameraComponent.h"
 #include "Components/AudioComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/PointLightComponent.h"
@@ -217,6 +220,7 @@ void AScene5Auditorium::BeginScene()
 		return;
 	}
 
+	FrameSeatCamera();
 	SitVance(true);
 	SpeechEnd = SoundSeconds(PendletonSound, SpeechSeconds) + 0.4f;
 	// Played here (not through Say's sound) so [Space] can cut it off.
@@ -314,6 +318,7 @@ bool AScene5Auditorium::HandleSceneKey(const FKey& Key, bool bPressed)
 void AScene5Auditorium::TickScene(float DeltaSeconds)
 {
 	PhaseTime += DeltaSeconds;
+	HoldVanceSeated();	// seated until the rise stands him up
 	GraceLeft = FMath::Max(0.f, GraceLeft - DeltaSeconds);
 
 	if (Phase == EScene5Beat::Speech)
@@ -593,6 +598,47 @@ void AScene5Auditorium::SetPhase(EScene5Beat NewPhase)
 }
 
 // ---- Vance in his seat -------------------------------------------------------------------------------------------
+
+void AScene5Auditorium::HoldVanceSeated()
+{
+	ATakeCharacter* const Vance = GetPovCharacter();
+	if (!Vance || !bSeated)
+	{
+		return;
+	}
+	if (UCharacterMovementComponent* const Move = Vance->GetCharacterMovement())
+	{
+		if (Move->MovementMode != MOVE_None)
+		{
+			Move->StopMovementImmediately();
+			Move->DisableMovement();
+			UE_LOG(LogScene5, Log, TEXT("S5: Vance's movement came back on in his seat: held"));
+		}
+	}
+	const float Half = Vance->GetCapsuleComponent() ? Vance->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() : 90.f;
+	const FVector At = SeatAt + SitOffset + FVector(0.f, 0.f, Half);
+	if (FVector::DistSquared(Vance->GetActorLocation(), At) > 4.0)
+	{
+		Vance->SetActorLocationAndRotation(At, FRotator(0.f, SeatYaw, 0.f), false, nullptr, ETeleportType::TeleportPhysics);
+	}
+}
+
+void AScene5Auditorium::FrameSeatCamera()
+{
+	ACameraActor* const Cam = Cast<ACameraActor>(SeatCamera);
+	if (!Cam)
+	{
+		return;
+	}
+	const FRotator Seat(0.f, SeatYaw, 0.f);
+	const FVector Target = SeatAt + FVector(0.f, 0.f, 95.f);
+	const FVector At = SeatAt + Seat.RotateVector(SeatCamOffset);
+	Cam->SetActorLocationAndRotation(At, (Target - At).Rotation());
+	if (UCameraComponent* const C = Cam->GetCameraComponent())
+	{
+		C->SetFieldOfView(SeatCamFov);
+	}
+}
 
 void AScene5Auditorium::SitVance(bool bSit)
 {
@@ -987,9 +1033,10 @@ void AScene5Auditorium::DrawSceneHud(UCanvas* Canvas)
 		return;
 	}
 
-	// The goal, in the top bar.
-	Kit.Text(EType::Goal, TEXT("Slip along the south wall to the oak door by the stage"), Kit.CX(), Kit.RowT1(), Paper, ETakeAlign::Centre);
-	Kit.Text(EType::Label, TEXT("Move while the torches face the film. Freeze in a raised beam."), Kit.CX(), Kit.RowT2(), Julian, ETakeAlign::Centre);
+	// The goal, top centre on the HUD's plates (QA Nov 16: no bars in play, nothing as plain text).
+	ScriptHudWidgets::Objective(Kit, TEXT("Slip along the south wall to the oak door by the stage"));
+	ScriptHudWidgets::SubObjective(Kit, TEXT("Move while the torches face the film. Freeze in a raised beam."),
+		ScriptHudWidgets::ETone::Action);
 
 	// The watchers, in the bottom bar: each one's look and how long it lasts.
 	const float Cy = Kit.PicBottom() + Kit.Bar * 0.38f;

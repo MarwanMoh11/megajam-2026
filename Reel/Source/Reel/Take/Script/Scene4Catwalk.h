@@ -241,6 +241,17 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Scene4|Track")
 	float StuckSeconds = 0.5f;
 
+	/** QA Nov 16 (Marwan): after the doors, a cut to Scene 5's seat camera: Vance walks the last of the row's leg room
+	 *  (this far, cm) into his reserved seat and sits, and the scene holds SeatHoldSeconds on him seated. Scene 5 opens
+	 *  with him in the same seat. 0: no seat beat (the scene ends on the doors, as before). */
+	UPROPERTY(EditAnywhere, Category = "Scene4|Track")
+	float SeatWalkIn = 150.f;
+	UPROPERTY(EditAnywhere, Category = "Scene4|Track")
+	float SeatHoldSeconds = 1.8f;
+	/** Longest the walk into the seat may take before he sits anyway (a seated guest's knees in his way), s. */
+	UPROPERTY(EditAnywhere, Category = "Scene4|Track")
+	float SeatWalkMaxSeconds = 2.5f;
+
 	/** The champagne tower on the cart: tiers (bottom has Tiers glasses a side... a pyramid), glass size, cm. */
 	UPROPERTY(EditAnywhere, Category = "Scene4|Champagne")
 	int32 TowerTiers = 4;
@@ -304,7 +315,7 @@ public:
 	virtual void OnConstruction(const FTransform& Transform) override;
 
 private:
-	enum class EPhase : uint8 { Plan, Fail, Track, Doors, Done };
+	enum class EPhase : uint8 { Plan, Fail, Track, Doors, Seat, Done };
 	EPhase Phase = EPhase::Plan;
 	float PhaseSeconds = 0.f;
 
@@ -325,6 +336,10 @@ private:
 	FVector CamLoc = FVector::ZeroVector;
 	bool bCamPlaced = false;
 	float DoorAlpha = 1.f;		// 1 open .. 0 shut
+	// The seat beat (QA Nov 16): Scene 5's seat, the walk in, sat yet, and when.
+	TWeakObjectPtr<class AScene5Auditorium> SeatScene;
+	bool bSeatSat = false;
+	float SeatSatAt = 0.f;
 
 	// The champagne tower.
 	struct FGlass
@@ -397,6 +412,9 @@ private:
 	void StepGuards(float Dt);
 	void StepTrack(float Dt);
 	void StepDoors(float Dt);
+	/** The doors are shut: cut to Vance walking into his seat (Scene 5's seat camera). False: no seat to go to. */
+	bool BeginSeat();
+	void StepSeat(float Dt);
 	void SetDoors(float OpenAlpha);
 	int32 FindGuard(EScene4Role Role) const;
 	FVector GuardForward(const FScene4Guard& G) const;

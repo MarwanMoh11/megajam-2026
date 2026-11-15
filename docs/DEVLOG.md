@@ -1838,3 +1838,22 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
   in-progress Scene 4 HUD edit fails to compile (C4456, `Kit`), and Live Coding builds every changed file. Neither
   the new voices nor the critic's walk have been heard or seen in play. `Reel.Script.Jump` from the MCP console hits
   the editor world's sequencer, not PIE's, so scene jumps from tools don't work.
+
+## Nov 16, 01:45 Cairo: Vance sits in his seat, letterbox off in play, prompts on the HUD's widgets (seat-ui)
+- **Changed:** (1) Marwan's QA: when Vance crossed into the reserved seating his seat was empty whenever the camera found
+  him. Cause, seen in play: Scene 5 sits him with his capsule's collision off and movement disabled, then something
+  switched his movement back on (the log now says "movement came back on in his seat: held" twice per take), so he fell
+  through the floor to z -9074 and the seat shots showed an empty chair under the guide marker. Scene 5 now pins him in
+  the seat every tick while he is seated (`HoldVanceSeated`). Scene 4 gets a last shot after the doors: a cut to the
+  seat camera, Vance walks the row's leg room into his seat and sits (Scene 5's own `SitVance`), held 1.8 s; Scene 5 opens
+  with him in the same seat. The seat camera is placed from the seat in code, wider (56 deg, further back) per Marwan's
+  "zoom out at the seating area". (2) Letterbox: none while the player has control; a very slight one (3.5% a bar) in
+  cutscenes and scripted cameras, easing in and out (TakeHUD.cpp). (3) Prompts that were engine-font text now use the
+  HUD kit (new `Script/ScriptHudWidgets.h`): objective plates with keycaps (Scenes 1, 5, 6, 8), Scene 6's action prompt,
+  toast, guard alert diamond and waypoint, Scene 4's job and key hints and its feed labels. Crouch: at first a chip with
+  text and a [C] keycap; Marwan: "too much, a simple yellow logo will do", so it is now a small yellow figure, standing or
+  crouched, bottom left.
+- **What the agents did:** one Claude Opus 5.5 session, coordinating with the animation session over the editor lock and
+  messages; shots in `C:\Jam\Builds\qa\seat`.
+- **Went wrong:** my first Scene 4 HUD edit shadowed a local `Kit` (C4456, an error in Shipping) and blocked the other
+  session's Live Coding until fixed. What re-enables Vance's movement while seated is not found; the pin covers it.
