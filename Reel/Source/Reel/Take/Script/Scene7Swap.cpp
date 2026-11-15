@@ -30,6 +30,16 @@
 namespace Scene7SwapLocal
 {
 	using namespace Scene7SwapMesh;
+	// Vance's dressed body is a separate ACastMember attached to him, which SetActorHiddenInGame does not reach: without
+	// this the double and his dressed body both showed at the magazine (two Vances, Marwan's QA Nov 16).
+	void S7SwapHideVance(AActor* A, bool bHide)
+	{
+		if (!A) { return; }
+		A->SetActorHiddenInGame(bHide);
+		TArray<AActor*> Kids;
+		A->GetAttachedActors(Kids, true, true);
+		for (AActor* K : Kids) { if (K) { K->SetActorHiddenInGame(bHide); } }
+	}
 	const TCHAR* SurfacePath = TEXT("/Game/Take/Props/Swap/M_Swap_Surface.M_Swap_Surface");
 	const TCHAR* BeamPath = TEXT("/Game/Take/Props/Swap/M_Swap_Beam.M_Swap_Beam");
 	const TCHAR* FallbackPath = TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial");
@@ -395,7 +405,7 @@ void AScene7Swap::ResetSwap()
 	}
 	if (Vance && Vance->IsHidden())
 	{
-		Vance->SetActorHiddenInGame(false);
+		S7SwapHideVance(Vance, false);
 		if (UCharacterMovementComponent* CM = Vance->GetCharacterMovement()) { CM->SetMovementMode(MOVE_Walking); }
 	}
 	Beat = 0;
@@ -433,7 +443,7 @@ void AScene7Swap::BeginSwap(ATakeCharacter* InVance, bool bStartNow)
 			A->GripDegrees = GripDegrees;
 		}
 		Double->SetHiddenInGame(false);
-		Vance->SetActorHiddenInGame(true);
+		S7SwapHideVance(Vance, true);
 		if (UCharacterMovementComponent* CM = Vance->GetCharacterMovement())
 		{
 			CM->StopMovementImmediately();
@@ -546,7 +556,7 @@ void AScene7Swap::EndSwap()
 		const float Yaw = DT.Rotator().Yaw + 90.f;
 		Vance->SetActorLocationAndRotation(DT.GetLocation() + FVector(0.f, 0.f, Half), FRotator(0.f, Yaw, 0.f), false, nullptr, ETeleportType::TeleportPhysics);
 		Vance->SetLook(Yaw, -10.f);
-		Vance->SetActorHiddenInGame(false);
+		S7SwapHideVance(Vance, false);
 		if (UCharacterMovementComponent* CM = Vance->GetCharacterMovement()) { CM->SetMovementMode(MOVE_Walking); }
 		AttachCanisterTo(Vance);
 		Vance->SnapFollowCamera();

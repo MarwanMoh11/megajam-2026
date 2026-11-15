@@ -329,7 +329,10 @@ void UTakeGuideSubsystem::Tick(float DeltaSeconds)
 		bCrewDue = bHasLine && !bCrewSaidForGoal;
 		UE_LOG(LogReelGuide, Log, TEXT("GUIDE lost %.0f s: glance%s"), Lost, bCrewDue ? TEXT(", crew line") : TEXT(""));
 	}
-	const bool bMarker = Lost >= MarkerSeconds && bWalking && Dist >= Reach;
+	// The marker shows from the first second, every scene (Marwan's QA Nov 16: "visuals as to where to go should be shown
+	// immediately always"). It used to wait for MarkerSeconds of wandering. The lost clock still drives the glance and
+	// the crew line.
+	const bool bMarker = bWalking && Dist >= Reach;
 	MarkerAlpha = FTakeShapes::Ease(MarkerAlpha, bMarker ? 1.f : 0.f, bMarker ? 1.5f : 3.f, DeltaSeconds);
 }
 
