@@ -92,7 +92,7 @@ void AScene8Chaser::BeginPlay()
 		for (USceneComponent* K : Parts) { if (K != Gun.Get()) { K->SetHiddenInGame(true); } }
 		// The pistol in his right hand: ACastMember's grip (grip across the palm, barrel along the fingers).
 		Gun->AttachToComponent(Mesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, HandBone);
-		Gun->SetRelativeLocationAndRotation(FVector(-9.f, 2.f, -1.5f), FRotator(0.f, 180.f, 0.f));
+		Gun->SetRelativeLocationAndRotation(FVector(-7.5f, 2.5f, -3.f), FRotator(-8.f, 176.f, 1.f));
 		if (UStaticMesh* GM = GunMesh.IsNull() ? nullptr : GunMesh.LoadSynchronous())
 		{
 			Gun->SetStaticMesh(GM);

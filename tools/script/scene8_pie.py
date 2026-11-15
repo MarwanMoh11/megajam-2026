@@ -16,7 +16,7 @@ import lights_pie as L   # noqa: E402
 OUT = r"C:\Jam\Builds\script\s8"
 WORLD = {"world": {"refPath": "/Game/Take/UEDPIE_0_Lvl_Auction.Lvl_Auction"}, "maxResolution": 1280}
 STEP = 2.2
-SHOTS = 16
+SHOTS = 24
 
 
 def snap(s, name, prefix):
@@ -50,7 +50,8 @@ def main():
     for i in range(SHOTS):
         snap(s, "%02d" % i, prefix)
         time.sleep(STEP)
-    log(s, "S8 beat|SCRIPT")
+    log(s, "S8 beat")
+    log(s, "SCRIPT")
 
 
 if __name__ == "__main__":
