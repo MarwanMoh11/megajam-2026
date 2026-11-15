@@ -1645,3 +1645,12 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
 - Scene3Foyer.cpp: removed the champagne stain on Vance's jacket (it read as a floating black button, per hud-guidance); the critic's choice now draws with the shared TakeChoiceCards; hall sound cues added (stumble, rope, tackle plus gasp) through UTakeAudioComponent::PlayCue.
 - scene3_arch.py: the south stair part is off by default (S3A_SOUTH). s7-route's scene7.py now builds an enclosed projectionist's stair in that space; the north pier, parapet, mass and booth fascia stay.
 - Went wrong: Build.bat failed in Scene8Chaser.cpp (a `Skin` name clash with Scene8Car.cpp in the unity build; s8-escape told), so this C++ is not compiled yet. The editor then crashed twice at startup with a D3D12 device-removed error (887A002B, before any map loads), so the clerk voice import, the scene3.py rerun and the arch rerun that clears the south stair from the level are still waiting.
+
+## Nov 15, 22:40 Cairo: characters, the finish (chars-locomotion)
+- The probed pistol grip (`ACastMember::GunGrip`, hand_r, (-7.5, 2.5, -3) / pitch -8, yaw 176, roll 1) and Kit Vance's
+  front-clasped hold (Pendleton no longer reads as armless from the front in Scene 5) made the 22:32 Build.bat after the reboot.
+- Where the guns are: Scene 6's enforcer spawns armed (`bArmed`) and aims at Cole on "Hey! You!" (s6-backstage).
+  Scene 8's chasers carry SM_Pistol on the same grip (s8-escape). Scene 7's fight stays unarmed by design (a fist fight, s7-fight).
+- The run hint isn't needed: Scene 8 forces Vance's run. Scene 6 shows "Crouch [C]". Scene 5 plays Pendleton's Speech act (s5).
+- `tools/chars_pie.py` gained `--lc` (Live Coding first), plus escape-run and crouch shots. Not run: a nine-deep editor
+  queue after the reboot, and the code was already in the fresh DLL. Left for Marwan's QA.

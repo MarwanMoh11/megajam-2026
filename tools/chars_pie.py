@@ -27,6 +27,14 @@ for c in unreal.GameplayStatics.get_all_actors_of_class(w, unreal.TakeCharacter)
 "; ".join(out)
 '''
 
+CROUCH = r'''
+import unreal
+w = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_game_world()
+p = unreal.GameplayStatics.get_player_pawn(w, 0)
+p.set_crouching(True) if isinstance(p, unreal.TakeCharacter) else None
+"crouch %s %s" % (p.get_actor_label() if p else None, p.is_crouching() if isinstance(p, unreal.TakeCharacter) else "n/a")
+'''
+
 
 def snap(s, name, prefix):
     res = L.tool(s, "SceneCaptureToolset.SceneCaptureToolset.CaptureGameViewport", WORLD)
@@ -40,6 +48,9 @@ def main():
     if a and a[0] == "--stop":
         print(L.tool(s, "EditorToolset.EditorAppToolset.StopPIE", {}))
         return
+    if a and a[0] == "--lc":   # Live Coding first (CastMember.cpp body/constructor changes), then the look
+        print("live coding:", str(L.tool(s, "LiveCodingToolset.CompileLiveCoding", {}, timeout=110))[:300], flush=True)
+        a = a[1:]
     prefix = a[0] if a else "pie"
     os.makedirs(OUT, exist_ok=True)
     if "true" not in json.dumps(L.tool(s, "EditorToolset.EditorAppToolset.IsPIERunning", {})).lower():
@@ -56,6 +67,16 @@ def main():
     print(L.py(s, ARM % ("stop_aiming()", "lowered")))
     time.sleep(1.0)
     snap(s, "3_pistol_low", prefix)
+    # Scene 8: Vance forced to run, the chasers' pistols
+    L.console(s, "Reel.Script.Jump 8")
+    time.sleep(5.0)
+    snap(s, "4_escape_run", prefix)
+    # Scene 6: the player crouched (Cole)
+    L.console(s, "Reel.Script.Jump 6")
+    time.sleep(3.0)
+    print(L.py(s, CROUCH))
+    time.sleep(1.5)
+    snap(s, "5_crouch", prefix)
 
 
 main()
