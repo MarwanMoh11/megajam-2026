@@ -20,6 +20,7 @@
 #include "ScannerWatcher.h"
 #include "Sound/SoundBase.h"
 #include "TakeDirector.h"
+#include "TakeGuide.h"
 #include "TakePlayerController.h"
 #include "TakeShapes.h"
 
@@ -474,6 +475,11 @@ void AScene1Marquee::TickScene(float DeltaSeconds)
 			Queue->bScriptOpenFront = true;
 			PanTo(this, GetPlatePoint(), 0.6f);
 			EnterBeat(EScene1Beat::Turn);
+			// hud-guidance: a lit pool on the plate, and Max's nudge if Vance wanders instead of stepping up
+			if (UTakeGuideSubsystem* const G = UTakeGuideSubsystem::Get(this))
+			{
+				G->SetGoal(Queue->GetScanPointWorld(), StepGoal, TEXT("You're up, Vance. The plate, by the door."));
+			}
 		}
 		break;
 
@@ -490,6 +496,7 @@ void AScene1Marquee::TickScene(float DeltaSeconds)
 				}
 				SpeakLine(TEXT("BOUNCER"), HandLine, HandVoice);
 				EnterBeat(EScene1Beat::Hand);
+				if (UTakeGuideSubsystem* const G = UTakeGuideSubsystem::Get(this)) { G->ClearGoal(); }
 			}
 		}
 		break;
