@@ -224,6 +224,9 @@ namespace
 	const FLinearColor Asphalt(0.012f, 0.012f, 0.013f);
 	FVector GS8FinaleShotCam = FVector::ZeroVector;	// the current shot's base camera and look point (SetShot)
 	FVector GS8FinaleShotLook = FVector::ForwardVector;
+	// What the rear-view mirror shows, car space: between Vance's eyes and the can he holds (seated head bone measured
+	// in play at (-46, 41, 102)).
+	const FVector S8MirrorSubject(-32.f, 41.f, 96.f);
 
 	// The head bone's name differs between rigs ("head", "Head", "mixamorig:Head"): find it rather than guess.
 	FVector S8HeadOf(const USkeletalMeshComponent* M)
@@ -618,10 +621,14 @@ void AScene8Car::BeginFinale()
 		if (UAnimationAsset* A = SitAnim.IsNull() ? nullptr : SitAnim.LoadSynchronous()) { VanceBody->PlayAnimation(A, true); }
 	}
 	// The mirror turned to Vance's face (he set it so he could see himself).
-	// The glass faces shot B's camera square on (aimed at his head it tilted away from us); the capture behind it
-	// is re-aimed at his eyes every tick, so the mirror shows his face whatever the glass's angle.
+	// A real mirror: the glass's normal halves the angle between shot B's camera and what it shows (Vance, eyes
+	// to the can, sitting right-front). The capture looks at that same point every tick, and the material flips it
+	// left-right, so he sits on the right of the glass as he does in the car. Near-square to us (~18 deg off).
 	const FVector Viewer = GetActorTransform().TransformPosition(ShotBCam);
-	MirrorHead->SetWorldRotation((MirrorHead->GetComponentLocation() - Viewer).Rotation());
+	const FVector Shown = GetActorTransform().TransformPosition(S8MirrorSubject);
+	const FVector M = MirrorHead->GetComponentLocation();
+	const FVector N = ((Viewer - M).GetSafeNormal() + (Shown - M).GetSafeNormal()).GetSafeNormal();
+	MirrorHead->SetWorldRotation((-N).Rotation());
 	MirrorHead->SetRelativeScale3D(FVector(1.f, 1.3f, 1.62f));	// bigger, and 2.4:1 like the frame, so shot B is all mirror
 	MirrorCapture->bCaptureEveryFrame = true;
 	MirrorCapture->SetActive(true);
@@ -684,7 +691,7 @@ void AScene8Car::TickFinale(float T, float DeltaSeconds)
 	// The mirror keeps Vance's face in it.
 	if (VanceBody && MirrorCapture)
 	{
-		const FVector Face = S8HeadOf(VanceBody) + GetActorForwardVector() * 14.f + FVector(0.f, 0.f, -6.f);	// between his eyes and the can
+		const FVector Face = GetActorTransform().TransformPosition(S8MirrorSubject);	// the point the glass is angled to show
 		MirrorCapture->SetWorldRotation((Face - MirrorCapture->GetComponentLocation()).Rotation());
 	}
 }
