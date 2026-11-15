@@ -174,5 +174,77 @@
   "seconds": 37.23,
   "loop": true,
   "source": "Mixamo: Talking On A Cell Phone (Male Standing While Talking On A Cell Phone)"
+ },
+ "Fight_Hook": {
+  "asset": "/Game/Take/Anim/Mocap/Fight_Hook",
+  "seconds": 2.17,
+  "loop": false,
+  "source": "Mixamo: Hook Punch"
+ },
+ "Fight_Duck": {
+  "asset": "/Game/Take/Anim/Mocap/Fight_Duck",
+  "seconds": 1.53,
+  "loop": false,
+  "source": "Mixamo: Ducking"
+ },
+ "Fight_Stance": {
+  "asset": "/Game/Take/Anim/Mocap/Fight_Stance",
+  "seconds": 2.37,
+  "loop": true,
+  "source": "Mixamo: Fight Idle"
+ },
+ "Fight_Block": {
+  "asset": "/Game/Take/Anim/Mocap/Fight_Block",
+  "seconds": 1.6,
+  "loop": false,
+  "source": "Mixamo: Center Block (Low Center Block)"
+ },
+ "Fight_HitHead": {
+  "asset": "/Game/Take/Anim/Mocap/Fight_HitHead",
+  "seconds": 1.43,
+  "loop": false,
+  "source": "Mixamo: Head Hit"
+ },
+ "Fight_HitStomach": {
+  "asset": "/Game/Take/Anim/Mocap/Fight_HitStomach",
+  "seconds": 1.2,
+  "loop": false,
+  "source": "Mixamo: Stomach Hit"
+ },
+ "Fight_Stab": {
+  "asset": "/Game/Take/Anim/Mocap/Fight_Stab",
+  "seconds": 2.63,
+  "loop": false,
+  "source": "Mixamo: Stabbing"
+ },
+ "Fight_Sweep": {
+  "asset": "/Game/Take/Anim/Mocap/Fight_Sweep",
+  "seconds": 2.23,
+  "loop": false,
+  "source": "Mixamo: Leg Sweep"
+ },
+ "Fight_SweepFall": {
+  "asset": "/Game/Take/Anim/Mocap/Fight_SweepFall",
+  "seconds": 2.5,
+  "loop": false,
+  "source": "Mixamo: Sweep Fall"
+ },
+ "Fight_FallBack": {
+  "asset": "/Game/Take/Anim/Mocap/Fight_FallBack",
+  "seconds": 2.6,
+  "loop": false,
+  "source": "Mixamo: Falling Back Death"
+ },
+ "Fight_Shove": {
+  "asset": "/Game/Take/Anim/Mocap/Fight_Shove",
+  "seconds": 8.0,
+  "loop": false,
+  "source": "Mixamo: Push"
+ },
+ "Fight_Stumble": {
+  "asset": "/Game/Take/Anim/Mocap/Fight_Stumble",
+  "seconds": 3.33,
+  "loop": false,
+  "source": "Mixamo: Stumble Backwards"
  }
 }

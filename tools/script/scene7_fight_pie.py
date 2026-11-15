@@ -2,6 +2,7 @@
 # editor lock. Starts the fight directly (Reel.S7Fight.Start, wherever the script is) and shoots it as it plays:
 #   "$PY" -I tools/script/scene7_fight_pie.py [prefix]      # every prompt answered right (Reel.S7Fight.Auto 1)
 #   "$PY" -I tools/script/scene7_fight_pie.py miss          # each beat missed once, then retaken (Auto 2)
+#   "$PY" -I tools/script/scene7_fight_pie.py pie --to8    # then Reel.Script.Jump 8 and a few frames of Scene 8
 #   "$PY" -I tools/script/scene7_fight_pie.py --stop        # stop PIE (always before releasing the lock)
 import os, sys, time, json
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "sets"))
@@ -38,13 +39,21 @@ def main():
     time.sleep(2.0)
     L.console(s, "Reel.S7Fight.Auto %d" % (2 if prefix.startswith("miss") else 1), "Reel.S7Fight.Start")
     T0 = time.time()
-    span = 30.0 if prefix.startswith("miss") else 19.0
+    span = 30.0 if prefix.startswith("miss") else 20.0
     i = 0
     while time.time() - T0 < span:
         snap(s, "%02d" % i, prefix)
         i += 1
         time.sleep(0.35)
     L.console(s, "Reel.S7Fight.Auto 0")
+    if "--to8" in a:    # then cut to Scene 8 from where the fight leaves Vance (a jump: the booth's FinishScene isn't in play)
+        L.console(s, "Reel.Script.Jump 8")
+        t8 = time.time()
+        j = 0
+        while time.time() - t8 < 6.0:
+            snap(s, "s8_%02d" % j, prefix)
+            j += 1
+            time.sleep(0.6)
 
 
 if __name__ == "__main__":
