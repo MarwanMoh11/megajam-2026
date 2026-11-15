@@ -1663,6 +1663,7 @@ if hasattr(unreal, "HouseDimmer"):
     except Exception as _hz_e:
         unreal.log_warning("QA heist2: HouseDimmer has no screen_normal yet (old C++): %s" % _hz_e)
     setp(dimmer, use_offset=use_offset(dimmer, DIMMER_USE),
+         screen_picture_roll=180.0,   # --- W3 heist2 --- seen in play: the film upright, not mirrored (leader digits)
          effect_offset=use_offset(dimmer, (HOUSE_POINT[0], HOUSE_POINT[1], 0.0)),
          projector_offset=use_offset(dimmer, PROJECTOR), screen_offset=use_offset(dimmer, SCREEN_FACE))
 else:

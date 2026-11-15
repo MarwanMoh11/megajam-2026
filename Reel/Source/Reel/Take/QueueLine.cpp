@@ -637,7 +637,25 @@ void AQueueLine::StepLobby(ATakeDirector& Director)
 	{
 		if (bLobbyGreet && Director.HasFired(FName(TakeTriggers::Door)))
 		{
-			EnterBeat(Director, EQueueBeat::Lobby);
+			// W3 round E: the clerk speaks first on screen: he waits until the street's lines (the doorman's, Maya's)
+			// are done and the voice has been quiet a moment (at most 5 s).
+			const double Quiet = RealNow();
+			if (LobbyWaitSince < 0.0)
+			{
+				LobbyWaitSince = Quiet;
+			}
+			if (Director.VoiceSecondsLeft() > 0.f || Quiet < DoormanSpeaksUntil)
+			{
+				VoiceQuietSince = -1.0;
+			}
+			else if (VoiceQuietSince < 0.0)
+			{
+				VoiceQuietSince = Quiet;
+			}
+			if ((VoiceQuietSince >= 0.0 && Quiet - VoiceQuietSince >= 0.5) || Quiet - LobbyWaitSince >= 5.0)
+			{
+				EnterBeat(Director, EQueueBeat::Lobby);
+			}
 		}
 		return;
 	}

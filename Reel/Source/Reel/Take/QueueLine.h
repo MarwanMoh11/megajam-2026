@@ -346,10 +346,10 @@ public:
 
 	/** Where he stands (world, feet) and faces (degrees). */
 	UPROPERTY(EditAnywhere, Category = "Take|Queue|Doorman", meta = (MakeEditWidget = true))
-	FVector DoormanPoint = FVector(-3650.f, 150.f, 0.f);	// round B: about 1.2 m from the detector post, in front of the gate
+	FVector DoormanPoint = FVector(-3615.f, 205.f, 0.f);	// round E: at the detector's post, on the frame's corner
 
 	UPROPERTY(EditAnywhere, Category = "Take|Queue|Doorman")
-	float DoormanYaw = 137.f;	// toward the gold mark
+	float DoormanYaw = 154.f;	// toward the gold mark
 
 	/** When the light lands and the player is on Maya, her look eases onto him this fast (s, real time; 0: no pan). */
 	UPROPERTY(EditAnywhere, Category = "Take|Queue|Doorman", meta = (ClampMin = "0"))
@@ -397,7 +397,7 @@ public:
 	/** The searchlight aims this high over the scanner's feet (its BeamTargetHeight, set at the take's start; was 120,
 	 *  which sent the beam through the open gate onto the queue): the pool lands in the arch, by the doorman. <0: leave. */
 	UPROPERTY(EditAnywhere, Category = "Take|Queue|Doorman")
-	float SearchlightAimHeight = 15.f;
+	float SearchlightAimHeight = 130.f;	// round E: lands just inside the arch by the post, about 0.7 m from the doorman
 
 	/** Maya's searchlight line after his (untaught takes; on the first take her lesson line follows instead). */
 	UPROPERTY(EditAnywhere, Category = "Take|Queue|Doorman")
@@ -551,6 +551,8 @@ protected:
 	double DoormanSpeaksUntil = 0.0;
 	bool bJulianAnswered = false;
 	bool bBeamSettleLogged = true;
+	double VoiceQuietSince = -1.0;
+	double LobbyWaitSince = -1.0;
 	double ClerkSpeaksUntil = 0.0;
 
 	UPointLightComponent* MakeLamp(const ACastMember* Who, float Yaw);
