@@ -84,9 +84,14 @@ namespace SetLifePhotographer
 	public:
 		virtual bool Setup(FSetLifeStage& S) override
 		{
-			// --- casting: a gentleman in a dinner jacket at the pen; one or two guests beside it, not in the queue ---
-			const int32 Ph = S.Cast(TEXT("Photographer"), FSetLifeRole().Kit(ECastKit::GuestTux).NearPoint(PenFront, CastRadius)
-				.Where([](const ACastMember& M) { return M.GetActorLocation().Y < SouthOfCarpetY; }));
+			// --- casting: a gentleman at the pen (build_cast.py picks the press guests' kits at random, so a man in tails
+			// will do, and if the pen holds only ladies, a lady); one or two guests beside it, not in the queue ---
+			auto AtPen = [](const ACastMember& M) { return M.GetActorLocation().Y < SouthOfCarpetY; };
+			int32 Ph = S.Cast(TEXT("Photographer"), FSetLifeRole().Men().NearPoint(PenFront, CastRadius).Where(AtPen));
+			if (Ph == INDEX_NONE)
+			{
+				Ph = S.Cast(TEXT("Photographer"), FSetLifeRole().Guests().NearPoint(PenFront, CastRadius).Where(AtPen));
+			}
 			if (Ph == INDEX_NONE)
 			{
 				return false;

@@ -1162,6 +1162,26 @@ void USetLifeSubsystem::Schedule(float Now)
 		Candidates.Add(&Info);
 		Total += Info.Weight;
 	}
+	// Julian's own zone first: while nothing runs where he stands, only its pieces are tried, so the camera's
+	// look-ahead zone (the lobby, seen from the queue) cannot take the first slot from the street's piece.
+	if (!Julian.IsZero())
+	{
+		const ESetLifeZone Home = SetLife::ZoneOf(Julian);
+		bool bHomeBusy = false;
+		for (const TUniquePtr<FSetLifeStage>& S : Running)
+		{
+			bHomeBusy |= S->GetZone() == Home;
+		}
+		if (!bHomeBusy && Candidates.ContainsByPredicate([Home](const FSetLifePieceInfo* I) { return I->Zone == Home; }))
+		{
+			Candidates.RemoveAll([Home](const FSetLifePieceInfo* I) { return I->Zone != Home; });
+			Total = 0.f;
+			for (const FSetLifePieceInfo* I : Candidates)
+			{
+				Total += I->Weight;
+			}
+		}
+	}
 	// Weighted order, at most three tries a look.
 	for (int32 Try = 0; Try < 3 && Candidates.Num() > 0; ++Try)
 	{
@@ -1198,6 +1218,7 @@ bool USetLifeSubsystem::TryStart(const FSetLifePieceInfo& Info, float Now)
 	const bool bOk = Stage->Piece->Setup(*Stage) && Stage->Roles.Num() > 0 && Stage->Steps.Num() > 0;
 	if (!bOk)
 	{
+		TAKE_LOG(TEXT("SETLIFE skip %s (no cast) roles=%d"), *Info.Name.ToString(), Stage->Roles.Num());
 		// Nothing has moved: release the claims and remove any props at once.
 		for (const FSetLifeStage::FCast& C : Stage->Roles)
 		{
