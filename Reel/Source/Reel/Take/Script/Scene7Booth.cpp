@@ -461,10 +461,12 @@ void AScene7Booth::Puppet(USkeletalMeshComponent* Mesh, const FVector& Local, fl
 
 void AScene7Booth::PutCanisterOn(ATakeCharacter* Char, bool bInHand)
 {
-	if (!Char || !Char->GetMesh()) { return; }
+	// The body you see (a CastMember's act body when he has one, else his mesh), as s7-reelswap's hand-back uses.
+	USkeletalMeshComponent* Body = Char ? Char->GetVisibleBody() : nullptr;
+	if (!Body) { return; }
 	Canister->SetHiddenInGame(false);
 	CanisterLid->SetRelativeLocation(FVector(0.f, 0.f, 50.f));
-	Canister->AttachToComponent(Char->GetMesh(), FAttachmentTransformRules::KeepRelativeTransform,
+	Canister->AttachToComponent(Body, FAttachmentTransformRules::KeepRelativeTransform,
 		bInHand ? CanisterBlockBone : CanisterBone);
 	Canister->SetRelativeTransform(bInHand ? CanisterInHand : CanisterInArm);
 }
