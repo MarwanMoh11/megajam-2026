@@ -3,6 +3,7 @@
 
 #include "CastMember.h"
 #include "TakeCharacter.h"
+#include "GuardBrain.h"
 #include "Script/Scene5Auditorium.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
@@ -217,6 +218,19 @@ void AScene6Backstage::SetExitOpen(float Alpha)
 	}
 }
 
+// ---- the guard brain (stealth-ai) ---------------------------------------------------------------------------------
+// While Cole sneaks and the enforcer is at his post, UGuardBrainComponent is his eyes and ears: a "?" meter that fills
+// before he is made (slower in the dark, crouched, far off), head and body turns, barks, and walking over to check
+// footsteps. The scene keeps its lure (the brain is off while he walks to the crash and back), the takedown, the hide
+// and the catch (the brain's Spotted calls Catch). Reel.S6.GuardBrain 0 = the scene's own cone and hearing, as before.
+static TAutoConsoleVariable<int32> CVarS6GuardBrain(TEXT("Reel.S6.GuardBrain"), 1,
+	TEXT("1: Scene 6's enforcer senses with the guard brain (meter, turns, investigates steps). 0: the scene's own cone."));
+
+static UGuardBrainComponent* S6GuardBrain(const AActor* Body)
+{
+	return Body ? Body->FindComponentByClass<UGuardBrainComponent>() : nullptr;
+}
+
 // ---- the set -------------------------------------------------------------------------------------------------------
 
 void AScene6Backstage::SpawnCast()
@@ -245,6 +259,44 @@ void AScene6Backstage::SpawnCast()
 		M->FinishSpawning(Xf);
 	}
 	G.Body = M;
+	if (M)
+	{
+		UGuardBrainComponent* Brain = UGuardBrainComponent::AddTo(M);
+		Brain->GuardName = G.Name;
+		Brain->SightRange = G.Range;
+		Brain->InnerHalfAngle = G.HalfAngle;
+		Brain->PeripheralHalfAngle = G.HalfAngle + 15.f;
+		Brain->GlanceDegrees = ScanDegrees;
+		Brain->GlanceSeconds = FMath::Max(ScanSeconds, 0.5f);
+		Brain->bChaseWhenAlerted = false;	// the scene catches him (Catch: "Hey! You!", gun up)
+		Brain->bWorldBarks = false;			// subtitles through the scene's Say
+		Brain->NoticeGesture = NAME_None;	// he is armed: no hand gestures
+		Brain->SearchGesture = NAME_None;
+		Brain->AlertGesture = NAME_None;
+		TArray<FGuardStop> Stops;
+		FGuardStop Stop;
+		Stop.Location = GuardPost;
+		Stop.WaitSeconds = 1000.f;
+		Stop.bFaceYaw = true;
+		Stop.FaceYaw = GuardYaw;
+		Stops.Add(Stop);
+		Brain->SetPatrol(Stops);
+		Brain->SetBrainActive(false);
+		Brain->OnEvent.AddWeakLambda(this, [this](UGuardBrainComponent*, EGuardEvent E, AActor*)
+		{
+			if (E == EGuardEvent::Spotted && Step == EStep::Sneak)
+			{
+				Catch(TEXT("SPOTTED BACKSTAGE"));
+			}
+		});
+		Brain->OnBark.AddWeakLambda(this, [this](UGuardBrainComponent*, EGuardEvent, const FString& Line)
+		{
+			if (Step == EStep::Sneak)
+			{
+				Say(G.Name, Line, nullptr);
+			}
+		});
+	}
 	UE_LOG(LogScene6, Log, TEXT("S6 cast: guard %s"), M ? TEXT("ok") : TEXT("none"));
 }
 
@@ -291,6 +343,11 @@ void AScene6Backstage::PlaceGuardHome()
 		M->SetActorLocationAndRotation(G.Home, FRotator(0.f, G.HomeYaw, 0.f), false, nullptr, ETeleportType::TeleportPhysics);
 		M->FaceYaw(G.HomeYaw);
 		M->PlayGesture(NAME_None);
+		if (UGuardBrainComponent* Brain = S6GuardBrain(M))
+		{
+			Brain->SetBrainActive(false);
+			Brain->ResetBrain();
+		}
 	}
 }
 
@@ -363,6 +420,7 @@ void AScene6Backstage::EndScene()
 {
 	Super::EndScene();
 	SetExitOpen(1.f);	// whatever happened here, the escape finds it open
+	if (UGuardBrainComponent* Brain = S6GuardBrain(G.Body)) { Brain->SetBrainActive(false); }
 	if (G.Body) { G.Body->StopWalking(); }
 	ColeRig.Detach();
 	SetCrouch(false);
@@ -476,6 +534,10 @@ void AScene6Backstage::Lure()
 	if (!M || G.bDown)
 	{
 		return;
+	}
+	if (UGuardBrainComponent* Brain = S6GuardBrain(M))
+	{
+		Brain->SetBrainActive(false);
 	}
 	GuardState = EGuard::ToLook;
 	GuardAge = 0.f;
@@ -1357,6 +1419,11 @@ void AScene6Backstage::TickScene(float DeltaSeconds)
 	ToastLeft = FMath::Max(0.f, ToastLeft - Dt);
 	StepFilm(Dt);
 	StepProps(Dt);
+	UGuardBrainComponent* Brain = CVarS6GuardBrain.GetValueOnGameThread() != 0 ? S6GuardBrain(G.Body) : nullptr;
+	if (UGuardBrainComponent* Any = S6GuardBrain(G.Body); Any && (Step != EStep::Sneak || G.bDown || !Brain))
+	{
+		Any->SetBrainActive(false);
+	}
 	switch (Step)
 	{
 	case EStep::Caught:
@@ -1394,6 +1461,25 @@ void AScene6Backstage::TickScene(float DeltaSeconds)
 		StepDown(Dt);
 			return;
 	case EStep::Sneak:
+		if (Brain && !G.bDown && GuardState == EGuard::Post)
+		{
+			Brain->SetBrainActive(true);
+			G.Alert = Brain->GetSuspicion();
+			return;
+		}
+		if (Brain && !G.bDown)
+		{
+			// Lured: the scene's walk, look and hearing; back at his post the brain takes him again, calm.
+			const EGuard Before = GuardState;
+			StepGuard(Dt);
+			StepSight(Dt);
+			if (Before != EGuard::Post && GuardState == EGuard::Post && Step == EStep::Sneak)
+			{
+				Brain->ResetBrain();
+				Brain->SetBrainActive(true);
+			}
+			return;
+		}
 		StepGuard(Dt);
 		StepSight(Dt);
 			return;

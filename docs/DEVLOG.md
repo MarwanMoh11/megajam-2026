@@ -1792,3 +1792,15 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
   Move!") with both bodies down on the floor. All three beats landed on the first take; the log reads stages 1-8 and
   "done after 1 take(s)". Frames in `C:\Jam\Builds\script\s7fight\pie_r37..r53.png`.
 - The 24 clip assets went in at f60521a. The test hook now takes Vance from the playing scene when no scene drives it.
+
+## Nov 16, 00:20 Cairo: guard brain wired into Scene 6 (stealth-ai, at Marwan's ask)
+- Scene 6's enforcer (one guard, crouch-sneak, lure, takedown, hide) now senses with UGuardBrainComponent while Cole
+  sneaks and he holds his post. A "?" meter fills before he is made: slower in the dark, crouched or far off. He also
+  turns his head and body, barks through the scene's subtitles, and walks over to check footsteps.
+- The scene keeps its lure (the brain is off while he walks to the crash and back), the choke-hold, the trunk and the
+  catch. The brain's Spotted calls Catch. `Reel.S6.GuardBrain 0` brings back the scene's own cone and hearing.
+- The edit is cpp only, compiled with Live Coding. One PIE look (scene6_pie.py, shots C:\Jam\Builds\script\s6\brain_*):
+  the "?" over him, Noticed at 5.4 s, Spotted at 7.4 s ("Stop right there!"), "S6 caught: SPOTTED BACKSTAGE",
+  the retake, the brain reset.
+- Not wired elsewhere: Scenes 3, 4, 5 and 8 build their puzzles on exact guard timing (bar clock, sight lanes,
+  the film cycle, a chase that never catches), and a free-thinking guard would break those beats.
