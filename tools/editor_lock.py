@@ -7,7 +7,9 @@ Run with the engine's Python (stdlib only), from the repo root:
   "$PY" -I tools/editor_lock.py status
 
 acquire by the current owner refreshes the lock (do it every few minutes while working). A lock not refreshed for
-15 minutes is stale and the next acquire takes it. Hold it for one burst of editor work (a script run, a few shots,
+15 minutes is stale and the next acquire takes it.
+Waiters queue first-come first-served (C:\Jam\Builds\qa\editor.queue): a free lock goes only to the head of the
+queue, so keep acquire running (--wait) to hold your place; status shows the queue. Hold it for one burst of editor work (a script run, a few shots,
 a save), then release: others are waiting. Exit codes: 0 got it, 2 timed out.
 """
 import json
@@ -17,6 +19,58 @@ import time
 
 LOCK = r"C:\Jam\Builds\qa\editor.lock"
 STALE = 15 * 60
+QUEUE = r"C:\Jam\Builds\qa\editor.queue"   # FIFO of waiters: a free lock goes to the head (Nov 15)
+QMTX = QUEUE + ".mtx"
+GONE = 30   # a waiter that has not polled for this many seconds has left the queue
+
+
+def _qedit(fn):
+    """Read-modify-write the queue under a tiny file mutex. fn(list) -> list."""
+    for _ in range(200):
+        try:
+            fd = os.open(QMTX, os.O_WRONLY | os.O_CREAT | os.O_EXCL)
+            os.close(fd)
+            break
+        except FileExistsError:
+            try:
+                if time.time() - os.path.getmtime(QMTX) > 10:
+                    os.remove(QMTX)
+            except OSError:
+                pass
+            time.sleep(0.05)
+    try:
+        try:
+            with open(QUEUE, encoding="utf-8") as f:
+                q = json.load(f)
+        except (OSError, ValueError):
+            q = []
+        now = time.time()
+        q = [w for w in q if now - w.get("seen", 0) <= GONE]
+        q = fn(q)
+        with open(QUEUE, "w", encoding="utf-8") as f:
+            json.dump(q, f)
+        return q
+    finally:
+        try:
+            os.remove(QMTX)
+        except OSError:
+            pass
+
+
+def _queue_touch(owner, note):
+    def f(q):
+        now = time.time()
+        for w in q:
+            if w["owner"] == owner:
+                w["seen"] = now
+                return q
+        q.append({"owner": owner, "at": now, "seen": now, "note": note})
+        return q
+    return _qedit(f)
+
+
+def _queue_leave(owner):
+    _qedit(lambda q: [w for w in q if w["owner"] != owner])
 
 
 def read():
@@ -47,9 +101,12 @@ def acquire(owner, wait, note):
             write(cur)
             print("OK (refreshed, held %d s)" % (now - cur.get("since", now)))
             return 0
-        if cur is None and not os.path.exists(LOCK):
+        q = _queue_touch(owner, note)
+        my_turn = bool(q) and q[0]["owner"] == owner
+        if cur is None and not os.path.exists(LOCK) and my_turn:
             try:
                 write({"owner": owner, "since": now, "beat": now, "note": note}, new=True)
+                _queue_leave(owner)
                 print("OK")
                 return 0
             except FileExistsError:
@@ -64,6 +121,7 @@ def acquire(owner, wait, note):
                     pass
             continue
         if now >= end:
+            _queue_leave(owner)
             if cur:
                 print("TIMEOUT: held by %s for %d s (%s)" % (cur.get("owner"), now - cur.get("since", now), cur.get("note", "")))
             else:
@@ -94,6 +152,9 @@ def main(argv):
                 cur.get("owner"), now - cur.get("since", now), now - cur.get("beat", now), cur.get("note", "")))
         else:
             print("free")
+        q = _qedit(lambda q: q)
+        if q:
+            print("queue: " + ", ".join("%s (%d s)" % (w["owner"], time.time() - w["at"]) for w in q))
         return 0
     cmd, owner = argv[0], (argv[1] if len(argv) > 1 else "")
     if not owner:
