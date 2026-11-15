@@ -14,6 +14,7 @@
 #include "Sound/SoundBase.h"
 #include "Components/AudioComponent.h"
 #include "UObject/UnrealType.h"
+#include "HAL/IConsoleManager.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogScene2, Log, All);
 
@@ -48,6 +49,21 @@ namespace Scene2Local
 		C->DrawItem(T);
 	}
 }
+
+// Test hooks (console): Reel.S2.Key <Key> <1|0> sends a key edge to the active Scene 2; Reel.S2.Easy N multiplies the
+// match windows (1 = as tuned; 50 = any dial position matches).
+static TAutoConsoleVariable<float> CVarS2Easy(TEXT("Reel.S2.Easy"), 1.f, TEXT("Scene 2: match-window multiplier (test)."));
+static FAutoConsoleCommandWithWorldAndArgs GS2KeyCmd(
+	TEXT("Reel.S2.Key"), TEXT("Reel.S2.Key <Key> <1|0>: a key edge into the active Scene 2 (test)."),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+	{
+		if (!World || Args.Num() < 1) { return; }
+		const bool bDown = Args.Num() < 2 || FCString::Atoi(*Args[1]) != 0;
+		for (TActorIterator<AScene2Van> It(World); It; ++It)
+		{
+			if (It->IsActive()) { It->HandleSceneKey(FKey(FName(*Args[0])), bDown); }
+		}
+	}));
 
 AScene2Van::AScene2Van()
 {
@@ -246,7 +262,7 @@ void AScene2Van::UpdateTarget()
 
 bool AScene2Van::InWindow() const
 {
-	const float Widen = 1.f + 0.2f * FMath::Min(Retakes, 3);
+	const float Widen = (1.f + 0.2f * FMath::Min(Retakes, 3)) * FMath::Max(0.1f, CVarS2Easy.GetValueOnGameThread());
 	return FMath::Abs(Freq - TargetFreq) <= Tune(TEXT("FreqTolerance"), FreqTolerance) * Widen
 		&& FMath::Abs(Gain - TargetGain) <= Tune(TEXT("GainTolerance"), GainTolerance) * Widen;
 }
