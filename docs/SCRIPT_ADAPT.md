@@ -116,3 +116,13 @@ gameplay works and can fail into a retake, and `FinishScene` cuts to the next sc
 | s7-booth | local_1cc2b37c-5cbf-4699-b1b9-4fe287f870b7 |
 | s8-alley | local_6f919fa8-18f0-4981-b2c5-dc328b3f34e3 |
 | puzzle (finishing, then stops) | local_6296ffb1-88d3-49e8-aa3e-a664691c9415 |
+
+## Batched restarts (header / new UCLASS changes go in only at these)
+| Slot (Cairo) | Runs it | Rule |
+|---|---|---|
+| 14:40 | s8-alley | Everything that must go in is in `Source/`, `.h`+`.cpp`, passing a snapshot build, and committed by 14:35. Late = the next slot. |
+| 16:10 | spine | Same rule, by 16:05. |
+| 17:40 | spine | Last restart before the 18:30 freeze, by 17:35. |
+Snapshot builds while the editor is up need `-NoHotReloadFromIDE` (else UBT refuses: "Live Coding is active"). The runner
+announces "editor down" and "editor up" to the coordinator, who broadcasts. If the build fails on someone's file, the
+runner tells the owner and may apply a one-line fix to get the editor back, then tells the owner.
