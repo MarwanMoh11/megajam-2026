@@ -1857,3 +1857,18 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
   messages; shots in `C:\Jam\Builds\qa\seat`.
 - **Went wrong:** my first Scene 4 HUD edit shadowed a local `Kit` (C4456, an error in Shipping) and blocked the other
   session's Live Coding until fixed. What re-enables Vance's movement while seated is not found; the pin covers it.
+
+## Nov 16, 01:50 Cairo: the masquerade (masks on the mannequin extras)
+
+- **What changed:** the gala is now a masked ball. Everyone still on the template mannequin (no generated mesh: 220
+  guests, the 4 band players, the staff member) wears a domino mask over the blank stock face, built from the same
+  basic shapes as the rest of the costumes: a slab across the eyes with raised outer corners. Men are mostly black,
+  women mostly gold or red (the two colours the noir grade keeps); the coloured masks get dark eye holes, so the stock
+  face finally has eyes; some of the women without hats wear a feather. The 8 mannequin security men get dark glasses
+  instead. Julian, Maya, Vex, Vance, the bodyguard and every generated-mesh NPC keep their faces. Glasses are dropped
+  under a mask. `Reel.Cast.Masks 0` turns it off (on the next play). All in `CastMember.cpp` (`MasqueradeMask`).
+- **What the agents did:** one Claude Opus 5.5 session picked the trick, wrote it, Live Coded it twice in turns on the
+  shared editor lock, and looked at the queue guests in editor captures.
+- **Went wrong / not seen:** the first version used a curved band that sank into the face and pale masks that matched
+  pale skin; the slab and the black/gold/red palette replaced them after one capture. Only three queue guests were
+  looked at, in the editor; the band, the staff, the guards' glasses and the seated hall have not been seen with masks.

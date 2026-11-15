@@ -31,6 +31,11 @@ static TAutoConsoleVariable<int32> CVarCastActing(
 	TEXT("1: the cast acts (looks, gestures, conversation, applause, the band playing). 0: step 5's still cast."),
 	ECVF_Default);
 
+static TAutoConsoleVariable<int32> CVarCastMasks(
+	TEXT("Reel.Cast.Masks"), 1,
+	TEXT("1: the masquerade, a mask on everyone still on the template mannequin. 0: bare stock faces (next play)."),
+	ECVF_Default);
+
 namespace CastKits
 {
 	enum class EKind : uint8 { Costume, Floor, Held };
@@ -543,6 +548,62 @@ namespace CastKits
 		if (bGlass)
 		{
 			Glass(Out);
+		}
+	}
+
+	// --- the masquerade (Nov 16): the gala is a masked ball. Whoever is still on the template mannequin (no Rodin mesh)
+	// wears a mask over the blank stock face, so it reads as costume, not as an unfinished model: guests a domino in
+	// black, ivory, gold, silver or red (eye holes on the pale ones, a feather on some of the women's), staff and the band
+	// plain black, the security men dark glasses. The leads, Vance and the bodyguard keep their faces.
+	// Reel.Cast.Masks 0: no masks (pieces are built at BeginPlay, so it takes effect on the next play).
+	bool WearsMasqueradeMask(ECastKit Kit)
+	{
+		switch (Kit)
+		{
+		case ECastKit::None: case ECastKit::Julian: case ECastKit::Maya: case ECastKit::Vex:
+		case ECastKit::Vance: case ECastKit::Bodyguard:
+			return false;
+		default:
+			return true;
+		}
+	}
+
+	void MasqueradeMask(ECastKit Kit, uint32 Seed, bool bShellHead, bool bHat, TArray<FPiece>& Out)
+	{
+		const FRotator Z = FRotator::ZeroRotator;
+		// The face front and the eye line from the head bone: the skin shell's (the glasses' place), or the bare head's.
+		const float FX = bShellHead ? 11.8f : CrowdFaceX, EZ = bShellHead ? 8.6f : CrowdEyeZ;
+		if (Kit == ECastKit::Guard || Kit == ECastKit::Doorman)
+		{
+			Out.Add({ETakeShape::Cube, TEXT("head"), FVector(FX - 0.3f, 0.f, EZ - 0.6f), Z, FVector(2.f, 15.f, 3.5f), Grey(0.005f)});	// dark glasses
+			return;
+		}
+		// Colours that stand off any skin in the noir grade (red and gold are the two the grade keeps).
+		const FLinearColor Black = Lin(0.010f, 0.010f, 0.012f), Ivory = Lin(0.40f, 0.38f, 0.32f);
+		const FLinearColor Gold = Lin(0.34f, 0.23f, 0.06f), Red = Lin(0.20f, 0.012f, 0.018f);
+		const bool bWoman = IsQuinnKit(Kit);
+		FLinearColor C = Black;
+		if (IsGuestKit(Kit))
+		{
+			const float R = Draw(Seed, 91);
+			C = bWoman ? (R < 0.30f ? Black : R < 0.65f ? Gold : Red) : (R < 0.60f ? Black : R < 0.85f ? Gold : Red);
+		}
+		// The band across the eyes: a flat slab standing proud of the face (a curved one sank into it), the domino's
+		// raised outer corners on top of it.
+		const float BX = FX + (bShellHead ? -0.3f : 0.2f), BZ = EZ + 0.6f;
+		Out.Add({ETakeShape::Cube, TEXT("head"), FVector(BX, 0.f, BZ), Z, FVector(2.4f, 15.5f, 4.6f), C});
+		Out.Add({ETakeShape::Cube, TEXT("head"), FVector(BX - 0.1f, 6.4f, BZ + 2.6f), Z, FVector(2.2f, 3.2f, 2.2f), C});
+		Out.Add({ETakeShape::Cube, TEXT("head"), FVector(BX - 0.1f, -6.4f, BZ + 2.6f), Z, FVector(2.2f, 3.2f, 2.2f), C});
+		if (C != Black)
+		{
+			// Eye holes on the coloured masks: the stock face gets eyes it never had.
+			Out.Add({ETakeShape::Sphere, TEXT("head"), FVector(BX + 1.1f, 3.4f, BZ - 0.2f), Z, FVector(0.6f, 3.2f, 1.9f), Grey(0.004f)});
+			Out.Add({ETakeShape::Sphere, TEXT("head"), FVector(BX + 1.1f, -3.4f, BZ - 0.2f), Z, FVector(0.6f, 3.2f, 1.9f), Grey(0.004f)});
+		}
+		if (bWoman && !bHat && IsGuestKit(Kit) && Draw(Seed, 93) < 0.5f)
+		{
+			const float Side = Draw(Seed, 94) < 0.5f ? 1.f : -1.f;
+			Out.Add({ETakeShape::Sphere, TEXT("head"), FVector(BX - 2.f, Side * 7.f, BZ + 8.f), Z, FVector(1.6f, 3.2f, 14.f), C == Black ? Ivory : Black});	// a feather
 		}
 	}
 
@@ -1245,14 +1306,34 @@ void ACastMember::BuildPieces(bool bTransient)
 	Drawn.bSeated = bSeated;
 	Drawn.bInstrumentProps = bInstrumentProps;
 	Drawn.bGlass = bHoldsGlass && !bSeated && !bDressParent && !bWalker;
+	// The masquerade: a mask over the stock face of anyone left on the mannequin (no glasses under it).
+	const IConsoleVariable* MasksVar = IConsoleManager::Get().FindConsoleVariable(TEXT("Reel.Cast.Masks"));
+	const bool bMasked = !bHero && !bDressParent && CastKits::WearsMasqueradeMask(Kit) && (!MasksVar || MasksVar->GetInt() != 0);
 	TArray<CastKits::FPiece> Defs;
 	if (UsesCrowdLook())
 	{
-		CastKits::BuildGuest(Kit, Tint, Look, bSeated, Drawn.bGlass, Defs);
+		FCastLook Worn = Look;
+		if (bMasked)
+		{
+			Worn.Glasses = 0;
+		}
+		CastKits::BuildGuest(Kit, Tint, Worn, bSeated, Drawn.bGlass, Defs);
+		if (bMasked)
+		{
+			CastKits::MasqueradeMask(Kit, Seed, false, Look.Hat != 0, Defs);
+		}
 	}
 	else
 	{
+		if (bMasked)
+		{
+			Drawn.bGlasses = false;
+		}
 		CastKits::Build(Kit, Tint, Drawn, Defs);
+		if (bMasked)
+		{
+			CastKits::MasqueradeMask(Kit, Seed, Drawn.bShell, Drawn.bHat, Defs);
+		}
 	}
 
 	const FQuat MeshFromBody(FRotator(0.f, 90.f, 0.f));		// body X (forward) -> mesh +Y, body Y (right) -> mesh -X
