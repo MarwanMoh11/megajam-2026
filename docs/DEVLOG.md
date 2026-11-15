@@ -1274,3 +1274,22 @@ animation, you can't move it or change it." He was looking at the searchlight on
 - What went wrong: the helper waited out a whole editor outage (restarts and a Live Coding crash). Its first run
   failed on a factory property (`initial_parent`), which I fixed on the spot. My C++ was compile-checked in a copy of
   the project (single-file UBT) before any shared restart, so it could not break anyone's build.
+
+## Nov 15, 14:35 Cairo: s2-van, Scene 2 placed: the van's opening move and the signal-intercept minigame (Max)
+- `AScene2Van` (Take/Script/Scene2Van.*): Max has no body, so the scene actor is its own camera. The opening flies it
+  from the theater steps (on Vance at the palm plate) across the wet street, pushes it through the van's fogged
+  windshield (a condensation bloom with drips, drawn on the HUD) and settles on Max. SPACE skips it; a retake skips it.
+- The minigame on Max's console: the main CRT is a live SceneCapture of Vance at the plate (green phosphor, scanlines,
+  a rolling bar, REC). On the scope, the scanner's amber handshake wave drifts; two dials (A/D frequency, Left/Right
+  gain; each press moves the needle on its frame, holding turns it) bring Max's green wave onto it until SYNC fills,
+  then SPACE patches the bypass. Patching before sync sparks and costs hesitation. Vance's hesitation bar fills over
+  24 s (+5 s a retake, wider windows a retake); the bouncer speaks at 45% and 75%; full = the blooper "Vance hesitated
+  at the glass". On the lock: BZZT-LOCK (flash, stamp, the toggle slammed up), "You're a French duke now. Drop the
+  hand.", the cut to Vance, Scene 1's `PalmAccepted()` by name, and the finish when Scene 1 sets `S1PalmThrough`.
+- Two opus-high helpers: one designed Max's voice with ElevenLabs Voice Design (`extuKh6lOtuXuEDVJn7l`, now also
+  used by s3 and s8) and made his five lines, the bouncer's two (a monitor-speaker band) and six sound effects; the
+  other builds the florist van set (`tools/script/scene2_van.py`), still waiting on the editor lock.
+- What went wrong: my header vanished from disk once (rewritten and committed at once); spine parked the header
+  without its .cpp for a build; a local named `Ink` shadowed `TakeStyle::Ink` (C4459 is an error here) and stopped
+  s5's restart until renamed; the audio helper never got the editor lock in four tries, so I imported its WAVs with a
+  top-level import script (the MCP Python tool rejects imports inside functions).
