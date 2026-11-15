@@ -75,6 +75,64 @@ public:
 	/** 2D speed below StandSpeed (standing still: marks count it). */
 	bool IsStanding() const;	// BODY: (m)
 
+	// --- chars-locomotion (Nov 15 evening): scripted walks, run, crouch ------------------------------------------------
+	// Every character's body (UTakeLocoAnim) animates from how far it actually moved each frame, so a scene that moves
+	// him with SetActorLocation still gets the walk. These hooks move him with the movement component instead: he
+	// collides with walls and blocking props, turns to where he walks, and eases in and out.
+
+	/** Walks him to Target (2D) at Speed cm/s (0: WalkSpeed; RunSpeed or more runs) through the movement component,
+	 *  stopping within AcceptRadius cm. Replaces any walk in progress. The player's WASD cancels it. */
+	UFUNCTION(BlueprintCallable, Category = "Take|Character")
+	void ScriptWalkTo(const FVector& Target, float Speed = 0.f, float AcceptRadius = 20.f);
+
+	/** ScriptWalkTo through each point in turn (round props instead of through them). */
+	UFUNCTION(BlueprintCallable, Category = "Take|Character")
+	void ScriptWalkPath(const TArray<FVector>& Points, float Speed = 0.f, float AcceptRadius = 20.f);
+
+	UFUNCTION(BlueprintCallable, Category = "Take|Character")
+	void StopScriptWalk();
+
+	/** A ScriptWalkTo / ScriptWalkPath is still going. */
+	UFUNCTION(BlueprintCallable, Category = "Take|Character")
+	bool IsScriptWalking() const { return ScriptPath.Num() > 0; }
+
+	/** Forces the run on (RunSpeed) or off, whatever the scene's bAllowRun says (a scripted dash). */
+	UFUNCTION(BlueprintCallable, Category = "Take|Character")
+	void SetRunning(bool bRun);
+
+	/** Running now: the scripted run, or the player holding Shift where the scene allows it. */
+	UFUNCTION(BlueprintCallable, Category = "Take|Character")
+	bool IsRunning() const { return bRunForced || bRunHeld; }
+
+	/** Crouches him (CrouchSpeed, the crouched walk) or stands him up. The player's C / Ctrl toggles it where the
+	 *  active scene's bAllowCrouch is on. The capsule does not change (doorways and sight lines stay the same). */
+	UFUNCTION(BlueprintCallable, Category = "Take|Character")
+	void SetCrouching(bool bCrouch);
+
+	UFUNCTION(BlueprintCallable, Category = "Take|Character")
+	bool IsCrouching() const { return bCrouching; }
+
+	/** The skeleton you can see right now: his cast member's act body while it plays an act over him (PlayGesture),
+	 *  else his own mesh. Attach props held in the hand here (the act moves the hands of that body only). */
+	UFUNCTION(BlueprintCallable, Category = "Take|Character")
+	USkeletalMeshComponent* GetVisibleBody() const;
+
+	/** The active script scene lets the player run / crouch (AScriptScene::bAllowRun / bAllowCrouch). */
+	bool CanPlayerRun() const;
+	bool CanPlayerCrouch() const;
+
+	/** cm/s with Shift held (or SetRunning). */
+	UPROPERTY(EditAnywhere, Category = "Take|Character")
+	float RunSpeed = 520.f;
+
+	/** cm/s^2 while running (a quicker start than the walk's). */
+	UPROPERTY(EditAnywhere, Category = "Take|Character")
+	float RunAcceleration = 1400.f;
+
+	/** cm/s crouched. */
+	UPROPERTY(EditAnywhere, Category = "Take|Character")
+	float CrouchSpeed = 150.f;
+
 	/** His feet: actor location minus the capsule's scaled half height. Tape, frames, marks and the beam test this. */
 	FVector GetFeetLocation() const;	// BODY: (m)
 
@@ -135,7 +193,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Character")
 	FName TintParameter = TEXT("Paint Tint");
 
-	/** cm/s (MaxWalkSpeed). Nobody runs. */
+	/** cm/s (MaxWalkSpeed). Running (RunSpeed) only where the scene allows it. */
 	UPROPERTY(EditAnywhere, Category = "Take|Character")
 	float WalkSpeed = 250.f;
 
@@ -221,4 +279,30 @@ protected:
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UMaterialInstanceDynamic>> TintMIDs;
+
+	/** chars-locomotion: the body's anim class (UTakeLocoAnim) on the mesh, replacing ABP_Unarmed. */
+	void ApplyLocoAnim();
+
+	/** The speed and acceleration for this frame (walk, run or crouch) on the movement component. */
+	void ApplyGait();
+
+	/** The player's run and crouch keys, read when the player is on this character. */
+	void ReadGaitKeys();
+
+	/** The scripted walk's step for this frame. */
+	void StepScriptWalk();
+
+	TArray<FVector> ScriptPath;
+	float ScriptSpeed = 0.f;
+	float ScriptAccept = 20.f;
+	bool bRunForced = false;
+	bool bRunHeld = false;
+	bool bCrouching = false;
+	bool bCrouchFromKey = false;
+	uint64 GaitFrame = 0;
+	/** The gait on the movement component: 0 walk (whatever speed the scene set), 1 run, 2 crouch, 3 a scripted speed.
+	 *  Speeds are written only when it changes, and the scene's own walk speed is put back on the way to 0. */
+	uint8 Gait = 0;
+	float SavedWalkSpeed = -1.f;
+	float SavedAcceleration = -1.f;
 };

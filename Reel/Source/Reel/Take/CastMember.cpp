@@ -10,6 +10,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
+#include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
 #include "HAL/IConsoleManager.h"
@@ -687,6 +688,21 @@ struct FCastWorld
 
 // --- setup -------------------------------------------------------------------------------------------------------------
 
+// chars-locomotion: the template's two-handed pistol aim (on the mannequin skeleton: every cast mesh plays it).
+namespace CastGun
+{
+	UAnimSequenceBase* AimClip()
+	{
+		static TWeakObjectPtr<UAnimSequenceBase> Cached;
+		if (!Cached.IsValid())
+		{
+			Cached = LoadObject<UAnimSequenceBase>(nullptr,
+				TEXT("/Game/Characters/Mannequins/Anims/Pistol/MF_Pistol_Idle_ADS.MF_Pistol_Idle_ADS"));
+		}
+		return Cached.Get();
+	}
+}
+
 ACastMember::ACastMember()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -711,6 +727,20 @@ ACastMember::ACastMember()
 	SeatedAnim = Idle.Object;
 	SeatedTime = 0.f;
 	WalkBlendSpace = Walk.Object;
+
+	// chars-locomotion: the pistol, hidden until SetArmed (or bArmed on the placed member).
+	Gun = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Gun"));
+	Gun->SetupAttachment(Body);
+	Gun->SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
+	Gun->SetGenerateOverlapEvents(false);
+	Gun->SetCanEverAffectNavigation(false);
+	Gun->bReceivesDecals = false;
+	Gun->SetHiddenInGame(true);
+	Gun->SetVisibility(false);
+	GunMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Take/Props/Guns/SM_Pistol.SM_Pistol")));
+	// hand_r on the mannequin skeleton: +X runs back up the forearm, +Y out of the palm's thumb side, +Z out of the
+	// back of the hand. The grip sits across the palm with the barrel along the fingers (tools/build_gun.py probe).
+	GunGrip = FTransform(FRotator(0.f, 180.f, 0.f), FVector(-9.f, 2.f, -1.5f));
 }
 
 USkeletalMeshComponent* ACastMember::GetWearer() const
@@ -754,6 +784,7 @@ void ACastMember::OnConstruction(const FTransform& Transform)
 	{
 		BuildPieces(true);
 	}
+	ApplyGun();
 }
 
 void ACastMember::BeginPlay()
@@ -778,6 +809,9 @@ void ACastMember::BeginPlay()
 	}
 	TargetYaw = static_cast<float>(GetActorRotation().Yaw);
 	bBowFiredLast = false;
+	ApplyGun();
+	LastOwnLocation = GetActorLocation();
+	bHasOwnLocation = true;
 	const float Now = GetWorld()->GetTimeSeconds();
 	NextThink = Now + FMath::FRand() * ThinkInterval;
 	NextLookChange = Now + FMath::FRand() * 3.f;
@@ -1446,7 +1480,8 @@ void ACastMember::TickOwnWalk(float DeltaSeconds)
 	{
 		if (UAnimSingleNodeInstance* Inst = Body->GetSingleNodeInstance())
 		{
-			Inst->SetBlendSpacePosition(FVector(WalkSpeedNow < 5.f ? 0.f : WalkSpeedNow, 0.f, 0.f));
+			const float Shown = FMath::Max(WalkSpeedNow, ExternalUntil > 0.f ? ExternalSpeed : 0.f);
+			Inst->SetBlendSpacePosition(FVector(Shown < 5.f ? 0.f : Shown, 0.f, 0.f));
 		}
 	}
 	// Turning: eased toward the way it goes (or FaceYaw), never faster than TurnRate.
@@ -1492,6 +1527,92 @@ void ACastMember::TickWalk(float DeltaSeconds)
 	}
 }
 
+// --- chars-locomotion (Nov 15 evening): the pistol ----------------------------------------------------------------------
+
+void ACastMember::ApplyGun()
+{
+	if (!Gun)
+	{
+		return;
+	}
+	USkeletalMeshComponent* Wearer = GetWearer();
+	Wearer = Wearer ? Wearer : Body.Get();
+	UStaticMesh* Mesh = (bArmed && !GunMesh.IsNull()) ? GunMesh.LoadSynchronous() : nullptr;
+	if (!bArmed || !Wearer || !Mesh)
+	{
+		Gun->SetHiddenInGame(true);
+		Gun->SetVisibility(false);
+		return;
+	}
+	if (Gun->GetStaticMesh() != Mesh)
+	{
+		Gun->SetStaticMesh(Mesh);
+	}
+	if (Gun->GetAttachParent() != Wearer || Gun->GetAttachSocketName() != GunSocket)
+	{
+		Gun->AttachToComponent(Wearer, FAttachmentTransformRules::SnapToTargetNotIncludingScale, GunSocket);
+	}
+	Gun->SetRelativeTransform(GunGrip);
+	Gun->SetHiddenInGame(false);
+	Gun->SetVisibility(true);
+}
+
+void ACastMember::SetArmed(bool bInArmed)
+{
+	bArmed = bInArmed;
+	if (!bArmed && IsAiming())
+	{
+		StartAct(ECastAct::None, 0.f, false, FVector::ZeroVector);
+	}
+	ApplyGun();
+	TAKE_LOG(TEXT("CAST %s %s"), *GetActorNameOrLabel(), bArmed ? TEXT("draws a pistol") : TEXT("puts the pistol away"));
+}
+
+void ACastMember::AimAt(const FVector& WorldPoint)
+{
+	if (bDressParent)
+	{
+		TAKE_LOG(TEXT("CAST %s: the crew do not aim"), *GetActorNameOrLabel());
+		return;
+	}
+	if (!bArmed)
+	{
+		SetArmed(true);
+	}
+	if (!IsAiming())
+	{
+		StartAct(ECastAct::Aim, -1.f, !WorldPoint.IsZero(), WorldPoint);
+	}
+	if (!WorldPoint.IsZero())
+	{
+		Acting.ActWorld = WorldPoint;
+		LookAtPoint(WorldPoint, 1.5f);
+		if (!bWalker && !bWalkingTo)
+		{
+			FaceYaw(static_cast<float>((WorldPoint - GetActorLocation()).Rotation().Yaw));
+		}
+	}
+}
+
+void ACastMember::StopAiming()
+{
+	if (IsAiming())
+	{
+		StartAct(ECastAct::None, 0.f, false, FVector::ZeroVector);
+	}
+}
+
+FVector ACastMember::GetMuzzleLocation() const
+{
+	if (Gun && bArmed && Gun->GetStaticMesh())
+	{
+		return Gun->GetComponentTransform().TransformPosition(GunMuzzle);
+	}
+	const USkeletalMeshComponent* Wearer = GetWearer();
+	Wearer = Wearer ? Wearer : Body.Get();
+	return Wearer ? Wearer->GetSocketLocation(GunSocket) : GetActorLocation();
+}
+
 ECastAct ACastMember::ActFromName(FName Gesture) const
 {
 	struct FEntry { const TCHAR* Name; ECastAct Act; };
@@ -1503,7 +1624,7 @@ ECastAct ACastMember::ActFromName(FName Gesture) const
 		{TEXT("Nod"), ECastAct::Nod}, {TEXT("Shrug"), ECastAct::Shrug}, {TEXT("Point"), ECastAct::Point},
 		{TEXT("CheckWatch"), ECastAct::CheckWatch}, {TEXT("LookAround"), ECastAct::LookAround},
 		{TEXT("Headset"), ECastAct::Headset}, {TEXT("Use"), ECastAct::Use}, {TEXT("Lift"), ECastAct::Lift},
-		{TEXT("Bow"), ECastAct::Bow}, {TEXT("Speech"), ECastAct::Speech}};
+		{TEXT("Bow"), ECastAct::Bow}, {TEXT("Speech"), ECastAct::Speech}, {TEXT("Aim"), ECastAct::Aim}};
 	for (const FEntry& Entry : Entries)
 	{
 		if (Gesture == FName(Entry.Name))	// FName compares without case
@@ -1559,7 +1680,7 @@ void ACastMember::StartAct(ECastAct Act, float Seconds, bool bPoint, const FVect
 		return;
 	}
 	const FName Key = ClipKeyFor(Act);
-	UAnimSequenceBase* Clip = FindClip(Key);
+	UAnimSequenceBase* Clip = Act == ECastAct::Aim ? CastGun::AimClip() : FindClip(Key);
 	if (!Clip && Act == ECastAct::Speech)
 	{
 		Clip = FindClip(TEXT("Speech_A"));
@@ -1574,9 +1695,15 @@ void ACastMember::StartAct(ECastAct Act, float Seconds, bool bPoint, const FVect
 	Acting.bActPoint = bPoint;
 	Acting.ActWorld = Point;
 	Acting.ActRate = 0.94f + 0.12f * Draw(50 + Acting.ActSerial);
-	Acting.bActUpperBody = bWalker || bMoving || bBandKit || (bSeated && !(bSeatedClip && bSeatClip));
+	Acting.bActUpperBody = Act == ECastAct::Aim || bWalker || bMoving || bBandKit || (bSeated && !(bSeatedClip && bSeatClip));
 	Acting.BlendIn = bDressParent ? 0.15f : 0.3f;
 	Acting.BlendOut = bDressParent ? 0.3f : 0.4f;
+	if (Act == ECastAct::Aim)
+	{
+		Acting.ActRate = 1.f;
+		Acting.BlendIn = 0.15f;	// the gun comes up fast
+		Acting.BlendOut = 0.3f;
+	}
 	if (Act == ECastAct::Bow)
 	{
 		Acting.BlendIn = 0.1f;
@@ -1717,10 +1844,38 @@ void ACastMember::Tick(float DeltaSeconds)
 	{
 		TickWalk(DeltaSeconds);
 	}
+	// chars-locomotion: moved by a scene with SetActorLocation (not WalkTo): the legs walk at that speed. Not a body
+	// lying down or dragged (pitched or rolled), and not a placement (more than 2.5 m in one tick).
+	if (!bWalker && !bSeated && !bBandKit && bHasOwnLocation && !bWalkingTo && DeltaSeconds > 0.f)
+	{
+		const FVector L = GetActorLocation();
+		const FRotator R = GetActorRotation();
+		const float D = static_cast<float>(FVector::Dist2D(L, LastOwnLocation));
+		const bool bUpright = FMath::Abs(R.Pitch) < 20.f && FMath::Abs(R.Roll) < 20.f;
+		if (bUpright && D < 250.f && D / DeltaSeconds > 15.f)
+		{
+			ExternalSpeed = FMath::FInterpTo(ExternalSpeed, FMath::Min(D / DeltaSeconds, 600.f), FMath::Min(DeltaSeconds, 0.1f), 12.f);
+			ExternalUntil = Now + 0.25f;
+			if (!bOnWalkSpace && WalkBlendSpace)
+			{
+				PlayBase(WalkBlendSpace, true, 1.f, 0.f);
+				bOnWalkSpace = true;
+			}
+			StoppedAt = -1.f;
+		}
+		else if (ExternalUntil > 0.f && Now > ExternalUntil)
+		{
+			ExternalSpeed = 0.f;
+			ExternalUntil = -1.f;
+			StoppedAt = Now;
+		}
+	}
 	if (bWalkingTo || bTurning || (bOnWalkSpace && RestBase != WalkBlendSpace))
 	{
 		TickOwnWalk(DeltaSeconds);
 	}
+	LastOwnLocation = GetActorLocation();
+	bHasOwnLocation = true;
 	if (bSeated && !bSeatFitted)
 	{
 		FitSeat();
@@ -1741,7 +1896,7 @@ void ACastMember::Tick(float DeltaSeconds)
 		Think(Now);
 		NextThink = Now + (bBandKit ? 0.f : ThinkInterval * (0.7f + 0.6f * FMath::FRand()));
 	}
-	const bool bEveryFrame = bWalker || bWalkingTo || bTurning || bBandKit || (bOnWalkSpace && RestBase != WalkBlendSpace);
+	const bool bEveryFrame = bWalker || bWalkingTo || bTurning || bBandKit || ExternalUntil > 0.f || (bOnWalkSpace && RestBase != WalkBlendSpace);
 	const float Interval = bEveryFrame ? 0.f : FMath::Min(ThinkInterval, 0.1f);
 	if (!FMath::IsNearlyEqual(PrimaryActorTick.TickInterval, Interval))
 	{

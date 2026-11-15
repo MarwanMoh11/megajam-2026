@@ -31,6 +31,7 @@ class UAnimationAsset;
 class UAnimSequenceBase;
 class UCastAnimInstance;
 class UMaterialInterface;
+class UStaticMesh;
 
 /** A guest's whole look, decided by tools/build_cast.py so that no two guests share one (crowd pass, Nov 15). With
  *  bExplicit off the look is drawn from LookSeed as before. The body wears CrowdBodyMaterial, painted per person from
@@ -221,6 +222,53 @@ public:
 	/** Guests and staff within Radius of Center play Gesture, each with probability Share, a little out of step. */
 	UFUNCTION(BlueprintCallable, Category = "Take|Cast", meta = (WorldContext = "WorldContext"))
 	static void CrowdGesture(const UObject* WorldContext, FName Gesture, FVector Center, float Radius, float Share = 0.75f);
+
+	// --- chars-locomotion (Nov 15 evening): the pistol --------------------------------------------------------------
+
+	/** A pistol in the right hand (GunMesh on the body's GunSocket, placed by GunGrip), or none. Guards and enforcers
+	 *  in the fights and the chase: scene sessions call it (build_cast.py can set bArmed on a placed member). */
+	UFUNCTION(BlueprintCallable, Category = "Take|Cast")
+	void SetArmed(bool bInArmed);
+
+	UFUNCTION(BlueprintCallable, Category = "Take|Cast")
+	bool IsArmed() const { return bArmed; }
+
+	/** Arms him if he is not, and raises the pistol at WorldPoint: the template's two-handed pistol aim on the upper
+	 *  body (the legs keep walking), the head on the point, held until StopAiming or another act. The body does not
+	 *  turn: FaceYaw (own walkers) or the watcher's own facing does. */
+	UFUNCTION(BlueprintCallable, Category = "Take|Cast")
+	void AimAt(const FVector& WorldPoint);
+
+	UFUNCTION(BlueprintCallable, Category = "Take|Cast")
+	void StopAiming();
+
+	UFUNCTION(BlueprintCallable, Category = "Take|Cast")
+	bool IsAiming() const { return Acting.Act == ECastAct::Aim; }
+
+	/** The muzzle in the world (a flash, a tracer, a sound): GunMuzzle on the gun, or the hand without a gun. */
+	UFUNCTION(BlueprintCallable, Category = "Take|Cast")
+	FVector GetMuzzleLocation() const;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Gun")
+	bool bArmed = false;
+
+	/** /Game/Take/Props/Guns/SM_Pistol (tools/build_gun.py): grip at the origin, barrel along +X, top +Z, cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Gun")
+	TSoftObjectPtr<UStaticMesh> GunMesh;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Gun")
+	FName GunSocket = TEXT("hand_r");
+
+	/** The gun's transform on GunSocket (the grip in the palm, the barrel along the fingers). */
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Gun")
+	FTransform GunGrip;
+
+	/** The muzzle in the gun's own space, cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Gun")
+	FVector GunMuzzle = FVector(20.f, 0.f, 7.1f);
+
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<UStaticMeshComponent> Gun;
 
 	/** Test hook (Python in play): Julian bows now. */
 	UFUNCTION(BlueprintCallable, Category = "Take|Cast")
@@ -607,4 +655,11 @@ private:
 	float VoiceLeftLast = 0.f;
 	float NextHeadset = 0.f;
 	uint8 WearerTickOption = 0;
+
+	// chars-locomotion: a scene moving this member with SetActorLocation (not WalkTo) still walks it.
+	void ApplyGun();
+	FVector LastOwnLocation = FVector::ZeroVector;
+	bool bHasOwnLocation = false;
+	float ExternalSpeed = 0.f;
+	float ExternalUntil = -1.f;
 };

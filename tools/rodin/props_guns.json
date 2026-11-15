@@ -1,0 +1,16 @@
+{
+  "_comment": "QA Nov 15 evening (chars-locomotion): \"Render proper gun models for them.\" One service pistol for the guards and enforcers, attached to hand_r by ACastMember (Armed). Raw mesh, low poly: it is small on screen.",
+  "style": "1940s American period piece, realistic proportions, single object, centred, matte, neutral flat lighting, no baked shadows, no text, no logos, plain background",
+  "params": {
+    "tier": "Gen-2.5-Low",
+    "texture_mode": "high",
+    "mesh_mode": "Raw",
+    "quality_override": "6000",
+    "geometry_file_format": "glb",
+    "material": "PBR",
+    "preview_render": "true"
+  },
+  "props": {
+    "guns_pistol": "a 1940s M1911 style semi-automatic service pistol handgun seen whole: a straight blued dark gunmetal steel slide with fine rear serrations, a short barrel, a curved trigger inside a round trigger guard, a hammer at the back, a slightly angled grip with checkered dark walnut wood grip panels, a magazine base at the bottom of the grip, a real-size handgun, nothing else"
+  }
+}

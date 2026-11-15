@@ -13,6 +13,12 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Animation/BlendSpace.h"
+#include "Engine/World.h"
+#include "Script/ScriptScene.h"
+#include "Script/ScriptSequencer.h"
+#include "TakeLocoAnim.h"
+#include "TakePlayerController.h"
 
 ATakeCharacter::ATakeCharacter()
 {
@@ -70,13 +76,17 @@ ATakeCharacter::ATakeCharacter()
 	{
 		MeshComp->SetSkeletalMeshAsset(MannyMesh.Object);
 	}
-	static ConstructorHelpers::FClassFinder<UAnimInstance> UnarmedAnim(
-		TEXT("/Game/Characters/Mannequins/Anims/Unarmed/ABP_Unarmed.ABP_Unarmed_C"));
-	if (UnarmedAnim.Succeeded())
+	// chars-locomotion: the C++ body (UTakeLocoAnim: walk by measured speed, run, crouch) instead of ABP_Unarmed.
+	static ConstructorHelpers::FObjectFinder<UBlendSpace> LocoSpace(
+		TEXT("/Game/Characters/Mannequins/Anims/Unarmed/BS_Idle_Walk_Run.BS_Idle_Walk_Run"));
+	if (LocoSpace.Succeeded())
 	{
-		MeshComp->SetAnimationMode(EAnimationMode::AnimationBlueprint);
-		MeshComp->SetAnimInstanceClass(UnarmedAnim.Class);
+		MeshComp->AnimationData.AnimToPlay = LocoSpace.Object;
+		MeshComp->AnimationData.bSavedLooping = true;
+		MeshComp->AnimationData.bSavedPlaying = true;
 	}
+	MeshComp->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+	MeshComp->SetAnimInstanceClass(UTakeLocoAnim::StaticClass());
 	MeshComp->SetRelativeLocation(FVector(0.f, 0.f, -CapsuleComp->GetUnscaledCapsuleHalfHeight()));
 	MeshComp->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));
 	MeshComp->SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
@@ -90,6 +100,12 @@ void ATakeCharacter::BeginPlay()
 	ApplyTunables();
 	ApplyHeroMesh();
 	ApplyTint();
+	ApplyLocoAnim();
+	// The run and crouch keys are read in Tick and Move: Tick first, then the movement component, same frame.
+	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+	{
+		MoveComp->PrimaryComponentTick.AddPrerequisite(this, PrimaryActorTick);
+	}
 	SetLook(static_cast<float>(GetActorRotation().Yaw), StartLookPitch);
 	TAKE_LOG(TEXT("%s on set, look %.0f / %.0f"), GetCrewName(), LookYaw, LookPitch);
 }
@@ -108,6 +124,9 @@ void ATakeCharacter::OnConstruction(const FTransform& Transform)
 void ATakeCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	ReadGaitKeys();
+	StepScriptWalk();
+	ApplyGait();
 	ApplyLookToBoom();
 }
 
@@ -145,6 +164,13 @@ void ATakeCharacter::Move(const FVector2D& Axes)
 	{
 		return;	// no input: he brakes at WalkBraking
 	}
+	// The player walks him: a scripted walk gives way. Shift / C are read now so the speed is right this frame.
+	if (ScriptPath.Num() > 0)
+	{
+		StopScriptWalk();
+	}
+	ReadGaitKeys();
+	ApplyGait();
 
 	// Relative to the look's yaw only (pitch ignored), so W walks where the camera faces.
 	const FRotationMatrix YawMatrix(FRotator(0.f, LookYaw, 0.f));
@@ -303,4 +329,211 @@ void ATakeCharacter::ApplyLookToBoom()
 	{
 		Boom->SetWorldRotation(FRotator(LookPitch, LookYaw, 0.f));
 	}
+}
+
+// --- chars-locomotion (Nov 15 evening): the body, scripted walks, run and crouch -----------------------------------------
+
+void ATakeCharacter::ApplyLocoAnim()
+{
+	USkeletalMeshComponent* MeshComp = GetMesh();
+	if (!MeshComp || !MeshComp->GetSkeletalMeshAsset())
+	{
+		return;
+	}
+	// A placed character (or a Blueprint child) may still carry ABP_Unarmed from before: put the C++ body on it.
+	if (MeshComp->GetAnimationMode() == EAnimationMode::AnimationBlueprint && MeshComp->GetAnimClass() != UTakeLocoAnim::StaticClass())
+	{
+		if (UBlendSpace* Space = UTakeLocoAnim::LocoSpace())
+		{
+			MeshComp->AnimationData.AnimToPlay = Space;
+			MeshComp->AnimationData.bSavedLooping = true;
+			MeshComp->AnimationData.bSavedPlaying = true;
+		}
+		MeshComp->SetAnimInstanceClass(UTakeLocoAnim::StaticClass());
+	}
+}
+
+bool ATakeCharacter::CanPlayerRun() const
+{
+	const AScriptSequencer* Seq = AScriptSequencer::Get(this);
+	const AScriptScene* Scene = Seq ? Seq->GetActiveScene() : nullptr;
+	return Scene && Scene->bAllowRun;
+}
+
+bool ATakeCharacter::CanPlayerCrouch() const
+{
+	const AScriptSequencer* Seq = AScriptSequencer::Get(this);
+	const AScriptScene* Scene = Seq ? Seq->GetActiveScene() : nullptr;
+	return Scene && Scene->bAllowCrouch;
+}
+
+void ATakeCharacter::ReadGaitKeys()
+{
+	if (GaitFrame == GFrameCounter)
+	{
+		return;
+	}
+	GaitFrame = GFrameCounter;
+	UWorld* World = GetWorld();
+	const ATakePlayerController* PC = World ? Cast<ATakePlayerController>(World->GetFirstPlayerController()) : nullptr;
+	if (!PC || PC->GetCurrentCharacter() != this)
+	{
+		bRunHeld = false;
+		return;
+	}
+	const bool bCrouchOk = CanPlayerCrouch();
+	bRunHeld = CanPlayerRun() && (PC->IsInputKeyDown(EKeys::LeftShift) || PC->IsInputKeyDown(EKeys::RightShift));
+	if (bCrouchOk && (PC->WasInputKeyJustPressed(EKeys::C) || PC->WasInputKeyJustPressed(EKeys::LeftControl)))
+	{
+		SetCrouching(!bCrouching);
+		bCrouchFromKey = bCrouching;
+	}
+	// Running stands him up; a scene that does not allow the crouch stands up a crouch the player made.
+	if (bCrouching && bCrouchFromKey && (bRunHeld || !bCrouchOk))
+	{
+		SetCrouching(false);
+	}
+}
+
+void ATakeCharacter::ApplyGait()
+{
+	UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+	if (!MoveComp)
+	{
+		return;
+	}
+	const bool bScripted = ScriptPath.Num() > 0 && ScriptSpeed > 0.f;
+	const uint8 Want = bScripted ? 3 : bCrouching ? 2 : IsRunning() ? 1 : 0;
+	if (Want == Gait && Want != 3)
+	{
+		return;
+	}
+	if (Gait == 0 && Want != 0)
+	{
+		// Keep the scene's own walk speed (a stroll, a hurry) to put back afterwards.
+		SavedWalkSpeed = MoveComp->MaxWalkSpeed;
+		SavedAcceleration = MoveComp->MaxAcceleration;
+	}
+	switch (Want)
+	{
+	case 0:
+		MoveComp->MaxWalkSpeed = SavedWalkSpeed > 0.f ? SavedWalkSpeed : WalkSpeed;
+		MoveComp->MaxAcceleration = SavedAcceleration > 0.f ? SavedAcceleration : WalkAcceleration;
+		break;
+	case 1:
+		MoveComp->MaxWalkSpeed = RunSpeed;
+		MoveComp->MaxAcceleration = RunAcceleration;
+		break;
+	case 2:
+		MoveComp->MaxWalkSpeed = CrouchSpeed;
+		MoveComp->MaxAcceleration = WalkAcceleration;
+		break;
+	default:
+		MoveComp->MaxWalkSpeed = bCrouching ? FMath::Min(ScriptSpeed, CrouchSpeed) : ScriptSpeed;
+		MoveComp->MaxAcceleration = ScriptSpeed >= RunSpeed * 0.9f ? RunAcceleration : WalkAcceleration;
+		break;
+	}
+	Gait = Want;
+}
+
+void ATakeCharacter::SetRunning(bool bRun)
+{
+	bRunForced = bRun;
+	if (bRun && bCrouching)
+	{
+		SetCrouching(false);
+	}
+	ApplyGait();
+}
+
+void ATakeCharacter::SetCrouching(bool bCrouch)
+{
+	if (bCrouch == bCrouching)
+	{
+		return;
+	}
+	bCrouching = bCrouch;
+	if (!bCrouch)
+	{
+		bCrouchFromKey = false;
+	}
+	ApplyGait();
+	TAKE_LOG(TEXT("%s %s"), GetCrewName(), bCrouch ? TEXT("crouches") : TEXT("stands up"));
+}
+
+void ATakeCharacter::ScriptWalkTo(const FVector& Target, float Speed, float AcceptRadius)
+{
+	TArray<FVector> One;
+	One.Add(Target);
+	ScriptWalkPath(One, Speed, AcceptRadius);
+}
+
+void ATakeCharacter::ScriptWalkPath(const TArray<FVector>& Points, float Speed, float AcceptRadius)
+{
+	ScriptPath = Points;
+	ScriptSpeed = FMath::Max(Speed, 0.f);
+	ScriptAccept = FMath::Max(AcceptRadius, 5.f);
+	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+	{
+		if (MoveComp->MovementMode == MOVE_None)
+		{
+			MoveComp->SetMovementMode(MOVE_Walking);
+		}
+	}
+	ApplyGait();
+	StepScriptWalk();	// the first step this frame
+}
+
+void ATakeCharacter::StopScriptWalk()
+{
+	if (ScriptPath.Num() == 0)
+	{
+		return;
+	}
+	ScriptPath.Reset();
+	ApplyGait();
+}
+
+void ATakeCharacter::StepScriptWalk()
+{
+	if (ScriptPath.Num() == 0)
+	{
+		return;
+	}
+	const FVector Feet = GetActorLocation();
+	// Arrived at this point: the next one (the last one within AcceptRadius, the others a little wider so the turn is
+	// rounded instead of a stop).
+	while (ScriptPath.Num() > 0)
+	{
+		const float Accept = ScriptPath.Num() == 1 ? ScriptAccept : FMath::Max(ScriptAccept, 45.f);
+		if (FVector::Dist2D(Feet, ScriptPath[0]) > Accept)
+		{
+			break;
+		}
+		ScriptPath.RemoveAt(0);
+	}
+	if (ScriptPath.Num() == 0)
+	{
+		ApplyGait();
+		return;
+	}
+	const FVector To = (ScriptPath[0] - Feet).GetSafeNormal2D();
+	if (!To.IsNearlyZero())
+	{
+		// Slow down into the last point (the braking alone would overshoot it).
+		const float Left = static_cast<float>(FVector::Dist2D(Feet, ScriptPath.Last()));
+		const float Scale = ScriptPath.Num() == 1 ? FMath::Clamp(Left / 120.f, 0.35f, 1.f) : 1.f;
+		AddMovementInput(To, Scale);
+	}
+}
+
+USkeletalMeshComponent* ATakeCharacter::GetVisibleBody() const
+{
+	ACastMember* Member = ACastMember::FindOn(this);
+	USkeletalMeshComponent* ActBody = Member ? Member->Body.Get() : nullptr;
+	if (ActBody && ActBody->IsVisible() && ActBody->GetSkeletalMeshAsset())
+	{
+		return ActBody;
+	}
+	return GetMesh();
 }

@@ -1,5 +1,6 @@
 // The script's scene contract (docs/SCRIPT_ADAPT.md). Owner of this file: the Spine session. Scene sessions subclass
 // AScriptScene in their own files (Take/Script/SceneN*.h/.cpp) and never edit this file: ask Spine for a change.
+// (Nov 15 evening: the movement flags, bAllowRun and bAllowCrouch, belong to the chars-locomotion session.)
 // The sequencer (AScriptSequencer, Spine) plays the scenes in SceneNumber order, makes the splice cut into each,
 // sets the POV's look (Vance = 35mm letterbox and grain, crew = raw feed), and calls the hooks below.
 
@@ -54,6 +55,16 @@ public:
 	/** True while the player can walk the POV character (false for minigames, fights, scripted shots). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Script")
 	bool bPlayerWalks = true;
+
+	/** chars-locomotion (Nov 15): the player may run (hold Shift) in this scene: the escape and the finale only.
+	 *  ATakeCharacter reads it from the active scene every frame (ATakeCharacter::CanPlayerRun). Default off. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Script|Movement")
+	bool bAllowRun = false;
+
+	/** chars-locomotion (Nov 15): the player may crouch (C or Ctrl toggles) in this scene. Default off. A scene can also
+	 *  crouch the POV itself (ATakeCharacter::SetCrouching) whatever this says. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Script|Movement")
+	bool bAllowCrouch = false;
 
 	// ---- Hooks the sequencer calls. Override; call Super for Begin/End. ----
 

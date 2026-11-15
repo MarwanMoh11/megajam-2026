@@ -43,7 +43,8 @@ enum class ECastAct : uint8
 	Use,		// a reach to a device
 	Lift,		// a reach down and up
 	Bow,
-	Speech		// Vance at the podium (loops while he speaks)
+	Speech,		// Vance at the podium (loops while he speaks)
+	Aim			// chars-locomotion: the pistol raised (the template's pistol aim, upper body, held)
 };
 
 /** The band's instrument: its playing is built from bones when no instrument clip exists. */
