@@ -1107,7 +1107,10 @@ void AScene6Backstage::StepDrag(float Dt)
 	{
 		// He sidesteps to the trunk's front corner while he swings the body over the rim.
 		const FVector EndFeet = S6Flat(DragPath[1]) + Dir * 100.f;
-		const FVector Beside = S6Flat(TrunkPoint) - Dir * 95.f + S6RightOf(Dir) * 80.f;
+		// The side toward the room: dragged in from the north, "right" was through the east wall and he ended up stuck.
+		FVector Side = S6RightOf(Dir);
+		if (FVector::DotProduct(Side, FVector(4860.f, 0.f, 0.f) - S6Flat(TrunkPoint)) < 0.f) { Side = -Side; }
+		const FVector Beside = S6Flat(TrunkPoint) - Dir * 95.f + Side * 80.f;
 		CFeet = FMath::Lerp(EndFeet, Beside, HeaveK) + S6Z * Floor;
 	}
 	FS6Pose CP = ColeRig.Stand(CFeet, Face, 18.f + 10.f * (1.f - HeaveK));
@@ -1144,6 +1147,11 @@ void AScene6Backstage::StepDrag(float Dt)
 		LidAge = 0.f;
 		Play(TArray<FName>{ TEXT("sfx_s6_trunk"), TEXT("sfx_thud") }, &TrunkPoint, 0.8f);
 		ColeRig.Detach();
+		if (Cole)
+		{
+			// He was placed without sweeping: nudge him out of the trunk or a wall before handing him back.
+			Cole->TeleportTo(Cole->GetActorLocation(), Cole->GetActorRotation());
+		}
 		FreezeCole(false);
 		ViewStunt(false);
 		Step = EStep::ToPanel;
