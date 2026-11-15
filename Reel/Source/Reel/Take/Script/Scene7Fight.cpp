@@ -271,7 +271,7 @@ UAnimationAsset* AScene7Fight::FindAnim(FName Anim) const
 	static const TMap<FName, FName> Stand = {
 		{ TEXT("Stance"), TEXT("Idle") }, { TEXT("Duck"), TEXT("HitLight") }, { TEXT("Block"), TEXT("HitLight") },
 		{ TEXT("Lunge"), TEXT("Jab") }, { TEXT("Stand"), TEXT("Idle") }, { TEXT("Shove"), TEXT("Slash") },
-		{ TEXT("Stumble"), TEXT("HitBack") },
+		{ TEXT("Stumble"), TEXT("HitBack") }, { TEXT("SweepFall"), TEXT("FallBack") },
 	};
 	for (int32 Hop = 0; Hop < 3 && !Anim.IsNone(); ++Hop)
 	{
@@ -783,7 +783,7 @@ void AScene7Fight::TickStage(float Dt)
 			if (At(0.34f))
 			{
 				Impact(BoneOr(Pendleton, TEXT("foot_l"), W(PendPos)), TEXT("Punch"), 2.0f, false);
-				Act(Pendleton, TEXT("FallBack"), false, 0.95f);
+				Act(Pendleton, TEXT("SweepFall"), false, 0.95f);
 				Slide(PendSlide, PendPos, PendletonLand, PendYaw, PendYaw, 0.f, 0.6f);
 				Sfx(TEXT("Grunt2"), 0.7f);
 			}

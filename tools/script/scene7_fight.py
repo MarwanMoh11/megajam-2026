@@ -5,7 +5,7 @@
 # y -2000..-1400, floor z 450; Vance (-2650, -1680) facing north, yaw 90), so fight space +X = world +Y and the
 # monitor bank on the south wall sits at fight X -280..-295. s7-route's AScene7Booth drives it
 # (AScene7Fight::Find(this)->StartFight(this)). Then saves the level. The report goes to C:\Jam\Builds\script\s7fight\place.txt.
-# Switches: S7F_OFF = True only clears. S7F_ANIMS = {role: asset path} overrides clips (the Mixamo fight clips).
+# Switches: S7F_OFF = True only clears. S7F_ANIMS = {role: asset path} replaces the MIXAMO table below.
 import sys, importlib, traceback
 sys.path.insert(0, r"C:\Jam\megajam\tools\sets")
 import common as C
@@ -16,7 +16,12 @@ TAG = "script_s7fight"
 MARK = (-2650.0, -1680.0, 450.0)
 YAW = 90.0
 OFF = bool(globals().get("S7F_OFF"))
-ANIMS = globals().get("S7F_ANIMS") or {}
+# The Mixamo fight clips (tools/build_mocap.py, Fight_*) by role; a role whose asset isn't imported keeps the template clip.
+MIXAMO = {"Hook": "Fight_Hook", "Duck": "Fight_Duck", "Stance": "Fight_Stance", "Block": "Fight_Block",
+          "HitHeavy": "Fight_HitHead", "HitMed": "Fight_HitStomach", "Slash": "Fight_Stab", "Lunge": "Fight_Stab",
+          "Sweep": "Fight_Sweep", "SweepFall": "Fight_SweepFall", "FallBack": "Fight_FallBack", "Shove": "Fight_Shove",
+          "Stumble": "Fight_Stumble"}
+ANIMS = globals().get("S7F_ANIMS") or {r: "/Game/Take/Anim/Mocap/%s.%s" % (k, k) for r, k in MIXAMO.items()}
 eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
 REPORT = []
 
@@ -25,14 +30,16 @@ def place():
     a = eas.spawn_actor_from_class(unreal.Scene7Fight, unreal.Vector(*MARK), unreal.Rotator(0.0, 0.0, YAW))
     a.set_actor_label("S7_Fight")
     C._set_tags(a, [TAG])
+    mapped = []
     if ANIMS:
         cur = dict(a.get_editor_property("anims"))
         for role, path in ANIMS.items():
-            asset = unreal.load_asset(path)
+            asset = unreal.load_asset(path) if unreal.EditorAssetLibrary.does_asset_exist(path.split(".")[0]) else None
             if asset:
                 cur[unreal.Name(role)] = asset
+                mapped.append(role)
         a.set_editor_property("anims", cur)
-    return "placed %s at %s yaw %.0f" % (a.get_name(), MARK, YAW)
+    return "placed %s at %s yaw %.0f; mocap roles %s" % (a.get_name(), MARK, YAW, ",".join(mapped) or "none")
 
 
 def run():

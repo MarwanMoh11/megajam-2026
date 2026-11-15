@@ -73,6 +73,16 @@ CLIPS = {
     "Headset": (True, False, "Talking On A Cell Phone (Male Standing While Talking On A Cell Phone)"),
     "Fight_Hook": (False, False, "Hook Punch"),                # Scene 7 fight (s7-fight): the bodyguard's hook
     "Fight_Duck": (False, False, "Ducking"),                   # Scene 7 fight: Vance slips the hook
+    "Fight_Stance": (True, False, "Fight Idle"),               # Scene 7 fight: both men squared up
+    "Fight_Block": (False, False, "Center Block (Low Center Block)"),   # Vance's canister block
+    "Fight_HitHead": (False, False, "Head Hit"),               # a missed parry lands on Vance
+    "Fight_HitStomach": (False, False, "Stomach Hit"),         # Pendleton reels from the clang
+    "Fight_Stab": (False, False, "Stabbing"),                  # Pendleton's stiletto slash and lunge
+    "Fight_Sweep": (False, False, "Leg Sweep"),                # Vance sweeps Pendleton's legs
+    "Fight_SweepFall": (False, False, "Sweep Fall"),           # Pendleton goes down
+    "Fight_FallBack": (False, False, "Falling Back Death"),    # the bodyguard drops at the monitor bank
+    "Fight_Shove": (False, False, "Push"),                     # Vance drives the guard into the monitors
+    "Fight_Stumble": (False, False, "Stumble Backwards"),      # the guard stumbles past the slipped hook
 }
 
 EAL = unreal.EditorAssetLibrary
