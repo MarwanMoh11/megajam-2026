@@ -735,6 +735,10 @@ void UGuardBrainComponent::Enter(EGuardState S)
 	}
 	State = S;
 	StateTime = 0.f;
+	if (S != EGuardState::Alert && S != EGuardState::Caught)
+	{
+		bSpottedSent = false;	// a new sighting after he lost you is a new Spotted
+	}
 	if (bLog && Old != S)
 	{
 		TAKE_LOG(TEXT("GUARD %s %s -> %s (meter %.2f, light %.2f)"), *GuardName, StateName(Old), StateName(S), Suspicion, TargetLight01);
