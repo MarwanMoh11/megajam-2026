@@ -1552,7 +1552,7 @@ banner = spawn(unreal.BannerDevice, BATTEN, label="Banner", folder="Take")
 setp(banner, device_name="BREAKER", effect=unreal.DeviceEffect.MASK, range=600.0, duration=10.0, uses=1,
      fired_from=B, drop_distance=0.0, drop_seconds=0.02, raise_seconds=0.02, matte_size=unreal.Vector(1.0, 1.0, 1.0),
      use_verb="Pull the breaker on the aisle's electric eye",
-     fire_line='MAYA: "Breaker\'s out. The eye is dead for ten seconds."',
+     fire_line='NORA: "Breaker\'s out. The eye is dead for ten seconds."',
      effect_offset=unreal.Vector(ROPE_X - BATTEN[0], 0.0, 20.0 - BATTEN[2]))
 setp(banner, use_offset=use_offset(banner, (BANNER_USE[0], BANNER_USE[1], CAT_Z)))
 
@@ -1621,7 +1621,7 @@ security("Security_S_Flank", "SECURITY 1", None, SEC_S_POST, 90.0)
 pyro = spawn(unreal.PyroDevice, (PYRO[0], PYRO[1], CAT_Z), label="Pyro", folder="Take")
 setp(pyro, device_name="PYRO BOARD", effect=unreal.DeviceEffect.BLIND, range=PYRO_RANGE, duration=6.0, uses=1,
      fired_from=B, use_verb="Fire the pyro along the stage", locked_until="Case",
-     fire_line='MAYA: "Pyro! Eyes shut!"', flare_candelas=PYRO_CD)
+     fire_line='NORA: "Pyro! Eyes shut!"', flare_candelas=PYRO_CD)
 setp(pyro, use_offset=use_offset(pyro, (PYRO_USE[0], PYRO_USE[1], CAT_Z)),
      effect_offset=use_offset(pyro, (PYRO_POINT[0], PYRO_POINT[1], DAIS_H)),
      flare_offsets=[use_offset(pyro, (fx, fy, DAIS_H)) for (fx, fy) in PYRO_FLARES])
@@ -1659,7 +1659,7 @@ if hasattr(unreal, "HouseDimmer"):
     setp(dimmer, device_name="HOUSE DIMMER", effect=unreal.DeviceEffect.BLIND, range=3500.0, duration=0.75, uses=0,
          fired_from=B, use_verb="Bring the house lights down for the preview", use_radius=100.0,
          locked_until="Scene2", locked_why="for the preview, once Julian is in the hall",
-         fire_line='MAYA: "House lights down. Rolling the preview."', preview_seconds=16.0,
+         fire_line='NORA: "House lights down. Rolling the preview."', preview_seconds=16.0,
          house_min=unreal.Vector(HX0, HY0, -100.0), house_max=unreal.Vector(HX1, HY1, HALL_H + 100.0),
          screen_size=unreal.Vector2D(SCREEN_SIZE[0], SCREEN_SIZE[1]))
     try:
@@ -1704,7 +1704,7 @@ for (ax, ay, bx, by) in ((DAIS_X0 + 6.0, -1200.0, DAIS_X0 + 6.0, 1200.0), (DAIS_
     panels.append(p)
 setp(winch, device_name="CURTAIN WINCH", effect=unreal.DeviceEffect.MASK, range=0.0, duration=0.0, uses=1, fired_from=C,
      use_verb="Let the counterweight go: the curtain drops", locked_until="Case", land_trigger="Winch",
-     fire_line='VEX: "Curtain coming down. The trap is yours."', panels=panels, curtain_height=CURTAIN_H,
+     fire_line='COLE: "Curtain coming down. The trap is yours."', panels=panels, curtain_height=CURTAIN_H,
      raised_height=HALL_H - CURTAIN_H - 60.0)
 setp(winch, use_offset=use_offset(winch, (WINCH_USE[0], WINCH_USE[1], 0)))
 

@@ -114,16 +114,24 @@ AScriptSequencer::AScriptSequencer()
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bTickEvenWhenPaused = false;
 	Credits = {
+		// docs/script/s8.md, "Credits for AScriptSequencer::Credits". CAPS = heading, "" = gap.
 		TEXT("THE DIRECTOR'S CUT"), TEXT(""),
-		TEXT("VANCE"), TEXT("the con man in the white jacket"), TEXT(""),
-		TEXT("NORA"), TEXT("the catwalk"), TEXT(""),
-		TEXT("COLE"), TEXT("the muscle backstage"), TEXT(""),
-		TEXT("MAX"), TEXT("the van"), TEXT(""),
-		TEXT("ARTHUR PENDLETON"), TEXT("the man with the master print"), TEXT(""),
-		TEXT("AND YOU"), TEXT("as the director"), TEXT(""),
-		TEXT("MADE IN UNREAL ENGINE 5.9"), TEXT("for the Epic MegaJam 2026"), TEXT(""),
+		TEXT("An entry for the Epic MegaJam 2026"), TEXT("Theme: Director's Cut"), TEXT(""),
 		TEXT("DIRECTED BY"), TEXT("Marwan Abudaif"), TEXT(""),
-		TEXT("No film was harmed."), TEXT("Several takes were."),
+		TEXT("STARRING"), TEXT("Vance, the star"), TEXT("Max, the wheels and the wires"),
+		TEXT("Nora, the eye in the rafters"), TEXT("Cole, the muscle"), TEXT("and Arthur Pendleton as himself"), TEXT(""),
+		TEXT("FILMED AT"), TEXT("The Grand Lumiere Theater"), TEXT("(an auction house, lightly redressed)"), TEXT(""),
+		TEXT("MADE WITH"), TEXT("Unreal Engine 5.9 (Epic Games)"),
+		TEXT("Claude Code (Anthropic): Claude Fable and Claude Opus agents"), TEXT(""),
+		TEXT("VOICES, SOUND AND MUSIC"), TEXT("ElevenLabs: text to speech, Voice Design, sound effects, Music"), TEXT(""),
+		TEXT("PROPS, CAST AND CARS"), TEXT("Hyper3D Rodin (Deemos), text to 3D"), TEXT(""),
+		TEXT("MOTION CAPTURE"), TEXT("Adobe Mixamo"), TEXT(""),
+		TEXT("FONTS"), TEXT("Limelight (Eduardo Tunni), IM Fell English (Igino Marini),"),
+		TEXT("Josefin Sans (Santiago Orozco): SIL Open Font License"), TEXT(""),
+		TEXT("TEMPLATES AND EFFECTS"), TEXT("Unreal Engine Third Person template mannequins and animations"),
+		TEXT("Niagara templates (Epic Games)"), TEXT(""),
+		TEXT("No film reels were harmed."), TEXT(""),
+		TEXT("PRINT IT."),
 	};
 }
 
