@@ -1,0 +1,16 @@
+{
+  "_comment": "Scene 8 (s8-alley): the getaway car. Same shape as props.json; generate.py adds STYLE to the prompt. Run with RODIN_PROPS_FILE=tools/rodin/props_s8.json. tools/script/scene8_car.py imports it to /Game/Take/Script/S8/SM_S8_GTCar (nose +X, wheels on Z=0, about 440 x 175 x 125 cm).",
+  "style": "generic and unbranded, not any specific real car model, no badges, no logos, no emblems, no number plates, no text, realistic proportions, single object, centred, side-on three-quarter view, neutral flat lighting, no baked shadows, plain background",
+  "params": {
+    "tier": "Gen-2.5-Low",
+    "texture_mode": "high",
+    "mesh_mode": "Raw",
+    "quality_override": "30000",
+    "geometry_file_format": "glb",
+    "material": "PBR",
+    "preview_render": "true"
+  },
+  "props": {
+    "s8_gtcar": "a sleek late-1960s Italian-style two-door grand tourer coupe, metallic silver paint, a very long low bonnet, a short rear deck with a smooth sloping fastback roof, a small glass cabin set far back, chrome front and rear bumpers, two round headlights in the front wings, a slim oval chrome grille with no emblem, chrome-spoked wire wheels with black tyres, a low wide stance, closed doors, all four wheels on the ground"
+  }
+}

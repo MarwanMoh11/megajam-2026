@@ -10,14 +10,13 @@ Uses tools/audio's API wrapper and DSP (read-only): same TTS model, voices, loud
 effects -18 LUFS), -1 dBFS peak ceiling, 16-bit 44.1 kHz mono. Voices are in-scene (no earpiece band-pass).
 Max (vo_s8_max_getin) uses the voice session s2-van designs; until a voice id for MAX is found it is skipped.
 """
+import importlib
 import os
 import re
 import sys
 
-try:
-    import unreal  # present only inside the editor
-except ImportError:
-    unreal = None
+# Inside the editor `unreal` is already loaded (the editor's runner allows only top-level import statements).
+unreal = sys.modules.get("unreal")
 
 OUT = r"C:\Jam\Audio\Script\S8"
 RAW = os.path.join(OUT, "raw")
@@ -62,10 +61,7 @@ SFX_CREDITS = 200
 
 def _audio_tools():
     sys.path.insert(0, os.path.join(REPO, "tools", "audio"))
-    import el_api
-    import manifest
-    import process
-    return el_api, manifest, process
+    return tuple(importlib.import_module(m) for m in ("el_api", "manifest", "process"))
 
 
 def find_max_voice():
@@ -125,9 +121,10 @@ def generate(ids, force, dry):
 
 
 def process_all(ids):
-    import numpy as np
+    np = importlib.import_module("numpy")
     _, M, P = _audio_tools()
-    from audio_io import decode_mp3, write_wav
+    aio = importlib.import_module("audio_io")
+    decode_mp3, write_wav = aio.decode_mp3, aio.write_wav
     loops = {s[0] for s in SFX if s[3]}
     for f in sorted(os.listdir(RAW)):
         iid = f[:-4]
@@ -176,7 +173,8 @@ def import_to_editor():
             continue
         if n in loops:
             a.set_editor_property("looping", True)
-            unreal.EditorAssetLibrary.save_loaded_asset(a, only_if_is_dirty=False)
+        # The task's save flag did not write the files in 5.9 (only the explicitly saved loop landed): save each.
+        unreal.EditorAssetLibrary.save_loaded_asset(a, only_if_is_dirty=False)
         done.append(n)
     print(f"S8_AUDIO imported {len(done)} of {len(tasks)} into {DEST}: {', '.join(done)}")
 
