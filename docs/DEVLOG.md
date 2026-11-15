@@ -1293,3 +1293,23 @@ animation, you can't move it or change it." He was looking at the searchlight on
   without its .cpp for a build; a local named `Ink` shadowed `TakeStyle::Ink` (C4459 is an error here) and stopped
   s5's restart until renamed; the audio helper never got the editor lock in four tries, so I imported its WAVs with a
   top-level import script (the MCP Python tool rejects imports inside functions).
+
+## Nov 15, 14:35 Cairo: Scene 4, the catwalks (s4-catwalk)
+- `AScene4Catwalk` (Take/Script/Scene4Catwalk.*): Nora's raw feed from the lighting platform, a bird's-eye camera
+  over the rail with a slow vertigo sway. The HUD draws Vance's lane (gold dashes from the bar to the rope gap) and
+  the four rope guards' cones (Scene 3's guards, by label): red while a cone covers the lane, grey while the guard is
+  distracted, green for Guard 2 if Vance kept the VIP Alibi.
+- [1] loosens the follow spot's clamp: it swings onto the EAST DOOR guard, who turns away blinded for 7 s while
+  GUARD 1 turns to yell at it. [2] taps the latch of a new champagne cart: it rolls to the West Pillar and a
+  30-glass tower flies and shatters. The WEST guard goes to the mess, and, if the spot is burning, Guard 1 delivers
+  the script's line and sends GUARD 2 too. The cart first means the guards close ranks (a retake), and cueing Vance
+  with a red cone on the lane means a guard calls out (a retake). Clear: Nora's "Go", a cut to Vance, one unbroken
+  tracking shot beside him past the distracted guards, through a crimson curtain at the rope gap, and walnut doors
+  swing shut. FinishScene.
+- One opus-high helper made the six voice lines through the project's ElevenLabs pipeline (Nora = Maya's voice,
+  the guards = the GUARD voice).
+- What went wrong: the director still steps every guard on the bar clock in script mode, so the scene re-places its
+  guards in a late (post-update) tick; spine was asked for a skip flag. Twice my file broke the shared editor build:
+  a parameter named `Role` hid `AActor::Role` (s5 renamed it), and `GWhiteTexture` lives in RenderCore, which Reel
+  doesn't link. My snapshot compile check had passed because UBT never compiled the new file in a copied snapshot
+  (its makefile was stale). Delete `Makefile.bin` and check that the log names the file.
