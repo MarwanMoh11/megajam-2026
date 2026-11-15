@@ -1341,3 +1341,12 @@ animation, you can't move it or change it." He was looking at the searchlight on
 - `AScene3Foyer` (Take/Script/Scene3Foyer.*) + `tools/script/scene3.py` (tag script_s3): the critic stumbles down the grand stair, champagne splash, Play Along / Brush Off choice (VipAlibi), the main hall with four ice sculptures, four Pendleton rope guards with clipboards, Max's V.O., FinishScene; past the rope a guard spends the alibi or tackles (FailScene). Voices: `tools/script/scene3_audio.py` (ElevenLabs). Level saved and committed.
 - Went wrong: Live Coding crashed the editor (second time today); new Script/*.cpp files are unity-built so it can't patch them. Use Build.bat restarts only.
 - PIE checks via `Reel.Script.Jump 3`, raw keys through InputToolset.ApplyInput (keyName "One"/"Two"), teleports from Python.
+
+## Nov 15, 17:30 Cairo: s1-marquee, Scene 1 after the 17:20 restart
+- The overlays (`scene1.py`, `scene1_dress.py`) were re-run on the fresh build and the level saved (7e5673f). Two
+  play-in-editor passes from `Reel.Script.Jump 1` played all nine beats with their voices and subtitles and cut to
+  Scene 2, with Vance staged at the plate.
+- **Went wrong:** the first pass ran at about 3 fps while the editor was still compiling shaders after the restart,
+  so the timed shots missed their beats. The second pass showed the floor manager stuck at the doors: the scene sat
+  out an 8 s cap before the whisper. Fix (81df898, for the 18:10 restart): he glides along his line by hand when the
+  walk stalls, and the cap is now the walk's length plus 1 s.
