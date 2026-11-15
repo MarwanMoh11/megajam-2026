@@ -75,11 +75,7 @@ list, this file wins. Fallback: tag `pre-script-fallback` (6876e0b) and `C:\Jam\
   you wait.
 - **Never a lone `.h` in `Source/`.** A header with a UCLASS/USTRUCT/UENUM and no `.cpp` (or a `.cpp` that does not compile) breaks every build in this shared tree, including others' restarts. Write the `.h` and its `.cpp` together and keep both compiling; draft unfinished code outside `Source/` (e.g. `docs/script/drafts/`) until it builds.
 - **Snapshot compile checks** (a copy of the tree built elsewhere, e.g. `C:\Jam\Builds\s2snap`) share UBT's machine-wide mutex with the real build. Run them only while the editor is up and nobody holds the lock for a Build.bat (`tools/editor_lock.py status`), one at a time across sessions, and never while a restart is waiting.
-- **Live Coding** (function bodies) compiles everyone's files: keep your files compiling at all times; if the compile
-  breaks on someone else's file, message them, do not edit it.
-- **New UCLASS / UPROPERTY / header changes need an editor restart.** Batch them. Only the lock holder exits the
-  editor, runs `Build.bat ReelEditor`, restarts it; log it in `C:\Jam\Builds\script\restarts.log` (time, who, why).
-  Avoid more than one restart an hour across all sessions: ask in the coordinator's session if unsure.
+- **No Live Coding** (see "Restarts" below): every C++ change goes in at the coordinator's restarts.
 - Save the level only while holding the lock. **Only the lock holder commits `Lvl_Auction.umap`**, right after saving.
 
 ## Git
