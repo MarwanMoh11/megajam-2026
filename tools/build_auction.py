@@ -83,12 +83,12 @@ CHIEF = (VOID_X0 + 20.0, 0.0)     # the security chief at the foot of the grand 
 MARK_DESK = (-2430.0, 630.0)      # the registration desk: Julian signs in here (W3 opening: in front of the moved desk)
 MARK_FLOOR = (-700.0, 0.0)        # Scene 2 starts here: the checkpoint just inside the hall
 # The broadcast drone films the centre aisle, and its camera riser blocks the aisle: Julian goes round by a side aisle.
-RISER = (480.0, 780.0, -230.0, 230.0)   # x0, x1, y0, y1: behind the last row, on the aisle's axis, 80 cm high (W3 stage)
-MARK_SEAT = (1700.0, 1060.0)      # an aisle seat at the end of a rear row (W3 stage: was -300, 1090)
+RISER = (1450.0, 1750.0, 750.0, 1210.0)   # x0, x1, y0, y1: north of the general rows, off the doors' view (W3 stage)
+MARK_SEAT = (2000.0, 560.0)       # the end of a general row (W3 stage: was -300, 1090)
 # --- W3 stage --- the seats: two blocks of rows facing the dais either side of the centre aisle (hall_layout.py)
 ROWS_FRONT = tuple(3150.0 - 100.0 * i for i in range(8))   # reserved bidders, past the rope: 3150 .. 2450
-ROWS_REAR = tuple(2100.0 - 100.0 * i for i in range(14))   # general seats, before it: 2100 .. 800 (round B: was to 1400)
-ROW_Y0, ROW_Y1_FRONT, ROW_Y1_REAR = 180.0, 1048.0, 924.0    # row blockers |y| from the aisle to the row's far end
+ROWS_REAR = tuple(2100.0 - 100.0 * i for i in range(3))    # general seats, before it: 2100 .. 1900 (round D)
+ROW_Y0, ROW_Y1_FRONT, ROW_Y1_REAR = 180.0, 614.0, 490.0   # round D: every chair taken    # row blockers |y| from the aisle to the row's far end
 JULIAN_PLACE = (2100.0, -211.0)   # his bidder's seat: the rear block's front row, south aisle seat, by the rope mark
 # --- end W3 stage
 MARK_COCKTAILS = (950.0, 1010.0)  # beside a cocktail table on the north flank, off the rows' ends (W3 stage: 1100, 950)
@@ -1166,11 +1166,11 @@ sign("SECURITY", HX1 - 14.0, SEC_DOOR_Y, 262.0, 180.0, size=22.0, rgb=(1.0, 0.25
 sign("CURTAIN WINCH", WINCH[0] - 30.0, BY0 + 6.0, 215.0, 90.0, size=20.0)
 # --- QA hall --- no tripod here: tools/sets/hall.py stands a TV studio camera on its pedestal on the riser (note 16)
 N[0] += 2                                               # the tripod's two labels, so later labels keep their numbers
-ghost(shape(CYL, "Guest", (RISER[0] + RISER[1]) / 2 - 20.0, 40.0, 80.0 + 75.0, 26.0, 48.0, 150.0, GUEST_MATS[1],
+ghost(shape(CYL, "Guest", (RISER[0] + RISER[1]) / 2 - 20.0, (RISER[2] + RISER[3]) / 2 + 40.0, 80.0 + 75.0, 26.0, 48.0, 150.0, GUEST_MATS[1],
             folder="Set/Guests"))
-ghost(shape(SPHERE, "Guest_Head", (RISER[0] + RISER[1]) / 2 - 20.0, 40.0, 80.0 + 162.0, 24.0, 24.0, 26.0, m_head,
+ghost(shape(SPHERE, "Guest_Head", (RISER[0] + RISER[1]) / 2 - 20.0, (RISER[2] + RISER[3]) / 2 + 40.0, 80.0 + 162.0, 24.0, 24.0, 26.0, m_head,
             folder="Set/Guests"))
-sign("LIVE BROADCAST", RISER[0] - 6.0, 0.0, 45.0, 180.0, size=24.0, rgb=(1.0, 0.25, 0.2))
+sign("LIVE BROADCAST", RISER[0] - 6.0, (RISER[2] + RISER[3]) / 2, 45.0, 180.0, size=24.0, rgb=(1.0, 0.25, 0.2))
 sign("LOT 41: THE DIRECTOR'S CUT", 4125.0, 0.0, DAIS_H + 165.0, 180.0, size=18.0)
 sign("CREW ONLY", 3000.0, BY0 + 6.0, 215.0, 90.0, size=22.0)
 for (kx, ky, ks) in ((3760.0, -3200.0, 70.0), (3840.0, -3190.0, 50.0), (3560.0, -3210.0, 60.0)):
@@ -1182,12 +1182,12 @@ for (x0, x1, h) in ((1000, 1110, 60), (2200, 2330, 85), (3500, 3620, 60)):
     prop("Flight_Case", x0, x1, 1950, 1995, CAT_Z, CAT_Z + h, m_floor)
 _rnd_keep = rnd
 rnd = random.Random(1115)
-for (mx, my, n) in ((-400, 650, 3), (-380, -720, 3), (120, 1000, 2), (160, -980, 2), (-150, 330, 2), (250, 620, 2),
-                    (280, -560, 2)):
+for (mx, my, n) in ((950, 650, 3), (1000, -650, 3), (1350, -380, 2), (1300, 420, 2), (1700, -650, 2), (600, -950, 2),
+                    (550, 900, 2)):
     mingle(float(mx), float(my), n)
-for s in (1, -1):                                       # standing room: a rank behind the last row, beside the riser
-    for i, y in enumerate((300.0, 390.0, 485.0, 570.0, 665.0, 760.0, 850.0)):
-        guest(690.0 - (i % 2) * 25.0, s * y, facing=rnd.uniform(-12.0, 12.0))
+for s in (1, -1):                                       # standing room: bidders along the reserved rows' ends
+    for i, x in enumerate((2500.0, 2590.0, 2675.0, 2770.0, 2850.0, 2945.0, 3030.0, 3110.0)):
+        guest(x, s * (700.0 + (i % 2) * 30.0), facing=rnd.uniform(-12.0, 12.0))
 rnd = _rnd_keep
 
 # --- the north wing ---------------------------------------------------------------------------------------------------

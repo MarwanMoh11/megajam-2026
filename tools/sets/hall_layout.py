@@ -15,9 +15,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # block sits behind the cross aisle at the rope. tools/sets/hall_zones.json has the same numbers.
 ROWS = (                                                   # (row x centres, chairs a side): build_auction ROWS_*
     tuple(3150.0 - 100.0 * i for i in range(8)),           # reserved: 3150 .. 2450, 14 a side
-    tuple(2100.0 - 100.0 * i for i in range(14)),          # general: 2100 .. 800, 12 a side
+    tuple(2100.0 - 100.0 * i for i in range(3)),           # general: 2100 .. 1900, 5 a side (round D)
 )
-PER_SIDE = (14, 12)
+PER_SIDE = (7, 5)                                          # round D: no empty rows (was 14, 12)
 ROW_Y0, PITCH = 180.0, 62.0                                # the aisle edge, 62 cm a chair
 OFFER = ((3, 0.95), (5, 0.3), (7, 0.08), (7, 0.3))                # (rows from the front of the room, share of their seats offered)
 CHAIR_H = 92.0                                             # the gilt ballroom chair stands 92 cm
@@ -58,22 +58,38 @@ def chair_seats():
                     y = s * (ROW_Y0 + PITCH * (i + 0.5))
                     if any(abs(bx - lx) < 40.0 and abs(y - ly) < 36.0 for (lx, ly) in LEGS):
                         continue
-                    out.append((bx, y, 0.0))
+                    out.append(_taken(bx, y) + (0.0,))
     return out
 
 
-def offered(i, x, y):
-    """Whether chair i goes to cast: the front rows full, thinning toward the back (frame time: about 170 offered)."""
+def _h01(*parts):
+    """tools/build_cast.py h01: cast seats a chair when h01("seat", x, y) < SEAT_FILL."""
+    x = 2166136261
+    for c in "|".join(str(p) for p in parts):
+        x = ((x ^ ord(c)) * 16777619) & 0xFFFFFFFF
+    x ^= x >> 13
+    x = (x * 0x5BD1E995) & 0xFFFFFFFF
+    x ^= x >> 15
+    return (x & 0xFFFFFF) / float(0x1000000)
+
+
+def _taken(x, y, fill=0.6):
+    """Round D: nudges a chair by a few cm until cast's own draw seats someone on it, so every offered chair is
+    taken and no row reads empty (julian's seat stays exact)."""
     if abs(x - JULIAN_SEAT[0]) < 1.0 and abs(y - JULIAN_SEAT[1]) < 1.0:
-        return False
-    order = sorted({cx for (cx, _cy, _cyaw) in chair_seats()}, reverse=True).index(x)
-    share, k = 0.0, 0
-    for (n, sh) in OFFER:
-        if order < k + n:
-            share = sh
-            break
-        k += n
-    return random.Random(i * 7919 + 41).random() < share
+        return (x, y)
+    for r in range(0, 6):
+        for dx in range(-r, r + 1):
+            for dy in range(-r, r + 1):
+                cx, cy = float(round(x + dx)), float(round(y + dy))
+                if _h01("seat", round(cx), round(cy)) < fill:
+                    return (cx, cy)
+    return (x, y)
+
+
+def offered(i, x, y):
+    """Round D: every chair but Julian's goes to cast (and _taken made sure cast seats someone on each)."""
+    return not (abs(x - JULIAN_SEAT[0]) < 1.0 and abs(y - JULIAN_SEAT[1]) < 1.0)
 
 
 def seats_with_props():

@@ -235,6 +235,36 @@ def work_lights():
     return [a.get_actor_label() for a in out]
 
 
+# --- W3 lights (round C notes): Vex read as a silhouette at his start on the dock and his post; his devices (the winch)
+# dark. A key on him from the camera side at his start, a caged work bulb over his post (hall_zones vex_post) and one
+# over each WinchDevice, ATTACHED to the device so the house dimmer leaves it on. From the placed actors.
+VEX = dict(key_cd=260.0, key_cone=40.0, key_r=700.0, key_off=(-170.0, 170.0, 300.0), post_cd=110.0, post_r=420.0,
+           winch_cd=90.0, winch_r=320.0, winch_up=170.0)
+
+
+def vex_lights():
+    v, out = VEX, []
+    vex = C.find("Vex")
+    if vex:
+        p = vex[0].get_actor_location()
+        o = v["key_off"]
+        sx, sy, sz = p.x + o[0], p.y + o[1], p.z + o[2]
+        yaw = math.degrees(math.atan2(p.y - sy, p.x - sx))
+        pitch = -math.degrees(math.atan2(sz - p.z - 40.0, math.hypot(p.x - sx, p.y - sy)))
+        out.append(light("rooms", "Vex_Key", (sx, sy, sz), v["key_cd"], v["key_r"], WORK, (pitch, yaw, v["key_cone"])))
+    with open(os.path.join(os.path.dirname(os.path.abspath(C.__file__)), "hall_zones.json"), encoding="utf-8") as f:
+        vp = json.load(f).get("vex_post")
+    if vp:
+        out.append(light("rooms", "Vex_Post", (vp[0], vp[1], vp[2] + 280.0), v["post_cd"], v["post_r"], BULB, None))
+    for i, w in enumerate(a for a in eas.get_all_level_actors() if a.get_class().get_name() == "WinchDevice"):
+        p = w.get_actor_location()
+        b = light("rooms", "Winch_%d" % i, (p.x, p.y, p.z + v["winch_up"]), v["winch_cd"], v["winch_r"], BULB, None)
+        b.attach_to_actor(w, "", unreal.AttachmentRule.KEEP_WORLD, unreal.AttachmentRule.KEEP_WORLD,
+                          unreal.AttachmentRule.KEEP_WORLD, False)
+        out.append(b)
+    return [a.get_actor_label() for a in out]
+
+
 def light(area, name, p, cd, radius, colour, spot):
     cls = unreal.SpotLight if spot else unreal.PointLight
     r = unreal.Rotator(roll=0.0, pitch=spot[0], yaw=spot[1]) if spot else unreal.Rotator(0.0, 0.0, 0.0)
@@ -283,5 +313,7 @@ for e in todo:
     placed.append(e[1])
 if "hall" in AREAS:
     placed += work_lights()
+if "rooms" in AREAS:
+    placed += vex_lights()
 C.save_level()
 "lights: removed %d, placed %d (%s)" % (gone, len(placed), ", ".join(placed))

@@ -407,7 +407,7 @@ def band():
 
 
 # --- broadcast -----------------------------------------------------------------------------------------------------------
-RISER = (480.0, 780.0, -230.0, 230.0, 80.0)   # --- W3 stage --- build_auction RISER (was 150..450)
+RISER = (1450.0, 1750.0, 750.0, 1210.0, 80.0)   # round D: off the centre line, north of the general rows   # --- W3 stage --- build_auction RISER (was 150..450)
 
 
 def drop_riser_film_camera():
@@ -462,29 +462,30 @@ def broadcast():
     box("Riser_Edge", x0 - 1.5, x1 + 1.5, y0 - 1.5, y1 + 1.5, top - 2.0, top + 0.4, "Black")
     # The camera on its pedestal, aimed at the dais; the operator (a guest placeholder at 280, 40) stands behind it.
     dx = x0 - 150.0                                     # --- W3 stage --- the riser moved; everything on it follows
-    put("hall_tvcamera", dx + 352.0, 40.0, top, 0.0, height=178.0)
-    box("Tally", dx + 380.0, dx + 386.0, 36.0, 44.0, top + 178.0, top + 182.0, "OnAir")
+    dy = (y0 + y1) / 2.0
+    put("hall_tvcamera", dx + 352.0, dy + 40.0, top, 0.0, height=178.0)
+    box("Tally", dx + 380.0, dx + 386.0, dy + 36.0, dy + 44.0, top + 178.0, top + 182.0, "OnAir")
     # The monitor on its stand, turned to the operator; the commentator's road case and desk microphone.
-    put("hall_monitor", dx + 195.0, -150.0, top, math.degrees(math.atan2(40.0 + 150.0, 280.0 - 195.0)), height=150.0)
-    put("/Game/Take/Props/Roadcase/SM_Roadcase", dx + 392.0, -178.0, top, 0.0, height=52.0, front=0.0, shadow=True)
-    put("hall_mic", dx + 392.0, -178.0, C.top_of(C.find(r"Set_Hall_Roadcase_\d+")[-1]), 180.0, height=34.0)
+    put("hall_monitor", dx + 195.0, dy - 150.0, top, math.degrees(math.atan2(40.0 + 150.0, 280.0 - 195.0)), height=150.0)
+    put("/Game/Take/Props/Roadcase/SM_Roadcase", dx + 392.0, dy - 178.0, top, 0.0, height=52.0, front=0.0, shadow=True)
+    put("hall_mic", dx + 392.0, dy - 178.0, C.top_of(C.find(r"Set_Hall_Roadcase_\d+")[-1]), 180.0, height=34.0)
     # Two lamps on stands beside and behind the camera (out of its shot), aimed at the dais.
     for s in (1, -1):
-        put("/Game/Take/Props/Lightstand/SM_Lightstand", dx + 272.0, s * 186.0, top, 0.0, height=185.0, shadow=False)
+        put("/Game/Take/Props/Lightstand/SM_Lightstand", dx + 272.0, dy + s * 186.0, top, 0.0, height=185.0, shadow=False)
     # ON AIR on a pole at the riser's north-west corner, lit both ways (to the house door and to the dais).
-    ox, oy = dx + 165.0, 212.0
+    ox, oy = dx + 165.0, dy + 212.0
     cyl("OnAir_Pole", ox, oy, top, top + 172.0, 4.0, "Black")
     box("OnAir_Box", ox - 6, ox + 6, oy - 34, oy + 34, top + 170.0, top + 196.0, "Black")
     for s in (-1, 1):
         box("OnAir_Glass", ox + s * 6.0 - 0.5, ox + s * 6.0 + 0.5, oy - 30, oy + 30, top + 173.0, top + 193.0, "OnAir")
         text("ON AIR", ox + s * 6.8, oy, top + 183.0, 0.0 if s > 0 else 180.0, 15.0, (0.02, 0.0, 0.0))
     # The operator's step, at the riser's west face (north of the LIVE BROADCAST sign).
-    box("Step", x0 - 44.0, x0, 130.0, 215.0, 0.0, 26.0, "WalnutDark", shadow=True)
-    box("Step", x0 - 22.0, x0, 130.0, 215.0, 26.0, 52.0, "WalnutDark", shadow=True)
+    box("Step", x0 - 44.0, x0, dy + 130.0, dy + 215.0, 0.0, 26.0, "WalnutDark", shadow=True)
+    box("Step", x0 - 22.0, x0, dy + 130.0, dy + 215.0, 26.0, 52.0, "WalnutDark", shadow=True)
     # The cables: down the riser's south face, along its foot, between the rows, out under the staff door.
     box("Cable", dx + 196.0, dx + 200.0, y0 - 2.0, y0, 2.0, top, "Rubber")
     box("Cable", dx + 203.0, dx + 207.0, y0 - 2.0, y0, 2.0, top, "Rubber")
-    cable([(dx + 201.0, -241.0), (dx + 100.0, -241.0), (dx + 100.0, -1150.0), (-300.0, -1150.0), (-300.0, -2005.0)])
+    cable([(dx + 201.0, y0 - 11.0), (dx + 100.0, y0 - 11.0), (dx + 100.0, 1995.0)])   # round D: out under the north wall
     # By the dais: a microphone boom reaching over the podium from the floor below its south-west corner, and two more
     # lamps on stands aimed at the podium (none within 1.2 m of Vance, his bodyguard, the guard or a mark).
     bx, by = 3420.0, -840.0

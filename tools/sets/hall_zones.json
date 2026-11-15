@@ -2,7 +2,7 @@
  "floor_z": 0.0,
  "catwalk_z": 900.0,
  "rows": {
-  "x0": 800.0,
+  "x0": 1900.0,
   "x1": 3150.0,
   "aisle_half": 180.0
  },
@@ -99,8 +99,8 @@
  ],
  "notes": {
   "units": "cm, Unreal world; X runs from the lobby doors (-1000) to the screen wall (4400); yaw 0 faces the dais",
-  "rows_front": "reserved bidders: 8 rows at x 3150, 3050 ... 2450 (pitch 100), 14 chairs a side, |y| 211..1017; row blockers |y| 180..1048",
-  "rows_rear": "general seats: 14 rows at x 2100 ... 800 (pitch 100), 12 chairs a side, |y| 211..893; row blockers |y| 180..924 (round C: was 8 rows to 1400)",
+  "rows_front": "reserved bidders: 8 rows at x 3150 ... 2450 (pitch 100), 7 chairs a side, |y| ~211..583; row blockers |y| 180..614 (round D)",
+  "rows_rear": "general seats: 3 rows at x 2100, 2000, 1900, 5 chairs a side, |y| ~211..459; row blockers |y| 180..490 (round D)",
   "cross_aisle": "x 2135..2400 between the two sections; the rope (x 2400, gap |y| < 150, beam across it) closes the reserved section; MARK_ROPE (2200, 0) is in the cross aisle",
   "aisle": "the centre aisle |y| < 180 between the rows; RedTape_Aisle x 2450..3550 |y| < 140 unchanged; the guard moves to (3250, -450) at the front of the house, facing yaw 150 (down the aisle), away yaw -90",
   "julian_place": "his bidder's seat: the general block's front row, south aisle seat (seat top z 44.6, yaw 0), kept out of hall_seats.json; stand point (2160, -140) in the cross aisle by the rope mark; outside the guard's frame (11.8 m) and the drone's loop",
@@ -111,8 +111,9 @@
   "projector": "on Maya's platform's east rail, lens z 1060, throws 36 m onto the screen clear of the bridge (bridge ends at y -200)",
   "followspots": "[0] is Maya's FollowSpot device (unchanged X,Y, now z 900); [1] is a dressing spot on the bridge (spot package decides)",
   "vex_post": "unchanged: backstage at the second hatch",
-  "rows_offered": "hall_seats.json offers ~183 audience chairs: front 3 rows 95 %, next 5 30 %, rear block's front 7 8 %, its last 7 (by the doors) 30 %; julian_place never offered",
+  "rows_offered": "round D: 142 chairs; every chair but Julian's and 14 with a catalogue or paddle is in hall_seats.json, each nudged a few cm so build_cast's own draw seats someone on it (no empty rows)",
   "dais_dressing": "tools/sets/hall.py part 'dais': screen masking 60 cm + gilt frame, burgundy legs y +-590..860 and a pelmet to z ~1185, walnut/brass plinth skin on the case, runner from the dais edge to the case (|y| < 95), torcheres at (4300, +-260), lectern skin on the podium. No collision.",
-  "reception": "x -1000..480: the TV riser (x 480..780, |y| < 230) right behind the last row on the aisle's axis; a standing-room rank at x 665..690, |y| 300..850 facing the dais; cocktail tables with standing guests behind; MARK_COCKTAILS moves to (950, 1010) off the north row ends"
+  "reception": "x -1000..1850: the TV riser off the centre line at x 1450..1750, y 750..1210 (camera faces +X at the dais); cocktail tables with standing guests at x 550..1700; standing bidders along the reserved rows' ends at |y| 700..730, x 2500..3110",
+  "mark_seat": "MARK_SEAT (2000, 560), MARK_COCKTAILS (950, 1010)"
  }
 }
