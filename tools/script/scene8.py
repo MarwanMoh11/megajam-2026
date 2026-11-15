@@ -85,13 +85,31 @@ for i, bx in enumerate((-300.0, 160.0, 1900.0)):
 block("Crates", 650.0, 790.0, FAR_Y + 10.0, FAR_Y + 130.0, GROUND, GROUND + 120.0, M_TRIM)
 block("Drainpipe", 1050.0, 1062.0, DOOR[1] - 16.0, DOOR[1] - 4.0, GROUND, 520.0, M_TRIM, collide=False)
 block("DoorStep", DOOR[0] - 90.0, DOOR[0] + 90.0, DOOR[1] - 40.0, DOOR[1], GROUND, GROUND + 6.0, M_TRIM, collide=False)
-# puddles: thin dark glossy slabs on the cobbles (the dress pass's wet material if it exists)
-puddle = mat(M_PUDDLE, M_WINDOW)
-for i, (px, py, sx, sy) in enumerate(((150.0, -3700.0, 260.0, 140.0), (900.0, -3560.0, 180.0, 110.0),
-                                      (1750.0, -3800.0, 300.0, 160.0), (-500.0, -3650.0, 220.0, 120.0),
-                                      (2600.0, -3900.0, 200.0, 140.0))):
-    block("Puddle_%d" % i, px - sx / 2, px + sx / 2, py - sy / 2, py + sy / 2, GROUND, GROUND + 0.6, puddle,
-          collide=False, shadow=False)
+# the wet cobbles and the rain: Scene 1's materials (s1-marquee, tools/script/scene1_dress.py), reused as they are
+PLANE = "/Engine/BasicShapes/Plane"
+M_WET = "/Game/Take/Script/S1/MI_S1_WetCobble"
+M_RAIN = "/Game/Take/Script/S1/MI_S1_Rain"
+if unreal.EditorAssetLibrary.does_asset_exist(M_WET):
+    C.spawn(PLANE, ((WEST + EAST) / 2, (DOOR[1] + FAR_Y) / 2, GROUND + 0.4), 0.0,
+            ((EAST - WEST) / 100.0, (DOOR[1] - FAR_Y) / 100.0, 1.0), tag=TAG, label="S8_WetCobble",
+            folder="Script/S8", collide=False, shadow=False, mat=M_WET)
+else:
+    puddle = mat(M_PUDDLE, M_WINDOW)
+    for i, (px, py, sx, sy) in enumerate(((150.0, -3700.0, 260.0, 140.0), (900.0, -3560.0, 180.0, 110.0),
+                                          (1750.0, -3800.0, 300.0, 160.0), (-500.0, -3650.0, 220.0, 120.0))):
+        block("Puddle_%d" % i, px - sx / 2, px + sx / 2, py - sy / 2, py + sy / 2, GROUND, GROUND + 0.6, puddle,
+              collide=False, shadow=False)
+if unreal.EditorAssetLibrary.does_asset_exist(M_RAIN):
+    n = 0
+    for y in (-3450.0, -3700.0, -3950.0):                                 # along the alley (planes in x-z)
+        C.spawn(PLANE, ((WEST + EAST) / 2, y, 560.0), (90.0, 0.0, 0.0), ((EAST - WEST) / 100.0, 11.2, 1.0),
+                tag=TAG, label="S8_Rain_%d" % n, folder="Script/S8", collide=False, shadow=False, mat=M_RAIN)
+        n += 1
+    for x in (-600.0, 200.0, 1000.0, 1800.0, 2600.0):                     # across it (planes in y-z)
+        C.spawn(PLANE, (x, (DOOR[1] + FAR_Y) / 2, 560.0), (90.0, 0.0, 90.0), (8.0, 11.2, 1.0),
+                tag=TAG, label="S8_Rain_%d" % n, folder="Script/S8", collide=False, shadow=False, mat=M_RAIN)
+        n += 1
+    out.append("rain: %d planes" % n)
 
 # --- light: a caged lamp over the exit, a lamp at each end, the side street's glow -----------------------------------
 block("LampCage", DOOR[0] - 15.0, DOOR[0] + 15.0, DOOR[1] - 40.0, DOOR[1] - 4.0, 305.0, 330.0, M_TRIM, collide=False)
