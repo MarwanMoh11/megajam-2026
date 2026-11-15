@@ -592,6 +592,7 @@ void AScene8Car::BeginFinale()
 	if (!Cabin) { BuildFinale(); }
 	bFinale = true;
 	bTie = false;
+	SetRiders(false, false);	// the grey-box stand-ins: Vance's sphere head sat in front of Julian's face in the mirror
 	PreFinaleLocation = GetActorLocation();
 	PreFinaleRotation = GetActorRotation();
 	if (!FinaleSpot.IsNearlyZero()) { SetActorLocationAndRotation(FinaleSpot, FRotator::ZeroRotator); }
