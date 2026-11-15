@@ -70,6 +70,9 @@ in `docs/JAM_PLAN.md`. Scoring the game (judge agents, ratings, design reviews) 
   `tools/ue_mcp.py` over HTTP, which always works.
 - Live Coding does not reliably re-apply changed constructor defaults to Blueprint children that already exist. Put
   tunable values in `UPROPERTY(EditAnywhere)` fields and change them in the editor instead.
+- Builds merge several .cpp files into one ("unity build"), and an anonymous namespace doesn't separate them: give
+  file-local constants and helpers distinctive names (or a uniquely named namespace), or the build breaks on ambiguous
+  or shadowed names (Nov 15: `Chrome`, `Bone`, `Margin` clashed across sessions' files).
 
 ## Known traps in the 5.9 Preview (from Epic's forum post)
 - Swapping a Blueprint's root component from Python can crash the editor. Give the C++ base class the root instead.
