@@ -58,6 +58,9 @@ AScene8Car::AScene8Car()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	BodyMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Take/Script/S8/SM_S8_GTCar.SM_S8_GTCar")));
+	// Max as s2-van seats him in the van: the clerk model at 0.9 scale on the Mixamo sitting idle (hip at 57.5 cm).
+	MaxMesh = TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(TEXT("/Game/Take/Cast/NPCs/Clerk/SKM_NPC_Clerk.SKM_NPC_Clerk")));
+	MaxAnim = TSoftObjectPtr<UAnimationAsset>(FSoftObjectPath(TEXT("/Game/Take/Anim/Mocap/SitIdle_A.SitIdle_A")));
 
 	Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 	SetRootComponent(Root);
@@ -117,7 +120,8 @@ AScene8Car::AScene8Car()
 
 	MaxBody = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MaxBody"));
 	MaxBody->SetupAttachment(Chassis);
-	MaxBody->SetRelativeLocationAndRotation(DriverSeat - FVector(0.f, 0.f, 40.f), FRotator(0.f, -90.f, 0.f));
+	MaxBody->SetRelativeLocationAndRotation(DriverSeat - FVector(0.f, 0.f, 52.f), FRotator(0.f, -90.f, 0.f));
+	MaxBody->SetRelativeScale3D(FVector(0.9f));
 	MaxBody->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	MaxBody->SetVisibility(false);
 	MaxProxy = MakeSitter(TEXT("MaxProxy"), DriverSeat, CoatMax);
