@@ -1075,3 +1075,26 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   imported under the editor lock. It shows in play after the next editor rebuild. The constants should become
   `UPROPERTY`s at the next header change.
 - **What went wrong:** nothing was seen in play yet: look, feel and loudness are unverified.
+
+## Sun Nov 15, 11:00-12:45 Cairo: set life, rehearsed ambient events
+
+- **What changed:** the set now has small rehearsed scenes between the guests, in the manner of the party levels
+  in Hitman and Dishonored and RDR2's ambient scenarios, so something is happening near Julian most of the time. A
+  stage manager (`USetLifeSubsystem`, `Take/SetLife/`) starts itself in every game world. It keeps up to three
+  pieces running in Julian's or the camera's zone, claims guests and staff for them, and walks everyone home
+  afterwards. It holds during the title card, bloopers, slow time and the teaching beat, and ends in the heist's dark
+  and at the alarm. Short overheard lines show as captions near the speaker when Julian is within 7 m. Seven pieces:
+  the spilled drink, the toast, waiter rounds, the rival bidders (seated rows), whispers about Julian (lobby and
+  hall; flavour only, never a sighting), the reunion (lobby) and the society photographer (street, flashbulbs).
+  `Reel.SetLife 0` turns it all off. Design, API and the 66 bark lines with sound ids are in `docs/SET_LIFE.md`.
+- **How:** one Claude session as coordinator. One Opus subagent built the framework and the first piece, then six
+  Opus subagents wrote one piece each in parallel, each in its own new file, and compile-checked the game target
+  only. Five other sessions were working in the same tree, so nothing existing was edited and no level change was
+  needed. The editor rebuild was shared with the props session's restart, arranged by messages between sessions
+  and the editor lock.
+- **Seen in play (one PIE run):** the reunion, rival bidders, toast and waiter rounds each started, spoke their
+  lines and ended "ok"; the waiter visibly crossed the hall.
+- **What went wrong / open:** the photographer did not start in about 16 s on the street, and the spilled drink and
+  whispers did not come up in the run. The reunion ran 58 s against a 60 s cap. The hall has one Staff member (the
+  bartender), so three pieces share him. Lines are captions only (nothing voiced). Walks are straight lines with no
+  pathfinding.
