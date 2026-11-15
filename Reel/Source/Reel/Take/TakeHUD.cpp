@@ -335,7 +335,12 @@ void ATakeHUD::DrawBars(const ATakeDirector& Dir)
 		const bool bLoud = IsControlsAnswer() || (Dir.bTitleIsSlate && Dir.TitleSecondsLeft > 0.f);
 		FTakeInk Controls = bLoud ? FTakeInk::Of(Paper, Paper) : FTakeInk::Of(Ash, Ash);
 		Controls.bSmallKeys = true;
-		Kit.Rich(EType::Tag, ControlsHint, Kit.CX(), Kit.RowB3(), Kit.W - 2.f * Kit.Px(Margin), 1, Controls);
+		// The script: on Max (no body) or in a scene that drives its POV itself, nobody walks: only the retake key.
+		const AScriptSequencer* Seq = AScriptSequencer::Get(this);
+		const AScriptScene* Scene = Seq && Seq->IsRunning() ? Seq->GetActiveScene() : nullptr;
+		const bool bNoWalk = Scene && (!Scene->bPlayerWalks || Seq->GetPov() == EScriptPov::Max);
+		const FString Hint = bNoWalk ? FString(TEXT("[R] Retake the scene")) : ControlsHint;
+		Kit.Rich(EType::Tag, Hint, Kit.CX(), Kit.RowB3(), Kit.W - 2.f * Kit.Px(Margin), 1, Controls);
 	}
 }
 
