@@ -1481,7 +1481,7 @@ void ACastMember::TickOwnWalk(float DeltaSeconds)
 		if (UAnimSingleNodeInstance* Inst = Body->GetSingleNodeInstance())
 		{
 			const float Shown = FMath::Max(WalkSpeedNow, ExternalUntil > 0.f ? ExternalSpeed : 0.f);
-			Inst->SetBlendSpacePosition(FVector(Shown < 5.f ? 0.f : Shown, 0.f, 0.f));
+			Inst->SetBlendSpacePosition(FVector(0.f, Shown < 5.f ? 0.f : Shown, 0.f));	// X is Direction, Y is Speed
 		}
 	}
 	// Turning: eased toward the way it goes (or FaceYaw), never faster than TurnRate.
@@ -1523,7 +1523,7 @@ void ACastMember::TickWalk(float DeltaSeconds)
 	WalkSpeedSmoothed = FMath::FInterpTo(WalkSpeedSmoothed, FMath::Min(Speed, 600.f), DeltaSeconds, 12.f);
 	if (UAnimSingleNodeInstance* Inst = Body->GetSingleNodeInstance())
 	{
-		Inst->SetBlendSpacePosition(FVector(WalkSpeedSmoothed < 8.f ? 0.f : WalkSpeedSmoothed, 0.f, 0.f));
+		Inst->SetBlendSpacePosition(FVector(0.f, WalkSpeedSmoothed < 8.f ? 0.f : WalkSpeedSmoothed, 0.f));	// X is Direction, Y is Speed
 	}
 }
 

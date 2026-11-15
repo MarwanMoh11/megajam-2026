@@ -1808,3 +1808,13 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
 
 - **Nov 16 00:45** Scene 6 bug (Marwan QA): after dragging the guard into the trunk Cole was stuck. Dragged in from the north, his sidestep "beside the trunk" went through the east wall (he was placed without a sweep). Fix: sidestep toward the room, and a depenetrating teleport when control comes back. Editor reopened in PIE at the takedown for his retest.
 - **Nov 16 00:55** Marwan QA, two more: (1) Scene 7 opened at the oak door with no cue for where to go. The guide marker was built to wait 17 s of wandering before it showed; now it shows from the first second in every scene (Marwan: "visuals as to where to go should be shown immediately always"). (2) Two Vances at the projector: the reel-swap hid Vance for its double, but his dressed body is a separate attached cast member that SetActorHiddenInGame does not reach (the same trap Scene 8 already handled). The swap now hides and shows the attached actors with him. A Live Coding patch crashed the editor on the next PIE start (null read as Scene 6 began); after a clean Build.bat and restart the same run plays fine.
+
+## Nov 16, 00:57 Cairo: walking legs for the lead and the NPCs (walk-fix)
+- **Changed:** Marwan's QA: neither the lead nor the NPCs had a walk animation. Cause: `BS_Idle_Walk_Run` is Direction
+  (X, -180..180) by Speed (Y, 0..600), and both `UTakeLocoAnim` and `ACastMember` passed the speed in X with Y at 0, so
+  every body idled at every speed. The speed now goes in Y (three lines: TakeLocoAnim.cpp, CastMember.cpp twice).
+- **What the agents did:** one Claude Fable 5.2 session traced it read-only (the clips were in the 00:33 cook, so it was
+  not a packaging fault), read the blend space's axes from the editor through Python, then Live Coded the fix.
+- **Went wrong / not seen:** the one PIE look asked for Scene 8 but the shots show Scene 1's queue, so moving legs have
+  not been seen in play. Live Coding only: the editor DLL on disk is stale until the next Build.bat (a package builds
+  from source and gets the fix).

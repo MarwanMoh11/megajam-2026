@@ -150,7 +150,8 @@ void UTakeLocoAnim::NativeUpdateAnimation(float DeltaSeconds)
 	const float WantStep = (Measured < 40.f && YawRate > StepTurnRate) ? FMath::Clamp(YawRate * 0.6f, 60.f, 130.f) : 0.f;
 	Step = FMath::FInterpTo(Step, WantStep, Dt, 8.f);
 	Shown = FMath::Max(Measured, Step);
-	SetBlendSpacePosition(FVector(Shown < 6.f ? 0.f : Shown, 0.f, 0.f));
+	// BS_Idle_Walk_Run is Direction (X) by Speed (Y): the speed goes in Y, or the body idles at every speed.
+	SetBlendSpacePosition(FVector(0.f, Shown < 6.f ? 0.f : Shown, 0.f));
 
 	// The crouch eases over about a fifth of a second, starting the frame it is asked for.
 	const ATakeCharacter* Character = Cast<ATakeCharacter>(Owner);
