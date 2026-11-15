@@ -1098,3 +1098,24 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   whispers did not come up in the run. The reunion ran 58 s against a 60 s cap. The hall has one Staff member (the
   bartender), so three pieces share him. Lines are captions only (nothing voiced). Walks are straight lines with no
   pathfinding.
+
+## Nov 15, 11:00-12:45 Cairo: every NPC gets a face of their own
+- **What changed:** Marwan asked for every NPC to look unique, with the most care on the people the player meets.
+  Nine featured NPCs are now Rodin characters skinned to the mannequin skeleton with build_heroes.py (new `NPCS` list,
+  assets in `/Game/Take/Cast/NPCs`). They are Vance, the doorman, the clerk, the bodyguard, the chief, the aisle guard,
+  the queue guest ahead of Julian, the singer and the bartender. The band, the security men, the cloakroom attendant and
+  the other seven queue guests got hand-picked kits, tints, faces and scales. The ~220 guests each get an explicit
+  look (`FCastLook`, decided in build_cast.py section 1). A new body material (`M_CrowdBody`) paints skin, shirt fronts,
+  cuffs, gloves, necklines, hair and faces onto the mannequin. Shape pieces add hats, hair volume, glasses, neckwear and
+  jewellery. Report: 220 guests, 220 distinct looks, 0 neighbour pairs differing in fewer than 3 traits readable at a
+  distance.
+- **What the agents did:** the lead session split the work into two parallel Claude Opus 5.5 (high effort) agents: one
+  for the featured NPCs (Rodin prompts, skinning, hook-ups), one for the crowd (C++ looks, material, palettes).
+  Five other sessions were also driving the one editor through `tools/editor_lock.py`. The lead session brokered the lock order and the
+  shared editor restart between them (props, set life, hand animations, hall puzzle).
+- **What went wrong:** Rodin had 5 credits, enough for 9 people, so 0.5 is left. The hand-animation session's REAL_HANDS
+  first failed in 5.9 (`get_triangle_material_id` is missing), so the NPCs were built without it; that session is
+  rebuilding them with the working version. The crowd agent's material script crashed the editor once at 12:28 (a
+  null class in NewObject); it was rebuilt and restarted in 3 min. Two late CastMember fixes went in by Live Coding
+  only: run `Build.bat ReelEditor` before the next editor restart. Faces on the crowd are painted on the mannequin head and read
+  as stylised up close.
