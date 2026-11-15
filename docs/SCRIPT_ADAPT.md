@@ -122,7 +122,8 @@ Function bodies and headers alike go in at the coordinator's restarts:
 (the queue lets a restart jump ahead), saves the level, closes the editor, `Build.bat ReelEditor`, starts the editor,
 and broadcasts "editor up" (or the broken file and its owner). About 3-5 minutes.
 - To make a restart: your `.h`+`.cpp` committed 5 minutes before, compiling (a snapshot build of the game target with
-  `-NoHotReloadFromIDE` while the editor is up, one at a time, never during a restart). Late = the next one.
+  `-NoHotReloadFromIDE` while the editor is up, one at a time, never during a restart). Late = the next one. A snapshot copied over an already-built one does not compile a
+  NEW `.cpp` unless its `Intermediate\...\Makefile.bin` is deleted: check the build log names your file.
 - A build broken by your file: the coordinator may apply a one-line fix to bring the editor back and tells you;
   otherwise your files are rolled back to your last good commit for that restart, and you are told.
 - After each restart, re-run your overlay script if it places actors your new code needs, and save while holding the
