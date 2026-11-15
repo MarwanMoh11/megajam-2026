@@ -920,8 +920,9 @@ void USetLifeSubsystem::GatherPool()
 			continue;
 		}
 		Pool.Add(M);
-		// Whoever stands on the queue's places at the start belongs to the queue for the whole take.
-		if (IsQueuePoint(M->GetActorLocation()))
+		// Whoever stands on the queue's places at the start belongs to the queue for the whole take; a scene's own
+		// actor (the Scene 3 critic) is tagged NoSetLife.
+		if (IsQueuePoint(M->GetActorLocation()) || M->ActorHasTag(TEXT("NoSetLife")))
 		{
 			Excluded.Add(M);
 		}
