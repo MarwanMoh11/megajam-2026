@@ -254,6 +254,7 @@ void AScene4Catwalk::ResetScene()
 	if (ATakeCharacter* V = GetVance())
 	{
 		V->GetCharacterMovement()->MaxWalkSpeed = V->WalkSpeed;
+		V->GetCharacterMovement()->SetComponentTickEnabled(true);
 	}
 }
 
@@ -289,6 +290,7 @@ void AScene4Catwalk::EndScene()
 	if (ATakeCharacter* V = GetVance())
 	{
 		V->GetCharacterMovement()->MaxWalkSpeed = V->WalkSpeed;
+		V->GetCharacterMovement()->SetComponentTickEnabled(true);
 	}
 	// The guards go back to their own posts (the other scenes own them), and to the director.
 	HoldGuards(false);
@@ -863,23 +865,51 @@ void AScene4Catwalk::StepTrack(float Dt)
 	}
 	const FVector VLoc = V->GetActorLocation();
 
-	// Vance strolls the lane.
+	// Vance strolls the lane. The scene carries him along it (the hall's guests and stools can't stall the shot):
+	// his movement component rests while the velocity it reports is set, so his walk plays.
 	FVector Way = V->GetActorForwardVector();
+	UCharacterMovementComponent* const Move = V->GetCharacterMovement();
 	if (Lane.IsValidIndex(LaneIndex))
 	{
-		const FVector Target = Lane[LaneIndex];
-		if (FVector::Dist2D(VLoc, Target) < 70.f)
+		FVector At = VLoc;
+		float Step = StrollSpeed * Dt;
+		while (Step > 0.f && Lane.IsValidIndex(LaneIndex))
 		{
-			++LaneIndex;
+			const FVector Target(Lane[LaneIndex].X, Lane[LaneIndex].Y, At.Z);
+			const float Dist = static_cast<float>(FVector::Dist2D(At, Target));
+			if (Dist <= Step)
+			{
+				At = Target;
+				Step -= Dist;
+				++LaneIndex;
+			}
+			else
+			{
+				At += (Target - At).GetSafeNormal2D() * Step;
+				Step = 0.f;
+			}
 		}
-	}
-	if (Lane.IsValidIndex(LaneIndex))
-	{
-		Way = (Lane[LaneIndex] - VLoc).GetSafeNormal2D();
-		V->AddMovementInput(Way, 1.f, true);
+		if (Lane.IsValidIndex(LaneIndex))
+		{
+			Way = (FVector(Lane[LaneIndex].X, Lane[LaneIndex].Y, At.Z) - At).GetSafeNormal2D();
+		}
+		if (Dt > 0.f)
+		{
+			const FRotator Face = FMath::RInterpTo(V->GetActorRotation(), FRotator(0.f, Way.Rotation().Yaw, 0.f), Dt, 6.f);
+			V->SetActorLocationAndRotation(At, Face, false, nullptr, ETeleportType::None);
+		}
+		if (Move)
+		{
+			Move->SetComponentTickEnabled(false);
+			Move->Velocity = Way * StrollSpeed;
+		}
 	}
 	else if (Phase == EPhase::Track)
 	{
+		if (Move)
+		{
+			Move->Velocity = FVector::ZeroVector;
+		}
 		Phase = EPhase::Doors;
 		PhaseSeconds = 0.f;
 		if (UTakeAudioComponent* A = UTakeAudioComponent::Get(this))
