@@ -57,14 +57,18 @@ def _qedit(fn):
             pass
 
 
-def _queue_touch(owner, note):
+def _queue_touch(owner, note, front=False):
     def f(q):
         now = time.time()
         for w in q:
             if w["owner"] == owner:
                 w["seen"] = now
                 return q
-        q.append({"owner": owner, "at": now, "seen": now, "note": note})
+        e = {"owner": owner, "at": now, "seen": now, "note": note}
+        if front:
+            q.insert(0, e)   # restarts only (the coordinator)
+        else:
+            q.append(e)
         return q
     return _qedit(f)
 
@@ -88,7 +92,7 @@ def write(d, new=False):
         json.dump(d, f)
 
 
-def acquire(owner, wait, note):
+def acquire(owner, wait, note, front=False):
     os.makedirs(os.path.dirname(LOCK), exist_ok=True)
     end = time.time() + wait
     while True:
@@ -101,7 +105,7 @@ def acquire(owner, wait, note):
             write(cur)
             print("OK (refreshed, held %d s)" % (now - cur.get("since", now)))
             return 0
-        q = _queue_touch(owner, note)
+        q = _queue_touch(owner, note, front)
         my_turn = bool(q) and q[0]["owner"] == owner
         if cur is None and not os.path.exists(LOCK) and my_turn:
             try:
@@ -163,7 +167,7 @@ def main(argv):
     if cmd == "acquire":
         wait = float(argv[argv.index("--wait") + 1]) if "--wait" in argv else 540.0
         note = argv[argv.index("--note") + 1] if "--note" in argv else ""
-        return acquire(owner, wait, note)
+        return acquire(owner, wait, note, "--front" in argv)
     if cmd == "release":
         return release(owner, "--force" in argv)
     print(__doc__)
