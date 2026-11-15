@@ -134,6 +134,7 @@ void AScene5Auditorium::ResetScene()
 {
 	StopScore(0.1f);
 	if (SpeechComp) { SpeechComp->Stop(); }
+	Say(FString(), FString(), nullptr);  // clear the subtitle lane (the speech's line holds ~12 s)
 	if (Dimmer) { Dimmer->EndScreening(); }
 	ShowTitle(false);
 	for (USpotLightComponent* T : Torches) { FTakeShapes::SetCueLight(T, 0.f, Scene5Local::TorchWhite); }
@@ -197,6 +198,8 @@ void AScene5Auditorium::EndScene()
 	RestoreWalkSpeed();
 	StopScore(1.5f);
 	if (SpeechComp) { SpeechComp->Stop(); }
+	// Left mid-scene (a jump, a cut): Pendleton's line must not run on over the next scene. Done keeps Vance's line.
+	if (Phase != EScene5Beat::Done) { Say(FString(), FString(), nullptr); }
 	ShowTitle(false);
 	for (USpotLightComponent* T : Torches) { FTakeShapes::SetCueLight(T, 0.f, Scene5Local::TorchWhite); }
 	FTakeShapes::SetCueLight(PendletonSpot, 0.f, Scene5Local::SpotWarm);
@@ -332,6 +335,7 @@ void AScene5Auditorium::Blackout()
 {
 	SetPhase(EScene5Beat::Sneak);
 	if (SpeechComp) { SpeechComp->FadeOut(0.2f, 0.f); }
+	Say(FString(), FString(), nullptr);  // the speech is over: its line goes with the lights
 	PlayOneShot(LightsCutSound);
 	PlayOneShot(ProjectorSound, 0.7f);
 	if (Dimmer) { Dimmer->BeginScreening(DarkHouseLevel); }
