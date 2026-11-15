@@ -207,7 +207,8 @@ def scene(critic_actor, guards):
                         ("play_along_reply_sound", "S3_PlayAlongReply"), ("brush_off_sound", "S3_BrushOff"),
                         ("brush_off_reply_sound", "S3_BrushOffReply"), ("max_vo_sound", "S3_MaxVo"),
                         ("guard_tackle_sound", "S3_GuardTackle"), ("guard_alibi_sound", "S3_GuardAlibi"),
-                        ("splash_sound", "S3_Splash")):
+                        ("splash_sound", "S3_Splash"), ("desk_sound", "S3_Desk"),
+                        ("desk_alibi_sound", "S3_DeskAlibi"), ("desk_again_sound", "S3_DeskAgain")):
         path = "/Game/Take/Audio/Script/S3/" + asset
         if eal.does_asset_exist(path):
             s.set_editor_property(prop, eal.load_asset(path))

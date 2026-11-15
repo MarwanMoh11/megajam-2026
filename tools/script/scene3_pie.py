@@ -1,5 +1,5 @@
 # Scene 3's play-in-editor shots into C:\Jam\Builds\script\s3\. Engine Python, repo root, under the editor lock:
-#   "$PY" -I tools/script/scene3_pie.py [alibi|tackle]   # default alibi
+#   "$PY" -I tools/script/scene3_pie.py [alibi|tackle|desk]   # default alibi; desk: the reception desk + the booth
 #   "$PY" -I tools/script/scene3_pie.py --stop          # stop PIE (always before releasing the lock)
 # Starts PIE (if needed), presses through the title card, Reel.Script.Jump 3, then shoots the open, the splash, the
 # choice; alibi: Play Along (Reel.S3.Key 1), the hall (Max's V.O.), the rope (the guard sends him back), the cut on;
@@ -40,6 +40,25 @@ def main():
     snap(s, "2_splash", prefix)
     time.sleep(6.0)                                   # the choice opens as his line lands
     snap(s, "3_choice", prefix)
+    if mode == "desk":
+        # Play Along, then to the reception desk (front.py DESK, its C toward the doors): the prompt, E, the clerk.
+        L.console(s, "Reel.S3.Key 1")
+        time.sleep(5.0)
+        L.console(s, "TakeWarp -2420 640 0", "TakeLook 0 -5")
+        time.sleep(1.0)
+        snap(s, "4_desk_prompt", prefix)
+        L.console(s, "Reel.S3.Key E")
+        time.sleep(0.3)
+        snap(s, "5_desk_used", prefix)
+        time.sleep(3.0)
+        L.console(s, "Reel.S3.Key E")
+        time.sleep(0.5)
+        snap(s, "6_desk_again", prefix)
+        # The hall's west wall and the projection booth, from just inside the doors, looking back up.
+        L.console(s, "TakeWarp -300 -150 0", "TakeLook 180 18")
+        time.sleep(1.0)
+        snap(s, "7_booth_from_hall", prefix)
+        return
     if mode == "tackle":
         L.console(s, "Reel.S3.Key 2")
         time.sleep(1.0)
