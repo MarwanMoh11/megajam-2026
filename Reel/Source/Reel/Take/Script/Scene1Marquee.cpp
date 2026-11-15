@@ -20,6 +20,7 @@
 #include "ScannerWatcher.h"
 #include "Sound/SoundBase.h"
 #include "TakeDirector.h"
+#include "TakePlayerController.h"
 #include "TakeShapes.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogScene1, Log, All);
@@ -27,6 +28,17 @@ DEFINE_LOG_CATEGORY_STATIC(LogScene1, Log, All);
 // Unity builds merge .cpp files: file-local helpers live in a uniquely named namespace.
 namespace Scene1MarqueeLocal
 {
+	/** The live view eases onto Point (the player's mouse takes it back at once), on Vance only. */
+	void PanTo(const AActor* Context, const FVector& Point, float Seconds)
+	{
+		const ATakeDirector* const Director = ATakeDirector::Get(Context);
+		ATakePlayerController* const PC = Director ? Director->PC.Get() : nullptr;
+		if (PC && !PC->IsInFlight() && PC->GetCurrentCharacter() && PC->GetCurrentCharacter() == Director->Julian.Get())
+		{
+			PC->StartLookPan(Point, Seconds);
+		}
+	}
+
 	float YawTo(const FVector& From, const FVector& To, float Fallback)
 	{
 		const FVector D = To - From;
@@ -393,6 +405,7 @@ void AScene1Marquee::TickScene(float DeltaSeconds)
 				Bouncer->LookAtPoint(M + FVector(0.f, 0.f, 160.f), 3.f);
 				Bouncer->PlayGesture(TEXT("Listen"));
 			}
+			if (Bouncer) { PanTo(this, Bouncer->GetActorLocation() + FVector(0.f, 0.f, 150.f), 0.8f); }
 			SpeakLine(TEXT("FLOOR MANAGER"), ManagerLine, ManagerVoice);
 			EnterBeat(EScene1Beat::Whisper);
 		}
@@ -422,6 +435,7 @@ void AScene1Marquee::TickScene(float DeltaSeconds)
 		{
 			PutScanner(EScannerAt::Bolted);
 			PlayAt(BoltSound, GetPlatePoint());
+			PanTo(this, GetPlatePoint(), 0.5f);
 			SetPlateGlow(IdleGlow, 60.f);
 			if (Bouncer)
 			{
@@ -447,6 +461,7 @@ void AScene1Marquee::TickScene(float DeltaSeconds)
 		if (Queue->IsJuliansTurn())
 		{
 			Queue->bScriptOpenFront = true;
+			PanTo(this, GetPlatePoint(), 0.6f);
 			EnterBeat(EScene1Beat::Turn);
 		}
 		break;
