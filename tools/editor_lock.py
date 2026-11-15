@@ -31,7 +31,7 @@ def _qedit(fn):
             fd = os.open(QMTX, os.O_WRONLY | os.O_CREAT | os.O_EXCL)
             os.close(fd)
             break
-        except FileExistsError:
+        except (FileExistsError, PermissionError):   # Windows: PermissionError while another process deletes it
             try:
                 if time.time() - os.path.getmtime(QMTX) > 10:
                     os.remove(QMTX)
