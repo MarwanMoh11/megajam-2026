@@ -61,7 +61,7 @@ list, this file wins. Fallback: tag `pre-script-fallback` (6876e0b) and `C:\Jam\
 - **Scene N:** new files only: `Take/Script/SceneN*.h/.cpp`, `tools/script/sceneN*.py` (tag `script_sN`),
   assets under `/Game/Take/Script/SN/`, audio under `/Game/Take/Audio/Script/SN/`, notes in `docs/script/sN.md`.
   Plus these existing files: S1 `QueueLine.*`, `ScannerWatcher.*`; S3 `SetLife/*`, `RoomWatch.*`; S4 `FollowSpot.*`,
-  `CartDevice.*`; S5 `HouseDimmer.*`, `BarClockComponent.*`, `SoundDesk.*`; S6 `WinchDevice.*`, `PyroDevice.*`,
+  `CartDevice.*`; S5 `HouseDimmer.*`, `BarClockComponent.*`, `SoundDesk.*`, `tools/sets/puzzle.py`; S6 `WinchDevice.*`, `PyroDevice.*`,
   `BannerDevice.*`, `Shutter.*`; S7 none (new files); S8 `SceneTrigger.*`.
 - Need a change in a file you do not own: message its owner (SendMessage to their session) with the exact change.
 - **Level edits only by a tagged, re-runnable Python overlay** in your `tools/script/` file, run after the existing
