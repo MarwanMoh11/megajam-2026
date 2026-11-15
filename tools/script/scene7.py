@@ -251,6 +251,16 @@ def cut():
     for jx in (x0d, x1d):
         box("Oak_Back_Jamb", jx - 6.0, jx + 6.0, -2032.0, -2018.0, 0.0, hd + 8.0, "trim", collide=False)
     box("Oak_Back_Head", x0d - 6.0, x1d + 6.0, -2032.0, -2018.0, hd, hd + 12.0, "trim", collide=False)
+    # The stair's approach (in front of the foot door): hall dressing standing there (a guest, a cocktail table) moves
+    # 2.6 m east, out of the way. Idempotent: once moved they are outside the box.
+    for a in eas.get_all_level_actors():
+        lbl = a.get_actor_label()
+        if not re.match(r"^(Guest|Cocktail)_", lbl):
+            continue
+        o, e = a.get_actor_bounds(False)
+        if o.x - e.x < -560.0 and o.x + e.x > -800.0 and o.y - e.y < -1140.0 and o.y + e.y > -1440.0 and o.z - e.z < 200.0:
+            a.set_actor_location(a.get_actor_location() + unreal.Vector(260.0, 0.0, 0.0), False, False)
+            out.append("moved " + lbl)
     return "cut: " + "; ".join(out)
 
 
