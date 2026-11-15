@@ -99,3 +99,18 @@ list, this file wins. Fallback: tag `pre-script-fallback` (6876e0b) and `C:\Jam\
 From `Reel.Script.Jump N`: the scene opens on its POV and look, the script's beats play in order with subtitles, the
 gameplay works and can fail into a retake, and `FinishScene` cuts to the next scene. Shots in
 `C:\Jam\Builds\script\sN\`. A short report to the coordinator: what works, what is not done, what only Marwan can judge.
+
+## Session ids (SendMessage `to`)
+| Name | Id |
+|---|---|
+| coordinator | the session that started you (`startedBy` in list_sessions linked) |
+| spine | local_66a049fa-d027-41b3-8bd5-6d14596f7375 |
+| s1-marquee | local_baae112b-0265-46da-ae9e-01f1964903c0 |
+| s2-van | local_df5684a0-459a-41a5-a16a-285a103fb46f |
+| s3-foyer | local_6ec31579-2eb4-4c6c-ae0f-b403c910711e |
+| s4-catwalk | local_a10928b1-5ffa-4a08-a819-84b7fc721fee |
+| s5-auditorium | local_167acbd1-cccd-445c-a4bf-3e5f2d3fb7e2 |
+| s6-backstage | local_589af368-a04a-4a85-a202-bb7e17130a8b |
+| s7-booth | local_1cc2b37c-5cbf-4699-b1b9-4fe287f870b7 |
+| s8-alley | local_6f919fa8-18f0-4981-b2c5-dc328b3f34e3 |
+| puzzle (finishing, then stops) | local_6296ffb1-88d3-49e8-aa3e-a664691c9415 |
