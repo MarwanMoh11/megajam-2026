@@ -1176,3 +1176,32 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   - Seen in editor shots only (`C:\Jam\Builds\qa\puzzle`), not in play: the breaker firing, the lamps going green,
     the slide under the film filter. The breaker has no sound (the banner's cloth whoosh is keyed to the old name) and
     Maya's old spoken hint no longer matches the new text, so that hint is subtitle only.
+
+## Sun Nov 15, 11:00-13:15 Cairo: interactable props that move and make sense (one session, no agents)
+
+Marwan, from the editor: "the light here is just a big box that doesn't even go over the edge, and the object has no
+animation, you can't move it or change it." He was looking at the searchlight on the marquee balcony.
+
+- **What it was:** the big orange wire box was the device's old click volume (unused since the Nov 13 rework, drawn
+  in the editor only). The searchlight's whole trailer turned on the press and the lamp tilted at most 10 degrees,
+  while the beam went straight from the lens to the gate 6 m below, through the rail and the balcony's lip. And it
+  could not have worked: the gate stands just past the balcony's edge, so no lamp standing behind the rail can see it.
+- **What changed:**
+  - The searchlight and the follow spot are split into parts (`tools/sets/device_heads.py`, copies of the Rodin
+    meshes with the other parts' triangles deleted): the stand stays put, the yoke pans, the drum or barrel tilts on
+    its trunnion (`AFollowSpot` "Take|Head": `PanMesh`, `TiltMesh`, pivots, `LensMesh`, tilt limits, `RestTilt`).
+    The beam leaves the lens along the drum, wherever it points, and the head swings on the old spring.
+  - The searchlight's turntable, yoke and drum sit on a steel outrigger bolted to the balcony rail, the head out over
+    the street (the trailer is not used); at rest it looks out and up, and on the press it swings down onto the gate.
+  - While Maya is in reach and looking at a watcher, the dark head already follows her aim (`bHeadFollowsAim`).
+  - Every lever throw eases out with a small overshoot (`HandleOvershoot`, `HandleFirstStep`); the pyro board, the
+    sound desk and the dimmer board also jolt on the press (`PressJoltDegrees`).
+  - The click volume draws only when its device is selected.
+  - The "Banner" actor's model is now the breaker's knife-switch panel (the dimmer board's mesh, small, a red pilot,
+    a handle that throws down and out), to the hall session's spec; `devices.py` leaves `puzzle.py`'s settings alone.
+- **How:** one Claude session, sharing the editor with four others through `tools/editor_lock.py`; the header change
+  rode on another session's editor restart. Most of the wall time went on waiting for the lock.
+- **Checked:** captures of the searchlight at rest and tilted onto the street, the follow spot, the breaker, the pyro
+  board, the dimmer board and the sound desk (`C:\Jam\Builds\qa\props`). Not checked in play: the swing's feel, the
+  beam landing on the doorman from the new mount, the head following Maya's aim, the lever easing and the jolts; the
+  scripted tests were not re-run.

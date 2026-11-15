@@ -158,6 +158,16 @@ void ATakeDirector::StepUse()
 		}
 	}
 
+	// Interactable props: a lamp's head follows its user's aim before the press (looks only).
+	if (AFollowSpot* const OldSpot = IsValid(OldDevice) ? Cast<AFollowSpot>(OldDevice) : nullptr; OldSpot && OldDevice != NewDevice)
+	{
+		OldSpot->SetAimHint(nullptr);
+	}
+	if (AFollowSpot* const NewSpot = Cast<AFollowSpot>(NewDevice))
+	{
+		NewSpot->SetAimHint(NewWatcher);
+	}
+
 	CurrentUse = NewUse;
 }
 

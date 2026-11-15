@@ -347,6 +347,13 @@ void ADevice::ApplyLook()
 		Model->SetVisibility(bHasModel);
 		PlaceModel();
 	}
+	// Interactable props: the old click box (unused by the input, kept for its trace) drew as a big orange wire box
+	// over the model in the editor: it draws only when selected now.
+	if (ClickVolume && ClickVolume->bDrawOnlyIfSelected != bHasModel)
+	{
+		ClickVolume->bDrawOnlyIfSelected = bHasModel;
+		ClickVolume->MarkRenderStateDirty();
+	}
 	if (Body)
 	{
 		Body->SetVisibility(!(bHasModel && bModelHidesBody));
@@ -447,6 +454,17 @@ void ADevice::StepLook(float DeltaSeconds)
 	PilotClock += DeltaSeconds;
 	SetPilotGlow(PilotGlowNow());
 
+	// The press jolt rocks the model about its foot and settles.
+	if (JoltClock >= 0.f)
+	{
+		JoltClock += DeltaSeconds;
+		if (JoltClock >= FMath::Max(PressJoltSeconds, 0.01f))
+		{
+			JoltClock = -1.f;
+		}
+		PlaceModel(GetJoltTurn());
+	}
+
 	if (!bShowHandle)
 	{
 		return;
@@ -462,10 +480,15 @@ void ADevice::StepLook(float DeltaSeconds)
 
 void ADevice::OnFiredLook()
 {
-	// The lever is already half thrown (a crank a quarter turn on) on the press frame.
+	// The lever is already partly thrown (a crank a quarter turn on) on the press frame; the model jolts.
+	if (PressJoltDegrees > 0.f && bHasModel)
+	{
+		JoltClock = 1.f / 60.f;
+		PlaceModel(GetJoltTurn());
+	}
 	if (bShowHandle)
 	{
-		HandleAlpha = FMath::Max(HandleAlpha, 0.5f);
+		HandleAlpha = FMath::Max(HandleAlpha, FMath::Clamp(HandleFirstStep, 0.f, 1.f));
 		if (HandleSpinDegrees != 0.f)
 		{
 			HandleSpin = FMath::Fmod(HandleSpin + FMath::Sign(HandleSpinDegrees) * 30.f, 360.f);
@@ -559,8 +582,28 @@ void ADevice::PoseHandle()
 	{
 		return;
 	}
-	const FRotator Thrown(HandleThrow.Pitch * HandleAlpha, HandleThrow.Yaw * HandleAlpha, HandleThrow.Roll * HandleAlpha);
+	// Interactable props: eased (out-back): fast off the mark, a little past the stop, settles.
+	const float A = FMath::Clamp(HandleAlpha, 0.f, 1.f);
+	// (Out-back's 1.70158 overshoots by 10 %.) Coming back to rest it eases in and out, no bounce.
+	const float C1 = 17.0158f * FMath::Clamp(HandleOvershoot, 0.f, 1.f);
+	const float Eased = IsHandleThrown() ? 1.f + (C1 + 1.f) * FMath::Pow(A - 1.f, 3.f) + C1 * FMath::Square(A - 1.f)
+		: A * A * (3.f - 2.f * A);
+	const FRotator Thrown(HandleThrow.Pitch * Eased, HandleThrow.Yaw * Eased, HandleThrow.Roll * Eased);
 	const FQuat Turn = HandleRest.Quaternion() * Thrown.Quaternion()
 		* FQuat(FVector::XAxisVector, FMath::DegreesToRadians(HandleSpin));
 	HandlePivot->SetRelativeLocationAndRotation(HandleOffset, Turn);
+}
+
+FQuat ADevice::GetJoltTurn() const
+{
+	const float Span = FMath::Max(PressJoltSeconds, 0.01f);
+	if (JoltClock < 0.f || JoltClock >= Span || PressJoltDegrees <= 0.f)
+	{
+		return FQuat::Identity;
+	}
+	// Two and a half swings, dying away; about the model's own side (its Y), so it rocks toward its user and back.
+	const float T = JoltClock / Span;
+	const float Angle = PressJoltDegrees * FMath::Sin(T * UE_TWO_PI * 2.5f) * FMath::Square(1.f - T);
+	const FVector Side = ModelRotation.Quaternion().GetAxisY();
+	return FQuat(Side, FMath::DegreesToRadians(Angle));
 }

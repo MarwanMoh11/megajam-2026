@@ -63,6 +63,23 @@ CASE_XY = tuple(ZONES.get("case", (4000.0, 0.0, 0.0))[:2])        # the follow s
 BRASS = (0.42, 0.27, 0.08)
 AMBER = (1.0, 0.52, 0.16)
 
+# --- Interactable props (Nov 15): the lamps' heads move on their own --------------------------------------------------
+# tools/sets/device_heads.py splits each lamp into parts that share the imported mesh's space (cm, unscaled): Base (the
+# stand: the model), Yoke (pans about pan_pivot's up), Drum (tilts about tilt_pivot, across its lens). lens: the lens's
+# centre; lens_yaw: the mesh-space yaw it faces (the C++ AFollowSpot "Take|Head" properties).
+HEADS = {
+    "devices_searchlight": dict(folder="Devices_searchlight", pan_pivot=(0.0, -30.0, 0.0), tilt_pivot=(0.0, -30.0, 44.0),
+                                lens=(47.0, -30.0, 44.0), lens_yaw=0.0),
+    "devices_followspot": dict(folder="Devices_followspot", pan_pivot=(0.0, 42.0, 0.0), tilt_pivot=(0.0, 42.0, 32.0),
+                               lens=(0.0, 91.0, 50.0), lens_yaw=90.0),
+}
+# The searchlight's rail mount: its gate is just past the balcony's edge and 6 m down, so no lamp standing behind the
+# rail can reach it (the balcony's lip is in the way). The lamp's turntable sits on a steel outrigger bolted to the
+# rail, its head out over the street. RAIL_X: the rail's line; RAIL_TOP: its visible top bar (1 m over the floor).
+RAIL_X = -3452.0
+RAIL_TOP = 552.0
+STEEL = "/Game/Take/Dress/MI_Back_Steel"                     # the catwalk's steel (truss, rails)
+
 
 def mpath(n):
     return C.ip()["mesh_path"](n)
@@ -127,19 +144,25 @@ def device(label):
 #   relative to face), lever: (pivot, rest (pitch, yaw rel. to face, roll), throw (pitch, yaw, roll), length, spin),
 #   rope: (from, to_z world).
 SPECS = [
-    dict(label="Searchlight", mesh="devices_searchlight", at=("actor", 67.0, 30.0), face=150.0, size=(230, 160, 200),
-         lens=(0.5, 0.0, 0.75), pilot=(-0.22, 0.0, 0.42), pilot_size=4.0, hide_body=True,
-         shot=((-3990.0, 120.0, 260.0), (-3390.0, 470.0, 540.0))),
+    # Interactable props (Nov 15): the turntable, yoke and drum on a rail mount, the head out over the street; at rest it
+    # looks out and up, and swings down onto the gate (or wherever Maya aims it). The trailer is not used.
+    dict(label="Searchlight", mesh="devices_searchlight", at=("actor", -28.0, 70.0), floor=RAIL_TOP + 5.0, scale=0.9,
+         anchor="base", face=180.0, size=(230, 160, 200), head=True, mount=True, tilt_down=80.0, rest_tilt=18.0,
+         lens_glow=60.0, near_skip=60.0, pilot=(-0.72, 0.0, 0.11), pilot_size=4.0, hide_body=True,
+         shot=((-3950.0, 150.0, 420.0), (-3460.0, 520.0, 640.0))),
     # The follow spot: its operator's handle sticks out the back toward Maya (SPOT_USE 650,-290), beside her.
     dict(label="Spot", mesh="devices_followspot", at=("actor", -90.0, -92.0), face=("toward", CASE_XY),
-         size=(240, 110, 170), lens=(0.9, 0.0, 0.8), pilot=(-0.3, 0.35, 0.45), pilot_size=3.5, hide_body=True,
+         size=(240, 110, 170), head=True, tilt_down=70.0, rest_tilt=-4.0, lens_glow=30.0,
+         lens=(0.9, 0.0, 0.8), pilot=(-0.3, 0.35, 0.45), pilot_size=3.5, hide_body=True,
          shot=((470.0, -560.0, 640.0), (680.0, -340.0, 540.0))),
-    dict(label="Banner", mesh="devices_winch", at=("use", 68.0, -2.0), face=0.0, size=(55, 85, 62),
-         pilot=(0.0, -0.45, 0.95), pilot_size=3.5, hide_body=False,
-         lever=((0.0, 0.5, 0.55), (0.0, 90.0, 0.0), (0.0, 0.0, 0.0), 22.0, 540.0),
-         rope=((0.15, 0.0, 0.72), F2 + 420.0),
+    # Interactable props (Nov 15, the hall session's spec): the "Banner" actor is now the aisle eye's BREAKER, a
+    # knife-switch panel (the dimmer board's mesh, small) with a red pilot; its handle throws down and out on the
+    # press. tools/sets/puzzle.py runs after this and sets its name, verb, model_hides_body and show_rope.
+    dict(label="Banner", jolt=0.8, keep=("model_hides_body", "show_rope"), mesh="devices_dimmer", at=("use", 68.0, -2.0), face="use", size=(30, 60, 110),
+         hide_body=True, pilot=(0.55, -0.30, 0.90), pilot_size=3.5, pilot_colour=(1.0, 0.08, 0.04),
+         lever=((0.60, 0.0, 0.62), (0.0, 0.0, 0.0), (-110.0, 0.0, 0.0), 26.0, 0.0),
          shot=((470.0, -380.0, 660.0), (720.0, -512.0, 480.0))),
-    dict(label="Pyro", mesh="devices_pyro", at=("actor", -11.0, -7.0), face="use", size=(50, 100, 85),
+    dict(label="Pyro", jolt=1.4, mesh="devices_pyro", at=("actor", -11.0, -7.0), face="use", size=(50, 100, 85),
          pilot=(0.52, 0.30, 0.86), pilot_size=4.0, pilot_colour=(1.0, 0.10, 0.04), hide_body=True,
          lever=((0.05, -0.40, 0.98), (20.0, 0.0, 0.0), (-70.0, 0.0, 0.0), 26.0, 0.0),
          shot=((470.0, -930.0, 650.0), (725.0, -750.0, 500.0))),
@@ -147,7 +170,7 @@ SPECS = [
          shot=((2780.0, -1700.0, 230.0), (3000.0, -1900.0, 60.0))),
     dict(label="Cart_Dais", mesh="cart", at=None, face="actor", size=(100, 60, 90), slot_only=True, pilot=None,
          shot=((3930.0, -1700.0, 230.0), (4150.0, -1900.0, 60.0))),
-    dict(label="Sound_Desk", mesh="desk", at=None, face="actor", size=(60, 140, 100), slot_only=True,
+    dict(label="Sound_Desk", jolt=0.8, mesh="desk", at=None, face="actor", size=(60, 140, 100), slot_only=True,
          pilot=(0.05, -0.25, 0.93), pilot_size=6.0, pilot_colour=(1.0, 0.62, 0.22),
          lever=((0.30, 0.28, 0.80), (25.0, 0.0, 0.0), (-50.0, 0.0, 0.0), 16.0, 0.0),
          shot=((3330.0, -2180.0, 240.0), (3550.0, -2460.0, 90.0))),
@@ -158,7 +181,7 @@ SPECS = [
          shot=((4080.0, -2230.0, 260.0), (4330.0, -2530.0, 160.0))),
     # The house dimmer (package heist's AHouseDimmer, an ADevice: the slot works): on the platform's west rail, facing
     # its use point. Its projector is dressed by projector() below.
-    dict(label="HouseDimmer", mesh="devices_dimmer", at=None, face="use", size=(40, 120, 180), hide_body=True,
+    dict(label="HouseDimmer", jolt=1.0, mesh="devices_dimmer", at=None, face="use", size=(40, 120, 180), hide_body=True,
          pilot=(0.52, 0.0, 0.86), pilot_size=4.0, optional=True,
          lever=((0.0, 0.56, 0.55), (0.0, 0.0, 0.0), (-80.0, 0.0, 0.0), 34.0, 0.0),
          shot=((560.0, -420.0, 640.0), (470.0, -640.0, 540.0))),
@@ -183,6 +206,8 @@ def frames(spec, dev, m):
         base = aloc if at[0] == "actor" else use
         off = turn((at[1], at[2], 0.0), ayaw)
         at = (base[0] + off[0], base[1] + off[1], use[2])
+    if spec.get("floor") is not None:                               # interactable props: a mount above the floor
+        at = (at[0], at[1], float(spec["floor"]))
     f = spec["face"]
     if f == "use":
         yaw = yaw_to(at, use)
@@ -198,6 +223,7 @@ def frames(spec, dev, m):
     x0, x1, y0, y1, z0, z1 = mbox(m)
     dx, dy = (x1 - x0, y1 - y0) if int(round(front / 90.0)) % 2 == 0 else (y1 - y0, x1 - x0)
     s = min(spec["size"][0] / max(dx, 1e-3), spec["size"][1] / max(dy, 1e-3), spec["size"][2] / max(z1 - z0, 1e-3))
+    s = float(spec.get("scale") or s)
     return at, yaw, s, aloc, ayaw, use, (dx * s, dy * s, (z1 - z0) * s), front
 
 
@@ -240,7 +266,8 @@ def slot(spec, dev, m):
     lyaw = yaw - ayaw
     p = dict(model_mesh=m, use_model=True, model_offset=vec(to_local(at, aloc, ayaw)),
              model_rotation=unreal.Rotator(0.0, 0.0, lyaw + front), model_scale=vec((s, s, s)),
-             show_use_ring=False, model_hides_body=bool(spec.get("hide_body", True)))
+             show_use_ring=False, model_hides_body=bool(spec.get("hide_body", True)),
+             press_jolt_degrees=float(spec.get("jolt", 0.0)))                  # interactable props: the press shakes it
     if spec.get("pilot"):
         p.update(show_pilot=True, pilot_offset=vec(to_local(part(at, yaw, dims, spec["pilot"]), aloc, ayaw)),
                  pilot_size=float(spec.get("pilot_size", 4.0)), pilot_colour=lin(spec.get("pilot_colour", AMBER)))
@@ -263,17 +290,68 @@ def slot(spec, dev, m):
                  rope_to=vec(to_local((a0[0], a0[1], rp[1]), aloc, ayaw)))
     else:
         p.update(show_rope=False)
-    if spec.get("lens"):
+    if spec.get("head"):
+        p.update(head(spec, m, s, lyaw + front, p["model_offset"]))
+    elif spec.get("lens"):
         lens = part(at, yaw, dims, spec["lens"])
         p.update(show_beam_shape=False, swing_model=True, lens_yaw=float(lyaw),
                  lens_offset=vec(turn(sub(lens, at), -ayaw)),
                  lens_glow_size=float(spec.get("lens_glow", 0.35 * min(dims[1], dims[2]))))  # W3 spot
+    for k in spec.get("keep", ()):                                  # set by another script (the breaker: puzzle.py)
+        p.pop(k, None)
     for k, v in p.items():
         try:
             dev.set_editor_property(k, v)
         except Exception as e:                                       # noqa: BLE001
             unreal.log_warning("devices: %s.%s: %s" % (spec["label"], k, e))
     return "%s: slot at (%.0f, %.0f, %.0f) yaw %.0f scale %.2f" % (spec["label"], at[0], at[1], at[2], yaw, s)
+
+
+def head(spec, m, s, myaw, offset):
+    """The split lamp: the stand as the model, the yoke and drum as the head (HEADS), and the model's offset moved so
+    the stand lands where the whole mesh would have (anchor "full"), or with the stand's own foot at the spot (anchor
+    "base": the searchlight's turntable on its mount)."""
+    h = HEADS[spec["mesh"]]
+    root = "/Game/Take/Props/%s/SM_%s_" % (h["folder"], h["folder"])
+    base, yoke, drum = (eal.load_asset(root + n) for n in ("Base", "Yoke", "Drum"))
+    if not (base and yoke and drum):
+        unreal.log_warning("devices: %s: no head parts (run device_heads.py)" % spec["label"])
+        return {}
+    off = (offset.x, offset.y, offset.z)
+    if spec.get("anchor", "full") == "full":
+        fx0, fx1, fy0, fy1, fz0, _ = mbox(m)
+        bx0, bx1, by0, by1, bz0, _ = mbox(base)
+        d = (((bx0 + bx1) - (fx0 + fx1)) * 0.5 * s, ((by0 + by1) - (fy0 + fy1)) * 0.5 * s, (bz0 - fz0) * s)
+        off = add(off, turn(d, myaw))
+    return dict(model_mesh=base, model_offset=vec(off), pan_mesh=yoke, tilt_mesh=drum,
+                pan_pivot=vec(h["pan_pivot"]), tilt_pivot=vec(h["tilt_pivot"]), lens_mesh=vec(h["lens"]),
+                lens_mesh_yaw=float(h["lens_yaw"]), max_head_tilt_down=float(spec.get("tilt_down", 80.0)),
+                max_head_tilt_up=45.0, rest_tilt=float(spec.get("rest_tilt", 0.0)), head_follows_aim=True,
+                swing_model=True, max_model_pitch=0.0, beam_near_skip=float(spec.get("near_skip", 150.0)),
+                press_jolt_degrees=0.0, show_beam_shape=False,
+                lens_glow_size=float(spec.get("lens_glow", 30.0)))
+
+
+def rail_mount(spec, dev):
+    """The searchlight's outrigger: a steel plate on the rail under the turntable and two braces down to the
+    balcony's lip, in the catwalk's steel."""
+    m = prop_mesh(spec["mesh"])
+    at, yaw, s, aloc, ayaw, use, dims, front = frames(spec, dev, m)
+    r = 0.5 * 98.0 * s + 6.0                                         # the turntable's radius and a lip, cm
+    top = float(spec["floor"])
+    cube, cyl = "/Engine/BasicShapes/Cube", "/Engine/BasicShapes/Cylinder"
+    mat = STEEL
+    C.spawn(cube, (at[0], at[1], top - 2.5), 0.0, (2.0 * r / 100.0, 2.0 * r / 100.0, 0.05), tag=TAG,
+            label="Set_Device_Searchlight_Plate", mat=mat)
+    for dy in (-0.7 * r, 0.7 * r):                                  # braces from the plate's outer edge to the lip
+        a = (at[0] - 0.8 * r, at[1] + dy, top - 5.0)
+        b = (RAIL_X - 10.0, at[1] + dy, top - 95.0)                   # a knee brace to the balcony's face
+        mid = ((a[0] + b[0]) * 0.5, (a[1] + b[1]) * 0.5, (a[2] + b[2]) * 0.5)
+        ln = math.dist(a, b)
+        rz = unreal.MathLibrary.make_rot_from_z(vec(sub(a, b)))
+        C.spawn(cyl, mid, (rz.roll, rz.pitch, rz.yaw), (0.06, 0.06, ln / 100.0), tag=TAG,
+                label="Set_Device_Searchlight_Brace", mat=mat)
+    return "searchlight mount: plate at (%.0f, %.0f, %.0f) r %.0f" % (at[0], at[1], top, r)
 
 
 def prop_mesh(n):
@@ -329,6 +407,8 @@ def do_place():
             continue
         if has_slot(dev):
             out.append(slot(spec, dev, m))
+            if spec.get("mount"):
+                out.append(rail_mount(spec, dev))
         elif not spec.get("slot_only"):
             out.append(stand_in(spec, dev, m))
         else:

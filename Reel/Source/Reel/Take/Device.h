@@ -306,6 +306,23 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Handle")
 	float HandleSpinDegrees = 0.f;
 
+	/** Interactable props (Nov 15): the throw eases out and runs this far past its end before it settles (a share of
+	 *  the throw: 0 a plain ease-out, 0.15 a slam that bounces back a little). */
+	UPROPERTY(EditAnywhere, Category = "Take|Handle")
+	float HandleOvershoot = 0.12f;
+
+	/** ...and on the press frame it is already this far through its throw (0-1). */
+	UPROPERTY(EditAnywhere, Category = "Take|Handle")
+	float HandleFirstStep = 0.35f;
+
+	/** Interactable props: the press shakes the model, a damped rock about its foot, degrees (0: none; the follow
+	 *  spot and the carts move their own models). */
+	UPROPERTY(EditAnywhere, Category = "Take|Model")
+	float PressJoltDegrees = 0.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Model")
+	float PressJoltSeconds = 0.45f;
+
 	/** A spent one-use device keeps its lever thrown (and its lamp dark). */
 	UPROPERTY(EditAnywhere, Category = "Take|Handle")
 	bool bHandleStaysThrownWhenSpent = true;
@@ -431,7 +448,11 @@ protected:
 	/** Turns the lever's pivot for HandleAlpha and HandleSpin, this frame. */
 	void PoseHandle();
 
+	/** The press jolt's rock for its clock now, about the model's own side axis (identity when done). */
+	FQuat GetJoltTurn() const;
+
 	bool bHasModel = false;
+	float JoltClock = -1.f;
 	float HandleAlpha = 0.f;
 	float HandleSpin = 0.f;
 	float PilotGlowShown = -1.f;

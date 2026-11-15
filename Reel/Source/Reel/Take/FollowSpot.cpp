@@ -9,6 +9,7 @@
 #include "Components/PointLightComponent.h"
 #include "Components/SpotLightComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -67,6 +68,112 @@ AFollowSpot::AFollowSpot()
 		FVector(0.3f, 0.3f, 0.01f), FRotator::ZeroRotator, false);
 	LensDisc->SetCastShadow(false);
 	LensDisc->SetVisibility(false);
+
+	// Interactable props: the head's joints ride the model (its scale and turn), so every offset is in mesh space.
+	auto MakePart = [this](const TCHAR* Name, USceneComponent* Parent)
+	{
+		UStaticMeshComponent* const Part = CreateDefaultSubobject<UStaticMeshComponent>(Name);
+		Part->SetupAttachment(Parent);
+		Part->SetMobility(EComponentMobility::Movable);
+		Part->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Part->SetCollisionResponseToAllChannels(ECR_Ignore);
+		Part->SetGenerateOverlapEvents(false);
+		Part->SetCanEverAffectNavigation(false);
+		Part->SetVisibility(false);
+		return Part;
+	};
+	PanJoint = CreateDefaultSubobject<USceneComponent>(TEXT("PanJoint"));
+	PanJoint->SetupAttachment(Model);
+	PanJoint->SetMobility(EComponentMobility::Movable);
+	PanPart = MakePart(TEXT("PanPart"), PanJoint);
+	TiltJoint = CreateDefaultSubobject<USceneComponent>(TEXT("TiltJoint"));
+	TiltJoint->SetupAttachment(PanJoint);
+	TiltJoint->SetMobility(EComponentMobility::Movable);
+	TiltPart = MakePart(TEXT("TiltPart"), TiltJoint);
+}
+
+void AFollowSpot::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+	ApplyHead();
+	SwingYaw = SwingAimYaw = SwingYawSpeed = SwingPitchSpeed = 0.f;
+	SwingPitch = SwingAimPitch = bHasHead ? RestTilt : 0.f;
+	PoseSwing();
+}
+
+void AFollowSpot::ApplyHead()
+{
+	UStaticMesh* const Pan = (HasModel() && !PanMesh.IsNull()) ? PanMesh.LoadSynchronous() : nullptr;
+	UStaticMesh* const Tilt = (HasModel() && !TiltMesh.IsNull()) ? TiltMesh.LoadSynchronous() : nullptr;
+	bHasHead = Pan && Tilt && PanPart && TiltPart && PanJoint && TiltJoint;
+	if (PanPart)
+	{
+		PanPart->SetStaticMesh(bHasHead ? Pan : nullptr);
+		PanPart->SetVisibility(bHasHead);
+		PanPart->SetRelativeLocation(-PanPivot);
+	}
+	if (TiltPart)
+	{
+		TiltPart->SetStaticMesh(bHasHead ? Tilt : nullptr);
+		TiltPart->SetVisibility(bHasHead);
+		TiltPart->SetRelativeLocation(-TiltPivot);
+	}
+	if (PanJoint)
+	{
+		PanJoint->SetRelativeLocation(FVector(PanPivot.X, PanPivot.Y, PanPivot.Z));
+	}
+	if (TiltJoint)
+	{
+		TiltJoint->SetRelativeLocation(TiltPivot - PanPivot);
+	}
+	if (Model && bHasHead)
+	{
+		Model->SetCastShadow(true);
+	}
+}
+
+void AFollowSpot::SetAimHint(AWatcher* Watcher)
+{
+	AimHint = Watcher;
+}
+
+const AWatcher* AFollowSpot::GetAimWatcher() const
+{
+	if (bRunning && IsValid(Target))
+	{
+		return Target.Get();
+	}
+	if (bHasHead && bHeadFollowsAim && IsInReach() && AimHint.IsValid())
+	{
+		return AimHint.Get();
+	}
+	return nullptr;
+}
+
+float AFollowSpot::GetRestLensYaw() const
+{
+	return bHasHead ? FMath::UnwindDegrees(ModelRotation.Yaw + LensMeshYaw) : LensYaw;
+}
+
+FVector AFollowSpot::GetHeadForward() const
+{
+	if (bHasHead && TiltPart)
+	{
+		return TiltPart->GetComponentTransform().TransformVectorNoScale(FRotator(0.f, LensMeshYaw, 0.f).Vector()).GetSafeNormal();
+	}
+	return FRotator(SwingPitch, GetActorRotation().Yaw + GetRestLensYaw() + SwingYaw, 0.f).Vector();
+}
+
+FVector AFollowSpot::GetAimOrigin() const
+{
+	if (bHasHead && TiltPart)
+	{
+		// The lens axis's point nearest the trunnion: aiming the axis from here puts the lens's line on the target.
+		const FVector Along = FRotator(0.f, LensMeshYaw, 0.f).Vector();
+		const FVector Foot = LensMesh - Along * FVector::DotProduct(LensMesh - TiltPivot, Along);
+		return TiltPart->GetComponentTransform().TransformPosition(Foot);
+	}
+	return GetActorTransform().TransformPosition(GetTrunnionLocal());
 }
 
 void AFollowSpot::BeginPlay()
@@ -126,8 +233,11 @@ void AFollowSpot::BeginPlay()
 		}
 	}
 
-	// At rest, facing where the model was set.
-	SwingYaw = SwingAimYaw = SwingPitch = SwingAimPitch = 0.f;
+	// At rest, facing where the model was set (the head at its rest tilt).
+	ApplyHead();
+	AimHint.Reset();
+	SwingYaw = SwingAimYaw = 0.f;
+	SwingPitch = SwingAimPitch = bHasHead ? RestTilt : 0.f;
 	SwingYawSpeed = SwingPitchSpeed = 0.f;
 	bBeamOn = false;
 	BeamHitActor.Reset();
@@ -311,6 +421,7 @@ void AFollowSpot::UpdateBeam()
 	// With the model, the beam starts at its lens (turned with the swing); else at the box lamp.
 	const bool bFromModel = HasModel();
 	const FVector BeamStart = bFromModel ? GetLensPoint() : Body->GetComponentLocation();
+	// Interactable props: a head that moves on its own throws the beam exactly where its lens points.
 	const FVector AimPoint = Target->GetActorLocation() + FVector(0.f, 0.f, BeamTargetHeight);
 	const FVector ToAim = AimPoint - BeamStart;
 	const double AimLength = ToAim.Size();
@@ -322,7 +433,11 @@ void AFollowSpot::UpdateBeam()
 
 	// The beam points where the lamp points: while it is still swinging it sweeps onto the target (and a little past).
 	FVector BeamDir = ToAim / AimLength;
-	if (bFromModel && bSwingModel)
+	if (bHasHead)
+	{
+		BeamDir = GetHeadForward();
+	}
+	else if (bFromModel && bSwingModel)
 	{
 		const FRotator Exact = BeamDir.Rotation();
 		const float ErrYaw = FMath::FindDeltaAngleDegrees(SwingAimYaw, SwingYaw);
@@ -441,44 +556,49 @@ FVector AFollowSpot::GetTrunnionLocal() const
 
 float AFollowSpot::GetAimSwing() const
 {
-	if (!IsValid(Target))
+	const AWatcher* const Aim = GetAimWatcher();
+	if (!Aim)
 	{
 		return SwingYaw;
 	}
 	const FTransform& Frame = GetActorTransform();
-	const FVector Pivot = Frame.TransformPosition(GetTrunnionLocal());
-	const FVector Local = Frame.InverseTransformVectorNoScale(Target->GetActorLocation() - Pivot);
+	const FVector Pivot = bHasHead ? Frame.TransformPosition(ModelOffset) : Frame.TransformPosition(GetTrunnionLocal());
+	const FVector From = bHasHead && PanJoint ? PanJoint->GetComponentLocation() : Pivot;
+	const FVector Local = Frame.InverseTransformVectorNoScale(Aim->GetActorLocation() - From);
 	if (Local.SizeSquared2D() < 1.0)
 	{
 		return SwingYaw;
 	}
 	const float Yaw = FMath::RadiansToDegrees(static_cast<float>(FMath::Atan2(Local.Y, Local.X)));
-	return FMath::UnwindDegrees(Yaw - LensYaw);
+	return FMath::UnwindDegrees(Yaw - GetRestLensYaw());
 }
 
 float AFollowSpot::GetAimPitch() const
 {
-	if (!IsValid(Target))
+	const AWatcher* const Aim = GetAimWatcher();
+	if (!Aim)
 	{
 		return SwingPitch;
 	}
 	const FTransform& Frame = GetActorTransform();
-	const FVector Pivot = Frame.TransformPosition(GetTrunnionLocal());
-	const FVector Local = Frame.InverseTransformVectorNoScale(Target->GetActorLocation() + FVector(0.f, 0.f, BeamTargetHeight) - Pivot);
+	const FVector Pivot = GetAimOrigin();
+	const FVector Local = Frame.InverseTransformVectorNoScale(Aim->GetActorLocation() + FVector(0.f, 0.f, BeamTargetHeight) - Pivot);
 	const double Across = Local.Size2D();
 	if (Across < 1.0)
 	{
 		return SwingPitch;
 	}
-	return FMath::Clamp(FMath::RadiansToDegrees(static_cast<float>(FMath::Atan2(Local.Z, Across))), -85.f, 85.f);
+	const float Pitch = FMath::RadiansToDegrees(static_cast<float>(FMath::Atan2(Local.Z, Across)));
+	return bHasHead ? FMath::Clamp(Pitch, -FMath::Abs(MaxHeadTiltDown), FMath::Abs(MaxHeadTiltUp)) : FMath::Clamp(Pitch, -85.f, 85.f);
 }
 
 void AFollowSpot::StepSwing(float DeltaSeconds)
 {
 	// Onto the target while busy (it may walk), home to rest when ready again.
-	const bool bAiming = bRunning && IsValid(Target);
+	// Interactable props: the split head also follows its user's aim before the press, and rests at RestTilt.
+	const bool bAiming = GetAimWatcher() != nullptr;
 	SwingAimYaw = bAiming ? GetAimSwing() : 0.f;
-	SwingAimPitch = bAiming ? GetAimPitch() : 0.f;
+	SwingAimPitch = bAiming ? GetAimPitch() : (bHasHead ? RestTilt : 0.f);
 
 	const float Omega = UE_TWO_PI * FMath::Max(SwingFrequencyHz, 0.05f);
 	const float Zeta = FMath::Clamp(SwingDampingRatio, 0.05f, 3.f);
@@ -512,7 +632,7 @@ void AFollowSpot::StepSwing(float DeltaSeconds)
 
 FQuat AFollowSpot::GetSwingTurn() const
 {
-	if (!(HasModel() && bSwingModel))
+	if (bHasHead || !(HasModel() && bSwingModel))
 	{
 		return FQuat::Identity;
 	}
@@ -525,7 +645,15 @@ void AFollowSpot::PoseSwing()
 {
 	const FQuat Turn = GetSwingTurn();
 	const FVector Pivot = GetTrunnionLocal();
-	if (HasModel() && bSwingModel)
+	if (bHasHead)
+	{
+		// The stand stays; the yoke turns about the mesh's up, the drum tilts about the axis across its lens.
+		PlaceModel();
+		const float Tilt = FMath::Clamp(SwingPitch, -FMath::Abs(MaxHeadTiltDown), FMath::Abs(MaxHeadTiltUp));
+		PanJoint->SetRelativeRotation(FRotator(0.f, SwingYaw, 0.f));
+		TiltJoint->SetRelativeRotation(FRotator(Tilt, LensMeshYaw, 0.f).Quaternion() * FRotator(0.f, -LensMeshYaw, 0.f).Quaternion());
+	}
+	else if (HasModel() && bSwingModel)
 	{
 		// About the trunnion: the anchor moves by (pivot + turn(anchor - pivot)) - anchor.
 		const FVector Move = Pivot + Turn.RotateVector(ModelOffset - Pivot) - ModelOffset;
@@ -542,6 +670,10 @@ void AFollowSpot::PoseSwing()
 
 FVector AFollowSpot::GetLensPoint() const
 {
+	if (bHasHead && TiltPart)
+	{
+		return TiltPart->GetComponentTransform().TransformPosition(LensMesh);
+	}
 	const FVector Pivot = GetTrunnionLocal();
 	const FVector Lens = Pivot + GetSwingTurn().RotateVector(ModelOffset + LensOffset - Pivot);
 	return GetActorTransform().TransformPosition(Lens);

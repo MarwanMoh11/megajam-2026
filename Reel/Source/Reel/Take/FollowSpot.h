@@ -185,6 +185,70 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Spot")
 	float FogApexBias = 8.f;
 
+	// --- Interactable props (Nov 15): a lamp head that moves, a stand that stays -----------------------------------
+
+	/** Set both (and ModelMesh to the stand): the stand stays put, PanMesh (the yoke) turns about PanPivot's up axis
+	 *  and TiltMesh (the drum or barrel) rides it and tilts about TiltPivot. The beam leaves the lens along the drum,
+	 *  wherever it points. All three meshes share one mesh space (the parts of one split model). Unset: the old swing
+	 *  of the whole model. tools/sets/device_heads.py makes the parts; tools/sets/devices.py sets these. */
+	UPROPERTY(EditAnywhere, Category = "Take|Head")
+	TSoftObjectPtr<UStaticMesh> PanMesh;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Head")
+	TSoftObjectPtr<UStaticMesh> TiltMesh;
+
+	/** The pan's pivot in mesh space, cm unscaled (only its X and Y matter: it turns about the mesh's up). */
+	UPROPERTY(EditAnywhere, Category = "Take|Head")
+	FVector PanPivot = FVector::ZeroVector;
+
+	/** The trunnion in mesh space, cm unscaled: the tilt turns about the horizontal axis across the lens here. */
+	UPROPERTY(EditAnywhere, Category = "Take|Head")
+	FVector TiltPivot = FVector(0.f, 0.f, 100.f);
+
+	/** The lens's centre in mesh space, cm unscaled (the beam starts here), and the mesh-space yaw it faces at rest
+	 *  (0: +X, 90: +Y). */
+	UPROPERTY(EditAnywhere, Category = "Take|Head")
+	FVector LensMesh = FVector(50.f, 0.f, 100.f);
+
+	UPROPERTY(EditAnywhere, Category = "Take|Head")
+	float LensMeshYaw = 0.f;
+
+	/** How far the head can tilt down and up, degrees. */
+	UPROPERTY(EditAnywhere, Category = "Take|Head")
+	float MaxHeadTiltDown = 80.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Head")
+	float MaxHeadTiltUp = 45.f;
+
+	/** The head's tilt at rest (idle, nobody aiming), degrees (below 0: down). */
+	UPROPERTY(EditAnywhere, Category = "Take|Head")
+	float RestTilt = 0.f;
+
+	/** Switch: while its user is in reach and looking at a watcher (the aim assist's pick), the dark head already
+	 *  swings onto that watcher, so the aim shows before the press. */
+	UPROPERTY(EditAnywhere, Category = "Take|Head")
+	bool bHeadFollowsAim = true;
+
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<USceneComponent> PanJoint;
+
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<UStaticMeshComponent> PanPart;
+
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<USceneComponent> TiltJoint;
+
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<UStaticMeshComponent> TiltPart;
+
+	/** The director, every frame its user is in reach: the watcher the aim assist picks now (null: none). */
+	void SetAimHint(AWatcher* Watcher);
+
+	/** Is the head split from the stand (PanMesh and TiltMesh loaded, the model showing)? */
+	bool HasHead() const { return bHasHead; }
+
+	virtual void OnConstruction(const FTransform& Transform) override;
+
 	/** Where the beam ends now: the first solid thing it meets, or the target (the lamp's lens while it is dark). */
 	FVector GetBeamEnd() const;
 
@@ -214,7 +278,26 @@ protected:
 	FVector BeamEndPoint = FVector::ZeroVector;
 	TWeakObjectPtr<AActor> BeamHitActor;
 
+	bool bHasHead = false;
+	TWeakObjectPtr<AWatcher> AimHint;
+
 private:
+	/** Loads PanMesh and TiltMesh onto their parts under the model, or hides them (bHasHead). */
+	void ApplyHead();
+
+	/** What the head aims at now: the target while busy, else the aim hint (bHeadFollowsAim), else nothing. */
+	const AWatcher* GetAimWatcher() const;
+
+	/** The point the aim is measured from, in the world: the lens axis's foot under the trunnion (the head), or the
+	 *  trunnion (the old swing). */
+	FVector GetAimOrigin() const;
+
+	/** The head's lens direction in the world now. */
+	FVector GetHeadForward() const;
+
+	/** The lens's rest yaw local to the actor: the model's turn plus LensMeshYaw (the head), or LensYaw. */
+	float GetRestLensYaw() const;
+
 	/** Aims the beam (along the lamp, sweeping onto the target), traces it, lights what it hits, this frame. Hides it
 	 *  all when idle. */
 	void UpdateBeam();
