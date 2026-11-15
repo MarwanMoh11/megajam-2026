@@ -1011,7 +1011,7 @@ void AScene4Catwalk::DrawSceneHud(UCanvas* Canvas)
 	const float Step = 120.f * S;
 	for (float X = FMath::Fmod(GetSceneSeconds() * 3.f * S, Step); X < W; X += Step)
 	{
-		HudLine(Canvas, FVector2D(X, 0.f), FVector2D(X, H), FLinearColor(0.f, 0.f, 0.f, 0.18f), 3.f * S);
+		HudRect(Canvas, X, 0.f, 2.f * S, H, FLinearColor(0.f, 0.f, 0.f, 0.22f));	// a tile: line items ignore alpha
 	}
 	HudRect(Canvas, 0.f, 0.f, W, 60.f * S, FLinearColor(0.f, 0.f, 0.f, 0.35f));
 	HudRect(Canvas, 0.f, H - 60.f * S, W, 60.f * S, FLinearColor(0.f, 0.f, 0.f, 0.35f));
