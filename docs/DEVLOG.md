@@ -1234,3 +1234,25 @@ animation, you can't move it or change it." He was looking at the searchlight on
 - **What went wrong:** my lock acquire took spine's stale lock while spine's Build.bat was still running; I released
   it at once. A Live Coding compile after the restart hung ("CompileStillActive"), so the HUD font fix and the stair
   guard's downward sight wait for the next Build.bat. The large engine font draws boxes in this build: medium font only.
+
+## Nov 15, 14:25: Scene 5, the private auditorium, plays from Jump 5 to the cut to Cole (s5-auditorium)
+
+- **What changed:** `AScene5Auditorium` (`Take/Script/Scene5Auditorium.*`). The house goes low and Pendleton (the old
+  auctioneer, top hat and cane) speaks at the brass podium in one hard spot, in his own close shot. He points at the
+  booth and the house lights cut to black. The beam comes out of s7's booth port, the old film and LE SOLEIL NOIR hit
+  the screen, the score starts, and the first timpani boom lands. Vance then sneaks along the south wall to the new oak
+  door. A timpani hit every 1.6 s flares the screen and the HUD's drum mark. An usher and a guard sweep torches across
+  the floor: moving inside a beam between booms fills SEEN, and full is a retake (Scene 3's VIP Alibi saves him
+  once). At the door the deadbolt buzzes red, Vance speaks into his cuff, and the scene cuts to Cole.
+  `AHouseDimmer` got a screening API (cut to black, held, flares on the beat) so the film runs on into Scenes 6 and 7.
+  Set: `tools/script/scene5.py` (placement), `scene5_dress.py` (door, velvet rows, brass podium, signage),
+  `tools/sets/puzzle.py` (the screen's slide is now the film's title card).
+- **How:** one session plus two opus-high subagents (set dressing, audio). The dresser wrote its overlay but never got
+  the editor lock, so the session ran it. Shots in `C:\Jam\Builds\script\s5\`.
+- **What went wrong:** the shared editor build failed three times on other scenes' files: shadowing warnings treated as
+  errors in Scenes 2, 3 and 4, then a link error, `GWhiteTexture`, which needed RenderCore. Each was fixed by its owner
+  or by a one-word rename. A Live Coding compile then crashed the editor while it loaded the patch (other sessions'
+  changed files ride along), and the unsaved placement was lost. The fix: restart on the built DLL, re-run the
+  placement overlay, save. Lesson: no Live Coding while other sessions have unbuilt changes in Source.
+- **Not checked in play:** being seen (the SEEN fill and the retake), the alibi, the torches' sweep against the real
+  walk, and the score and voices (the audio was not imported yet).
