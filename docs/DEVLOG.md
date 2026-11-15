@@ -1730,3 +1730,15 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
   running yet: it needs one look through the real route (`Reel.Script.Jump 702`).
 - **Placed and checked (23:25):** I ran scene5.py, saved Lvl_Auction and took one PIE look. The speech, mouth, second angle, exit walk, sneak HUD chips and the film title on the screen all show up. Known issue: the mid-speech cutaway and the dark seat shot put the camera among the standing guests, so the seat camera needs re-placing (scene5.py `SeatCam`). There was no free aisle seat either, so Vance shares SEAT_WANT with a guest.
 - ~23:10: the insert cameras were moved after one PIE pass showed his arm and shoulder filling the frame. The Door and Reel shots now look down into the open magazine from above his head, showing the red-labelled master print, the windowed flange, his right hand clamping the reel and his left pinching the strand (stills `C:\Jam\Builds\script\s7swap\b1_door_open.png`, `b2_reel_clamp.png`). Spindle takes the same framing on a 30 mm lens. The cameras are set on the placed actor with `tools/script/scene7_swap_shots.py`, and the level is saved.
+
+## Nov 15, 23:35 Cairo: guard brain PIE check (stealth-ai)
+- The first PIE run spawned no test guard. Take's controller never possesses the character the player is on, so
+  `GetPlayerPawn` is empty during the film, and the brain would have had no default target in any scene.
+- The fix: the brain now targets `ATakePlayerController::GetCurrentCharacter()` and falls back to the pawn. It was a
+  body-only change, compiled with Live Coding.
+- The rerun log shows the whole loop on the hall floor: patrol, heard a noise, investigate, search ("Rats. Big rats."),
+  return, back on patrol, suspicious ("Hm? Who's there?"), alert ("Intruder!", Spotted), then chasing Julian.
+  Shots are in C:\Jam\Builds\qa\stealth\nov15b_*.
+- Still unverified: how the ?/! icons and the torch look (the shots frame Julian, not the guard), light-based detection
+  in a dark spot (the hall read light 1.00 throughout), crouch, the body reaction, and catch.
+- No scene uses it yet: s5, s6 and s8 kept their own scripted guards, and s4 never replied.

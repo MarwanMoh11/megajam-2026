@@ -3,6 +3,8 @@
 #include "GuardBrain.h"
 #include "CastMember.h"
 #include "TakeTypes.h"
+#include "TakePlayerController.h"
+#include "TakeCharacter.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/LocalLightComponent.h"
@@ -351,13 +353,26 @@ void UGuardBrainComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 
 // ---- senses --------------------------------------------------------------------------------------------------------
 
+// The character the player is on: Take's controller does not possess it, so GetPlayerPawn is empty in the film.
+static APawn* GuardBrainPlayerBody(const UObject* Ctx)
+{
+	if (const ATakePlayerController* PC = Cast<ATakePlayerController>(UGameplayStatics::GetPlayerController(Ctx, 0)))
+	{
+		if (ATakeCharacter* C = PC->GetCurrentCharacter())
+		{
+			return C;
+		}
+	}
+	return UGameplayStatics::GetPlayerPawn(Ctx, 0);
+}
+
 AActor* UGuardBrainComponent::GetTarget() const
 {
 	if (AActor* T = Target.Get())
 	{
 		return T;
 	}
-	return bAutoTargetPlayer ? UGameplayStatics::GetPlayerPawn(this, 0) : nullptr;
+	return bAutoTargetPlayer ? GuardBrainPlayerBody(this) : nullptr;
 }
 
 bool UGuardBrainComponent::TargetCrouched(const AActor* T) const
@@ -1566,7 +1581,7 @@ void UGuardBrainComponent::DrawDebug() const
 
 static APawn* GuardTestPawn(UWorld* World, FVector& OutFeet, FVector& OutFwd)
 {
-	APawn* P = World ? UGameplayStatics::GetPlayerPawn(World, 0) : nullptr;
+	APawn* P = World ? GuardBrainPlayerBody(World) : nullptr;
 	if (!P)
 	{
 		return nullptr;
