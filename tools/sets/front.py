@@ -76,6 +76,60 @@ GREEN, NAVY, WOOD = mat("MI_Box_Door"), mat("MI_Box_Deck"), mat("MI_Box_Sofa")
 ART = [mat("MI_Art_%d" % i) for i in range(4)]
 
 
+MIRROR_SHEEN = r"""
+float s = UV.x + UV.y;
+float b = saturate(1.0 - abs(s - 0.75) * 5.0) * 0.7 + saturate(1.0 - abs(s - 1.05) * 16.0) * 0.5;
+return Sheen * b * float3(1.0, 0.97, 0.9);
+"""
+
+
+def mirror_mat(path="/Game/Take/Dress/M_Front_Mirror", rebuild=False):
+    """Old silvered glass: metallic, nearly smooth, a little smoky, so Lumen reflects the room in it, plus a faint
+    diagonal sheen (emissive) so it reads as glass even when it faces a dark room. The two mirrors used MI_Front_Glass
+    (near-black, built for windows) and read as black holes in their frames (Nov 15)."""
+    mel = unreal.MaterialEditingLibrary
+    if C.eal.does_asset_exist(path):
+        m = C.eal.load_asset(path)
+        if not rebuild:
+            return m
+        mel.delete_all_material_expressions(m)
+    else:
+        d, n = path.rsplit("/", 1)
+        m = unreal.AssetToolsHelpers.get_asset_tools().create_asset(n, d, unreal.Material, unreal.MaterialFactoryNew())
+    m.set_editor_property("used_with_instanced_static_meshes", True)
+    uv = mel.create_material_expression(m, unreal.MaterialExpressionTextureCoordinate, -500, 250)
+    sh = mel.create_material_expression(m, unreal.MaterialExpressionScalarParameter, -500, 320)
+    sh.set_editor_property("parameter_name", "Sheen")
+    sh.set_editor_property("default_value", 0.12)
+    cu = mel.create_material_expression(m, unreal.MaterialExpressionCustom, -300, 250)
+    cu.set_editor_property("code", MIRROR_SHEEN)
+    cu.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT3)
+    ins = []
+    for nm in ("UV", "Sheen"):
+        ci = unreal.CustomInput()
+        ci.set_editor_property("input_name", nm)
+        ins.append(ci)
+    cu.set_editor_property("inputs", ins)
+    mel.connect_material_expressions(uv, "", cu, "UV")
+    mel.connect_material_expressions(sh, "", cu, "Sheen")
+    mel.connect_material_property(cu, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    for (prop, v, y) in ((unreal.MaterialProperty.MP_BASE_COLOR, (0.62, 0.60, 0.55), -200),
+                         (unreal.MaterialProperty.MP_METALLIC, 1.0, 0), (unreal.MaterialProperty.MP_ROUGHNESS, 0.07, 100)):
+        if isinstance(v, tuple):
+            e = mel.create_material_expression(m, unreal.MaterialExpressionConstant3Vector, -300, y)
+            e.set_editor_property("constant", unreal.LinearColor(v[0], v[1], v[2], 1.0))
+        else:
+            e = mel.create_material_expression(m, unreal.MaterialExpressionConstant, -300, y)
+            e.set_editor_property("r", v)
+        mel.connect_material_property(e, "", prop)
+    mel.recompile_material(m)
+    C.eal.save_asset(path)
+    return m
+
+
+MIRROR = mirror_mat()
+
+
 def variant(prop, suffix, dark, light, rough=0.5, keep=0.0):
     """A colour variant of a Rodin prop's material: its textures on M_Prop, a band from dark to light (rgb), KeepColour
     `keep` (0: the band's own colour, 1: the texture's hue)."""
@@ -730,14 +784,15 @@ if ON["walls"]:
     for cx in (-2950.0, -2320.0, -1500.0):                       # south wall, the balcony: sconces there instead
         for s in (-1, 1):
             sconce("x", LY0, 1, cx + s * 128.0, F2 + 205.0)
-    frame("x", LY0, 1, -1750.0, 55.0, 110.0, 205.0, GLASS)       # south wall: a tall pier glass and a portrait
+    # the pier glass starts above the 90 cm wainscot (it hung from 55 and the panel cut through its foot, Nov 15)
+    frame("x", LY0, 1, -1750.0, 100.0, 110.0, 205.0, MIRROR)     # south wall: a tall pier glass and a portrait
     frame("x", LY0, 1, -1225.0, 110.0, 105.0, 145.0, ART[3])
     frame("y", LX0, 1, 1000.0, 135.0, 150.0, 210.0, LINEN)       # the front wall, north: the film's one-sheet
     for (t, s, z) in (("ONE NIGHT ONLY", 9.0, 318.0), ("THE", 10.0, 296.0), ("DIRECTOR'S", 17.0, 279.0),
                       ("CUT", 30.0, 252.0), ("1941", 12.0, 222.0), ("THE LOST PICTURE, RESTORED", 6.5, 200.0),
                       ("THE ONLY PRINT  \u00b7  LOT 1", 6.5, 186.0)):
         text(t, LX0 + 3.0, 1000.0, z, 0.0, s, (0.40, 0.07, 0.09))
-    frame("y", LX0, 1, -1000.0, 120.0, 175.0, 220.0, GLASS)      # the front wall, south: a big gilt mirror
+    frame("y", LX0, 1, -1000.0, 120.0, 175.0, 220.0, MIRROR)     # the front wall, south: a big gilt mirror
     frame("y", HALL_FACE, -1, 640.0, 105.0, 190.0, 170.0, PANEL)  # the hall wall: tonight's lots
     for (t, s, z) in (("TONIGHT'S SALE", 11.0, 252.0), ("LOT 1  .  THE DIRECTOR'S CUT (1941)", 5.5, 228.0),
                       ("the only surviving print", 4.5, 218.0), ("LOT 2  .  A STUDIO FOLIO, 1939", 5.0, 202.0),

@@ -146,8 +146,10 @@ def picture(loc, ax, s, w, h, mat, aspect, seed, label):
     c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
     c.set_editor_property("cast_shadow", False)
     a.set_actor_scale3d(unreal.Vector(w / 100.0 * (-1 if FLIP_U else 1), h / 100.0 * (-1 if FLIP_V else 1), 1.0))
-    c.set_custom_primitive_data_float(0, float(aspect))
-    c.set_custom_primitive_data_float(1, float(seed))
+    # the DEFAULT custom data is what the level saves; set_custom_primitive_data_float is runtime-only, so after a
+    # reload the aspect read 0 and the crop collapsed to one column of pixels (horizontal streaks, Nov 15)
+    c.set_default_custom_primitive_data_float(0, float(aspect))
+    c.set_default_custom_primitive_data_float(1, float(seed))
     return a
 
 
