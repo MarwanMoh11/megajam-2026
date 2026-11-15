@@ -1767,3 +1767,6 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
   dies, Pendleton, alarm) -> escape over the balcony -> caught -> the fight starts.
 - What went wrong: a PC reboot killed the lock waits, GitHub refused connections for a while, and the unity-build rule meant
   renaming file-local helpers.
+
+### Nov 15, 23:50 Cairo: s3-foyer-hall (one look)
+- PIE run of Scene 3 (alibi path): the critic's choice draws with the shared choice cards, above the subtitle and clear of it, and the beats run open -> choice -> hall -> rope (alibi spent) -> cut. The hall sound cues leave no log line, so whether they play is for Marwan's ear.
