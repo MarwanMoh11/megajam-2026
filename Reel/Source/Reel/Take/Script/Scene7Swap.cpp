@@ -26,10 +26,10 @@
 #include "Engine/Engine.h"
 #include "Misc/App.h"
 
-using namespace Scene7SwapMesh;
 
-namespace
+namespace Scene7SwapLocal
 {
+	using namespace Scene7SwapMesh;
 	const TCHAR* SurfacePath = TEXT("/Game/Take/Props/Swap/M_Swap_Surface.M_Swap_Surface");
 	const TCHAR* BeamPath = TEXT("/Game/Take/Props/Swap/M_Swap_Beam.M_Swap_Beam");
 	const TCHAR* FallbackPath = TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial");
@@ -100,6 +100,7 @@ static FAutoConsoleCommandWithWorldAndArgs GSwapScrubCmd(TEXT("Reel.Swap.Scrub")
 	TEXT("Reel.Swap.Scrub <beat 1-4> <seconds>: hold the reel swap at that moment (double, props, camera)."),
 	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 	{
+		using namespace Scene7SwapLocal;
 		if (AScene7Swap* S = AScene7Swap::Find(World))
 		{
 			S->Scrub(Args.Num() > 0 ? FCString::Atoi(*Args[0]) : 1, Args.Num() > 1 ? FCString::Atof(*Args[1]) : 0.f);
@@ -110,6 +111,7 @@ static FAutoConsoleCommandWithWorldAndArgs GSwapPlayCmd(TEXT("Reel.Swap.Play"),
 	TEXT("Reel.Swap.Play [auto 0/1]: begin the reel swap with the player's character (auto presses by itself)."),
 	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 	{
+		using namespace Scene7SwapLocal;
 		GSwapAuto = Args.Num() > 0 && FCString::Atoi(*Args[0]) != 0;
 		AScene7Swap* S = AScene7Swap::Find(World);
 		ATakeCharacter* V = Cast<ATakeCharacter>(UGameplayStatics::GetPlayerCharacter(World, 0));
@@ -120,6 +122,7 @@ static FAutoConsoleCommandWithWorldAndArgs GSwapResetCmd(TEXT("Reel.Swap.Reset")
 	TEXT("Reel.Swap.Reset: the reel swap back to its start."),
 	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 	{
+		using namespace Scene7SwapLocal;
 		if (AScene7Swap* S = AScene7Swap::Find(World)) { S->ResetSwap(); }
 	}));
 
@@ -127,6 +130,7 @@ static FAutoConsoleCommandWithWorldAndArgs GSwapResetCmd(TEXT("Reel.Swap.Reset")
 
 AScene7Swap::AScene7Swap()
 {
+	using namespace Scene7SwapLocal;	// unity builds: no file-scope usings (they leak into the next .cpp)
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.TickGroup = TG_PrePhysics;
 
@@ -267,6 +271,7 @@ FQuat AScene7Swap::FlatOnBench() const { return BenchT().GetRotation() * Flat0; 
 
 AScene7Swap* AScene7Swap::Find(const UObject* WorldContextObject)
 {
+	using namespace Scene7SwapLocal;	// unity builds: no file-scope usings (they leak into the next .cpp)
 	UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
 	if (!World) { return nullptr; }
 	for (TActorIterator<AScene7Swap> It(World); It; ++It) { return *It; }
@@ -275,6 +280,7 @@ AScene7Swap* AScene7Swap::Find(const UObject* WorldContextObject)
 
 void AScene7Swap::BuildMeshes()
 {
+	using namespace Scene7SwapLocal;	// unity builds: no file-scope usings (they leak into the next .cpp)
 	{ FBuilder B; BuildProjector(B); B.Commit(Projector); }
 	// The projector's and the bench's collision: their own sections, rebuilt with collision on.
 	{ FBuilder B; BuildMagazineDoor(B); B.Commit(Door); }
@@ -298,6 +304,7 @@ void AScene7Swap::BuildMeshes()
 
 void AScene7Swap::ApplyLook()
 {
+	using namespace Scene7SwapLocal;	// unity builds: no file-scope usings (they leak into the next .cpp)
 	if (!SurfaceMaterial) { SurfaceMaterial = LoadObject<UMaterialInterface>(nullptr, SurfacePath, nullptr, LOAD_NoWarn | LOAD_Quiet); }
 	if (!BeamMaterial) { BeamMaterial = LoadObject<UMaterialInterface>(nullptr, BeamPath, nullptr, LOAD_NoWarn | LOAD_Quiet); }
 	UMaterialInterface* Surface = SurfaceMaterial ? SurfaceMaterial.Get() : LoadObject<UMaterialInterface>(nullptr, FallbackPath);
@@ -328,6 +335,7 @@ void AScene7Swap::ApplyLook()
 
 void AScene7Swap::OnConstruction(const FTransform& Transform)
 {
+	using namespace Scene7SwapLocal;	// unity builds: no file-scope usings (they leak into the next .cpp)
 	Super::OnConstruction(Transform);
 	BuildMeshes();
 	ApplyLook();
@@ -340,6 +348,7 @@ void AScene7Swap::OnConstruction(const FTransform& Transform)
 
 void AScene7Swap::BeginPlay()
 {
+	using namespace Scene7SwapLocal;	// unity builds: no file-scope usings (they leak into the next .cpp)
 	Super::BeginPlay();
 	BuildMeshes();
 	ApplyLook();
@@ -354,6 +363,7 @@ void AScene7Swap::BeginPlay()
 
 void AScene7Swap::SetProjectorRunning(bool bRun)
 {
+	using namespace Scene7SwapLocal;	// unity builds: no file-scope usings (they leak into the next .cpp)
 	bRunning = bRun;
 	if (Hum)
 	{
@@ -369,6 +379,7 @@ void AScene7Swap::SetProjectorRunning(bool bRun)
 
 void AScene7Swap::ResetSwap()
 {
+	using namespace Scene7SwapLocal;	// unity builds: no file-scope usings (they leak into the next .cpp)
 	for (TPair<USceneComponent*, TPair<USceneComponent*, FTransform>>& R : Rest)
 	{
 		if (!R.Key) { continue; }
@@ -377,6 +388,8 @@ void AScene7Swap::ResetSwap()
 			R.Key->AttachToComponent(R.Value.Key, FAttachmentTransformRules::KeepRelativeTransform);
 		}
 		R.Key->SetRelativeTransform(R.Value.Value);
+		// The booth hides the swap's can (with the lid and print riding it) when it hands its own canister over.
+		if (R.Key != Double) { R.Key->SetHiddenInGame(false, true); }
 	}
 	if (Vance && Vance->IsHidden())
 	{
@@ -400,11 +413,13 @@ float AScene7Swap::GetUseYaw() const { return GetActorRotation().Yaw + OpenYaw; 
 
 void AScene7Swap::BeginSwap(ATakeCharacter* InVance, bool bStartNow)
 {
+	using namespace Scene7SwapLocal;	// unity builds: no file-scope usings (they leak into the next .cpp)
 	Vance = InVance;
 	bDone = false;
-	if (Vance && Vance->GetMesh())
+	// The body you can see (chars-locomotion): his own mesh, or his cast member's act body while an act plays.
+	USkeletalMeshComponent* M = Vance ? Vance->GetVisibleBody() : nullptr;
+	if (Vance && M)
 	{
-		USkeletalMeshComponent* M = Vance->GetMesh();
 		Double->SetSkeletalMeshAsset(M->GetSkeletalMeshAsset());
 		for (int32 I = 0; I < M->GetNumMaterials(); ++I) { Double->SetMaterial(I, M->GetMaterial(I)); }
 		Double->SetRelativeScale3D(M->GetComponentScale() / GetActorScale3D());
@@ -430,11 +445,13 @@ void AScene7Swap::BeginSwap(ATakeCharacter* InVance, bool bStartNow)
 
 void AScene7Swap::StartSwap(AScriptScene* Scene, bool bStartNow)
 {
+	using namespace Scene7SwapLocal;	// unity builds: no file-scope usings (they leak into the next .cpp)
 	if (Scene) { BeginSwap(Scene->GetPovCharacter(), bStartNow); }
 }
 
 void AScene7Swap::StartBeat(int32 NewBeat)
 {
+	using namespace Scene7SwapLocal;	// unity builds: no file-scope usings (they leak into the next .cpp)
 	Beat = NewBeat;
 	BeatT = PrevT = 0.f;
 	Rate = 1.f;
@@ -447,6 +464,7 @@ void AScene7Swap::StartBeat(int32 NewBeat)
 
 bool AScene7Swap::HandleSwapKey(const FKey& Key, bool bPressed)
 {
+	using namespace Scene7SwapLocal;	// unity builds: no file-scope usings (they leak into the next .cpp)
 	if (!IsRunning()) { return false; }
 	const bool bUse = Key == EKeys::E || Key == EKeys::LeftMouseButton || Key == EKeys::Gamepad_FaceButton_Left || Key == EKeys::Gamepad_FaceButton_Bottom;
 	if (!bUse) { return false; }
@@ -468,6 +486,7 @@ bool AScene7Swap::HandleSwapKey(const FKey& Key, bool bPressed)
 
 void AScene7Swap::Scrub(int32 InBeat, float T)
 {
+	using namespace Scene7SwapLocal;	// unity builds: no file-scope usings (they leak into the next .cpp)
 	if (!Vance) { BeginSwap(Cast<ATakeCharacter>(UGameplayStatics::GetPlayerCharacter(this, 0)), false); }
 	bScrub = true;
 	bDone = false;
@@ -482,6 +501,7 @@ void AScene7Swap::Scrub(int32 InBeat, float T)
 
 void AScene7Swap::Tick(float DeltaSeconds)
 {
+	using namespace Scene7SwapLocal;	// unity builds: no file-scope usings (they leak into the next .cpp)
 	Super::Tick(DeltaSeconds);
 	PressFlash += FApp::GetDeltaTime();
 	SpinAngle = FMath::Fmod(SpinAngle + (bRunning ? ReelDegPerSec * SpinRate * DeltaSeconds : 0.f), 360.f);
@@ -514,6 +534,7 @@ void AScene7Swap::Tick(float DeltaSeconds)
 
 void AScene7Swap::EndSwap()
 {
+	using namespace Scene7SwapLocal;	// unity builds: no file-scope usings (they leak into the next .cpp)
 	bDone = true;
 	Double->SetHiddenInGame(true);
 	if (Vance)
@@ -534,11 +555,12 @@ void AScene7Swap::EndSwap()
 
 void AScene7Swap::AttachCanisterTo(ATakeCharacter* Character)
 {
-	if (!Character || !Character->GetMesh()) { return; }
+	using namespace Scene7SwapLocal;	// unity builds: no file-scope usings (they leak into the next .cpp)
+	USkeletalMeshComponent* M = Character ? Character->GetVisibleBody() : nullptr;
+	if (!M) { return; }
 	// The lid and the print travel with the can.
 	CanLid->AttachToComponent(CanRoot, FAttachmentTransformRules::KeepWorldTransform);
 	MasterReel->AttachToComponent(CanRoot, FAttachmentTransformRules::KeepWorldTransform);
-	USkeletalMeshComponent* M = Character->GetMesh();
 	const FName BoneName = M->GetBoneIndex(CanCarryBone) != INDEX_NONE ? CanCarryBone : NAME_None;
 	if (Character == Vance && Double->GetBoneIndex(CanCarryBone) != INDEX_NONE)
 	{
@@ -555,6 +577,7 @@ void AScene7Swap::AttachCanisterTo(ATakeCharacter* Character)
 
 void AScene7Swap::Cue(FName Name, float Volume)
 {
+	using namespace Scene7SwapLocal;	// unity builds: no file-scope usings (they leak into the next .cpp)
 	if (TObjectPtr<USoundBase>* S = Sounds.Find(Name))
 	{
 		if (*S) { UGameplayStatics::PlaySound2D(this, *S, Volume); }
@@ -565,6 +588,7 @@ void AScene7Swap::Cue(FName Name, float Volume)
 
 void AScene7Swap::Pose(float Dt)
 {
+	using namespace Scene7SwapLocal;	// unity builds: no file-scope usings (they leak into the next .cpp)
 	const float T = BeatT;
 	const FTransform Tb = BenchT();
 	const FVector RS = ReelOnSpindle();
@@ -853,12 +877,14 @@ void AScene7Swap::Pose(float Dt)
 
 void AScene7Swap::SetShot(FName Name)
 {
+	using namespace Scene7SwapLocal;	// unity builds: no file-scope usings (they leak into the next .cpp)
 	CurrentShot = Name;
 	ShotT = 0.f;
 }
 
 void AScene7Swap::UpdateCamera(float Dt)
 {
+	using namespace Scene7SwapLocal;	// unity builds: no file-scope usings (they leak into the next .cpp)
 	const FScene7SwapShot* S = Shots.Find(CurrentShot);
 	if (!S) { return; }
 	const FTransform Actor = GetActorTransform();
@@ -890,6 +916,7 @@ void AScene7Swap::UpdateCamera(float Dt)
 
 void AScene7Swap::DrawSwapHud(UCanvas* Canvas)
 {
+	using namespace Scene7SwapLocal;	// unity builds: no file-scope usings (they leak into the next .cpp)
 	if (!Canvas || bDone) { return; }
 	FTakeHudKit Kit;
 	Kit.Begin(Canvas, FPlatformTime::Seconds(), 0.f);

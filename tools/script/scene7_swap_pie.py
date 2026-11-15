@@ -1,7 +1,8 @@
 # The reel swap's play-in-editor shots into C:\Jam\Builds\script\s7swap\. Engine Python, repo root, under the lock:
 #   "$PY" -I tools/script/scene7_swap_pie.py            # scrub: one still per shot of the coverage (Reel.Swap.Scrub)
 #   "$PY" -I tools/script/scene7_swap_pie.py play       # the swap in real time (Reel.Swap.Play 1), a still every ~0.7 s
-#   "$PY" -I tools/script/scene7_swap_pie.py hook       # part 1 from its Jump (s7-route's hook): Jump 701, then E
+#   "$PY" -I tools/script/scene7_swap_pie.py hook       # the real hook: s7-route's booth (Jump 702) starts the swap,
+#                                                         Reel.S7.Auto 1 presses E; a still every 0.8 s to the hand-back
 #   "$PY" -I tools/script/scene7_swap_pie.py --stop     # stop PIE (always before releasing the lock)
 import os, sys, time, json
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "sets"))
@@ -42,7 +43,7 @@ def main():
         time.sleep(4.0)
         L.console(s, "TakeConfirm")
         time.sleep(1.5)
-        L.console(s, "Reel.Script.Jump 701")
+        L.console(s, "Reel.Script.Jump 702")
         time.sleep(2.0)
     T0 = time.time()
     if mode == "scrub":
@@ -58,11 +59,11 @@ def main():
             time.sleep(0.7)
             snap(s, "play_%02d" % i)
     elif mode == "hook":
-        snap(s, "hook_0_start")
-        L.console(s, "Reel.Swap.Reset")
-        print(L.console(s, "Reel.Script.Jump 701"))
-        time.sleep(1.5)
-        snap(s, "hook_1_mark")
+        L.console(s, "Reel.S7.Auto 1")
+        for i in range(24):
+            time.sleep(0.8)
+            snap(s, "hook_%02d" % i)
+        L.console(s, "Reel.S7.Auto 0")
 
 
 if __name__ == "__main__":

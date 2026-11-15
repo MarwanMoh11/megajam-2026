@@ -24,7 +24,7 @@ void FScene7SwapAnimProxy::PreUpdate(UAnimInstance* InAnimInstance, float DeltaS
 	}
 }
 
-namespace
+namespace Scene7SwapAnimLocal
 {
 	FCompactPoseBoneIndex Bone(const FBoneContainer& BC, const FString& Name)
 	{
@@ -122,6 +122,7 @@ namespace
 
 bool FScene7SwapAnimProxy::Evaluate(FPoseContext& Output)
 {
+	using namespace Scene7SwapAnimLocal;	// unity builds: no file-scope usings (they leak into the next .cpp)
 	if (Base)
 	{
 		FAnimationPoseData Data(Output);
