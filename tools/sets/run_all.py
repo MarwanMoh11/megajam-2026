@@ -12,6 +12,7 @@ _TOOLS = os.path.dirname(_SETS)
 _ORDER = [os.path.join(_SETS, n) for n in ("front.py", "hall.py", "rooms.py", "devices.py")] + \
     [os.path.join(_TOOLS, "build_heroes.py")]
 _ORDER.append(os.path.join(_SETS, "pictures.py"))   # --- W3 pictures --- pictures in the frames, frames flush
+_ORDER.append(os.path.join(_SETS, "puzzle.py"))   # --- Nov 15 --- the hall's puzzle pieces: rope, eye, breaker, slide
 _ORDER.append(os.path.join(_SETS, "lights.py"))   # --- QA look --- the lighting pass, last (it lights the dressing)
 _report = []
 for _p in _ORDER:

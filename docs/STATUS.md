@@ -45,6 +45,18 @@ PRINT IT. Notes from the agents are in `C:\Jam\Builds\qa\REPORTS.md`.
 - **Cast:** about 220 guests, 132 seated on the cushions, feet down; the band at the real props; the leads are Rodin
   models skinned to the mannequin skeleton; Julian's arms rest at his sides.
 
+### The hall's puzzle pieces, Nov 15 (overrides the banner wherever it is named below)
+- **No banner.** Nothing hangs or drops in the room. The same device (`ABannerDevice`, label `Banner`) is the BREAKER
+  of the aisle's electric eye, on Maya's platform: 1 use, the eye is dark for 10 s (its lamps go green).
+- **The rope** is velvet on brass posts, wall to wall, with RESERVED cards at the gap; the old `Rope_*` boxes are
+  hidden and still block. The gap's beam is the ELECTRIC EYE (its own posts, lamps and glint).
+- **The sale:** in house light the screen shows the lot's lantern slide (LOT 41, CURRENT BID $410,000); the preview
+  film covers it.
+- Built by `tools/sets/puzzle.py` (tag `set_puzzle`; `PUZZLE_PARTS`, `PUZZLE_OFF`, `PUZZLE_SLIDE_GLOW`), shots in
+  `C:\Jam\Builds\qa\puzzle`. Unverified in play: the breaker firing, the slide under the film filter. Open: the
+  aisle shutter still drops 8 m from nothing on the alarm; the breaker has no sound; the platform model is still the
+  winch until the devices session swaps it.
+
 ### What replaced what
 - **The HUD:** minimal (`bMinimalHud`). One prompt lane at the bottom (refusal, flashed key, mark action, taught cut
   key, Use), a goal line that fades. No composure meter: stress is shown by a screen wash, a closing vignette pulled

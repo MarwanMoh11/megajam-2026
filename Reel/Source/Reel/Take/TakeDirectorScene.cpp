@@ -600,7 +600,7 @@ void ATakeDirector::UpdateObjective()
 
 		if (Beam && Julian && Beam->DistanceToPoint(Julian->GetFeetLocation()) <= TakeSceneLocal::RopePromptDistance)
 		{
-			NewObjective = TEXT("Blind or mask the BEAM and GUARD: [2] MAYA's FOLLOW SPOT or BANNER, [3] VEX's CHAMPAGNE CART");
+			NewObjective = TEXT("The rope: an ELECTRIC EYE and a GUARD. [2] MAYA's FOLLOW SPOT or BREAKER, [3] VEX's CHAMPAGNE CART");
 		}
 		else if (Drone && Drone->HasArrived())
 		{

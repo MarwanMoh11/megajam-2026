@@ -172,7 +172,7 @@ void ATakeDirector::BeginPlay()
 	if (SceneHints.Num() == 0)
 	{
 		SceneHints.Add(TEXT("MAYA: \"Cut to me with 2. My searchlight blinds the scanner.\""));
-		SceneHints.Add(TEXT("MAYA: \"Banner on the beam, my spot on the guard. Or Vex's cart pulls him away.\""));
+		SceneHints.Add(TEXT("MAYA: \"My breaker kills the electric eye, my spot blinds the guard. Or Vex's cart pulls him away.\""));
 		SceneHints.Add(TEXT("VEX: \"My desk blinds the whole room for two bars. Then lift it.\""));
 		SceneHints.Add(TEXT("VEX: \"Winch first: the curtain hides him from the guards and opens the trap. Then Maya's pyro. Then run.\""));
 	}

@@ -1141,3 +1141,38 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
 - **Unverified (Marwan):** hands in play. The rest-arms layer (`HeroPalmTurn` 30 deg) was tuned to turn the old slab
   palms inward and may now over-turn real hands. The Bodyguard's hands-in-front pose. A small jagged seam at some
   wrists. The `Wave` clip is only 0.53 s long.
+
+## Nov 15, 12:55: the hall's puzzle pieces make sense (banner out, breaker in)
+
+- **Marwan's note (10:55, with a screenshot of the hall from above):** "what is this banner that drops and how can
+  you phase through it, what are the people seated for and watching? Redesign the puzzle elements until they make
+  sense, move stuff around, coordinate with the other sessions."
+- **What was wrong:** a 4 m burgundy slab hung in mid-air between the seats and the screen, in the room's sight line.
+  Fired, it dropped across the gap in the rope to "mask" a light beam, which would trip the beam, and Julian walked
+  through it. The reserved seats were fenced by a black wall 40 m long. The screen was dark in house light, so 130
+  seated guests faced nothing.
+- **What changed:**
+  - **Banner -> breaker.** The same device (`ABannerDevice`, label `Banner`, same use point on Maya's platform) is now
+    the breaker of the aisle's electric eye: no matte (1 cm, hidden), it lands at once, the eye's lamps go green for
+    10 s. Nothing hangs or drops in the room. Device name BREAKER, the beam's label ELECTRIC EYE, a new fire line, and
+    the Scene 2 goal line and Maya's hint say so (`TakeDirectorScene.cpp`, `TakeDirector.cpp`: strings only).
+  - **The rope.** The two `Rope_*` wall boxes are hidden (collision kept); velvet rope sags between 20 brass posts
+    from wall to wall, with a RESERVED / PADDLE HOLDERS ONLY card each side of the gap. The beam keeps its own posts,
+    lamps and glint.
+  - **The sale.** In house light the screen shows a lantern slide: NOW SELLING, LOT 41, THE DIRECTOR'S CUT, the only
+    print in existence, CURRENT BID $410,000. It sits behind the preview's film panel, so the film covers it when Maya
+    dims the house.
+  - All of it is one new overlay, `tools/sets/puzzle.py` (tag `set_puzzle`, in `run_all.py` before the lights), which
+    patches the built level; `build_auction.py` carries the same breaker values for a rebuild.
+- **How:** one Claude session (Fable 5.2). Three other sessions were in the same editor (set props, hero hands,
+  device models, with their background agents). They were messaged first with the file list this session took, and
+  each answered with its own files, hand-made level edits (none) and restart plans. The devices session will swap the
+  winch model on the platform for a switch panel and rebuilt the editor with this session's two strings in it. No
+  level rebuild and no restart were needed here.
+- **What went wrong:**
+  - An hour and a half went on waiting for the editor lock: other agents held it for up to 30 minutes at a time, and
+    the editor crashed once under another session. The lock has no queue, so a waiter only gets in by polling.
+  - A first try at brass "eye" houses on the gap's posts looked like stray black boxes in the shots and was removed.
+  - Seen in editor shots only (`C:\Jam\Builds\qa\puzzle`), not in play: the breaker firing, the lamps going green,
+    the slide under the film filter. The breaker has no sound (the banner's cloth whoosh is keyed to the old name) and
+    Maya's old spoken hint no longer matches the new text, so that hint is subtitle only.

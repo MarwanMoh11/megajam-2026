@@ -1512,7 +1512,7 @@ setp(drone, label="DRONE", path_points=[d1, d2], cone_radius=DRONE_RADIUS, fly_h
 
 # The beam across the gap in the rope.
 beam = spawn(unreal.BeamWatcher, (ROPE_X, -GAP, 0), label="Beam", folder="Take")
-setp(beam, label="BEAM", end_b=unreal.Vector(0, 2 * GAP, 0), live_from_bar=1, drop_every_bars=4, drop_beat_in_bar=4,
+setp(beam, label="ELECTRIC EYE", end_b=unreal.Vector(0, 2 * GAP, 0), live_from_bar=1, drop_every_bars=4, drop_beat_in_bar=4,
      instrument=unreal.WatcherInstrument.HI_HAT)
 
 # The guard stands beside the aisle and turns on bar lines.
@@ -1547,8 +1547,12 @@ setp(spot_dev, device_name="FOLLOW SPOT", effect=unreal.DeviceEffect.BLIND, rang
      fired_from=B, use_verb="Put the follow spot on the")
 setp(spot_dev, use_offset=use_offset(spot_dev, (SPOT_USE[0], SPOT_USE[1], CAT_Z)))
 banner = spawn(unreal.BannerDevice, BATTEN, label="Banner", folder="Take")
-setp(banner, device_name="BANNER", effect=unreal.DeviceEffect.MASK, range=600.0, duration=10.0, uses=1,
-     fired_from=B, drop_distance=300.0, use_verb="Winch the banner down over the beam",
+# Nov 15 puzzle redesign: no banner hangs in the room. The same device is the breaker of the aisle's electric eye
+# (no matte, it lands at once, the eye is dark for 10 s); tools/sets/puzzle.py sets the same values on a built level.
+setp(banner, device_name="BREAKER", effect=unreal.DeviceEffect.MASK, range=600.0, duration=10.0, uses=1,
+     fired_from=B, drop_distance=0.0, drop_seconds=0.02, raise_seconds=0.02, matte_size=unreal.Vector(1.0, 1.0, 1.0),
+     use_verb="Pull the breaker on the aisle's electric eye",
+     fire_line='MAYA: "Breaker\'s out. The eye is dead for ten seconds."',
      effect_offset=unreal.Vector(ROPE_X - BATTEN[0], 0.0, 20.0 - BATTEN[2]))
 setp(banner, use_offset=use_offset(banner, (BANNER_USE[0], BANNER_USE[1], CAT_Z)))
 
