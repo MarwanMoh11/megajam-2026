@@ -25,7 +25,7 @@ RAW = os.path.join(OUT, "raw")
 DEST = "/Game/Take/Audio/Script/S7"
 REPO = r"C:\Jam\megajam"
 
-PENDLETON_VOICE = "oDQy4IsGdMzP2p0Mj1UU"   # as chosen by the Scene 5 session (tools/script/scene5_audio.py)
+PENDLETON_VOICE = "onwK4e9ZLuTAKqWW03F9"   # Daniel (premade): distinct from Vance's designed voice; shared with Scene 5
 
 # asset name, seconds, prompt, loop
 SFX = [
