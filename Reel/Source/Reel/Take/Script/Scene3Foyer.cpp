@@ -665,7 +665,8 @@ void AScene3Foyer::DrawSceneHud(UCanvas* Canvas)
 	const float CardW = Kit.Px(560.f);
 	const float CardH = Kit.Px(118.f);
 	const float Gap = Kit.Px(28.f);
-	const float Y0 = Kit.PicBottom() - Kit.Px(236.f);
+	// High enough to clear a three-line subtitle (the critic's line is still up when the choice opens).
+	const float Y0 = Kit.PicBottom() - Kit.Px(400.f);
 	Kit.Text(EType::Label, TEXT("THE CRITIC  -  your answer"), Kit.CX(), Y0 - Kit.Px(26.f), Bone, ETakeAlign::Centre);
 	for (int32 i = 0; i < 2; ++i)
 	{

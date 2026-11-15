@@ -1361,3 +1361,11 @@ animation, you can't move it or change it." He was looking at the searchlight on
 - The first settled shot on Max sat inside a lily bucket (a giant black cone in front of his face): moved the camera
   70 cm east, Max now in profile at his CRT. The HUD text over the bulb and lilies was hard to read: dark backing panels
   queued for the 18:10 restart. Notes in `docs/script/s2.md`.
+
+## Nov 15 17:45 Cairo - s3-foyer: Scene 3 checked on the 17:20 build
+- Both paths run in PIE from `Reel.Script.Jump 3` through the test hook `Reel.S3.Key` (`tools/script/scene3_pie.py`):
+  Play Along -> Max's V.O. in the hall -> the rope guard spends the VIP alibi and sends Vance back -> the cut to
+  Nora's catwalks; Brush Off -> straight to the rope -> tackled -> the retake opens Scene 3 again.
+- Bug seen in the shots: the choice cards sat on top of the critic's two-line subtitle (his line is still up when
+  the choice opens). The cards move up; and if Vance hurries into the hall mid-reply, the critic now still wanders
+  off. Both in for the 18:10 restart.
