@@ -599,9 +599,8 @@ void AScene2Van::DrawDial(UCanvas* C, float CX, float CY, float R, float V, cons
 	const float A = FMath::DegreesToRadians(135.f + 270.f * FMath::Clamp(V, 0.f, 1.f));
 	Line(C, FVector2D(CX, CY), FVector2D(CX + R * 0.85f * FMath::Cos(A), CY + R * 0.85f * FMath::Sin(A)), bHeld ? Phosphor : ScanAmber, K.Ln(5.f));
 	K.Diamond(CX, CY, K.Px(10.f), Ring);
-	K.Text(EType::Label, Label, CX, CY + R + K.Px(26.f), Ring, ETakeAlign::Centre);
+	// the keys either side of the dial's name, under it: [A] Frequency [D]
 	const FTakeInk Keys = FTakeInk::Of(Ring, Ring);
-	K.Rich(EType::Tag, FString::Printf(TEXT("[%s]"), *KeyL), CX - R - K.Px(34.f), CY, K.Px(120.f), 1, Keys);
-	K.Rich(EType::Tag, FString::Printf(TEXT("[%s]"), *KeyR), CX + R + K.Px(34.f), CY, K.Px(120.f), 1, Keys);
+	K.Rich(EType::Tag, FString::Printf(TEXT("[%s]  %s  [%s]"), *KeyL, *Label, *KeyR), CX, CY + R + K.Px(30.f), R * 3.f, 1, Keys);
 }
 
