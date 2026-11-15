@@ -1662,3 +1662,24 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
   - **Vance walks:** he moves on his own feet through his movement component, so his walk cycle plays (chars-locomotion's `UTakeLocoAnim`). The lane is re-laid to go around the bar column, the ice plinth and the cocktail table. A capsule sweep in `scene4.py` now reports only the electric-eye beam at the curtain. If something holds him for more than 0.5 s, he is stepped on along the lane.
 - Checked in one PIE pass: both devices fire, the cart crashes, the lane clears, and the tracking shot reaches the curtain.
 - **Not seen:** whether his feet slide or the step-on triggers at the beam, how the lamp swing feels, and how the cue sounds.
+
+## Nov 15, 22:55 Cairo: Scene 6 backstage reworked (s6-backstage)
+- **Changed (Marwan's two QA notes):** one guard instead of three; the stair guards, stairs and booth door are gone. Cole
+  can crouch (C or Left Ctrl, chars-locomotion's crouch): standing, the guard hears his steps; crouched, he's quiet and
+  harder to see. The counterweight lever drops a sandbag on the thunder sheet, and the guard walks over to look with his
+  back to the room. E from behind starts a choke-hold on a side camera, and E by the body drags it into the costume
+  trunk. Both bodies are posed in code (`Scene6Rig`: two-bone IK on the UE5 mannequin through a hidden poseable mesh;
+  no paired takedown clips were free). Then Cole goes out to the corridor and rigs the oak door's scanner (a cut to
+  Scene 5's door lamp going green, flag `S6DoorRigged`), kills the alarm on the prop store door and wedges it open for
+  Scene 8's escape (`S6ExitReady`). The scene leaves Cole on s7-route's mark. Four new Cole lines and four SFX are
+  from ElevenLabs. The guard now carries chars-locomotion's pistol and aims it when he spots Cole.
+- **Agents:** s6-backstage, which agreed the door with s7-route and the exit with s8-escape.
+- **Went wrong:** Live Coding failed with no readable reason, and the usage limit hit mid-task. A GPU crash at frame 0
+  (DXGI device removed on the first viewport present) killed the editor twice after the reboot. Starting it with
+  `-d3d11` got past it. The first PIE run showed Cole standing on the trunk at the end of the drag, and the vault's safe
+  half-blocking the way out of the room. Both are fixed in code and the set script. The helpers were renamed with an
+  S6 prefix after the unity build clashed on generic names.
+
+## Nov 15, ~22:55 Cairo: Scene 8 escape plays end to end
+- **Checked in play (autopilot, one run, on the 22:32 build with the guards' pace fix and the new pistol grip):** beats Escape → Alley (27 s) → Dive → Drive → Mirror → Done with no catch and no retake. Shots: Cole's "Max is out back! Move!" in the security room, the corridor, the lobby with tracers, the backstage corridor, Vance at the car door in the rainy alley, then the finale and the credits (`C:\Jam\Builds\script\s8\look_*.png`).
+- **Went wrong / open:** the first frame of the escape has the camera tight on Vance's back; the in-car finale's first shot (look_13) frames Vance's bow tie from inside his body (s8-car-mirror's shot).
