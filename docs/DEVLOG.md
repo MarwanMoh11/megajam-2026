@@ -1350,3 +1350,14 @@ animation, you can't move it or change it." He was looking at the searchlight on
   so the timed shots missed their beats. The second pass showed the floor manager stuck at the doors: the scene sat
   out an 8 s cap before the whisper. Fix (81df898, for the 18:10 restart): he glides along his line by hand when the
   walk stalls, and the cap is now the walk's length plus 1 s.
+
+## Nov 15, 17:40 Cairo: s2-van, Scene 2 plays end to end
+- Back after the usage-limit stall (14:50 to 17:20). Under the editor lock: ran the van set (`tools/script/scene2_van.py`:
+  842 kit pieces, the FLEURS DU SOIR van, rack, CRTs, lily buckets, Max seated on the Clerk mesh with a headset, the
+  facade security camera) and `scene2.py`, saved the level and the S2 materials (7307690).
+- PIE from `Reel.Script.Jump 2`: opening move, dials, BZZT-LOCK, the cut to Vance, Scene 1's PalmAccepted ("Enjoy the
+  screening, Your Grace."), FinishScene into Scene 3; the hesitation fail goes into a retake. The test hooks
+  (`Reel.S2.Easy`, `Reel.S2.Key`) made this one scripted run instead of a real-keys session.
+- The first settled shot on Max sat inside a lily bucket (a giant black cone in front of his face): moved the camera
+  70 cm east, Max now in profile at his CRT. The HUD text over the bulb and lilies was hard to read: dark backing panels
+  queued for the 18:10 restart. Notes in `docs/script/s2.md`.
