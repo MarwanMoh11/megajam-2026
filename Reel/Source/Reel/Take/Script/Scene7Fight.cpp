@@ -18,6 +18,7 @@
 #include "Engine/SkeletalMesh.h"
 #include "Engine/Canvas.h"
 #include "Engine/World.h"
+#include "Engine/Engine.h"
 #include "Animation/AnimationAsset.h"
 #include "Materials/MaterialInterface.h"
 #include "NiagaraFunctionLibrary.h"
@@ -42,7 +43,16 @@ static FAutoConsoleCommandWithWorld GFightStartCmd(TEXT("Reel.S7Fight.Start"),
 	TEXT("Start Scene 7's fist fight now, in the security room."),
 	FConsoleCommandWithWorldDelegate::CreateLambda([](UWorld* World)
 	{
-		if (AScene7Fight* F = AScene7Fight::Find(World)) { F->StartFight(nullptr); }
+		// The console hands us the editor world in play-in-editor: start the fight in the game's world.
+		UWorld* Play = World;
+		if (GEngine)
+		{
+			for (const FWorldContext& Ctx : GEngine->GetWorldContexts())
+			{
+				if ((Ctx.WorldType == EWorldType::PIE || Ctx.WorldType == EWorldType::Game) && Ctx.World()) { Play = Ctx.World(); break; }
+			}
+		}
+		if (AScene7Fight* F = AScene7Fight::Find(Play)) { F->StartFight(nullptr); }
 	}));
 
 namespace

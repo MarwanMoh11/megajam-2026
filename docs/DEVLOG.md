@@ -1710,3 +1710,21 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
   scattered clinks, laughs, steps and trays played in Scenes 3 and 4. The old band never played.
 - What went wrong: the PC rebooted at 22:33 mid-queue and one lock wait timed out on a nine-session queue; the
   import ran on the third try.
+
+## Nov 15, 23:25 Cairo: Scene 7's fist fight on Mixamo mocap (s7-fight)
+- **What changed:** `AScene7Fight` (Reel/Source/Reel/Take/Script/Scene7Fight.*) is the security-room fight, a placed
+  actor that s7-route's `AScene7Booth` starts after Pendleton's line and finishes into Scene 8. Three beats, each a
+  same-frame key prompt in slow time: [Q] parry the bodyguard's hook (he stumbles past and Vance drives his head into
+  the monitor bank, sparks), [E] block Pendleton's stiletto with the canister (CLANG, sparks, the blade spins away),
+  [F] sweep his legs in slow motion. A miss lets the blow land, freezes on a CUT! card and retakes that beat. Two
+  cameras hard-cut between 16 shots (wides for geography, crash zooms and close-ups on contacts, handheld wobble,
+  impact kicks).
+- **Mocap:** 12 Mixamo clips (hook punch, ducking, fight idle, block, head/stomach hits, stabbing, leg sweep, sweep
+  fall, falling back, push, stumble), downloaded with Claude in Chrome, imported and retargeted by
+  `tools/build_mocap.py`, and mapped by role on the placed actor by `tools/script/scene7_fight.py`. The template's
+  attack and hit clips stay as fallbacks.
+- **Went wrong:** the hand-off design flipped three times between sessions (placed actor, scene part 3, placed actor
+  again); the placement script failed silently for hours because the editor's Python runner rejects a nested
+  `import`; Mixamo sign-in was lost twice (a reboot, then the session driving the Mac's Chrome instead of the PC's).
+  The direct test hook (`Reel.S7Fight.Start`) still reports "no Vance" in PIE, so the fight has not been seen
+  running yet: it needs one look through the real route (`Reel.Script.Jump 702`).
