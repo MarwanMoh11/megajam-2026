@@ -366,7 +366,7 @@ void AScene1Marquee::TickScene(float DeltaSeconds)
 	const double Age = T - BeatAt;
 
 	// The floor manager, back inside: gone.
-	if (Manager && Beat > EScene1Beat::Bolt && !Manager->IsWalking())
+	if (Manager && Beat > EScene1Beat::Bolt && (!Manager->IsWalking() || Beat >= EScene1Beat::Line))
 	{
 		HideManager();
 	}
@@ -393,7 +393,17 @@ void AScene1Marquee::TickScene(float DeltaSeconds)
 		break;
 
 	case EScene1Beat::Manager:
-		if (!Manager || (!Manager->IsWalking() && Age > 0.3) || Age > 8.0)
+	{
+		// Blocked on the way out (the doors, a rope): glide him along the line by hand, so the scene never waits on a path.
+		const float WalkLen = FVector::Dist2D(ManagerFrom, ManagerTo);
+		if (Manager && Manager->IsWalking() && WalkLen > 1.f)
+		{
+			const float Along = FMath::Min(WalkLen, ManagerSpeed * float(Age));
+			const FVector Want = ManagerFrom + (ManagerTo - ManagerFrom) * (Along / WalkLen);
+			const FVector M = Manager->GetActorLocation();
+			if (FVector::Dist2D(M, Want) > 60.f) { Manager->SetActorLocation(FVector(Want.X, Want.Y, M.Z)); }
+		}
+		if (!Manager || (!Manager->IsWalking() && Age > 0.3) || Age > WalkLen / FMath::Max(ManagerSpeed, 1.f) + 1.0)
 		{
 			if (Manager && Bouncer)
 			{
@@ -410,6 +420,7 @@ void AScene1Marquee::TickScene(float DeltaSeconds)
 			EnterBeat(EScene1Beat::Whisper);
 		}
 		break;
+	}
 
 	case EScene1Beat::Whisper:
 		if (T >= LineEndsAt)
