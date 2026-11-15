@@ -81,7 +81,7 @@ def main():
         console(s, "TakeWarp %.0f %.0f %.0f" % p[:3], "TakeLook %.1f %.1f" % p[3:5])
         time.sleep(2.0)
         path = os.path.join(OUT, "%s_%s.png" % (prefix, n))
-        res = tool(s, "EditorToolset.EditorAppToolset.CaptureEditorImage", {})
+        res = tool(s, "SceneCaptureToolset.SceneCaptureToolset.CaptureGameViewport", {"world": {"refPath": "/Game/Take/UEDPIE_0_Lvl_Auction.Lvl_Auction"}, "maxResolution": 1280})
         print(n, save_image(res, path) and path)
 
 
