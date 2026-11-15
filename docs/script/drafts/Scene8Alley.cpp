@@ -529,7 +529,7 @@ void AScene8Alley::TickScene(float DeltaSeconds)
 		}
 		else if (BeatT >= RunSeconds)
 		{
-			FailScene(TEXT("PinnedDown"));
+			FailScene(TEXT("Pinned_Down"));
 		}
 		break;
 	}
@@ -582,6 +582,7 @@ void AScene8Alley::TickScene(float DeltaSeconds)
 		{
 			bPrint = true;
 			Say(TEXT("Vance"), TEXT("Cut. Print it."), Load(VanceLine));
+			SetFlag(TEXT("PrintItSaid"));	// the sequencer's end then skips its own "Cut. Print it."
 		}
 		if (BeatT >= MirrorSeconds) { Enter(EScene8Beat::Done); }
 		break;
