@@ -12,9 +12,9 @@
 
 namespace
 {
-	const FLinearColor Navy(0.05f, 0.06f, 0.10f);
-	const FLinearColor Skin(0.55f, 0.42f, 0.34f);
-	const FLinearColor Black(0.02f, 0.02f, 0.02f);
+	const FLinearColor ChaserNavy(0.05f, 0.06f, 0.10f);
+	const FLinearColor ChaserSkin(0.55f, 0.42f, 0.34f);
+	const FLinearColor ChaserBlack(0.02f, 0.02f, 0.02f);
 }
 
 AScene8Chaser::AScene8Chaser()
@@ -78,7 +78,7 @@ void AScene8Chaser::BeginPlay()
 		if (UStaticMeshComponent* M = Cast<UStaticMeshComponent>(K))
 		{
 			const FString N = M->GetName();
-			FTakeShapes::SetColour(M, N.EndsWith(TEXT("_Head")) ? Skin : N == TEXT("Gun") ? Black : Navy);
+			FTakeShapes::SetColour(M, N.EndsWith(TEXT("_Head")) ? ChaserSkin : N == TEXT("Gun") ? ChaserBlack : ChaserNavy);
 		}
 	}
 	FTakeShapes::SetColour(MuzzleFlash, FLinearColor(1.f, 0.85f, 0.5f));

@@ -51,9 +51,9 @@ namespace
 		return TSoftObjectPtr<USoundBase>(FSoftObjectPath(FString::Printf(TEXT("%s%s.%s"), AudioDir, Name, Name)));
 	}
 
-	float Smooth(float A) { A = FMath::Clamp(A, 0.f, 1.f); return A * A * (3.f - 2.f * A); }
+	float S8Smooth(float A) { A = FMath::Clamp(A, 0.f, 1.f); return A * A * (3.f - 2.f * A); }
 
-	const FLinearColor Steel(0.16f, 0.19f, 0.18f);
+	const FLinearColor S8Steel(0.16f, 0.19f, 0.18f);
 
 	ACameraActor* SpawnCam(UWorld* World, const FVector& At, const FVector& LookAt, float Fov)
 	{
@@ -194,7 +194,7 @@ AScene8Alley::AScene8Alley()
 void AScene8Alley::BeginPlay()
 {
 	Super::BeginPlay();
-	FTakeShapes::SetColour(Door, Steel);
+	FTakeShapes::SetColour(Door, S8Steel);
 	FTakeShapes::SetColour(ExitSign, FLinearColor(0.1f, 0.9f, 0.3f));
 	Doorway->SetHiddenInGame(true);
 	// The smoke grenade and the puffs it billows into.
@@ -554,7 +554,7 @@ void AScene8Alley::TickCarArrival(float DeltaSeconds)
 	const float Drift = DriftDeg * FMath::Sin(PI * FMath::Clamp((A - 0.15f) / 0.85f, 0.f, 1.f));
 	PoseCar(ArrivePath, Ease, Drift);
 	Car->SetFlare(FMath::Max(0.f, 1.f - FMath::Abs(A - 0.3f) / 0.2f));
-	Car->SetDoorOpen(Smooth((A - 0.85f) / 0.15f));
+	Car->SetDoorOpen(S8Smooth((A - 0.85f) / 0.15f));
 	if (!bMaxSaid && A > 0.78f)
 	{
 		bMaxSaid = true;
@@ -621,7 +621,7 @@ bool AScene8Alley::TickColeEntrance(float DeltaSeconds, ATakeCharacter* Cole)
 	const float S = ThrowT - GrenadeSeconds;
 	if (S >= 0.f)
 	{
-		const float Grow = Smooth(S / FMath::Max(0.1f, SmokeGrowSeconds));
+		const float Grow = S8Smooth(S / FMath::Max(0.1f, SmokeGrowSeconds));
 		for (int32 i = 0; i < SmokePuffs.Num(); ++i)
 		{
 			UStaticMeshComponent* P = SmokePuffs[i];
@@ -839,7 +839,7 @@ void AScene8Alley::TickScene(float DeltaSeconds)
 	}
 	case EScene8Beat::Dive:
 	{
-		if (Car) { Car->SetDoorOpen(1.f - Smooth(BeatT / 0.25f)); }
+		if (Car) { Car->SetDoorOpen(1.f - S8Smooth(BeatT / 0.25f)); }
 		if (Car && BeatT >= NextShot) { Shoot(Car->GetActorLocation(), 260.f); NextShot = BeatT + 0.3f; }
 		if (BeatT >= DiveSeconds) { Enter(EScene8Beat::Drive); }
 		break;
