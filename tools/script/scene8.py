@@ -78,7 +78,7 @@ block("FarWall_Cap_E", GAP[1], EAST, FAR_Y - 40.0, FAR_Y + 10.0, 650.0, 670.0, M
 # brick facing over the building's own south wall along the alley, so both sides read as old brick
 block("NearFacing", WEST, EAST, DOOR[1] - 4.0, DOOR[1], GROUND, 520.0, brick, collide=False)
 # bins and crates along the far wall (clear of the car's lane, y -3660..-3840), a drainpipe, a step at the door
-for i, bx in enumerate((-300.0, 160.0, 1900.0)):
+for i, bx in enumerate((-300.0, 160.0, 1150.0)):                      # none between the drive camera and the gap
     block("Bin_%d" % i, bx, bx + 120.0, FAR_Y + 10.0, FAR_Y + 95.0, GROUND, GROUND + 115.0, M_DOOR)
     block("BinLid_%d" % i, bx - 4.0, bx + 124.0, FAR_Y + 6.0, FAR_Y + 99.0, GROUND + 115.0, GROUND + 121.0, M_TRIM,
           collide=False)
@@ -127,6 +127,10 @@ else:
     a.set_folder_path("Script/S8")
     a.set_editor_property("tags", [unreal.Name(TAG)])
     a.set_editor_property("FarWallY", FAR_Y - DOOR[1])
+    # the drive camera stands east of the turn into the gap, in front of the lorry: it sees the car come at it,
+    # swing into the side street and fishtail away (from the west end the far wall hid the turn)
+    a.set_editor_property("DriveCamAt", unreal.Vector(1850.0, -330.0, 180.0))
+    a.set_editor_property("MirrorFov", 50.0)                              # the eyes and a little of the night
     out.append("placed %s at %s" % (a.get_actor_label(), DOOR))
 
 print("SCENE8 " + "; ".join(out))
