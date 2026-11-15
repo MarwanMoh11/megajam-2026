@@ -103,6 +103,37 @@ public:
 	/** A blooper: the house lights back to where they were, the beam and the screen off, at once. */
 	void RestoreHouseNow();
 
+	// --- the script's screening (Scene 5, s5-auditorium; docs/SCRIPT_ADAPT.md) -------------------------------------
+	// Independent of the old preview (bRunning stays false). The film keeps running after Scene 5 (Scenes 6 and 7 play
+	// with it on) until EndScreening. The dimmer ticks itself while screening. Lights with the component tag
+	// "HouseKeep" are never dimmed (the scene's own spot, lamp and torches).
+
+	/** The house lights only, at once (no film): e.g. 0.2 for Pendleton's speech in his spotlight. */
+	void SetHouseNow(float Level);
+
+	/** The house CUTS to Level on this frame (no ease), the beam and the film come on, every guest looks at the
+	 *  screen. Held until EndScreening. */
+	void BeginScreening(float Level = 0.f);
+
+	/** The beam and the film off and the house back to full, at once (a retake, Scene 7's burn-out, the alarm). */
+	void EndScreening();
+
+	bool IsScreening() const { return bScreening; }
+
+	/** A flare of the beam and the screen's light (the score's timpani hit): Amount 1 = full flare, decays over
+	 *  FlashSeconds. */
+	void FlashScreen(float Amount = 1.f);
+
+	/** How long a FlashScreen flare takes to die away, s. */
+	UPROPERTY(EditAnywhere, Category = "Take|Dimmer|Script", meta = (ClampMin = "0.05"))
+	float FlashSeconds = 0.4f;
+
+	/** A full flare multiplies the beam and the screen glow by 1 + FlashBoost. */
+	UPROPERTY(EditAnywhere, Category = "Take|Dimmer|Script", meta = (ClampMin = "0"))
+	float FlashBoost = 2.5f;
+
+	virtual void Tick(float DeltaSeconds) override;
+
 	// --- the preview -----------------------------------------------------------------------------------------------
 
 	/** How long the house stays down when nobody swaps, s. Enough for a cut back to Julian, the walk up, the keycard
@@ -334,4 +365,12 @@ protected:
 	float AppliedLevel = 1.f;
 	float DarkSecondsLeft = 0.f;
 	float GlanceSecondsLeft = 0.f;
+
+	// The script's screening.
+	bool bScreening = false;
+	float ScreeningSeconds = 0.f;
+	float FlashLeft = 0.f;
+	float FlashAmount = 0.f;
+	/** The beam and the glow for the screening's flicker and the flash, this frame. */
+	void ApplyScreeningLight();
 };

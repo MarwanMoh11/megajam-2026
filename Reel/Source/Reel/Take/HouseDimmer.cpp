@@ -46,6 +46,7 @@ namespace TakeHouseDimmerLocal
 AHouseDimmer::AHouseDimmer()
 {
 	DeviceName = TEXT("HOUSE DIMMER");
+	PrimaryActorTick.bCanEverTick = true;	// the script's screening only (Tick returns at once otherwise)
 	Effect = EDeviceEffect::Blind;
 	Range = 3500.f;
 	Duration = 0.75f;	// one glance at the screen; renewed while the house is dark
@@ -417,6 +418,7 @@ void AHouseDimmer::GatherHouseLights()
 		{
 			const FVector At = Comp ? Comp->GetComponentLocation() : FVector::ZeroVector;
 			if (!Comp || Comp->GetMobility() == EComponentMobility::Static || !Comp->IsVisible()
+				|| Comp->ComponentHasTag(TEXT("HouseKeep"))
 				|| !House.IsInsideOrOn(At) || At.Z >= KeepLightsAboveZ
 				|| FVector::DistSquared(At, Board) <= KeepSq || FVector::DistSquared(At, Lens) <= KeepSq)
 			{
@@ -533,4 +535,106 @@ void AHouseDimmer::EndDark()
 		BodyMID = FTakeShapes::SetColour(Body, FMath::Lerp(BodyColour, TakeColors::White, TakeHouseDimmerLocal::RisingWhite));
 	}
 	TAKE_LOG(TEXT("%s: the preview ends, the house comes up"), *DeviceName);
+}
+
+// ---- the script's screening (Scene 5, s5-auditorium) ------------------------------------------------------------------
+
+void AHouseDimmer::SetHouseNow(float Level)
+{
+	// Gather only from full light: a gather while dimmed would remember the dimmed intensities as the base.
+	if (HouseLights.Num() == 0 || AppliedLevel >= 1.f)
+	{
+		GatherHouseLights();
+	}
+	HouseLevel = FMath::Clamp(Level, 0.f, 1.f);
+	ApplyHouseLevel(HouseLevel);
+}
+
+void AHouseDimmer::BeginScreening(float Level)
+{
+	bRunning = false;	// never the old preview's clock
+	DarkSecondsLeft = 0.f;
+	SetHouseNow(Level);
+	bScreening = true;
+	ScreeningSeconds = 0.f;
+	FlashLeft = 0.f;
+	SetPreviewVisible(true);
+	SetFilm(1.f);
+	ApplyScreeningLight();
+	SetActorTickEnabled(true);
+	if (bTurnHeads)
+	{
+		const FBox House = TakeHouseDimmerLocal::HouseBox(HouseMin, HouseMax);
+		const FVector Screen = GetScreenCentre();
+		for (TActorIterator<ACastMember> It(GetWorld()); It; ++It)
+		{
+			ACastMember* const Guest = *It;
+			if (IsValid(Guest) && !Cast<ATakeCharacter>(Guest->GetAttachParentActor())
+				&& House.IsInsideOrOn(Guest->GetActorLocation()) && !Guest->ActorHasTag(TEXT("HouseKeep")))
+			{
+				Guest->LookAtPoint(Screen, 600.f);
+			}
+		}
+	}
+	TAKE_LOG(TEXT("%s: SCREENING on, %d house lights cut to %.0f%%"), *DeviceName, HouseLights.Num(), HouseLevel * 100.f);
+}
+
+void AHouseDimmer::EndScreening()
+{
+	if (!bScreening && AppliedLevel >= 1.f)
+	{
+		return;
+	}
+	bScreening = false;
+	FlashLeft = 0.f;
+	SetPreviewVisible(false);
+	SetFilm(0.f);
+	HouseLevel = 1.f;
+	ApplyHouseLevel(1.f);
+	TAKE_LOG(TEXT("%s: SCREENING off, the house up"), *DeviceName);
+}
+
+void AHouseDimmer::FlashScreen(float Amount)
+{
+	if (!bScreening)
+	{
+		return;
+	}
+	FlashAmount = FMath::Max(Amount, 0.f);
+	FlashLeft = FMath::Max(FlashSeconds, 0.05f);
+	ApplyScreeningLight();
+}
+
+void AHouseDimmer::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	if (!bScreening)
+	{
+		return;
+	}
+	ScreeningSeconds += DeltaSeconds;
+	FlashLeft = FMath::Max(FlashLeft - DeltaSeconds, 0.f);
+	ApplyHouseLevel(HouseLevel);	// a cue light's owner may have set its light back
+	ApplyScreeningLight();
+}
+
+void AHouseDimmer::ApplyScreeningLight()
+{
+	const float Flash = FlashLeft > 0.f
+		? 1.f + FlashBoost * FlashAmount * FMath::Square(FlashLeft / FMath::Max(FlashSeconds, 0.05f)) : 1.f;
+	const float Flicker = TakeHouseDimmerLocal::FlickerScale(ScreeningSeconds, FlickerAmount);
+	if (ProjectorLight)
+	{
+		ProjectorLight->SetIntensity(ProjectorCandelas * Flicker * Flash);
+	}
+	if (ScreenGlow)
+	{
+		FTakeShapes::SetCueLight(ScreenGlow,
+			ScreenGlowCandelas * TakeHouseDimmerLocal::FlickerScale(ScreeningSeconds * 0.9f, FlickerAmount * 1.5f) * Flash,
+			ScreenGlowColour);
+	}
+	if (FilmMID)
+	{
+		FilmMID->SetScalarParameterValue(TEXT("Brightness"), FilmBrightness * FMath::Min(Flash, 1.f + FlashBoost * 0.4f));
+	}
 }
