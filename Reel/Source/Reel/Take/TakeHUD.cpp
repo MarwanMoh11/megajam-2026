@@ -114,6 +114,7 @@ void ATakeHUD::DrawHUD()
 		DrawB1(*Dir, true);
 	}
 	// The script's layer: the scene's own HUD, the slug, the splice, the retake, the end of the film.
+	DrawGuide();
 	DrawScript(*Dir, FilmFrame);
 }
 

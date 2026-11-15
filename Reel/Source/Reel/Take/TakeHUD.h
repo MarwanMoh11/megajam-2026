@@ -360,6 +360,9 @@ protected:
 	/** The script's layer (TakeHUDScript.cpp, Spine): the scene's own HUD, the slug line, the splice, the retake
 	 *  card and the end of the film. */
 	void DrawScript(const ATakeDirector& Dir, const FTakeFilmFrame& F);
+	/** Where to go next (TakeHUDGuide.cpp, hud-guidance): hands the guide's crew line to the subtitles, draws its soft
+	 *  marker and objective at the goal or at the picture's edge. */
+	void DrawGuide();
 	void DrawStamps(const ATakeDirector& Dir);
 	void DrawOpeningSlate(const ATakeDirector& Dir, float SlateAge, float Alpha);
 	void DrawSubtitleNow(const FString& Speaker, const FString& Line, bool bFilm);
