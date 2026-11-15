@@ -1377,3 +1377,15 @@ animation, you can't move it or change it." He was looking at the searchlight on
 ### Nov 15, 17:48 Cairo: s4-catwalk, Scene 4's first play
 - Scene 4 played for the first time on the 17:20 restart's build, from `Reel.Script.Jump 4` (`tools/script/scene4_pie.py`, which presses through the scene's test hook `Reel.S4.Press 1|2|cue`). It opens on Nora's bird's-eye feed with Nora's voiced line. The guards' cones turn grey as the spot and the champagne cart pull them off the lane. Guard 1's line plays, LANE CLEAR comes up, and the cue cuts to Vance. The doors and `FinishScene` came 13 s later.
 - Went wrong: the overlay picked the hall's far "Searchlight" (300 cm range) as the rigged spot, so the beam never fired. It now takes the follow spot nearest Nora. The lane crossed a seated bench, and a guest at the bar held Vance in place, so the tracking camera showed him standing still. The lane now takes the centre aisle, and the scene carries Vance along it with his walk driven from the velocity it sets. The grating overlay drew opaque bars (canvas line items ignore alpha), so it is now drawn with translucent tiles. Also new: guards held from the director (`bScriptHeld`) and the retake line voiced. The level, the six S4 voices and the overlay are committed; the C++ goes in at the 18:10 restart.
+
+### Nov 15, 17:50 Cairo: Spine, the whole script in one pass
+`tools/script/spine_pie.py` plays the title card, `Reel.Script.Jump 1` to `8`, a retake on scene 3 and the end, and
+saves a shot of each step to `C:\Jam\Builds\script\spine\`. On the 17:20 build these all work: the slug lines, the
+splice, the CUT! card ("SCENE 3 TAKE 2"), Cole's raw look with no bars, and "Cut. PRINT IT." over the sprockets. Scenes 7
+and 8 were not in the saved level yet ("no scene 7/8"). Two bugs found and fixed for the 18:10 build:
+- A `Reel.Script.Jump` stayed set across play sessions, so every later play skipped the title card and opened on the
+  last jumped scene.
+- A scene's last subtitle carried across the cut into the next scene.
+
+s8's credits are now in the sequencer, and `build_auction.py`'s cue lines say NORA and COLE. The unused
+`MI_Puzzle_EyeLens` material is deleted.

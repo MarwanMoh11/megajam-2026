@@ -89,8 +89,9 @@ static FAutoConsoleCommandWithWorldAndArgs GScriptJumpCmd(
 	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 	{
 		const int32 N = Args.Num() > 0 ? FCString::Atoi(*Args[0]) : 1;
-		GScriptJump = N;
+		// Typed before play: remembered for the next BeginPlay only (it used to outlive every PIE session after it).
 		if (AScriptSequencer* S = AScriptSequencer::Get(World)) { S->JumpTo(N); }
+		else { GScriptJump = N; }
 	}));
 
 static FAutoConsoleCommandWithWorldAndArgs GScriptFinishCmd(
@@ -160,6 +161,7 @@ void AScriptSequencer::BeginPlay()
 	// A jump asked for (console before play, or StartScene) skips the title card; else the title card plays first
 	// and Tick starts the first scene when it goes.
 	PendingStart = GScriptJump > 0 ? GScriptJump : StartScene;
+	GScriptJump = 0;
 }
 
 void AScriptSequencer::EnterScriptMode()
@@ -248,6 +250,11 @@ void AScriptSequencer::JumpTo(int32 SceneNumber)
 	Pov = Active->Pov;
 	SlugText = Active->Slug;
 	SlugAt = SlugText.IsEmpty() ? -1.0 : ScriptNow();
+	// The last scene's subtitle doesn't carry over the cut.
+	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+	{
+		if (ATakeHUD* Hud = Cast<ATakeHUD>(PC->GetHUD())) { Hud->Subtitles.Reset(); }
+	}
 	Splice(Pov, Active->SceneCamera);
 	Active->BeginScene();
 }
