@@ -19,6 +19,10 @@
 #include "Kismet/GameplayStatics.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
+#if __has_include("Script/Scene7Booth.h")
+#include "Script/Scene7Booth.h"
+#define S8_HAS_BOOTH 1
+#endif
 #include "Script/Scene8Car.h"
 #include "Script/ScriptSequencer.h"
 #include "Sound/SoundBase.h"
@@ -292,6 +296,10 @@ void AScene8Alley::BeginScene()
 	{
 		Cole->TeleportTo(W(ColeStart), FRotator(0.f, GetActorRotation().Yaw - 90.f, 0.f), false, true);
 	}
+	// The silver canister from Scene 7 under his arm (s7-booth's component; false when no booth is in the level).
+#ifdef S8_HAS_BOOTH
+	AScene7Booth::AttachCanisterTo(this, GetPovCharacter());
+#endif
 	Enter(EScene8Beat::Burst);
 }
 
