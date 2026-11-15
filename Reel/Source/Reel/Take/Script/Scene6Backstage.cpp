@@ -18,6 +18,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Sound/SoundBase.h"
 #include "UObject/ConstructorHelpers.h"
+#include "HAL/IConsoleManager.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogScene6, Log, All);
 
@@ -32,6 +33,39 @@ namespace
 	float Ease(float T) { T = FMath::Clamp(T, 0.f, 1.f); return T * T * (3.f - 2.f * T); }
 	float Yaw2D(const FVector& V) { return static_cast<float>(FMath::RadiansToDegrees(FMath::Atan2(V.Y, V.X))); }
 }
+
+// Test hooks (console): Reel.S6.Use presses Use (E) for Cole in the active Scene 6. Reel.S6.Behind <A|B|P> puts Cole
+// 120 cm behind that person, facing him.
+static FAutoConsoleCommandWithWorldAndArgs GS6UseCmd(
+	TEXT("Reel.S6.Use"), TEXT("Reel.S6.Use: press Use for Cole in the active Scene 6 (test)."),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+	{
+		if (!World) { return; }
+		for (TActorIterator<AScene6Backstage> It(World); It; ++It)
+		{
+			if (It->IsActive()) { It->HandleSceneKey(EKeys::E, true); It->HandleSceneKey(EKeys::E, false); }
+		}
+	}));
+static FAutoConsoleCommandWithWorldAndArgs GS6BehindCmd(
+	TEXT("Reel.S6.Behind"), TEXT("Reel.S6.Behind <A|B|P>: Cole 120 cm behind that person (test)."),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+	{
+		if (!World || Args.Num() < 1) { return; }
+		const FName Want(Args[0] == TEXT("P") ? TEXT("S6_Projectionist") : *(FString(TEXT("S6_Enforcer_")) + Args[0]));
+		for (TActorIterator<AScene6Backstage> It(World); It; ++It)
+		{
+			ATakeCharacter* Cole = It->IsActive() ? It->GetPovCharacter() : nullptr;
+			if (!Cole) { continue; }
+			for (TActorIterator<ACastMember> M(World); M; ++M)
+			{
+				if (!M->ActorHasTag(Want)) { continue; }
+				const FVector Fwd = M->GetActorForwardVector().GetSafeNormal2D();
+				FVector At = M->GetActorLocation() - Fwd * 120.f;
+				At.Z = M->GetActorLocation().Z + Cole->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() + 2.f;
+				Cole->SetActorLocationAndRotation(At, Fwd.Rotation(), false, nullptr, ETeleportType::TeleportPhysics);
+			}
+		}
+	}));
 
 AScene6Backstage::AScene6Backstage()
 {
@@ -106,6 +140,7 @@ ACastMember* AScene6Backstage::SpawnOne(const FVector& At, float Yaw, uint8 Kit,
 	M->Kit = static_cast<ECastKit>(Kit);
 	M->Tint = Tint;
 	M->Tags.Add(TEXT("script_s6"));
+	M->Tags.Add(FName(*Label));
 #if WITH_EDITOR
 	M->SetActorLabel(Label);
 #endif
