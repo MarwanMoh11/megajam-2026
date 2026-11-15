@@ -23,7 +23,7 @@ void ATakeDirector::StepSight(float DeltaSeconds)
 	for (const TObjectPtr<AWatcher>& WatcherPtr : Watchers)
 	{
 		AWatcher* W = WatcherPtr.Get();
-		if (!W)
+		if (!W || W->bScriptHeld)
 		{
 			continue;
 		}

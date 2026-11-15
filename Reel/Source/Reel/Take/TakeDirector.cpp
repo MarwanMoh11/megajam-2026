@@ -557,7 +557,7 @@ void ATakeDirector::Tick(float DeltaSeconds)
 	StepFrameCues();
 	for (AWatcher* Watcher : Watchers)
 	{
-		if (Watcher)
+		if (Watcher && !Watcher->bScriptHeld)
 		{
 			Watcher->StepWatcher(DeltaSeconds, Clock);
 		}

@@ -51,7 +51,10 @@ void ATakeHUD::DrawScript(const ATakeDirector& Dir, const FTakeFilmFrame& F)
 		if (End < Seq->PrintItSeconds)
 		{
 			const float A = FMath::Clamp(End / 0.25f, 0.f, 1.f);
-			Kit.Text(EType::Title, TEXT("Cut."), Kit.CX(), H * 0.42f, Paper * FLinearColor(1, 1, 1, A), ETakeAlign::Centre);
+			if (!Seq->Flags.Contains(TEXT("PrintItSaid")))	// Scene 8's Vance already said it: the stamp alone
+			{
+				Kit.Text(EType::Title, TEXT("Cut."), Kit.CX(), H * 0.42f, Paper * FLinearColor(1, 1, 1, A), ETakeAlign::Centre);
+			}
 			const float B = FMath::Clamp((End - 0.8f) / 0.25f, 0.f, 1.f);
 			Kit.Text(EType::Display, TEXT("PRINT IT."), Kit.CX(), H * 0.56f, Julian * FLinearColor(1, 1, 1, B), ETakeAlign::Centre);
 			return;

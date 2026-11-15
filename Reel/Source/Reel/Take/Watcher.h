@@ -25,6 +25,9 @@ class REEL_API AWatcher : public AActor, public ITakeClickable
 	GENERATED_BODY()
 
 public:
+	/** A script scene moves this watcher itself: the director skips its StepWatcher and its sight test. */
+	bool bScriptHeld = false;
+
 	AWatcher();
 
 	/** Creates the frame's dynamic material (red), the tally (dark), remembers its home pose. */

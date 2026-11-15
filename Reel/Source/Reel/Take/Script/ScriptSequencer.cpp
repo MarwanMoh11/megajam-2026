@@ -10,6 +10,7 @@
 #include "TakePlayerController.h"
 #include "TakeCharacter.h"
 #include "TakeAudio.h"
+#include "TakeHUD.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogReelScript, Log, All);
@@ -198,6 +199,17 @@ void AScriptSequencer::Tick(float DeltaSeconds)
 		Active->SceneSeconds += DeltaSeconds;
 		Active->TickScene(DeltaSeconds);
 	}
+	// bPlayerWalks is live: off takes the player off the POV character, on puts them back (the view is untouched).
+	if (Active && Dir && Dir->PC)
+	{
+		ATakeCharacter* Char = GetPovCharacter(Pov);
+		if (!Active->bPlayerWalks && Dir->PC->Current) { Dir->PC->Current = nullptr; }
+		else if (Active->bPlayerWalks && Char && Dir->PC->Current != Char && !Dir->PC->IsInFlight())
+		{
+			Dir->PC->Current = Char;
+			Dir->CurrentCamera = Char->Id;
+		}
+	}
 }
 
 void AScriptSequencer::JumpTo(int32 SceneNumber)
@@ -269,10 +281,21 @@ void AScriptSequencer::OnCutTo(AScriptScene* Scene, EScriptPov NewPov, AActor* C
 void AScriptSequencer::OnSay(const FString& Speaker, const FString& Line, USoundBase* Sound)
 {
 	UE_LOG(LogReelScript, Log, TEXT("SCRIPT say %s: %s"), *Speaker, *Line);
-	if (ATakeDirector* Dir = ATakeDirector::Get(this))
+	// A new line replaces the one showing (no queue); Say("", "") clears the lane. Hold = sound length + 0.5 s.
+	APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
+	ATakeHUD* Hud = PC ? Cast<ATakeHUD>(PC->GetHUD()) : nullptr;
+	if (Hud)
 	{
-		const FString Text = Speaker.IsEmpty() ? Line : FString::Printf(TEXT("%s: %s"), *Speaker.ToUpper(), *Line);
-		Dir->Flash(Text, ETakeFlashKind::Line, 2.f + 0.06f * Line.Len());
+		Hud->Subtitles.Reset();
+		if (!Line.IsEmpty())
+		{
+			FTakeSubtitle& Sub = Hud->Subtitles.AddDefaulted_GetRef();
+			Sub.Speaker = Speaker.ToUpper();
+			Sub.Line = Line;
+			Sub.Hold = Sound ? Sound->GetDuration() + 0.5f
+				: Hud->SubtitleBaseSeconds + Hud->SubtitlePerCharSeconds * static_cast<float>(Line.Len());
+			if (Sub.Hold > 60.f) { Sub.Hold = 6.f; }
+		}
 	}
 	if (Sound) { UGameplayStatics::PlaySound2D(this, Sound); }
 }
@@ -333,7 +356,7 @@ void AScriptSequencer::EndOfFilm()
 	EndSeconds = 0.f;
 	if (ATakeDirector* Dir = ATakeDirector::Get(this))
 	{
-		if (Dir->Audio) { Dir->Audio->OnPrintIt(); }
+		if (Dir->Audio && !Flags.Contains(TEXT("PrintItSaid"))) { Dir->Audio->OnPrintIt(); }	// Scene 8's Vance said it
 		if (Dir->PC) { Dir->PC->Current = nullptr; }
 	}
 }
