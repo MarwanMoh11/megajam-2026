@@ -12,6 +12,10 @@
 #include "TakeShapes.h"
 #include "TakeTypes.h"
 
+#include "Components/CapsuleComponent.h"
+#include "Components/SpotLightComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "Materials/MaterialInterface.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
 #include "CanvasItem.h"
@@ -30,7 +34,14 @@
 namespace
 {
 	const FName FailSpotted(TEXT("SPOTTED AT THE ROPE"));
-	const FName FailRanks(TEXT("THE GUARDS CLOSED RANKS"));
+	const FName FailWindow(TEXT("THE SPOT BLEW BEFORE VANCE MOVED"));
+
+	const FLinearColor Iron(0.03f, 0.03f, 0.032f);
+	const FLinearColor Steel(0.1f, 0.1f, 0.11f);
+	const FLinearColor Brass(0.75f, 0.52f, 0.12f);
+	const FLinearColor Sackcloth(0.45f, 0.36f, 0.22f);
+	const FLinearColor Hemp(0.7f, 0.62f, 0.45f);
+	const FLinearColor LensOff(0.12f, 0.12f, 0.1f);
 
 	const FLinearColor ConeRed(0.95f, 0.08f, 0.05f);
 	const FLinearColor ConeIdle(0.85f, 0.85f, 0.8f);
@@ -171,6 +182,7 @@ void AScene4Catwalk::BeginPlay()
 	}
 	FloorZ = Cart ? static_cast<float>(Cart->GetActorLocation().Z) : static_cast<float>(GetActorLocation().Z);
 	BuildTower();
+	BuildRigs();
 	if (BirdsEyeCamera)
 	{
 		SceneCamera = BirdsEyeCamera;
@@ -215,6 +227,12 @@ void AScene4Catwalk::ResetScene()
 	LaneIndex = 0;
 	bCamPlaced = false;
 	FlashLeft = 0.f;
+	LampT = -1.f;
+	BagT = -1.f;
+	bLatchHit = false;
+	bHinted = false;
+	bWindowClosed = false;
+	StuckFor = 0.f;
 
 	for (FScene4Guard& G : Guards)
 	{
@@ -250,7 +268,9 @@ void AScene4Catwalk::ResetScene()
 	}
 	PlaceTowerOnCart();
 	SetDoors(1.f);
+	StepRigs(0.f);
 
+	GhostVance(false);
 	if (ATakeCharacter* V = GetVance())
 	{
 		V->GetCharacterMovement()->MaxWalkSpeed = V->WalkSpeed;
@@ -263,16 +283,13 @@ void AScene4Catwalk::BeginScene()
 	Super::BeginScene();
 	ResetScene();
 	bAlibi = HasFlag(FName(TEXT("VipAlibi")));
-	if (Spot)
-	{
-		Spot->Duration = SpotSeconds;
-	}
 	if (Cart)
 	{
 		Cart->RollSeconds = CartRollSeconds;
 	}
 	HoldGuards(true);
 	StepGuards(0.f);
+	PlaceVanceAtBar();
 
 	if (GetRetakes() > 0)
 	{
@@ -287,6 +304,7 @@ void AScene4Catwalk::BeginScene()
 
 void AScene4Catwalk::EndScene()
 {
+	GhostVance(false);
 	if (ATakeCharacter* V = GetVance())
 	{
 		V->GetCharacterMovement()->MaxWalkSpeed = V->WalkSpeed;
@@ -315,19 +333,31 @@ void AScene4Catwalk::TickScene(float DeltaSeconds)
 	FlashLeft = FMath::Max(FlashLeft - Dt, 0.f);
 
 	// The spot burns down only while Nora plans; once Vance is cued the guards stay distracted for the shot.
-	if (Phase == EPhase::Plan || Phase == EPhase::Fail)
+	if (Phase == EPhase::Plan)
 	{
+		const bool bWasBurning = SpotLeft > 0.f;
 		SpotLeft = FMath::Max(SpotLeft - Dt, 0.f);
-	}
-	if (Spot)
-	{
-		if (!ATakeDirector::Get(this))
+		if (bWasBurning && SpotLeft <= 0.f && !bWindowClosed)
 		{
-			Spot->StepDevice(Dt);	// the director steps every device when it runs
+			// The lamp blows: the window is gone.
+			bWindowClosed = true;
+			if (UTakeAudioComponent* A = UTakeAudioComponent::Get(this))
+			{
+				A->PlayCue(TEXT("sfx_glass_smash"), 0.5f);
+			}
+			Say(TEXT("NORA"), TEXT("The bulb's blown. They're turning back... we lost it."));
+			ScheduleFail(FailWindow, WindowClosedSeconds);
+		}
+		// Nora points at the lamp once if nothing has been touched.
+		if (!bHinted && !bSpotUsed && !bCartUsed && GetSceneSeconds() > HintSeconds)
+		{
+			bHinted = true;
+			Say(TEXT("NORA"), TEXT("That lamp under the pipe, by the east door. Loosen its clamp and it swings right into his eyes."));
 		}
 	}
 
-	// The cart: roll (the device moves it), then the crash.
+	// The sandbag falls; on the latch, the cart rolls (the device moves it), then the crash.
+	StepRigs(Dt);
 	if (Cart)
 	{
 		if (!ATakeDirector::Get(this))
@@ -342,19 +372,15 @@ void AScene4Catwalk::TickScene(float DeltaSeconds)
 			{
 				bCrashed = true;
 				ShatterTower();
-				const bool bSpotBurning = SpotLeft > 0.f;
-				if (!bSpotBurning && !bAlibi)
+				if (SpotLeft > 0.f)
 				{
-					bClosedRanks = true;
+					SendGuard2IfOrdered();
+				}
+				else if (!bAlibi)
+				{
 					Say(TEXT("GUARD 1"), TEXT("Hold your posts! Nobody leaves the rope."), Guard1HoldVoice);
-					ScheduleFail(FailRanks, CloseRanksSeconds);
 				}
-				else if (bSpotBurning)
-				{
-					bGuard2Sent = !bAlibi;
-					Say(TEXT("GUARD 1"), TEXT("What the hell, fix that spot! And go help the staff clean that mess before Pendleton sees it!"), Guard1SpotVoice);
-				}
-				TAKE_LOG(TEXT("S4 CRASH spot=%d ranks=%d"), bSpotBurning ? 1 : 0, bClosedRanks ? 1 : 0);
+				TAKE_LOG(TEXT("S4 CRASH spot=%d"), SpotLeft > 0.f ? 1 : 0);
 			}
 		}
 	}
@@ -435,51 +461,53 @@ void AScene4Catwalk::PressSpot()
 	{
 		return;
 	}
+	// This frame: the clamp's handle spins off, the lamp starts to tip, the East Door guard is in the glare.
 	bSpotUsed = true;
 	SpotLeft = SpotSeconds;
+	LampT = 0.f;
 	FlashLeft = 0.12f;
-	const int32 E = FindGuard(EScene4Role::EastDoor);
-	if (Spot && E != INDEX_NONE)
-	{
-		if (AWatcher* W = Cast<AWatcher>(Guards[E].Actor))
-		{
-			FString Why;
-			Spot->Duration = SpotSeconds;
-			if (!Spot->FireAt(W, Why))
-			{
-				TAKE_LOG(TEXT("S4 SPOT did not fire: %s"), *Why);
-			}
-		}
-	}
 	if (UTakeAudioComponent* A = UTakeAudioComponent::Get(this))
 	{
-		A->PlayCue(TEXT("sfx_spot_on"));
+		A->PlayCue(TEXT("sfx_lamp_strike"));
 	}
-	// The crash already happened (only with the alibi: the guards held): Guard 1 now yells at both.
-	if (bCrashed && !bClosedRanks)
+	StepRigs(0.f);
+	if (bCrashed)
 	{
-		Say(TEXT("GUARD 1"), TEXT("What the hell, fix that spot! And go help the staff clean that mess before Pendleton sees it!"), Guard1SpotVoice);
+		SendGuard2IfOrdered();	// the mess is already there: Guard 1 yells at both
+	}
+	else
+	{
+		Say(TEXT("GUARD 1"), TEXT("What the hell? Somebody fix that spot!"));
 	}
 	StepGuards(0.f);	// the cones change this frame
 	TAKE_LOG(TEXT("S4 SPOT"));
 }
 
-void AScene4Catwalk::PressCart()
+void AScene4Catwalk::SendGuard2IfOrdered()
 {
-	if (bCartUsed)
+	if (bGuard2Sent || bAlibi)
 	{
 		return;
 	}
-	bCartUsed = true;
-	CartT = 0.f;
-	FlashLeft = 0.12f;
-	if (Cart)
+	bGuard2Sent = true;
+	Say(TEXT("GUARD 1"), TEXT("What the hell, fix that spot! And go help the staff clean that mess before Pendleton sees it!"), Guard1SpotVoice);
+}
+
+void AScene4Catwalk::PressCart()
+{
+	if (bCartUsed || BagT >= 0.f)
 	{
-		Cart->RollSeconds = CartRollSeconds;
-		Cart->Fire();	// moves this frame
+		return;
 	}
-	PlaceTowerOnCart();
-	TAKE_LOG(TEXT("S4 CART"));
+	// This frame: the line is cut and the sandbag drops; it hits the latch SandbagDropSeconds later and the cart rolls.
+	BagT = 0.f;
+	FlashLeft = 0.12f;
+	if (UTakeAudioComponent* A = UTakeAudioComponent::Get(this))
+	{
+		A->PlayCue(TEXT("sfx_winch_release"));
+	}
+	StepRigs(0.f);
+	TAKE_LOG(TEXT("S4 LINE"));
 }
 
 void AScene4Catwalk::PressCue()
@@ -511,31 +539,59 @@ void AScene4Catwalk::PressCue()
 	}
 	Phase = EPhase::Track;
 	PhaseSeconds = 0.f;
-	LaneIndex = 0;
-	if (Spot)
-	{
-		Spot->HoldBeam(TrackMaxSeconds + 10.f);
-	}
+	LaneIndex = Lane.Num() > 1 ? 1 : 0;
 	bCamPlaced = false;
+	StuckFor = 0.f;
 	Say(TEXT("NORA"), TEXT("Lane's clear. Go, Vance. Now."), NoraGoVoice);
 	if (ATakeCharacter* V = GetVance())
 	{
-		if (Lane.Num() > 0)
-		{
-			const FVector Start = Lane[0];
-			V->SetActorLocation(FVector(Start.X, Start.Y, Start.Z + V->GetSimpleCollisionHalfHeight() + 2.f), false, nullptr, ETeleportType::TeleportPhysics);
-			if (Lane.Num() > 1)
-			{
-				V->SetActorRotation(FRotator(0.f, YawTo(Lane[0], Lane[1]), 0.f));
-			}
-			LaneIndex = Lane.Num() > 1 ? 1 : 0;
-		}
-		V->GetCharacterMovement()->MaxWalkSpeed = StrollSpeed;
-		V->GetCharacterMovement()->bRunPhysicsWithNoController = true;
+		PlaceVanceAtBar();
+		UCharacterMovementComponent* const Move = V->GetCharacterMovement();
+		Move->SetComponentTickEnabled(true);
+		Move->MaxWalkSpeed = StrollSpeed;
+		Move->bRunPhysicsWithNoController = true;
+		VanceLast = V->GetActorLocation();
+		GhostVance(true);	// guests and guards never stall the shot; walls and props still do (the lane clears them)
 	}
 	StepTrack(0.f);
 	CutTo(EScriptPov::Vance, TrackCamera);
 	TAKE_LOG(TEXT("S4 CUE clear: tracking shot"));
+}
+
+void AScene4Catwalk::PlaceVanceAtBar()
+{
+	ATakeCharacter* const V = GetVance();
+	if (!V || Lane.Num() == 0)
+	{
+		return;
+	}
+	const FVector Start = Lane[0];
+	V->SetActorLocation(FVector(Start.X, Start.Y, Start.Z + V->GetSimpleCollisionHalfHeight() + 2.f), false, nullptr, ETeleportType::TeleportPhysics);
+	if (Lane.Num() > 1)
+	{
+		V->SetActorRotation(FRotator(0.f, YawTo(Lane[0], Lane[1]), 0.f));
+	}
+	V->GetCharacterMovement()->StopMovementImmediately();
+}
+
+void AScene4Catwalk::GhostVance(bool bGhost)
+{
+	ATakeCharacter* const V = GetVance();
+	UCapsuleComponent* const Cap = V ? V->GetCapsuleComponent() : nullptr;
+	if (!Cap || bGhost == bVanceGhosted)
+	{
+		return;
+	}
+	if (bGhost)
+	{
+		VancePawnResponse = Cap->GetCollisionResponseToChannel(ECC_Pawn);
+		Cap->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+	}
+	else
+	{
+		Cap->SetCollisionResponseToChannel(ECC_Pawn, VancePawnResponse);
+	}
+	bVanceGhosted = bGhost;
 }
 
 void AScene4Catwalk::HoldGuards(bool bHold)
@@ -624,7 +680,7 @@ void AScene4Catwalk::StepGuards(float Dt)
 {
 	const float T = GetSceneSeconds();
 	const bool bSpot = SpotLeft > 0.f || ((Phase == EPhase::Track || Phase == EPhase::Doors) && bSpotUsed);
-	const FVector SpotAt = Spot ? Spot->GetActorLocation() : GetActorLocation() + FVector(-1500.f, 0.f, 900.f);
+	const FVector SpotAt = LampAt;
 	const FVector Mess = Cart ? Cart->GetEffectPoint() : GetActorLocation();
 
 	for (int32 i = 0; i < Guards.Num(); ++i)
@@ -864,52 +920,42 @@ void AScene4Catwalk::StepTrack(float Dt)
 		return;
 	}
 	const FVector VLoc = V->GetActorLocation();
-
-	// Vance strolls the lane. The scene carries him along it (the hall's guests and stools can't stall the shot):
-	// his movement component rests while the velocity it reports is set, so his walk plays.
-	FVector Way = V->GetActorForwardVector();
 	UCharacterMovementComponent* const Move = V->GetCharacterMovement();
+
+	// Vance walks the lane on his own feet: the movement component carries him (his walk cycle plays from it, and he
+	// collides with every prop; the lane is laid to clear them). If something still holds him (a prop the lane grazes),
+	// he is stepped on along the lane after StuckSeconds, so the shot never stalls.
+	FVector Way = V->GetActorForwardVector();
+	while (Lane.IsValidIndex(LaneIndex) && FVector::Dist2D(VLoc, Lane[LaneIndex]) < 45.f)
+	{
+		++LaneIndex;
+	}
 	if (Lane.IsValidIndex(LaneIndex))
 	{
-		FVector At = VLoc;
-		float Step = StrollSpeed * Dt;
-		while (Step > 0.f && Lane.IsValidIndex(LaneIndex))
-		{
-			const FVector Target(Lane[LaneIndex].X, Lane[LaneIndex].Y, At.Z);
-			const float Dist = static_cast<float>(FVector::Dist2D(At, Target));
-			if (Dist <= Step)
-			{
-				At = Target;
-				Step -= Dist;
-				++LaneIndex;
-			}
-			else
-			{
-				At += (Target - At).GetSafeNormal2D() * Step;
-				Step = 0.f;
-			}
-		}
-		if (Lane.IsValidIndex(LaneIndex))
-		{
-			Way = (FVector(Lane[LaneIndex].X, Lane[LaneIndex].Y, At.Z) - At).GetSafeNormal2D();
-		}
-		if (Dt > 0.f)
-		{
-			const FRotator Face = FMath::RInterpTo(V->GetActorRotation(), FRotator(0.f, Way.Rotation().Yaw, 0.f), Dt, 6.f);
-			V->SetActorLocationAndRotation(At, Face, false, nullptr, ETeleportType::None);
-		}
+		const FVector Target(Lane[LaneIndex].X, Lane[LaneIndex].Y, VLoc.Z);
+		Way = (Target - VLoc).GetSafeNormal2D();
 		if (Move)
 		{
-			Move->SetComponentTickEnabled(false);
-			Move->Velocity = Way * StrollSpeed;
+			Move->SetComponentTickEnabled(true);
+			Move->MaxWalkSpeed = StrollSpeed;
 		}
+		V->MoveToward(Target);
+		if (Dt > 0.f)
+		{
+			const float Made = static_cast<float>(FVector::Dist2D(VLoc, VanceLast));
+			StuckFor = (Made < StrollSpeed * Dt * 0.2f) ? StuckFor + Dt : 0.f;
+			if (StuckFor > StuckSeconds)
+			{
+				const float Hop = FMath::Min(static_cast<float>(FVector::Dist2D(VLoc, Target)), 90.f);
+				V->SetActorLocation(VLoc + Way * Hop, false, nullptr, ETeleportType::TeleportPhysics);
+				StuckFor = 0.f;
+				TAKE_LOG(TEXT("S4 TRACK stuck at (%.0f, %.0f): stepped %.0f cm on"), VLoc.X, VLoc.Y, Hop);
+			}
+		}
+		VanceLast = VLoc;
 	}
 	else if (Phase == EPhase::Track)
 	{
-		if (Move)
-		{
-			Move->Velocity = FVector::ZeroVector;
-		}
 		Phase = EPhase::Doors;
 		PhaseSeconds = 0.f;
 		if (UTakeAudioComponent* A = UTakeAudioComponent::Get(this))
@@ -923,7 +969,8 @@ void AScene4Catwalk::StepTrack(float Dt)
 		PhaseSeconds = 0.f;
 	}
 
-	// The camera: beside him, a pace ahead, on a smooth rail; it stops at the curtain (it never enters the dark).
+	// The camera: beside him, a pace ahead, on a smooth rail; it stops at the curtain (it never enters the dark), and
+	// it never sits inside a prop: anything between him and it pulls it in.
 	ACameraActor* const Cam = Cast<ACameraActor>(TrackCamera);
 	if (!TrackCamera)
 	{
@@ -940,6 +987,17 @@ void AScene4Catwalk::StepTrack(float Dt)
 	if (Past > -120.0)
 	{
 		Want -= GapFwd * (Past + 120.0);
+	}
+	{
+		const FVector Eye = VLoc + FVector(0.f, 0.f, 60.f);
+		FCollisionQueryParams Q(SCENE_QUERY_STAT(S4TrackCam), false, V);
+		Q.AddIgnoredActor(this);
+		FHitResult Hit;
+		if (GetWorld() && GetWorld()->SweepSingleByChannel(Hit, Eye, Want, FQuat::Identity, ECC_Camera, FCollisionShape::MakeSphere(12.f), Q))
+		{
+			const FVector Dir = (Want - Eye).GetSafeNormal();
+			Want = Eye + Dir * FMath::Max(static_cast<float>(Hit.Distance) - TrackCamClearance, 60.f);
+		}
 	}
 	if (!bCamPlaced || Dt <= 0.f)
 	{
@@ -994,7 +1052,354 @@ void AScene4Catwalk::SetDoors(float OpenAlpha)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-// Nora's feed: the cones, the lane, the presses
+// Nora's rigs: the lamp on its clamp, the sandbag on its line, her catwalk (shapes built at play; no collision)
+// ---------------------------------------------------------------------------------------------------------------------
+
+namespace
+{
+	UMaterialInstanceDynamic* SignalMid(UStaticMeshComponent* C, const FLinearColor& Col)
+	{
+		UMaterialInterface* const M = FTakeShapes::GetSignalMaterial();
+		if (!C || !M)
+		{
+			return nullptr;
+		}
+		UMaterialInstanceDynamic* Mid = C->CreateDynamicMaterialInstance(0, M);
+		if (Mid)
+		{
+			Mid->SetVectorParameterValue(FTakeShapes::ColorParam, Col);
+		}
+		return Mid;
+	}
+}
+
+FVector AScene4Catwalk::EastDoorEyes() const
+{
+	const int32 E = FindGuard(EScene4Role::EastDoor);
+	if (E == INDEX_NONE)
+	{
+		return LampParkedAim;
+	}
+	return FVector(Guards[E].Loc.X, Guards[E].Loc.Y, FloorZ + 165.f);
+}
+
+FVector AScene4Catwalk::CartLatch() const
+{
+	return FVector(BattenAt.X, BattenAt.Y, FloorZ + 95.f);
+}
+
+void AScene4Catwalk::BuildRigs()
+{
+	for (UActorComponent* C : RigComps)
+	{
+		if (C)
+		{
+			C->DestroyComponent();
+		}
+	}
+	RigComps.Reset();
+	LampTilt = nullptr;
+	LampLens = LampShaft = LampPool = ClampHandle = ClampJaw = Sandbag = SandLine = nullptr;
+	LampLight = nullptr;
+
+	// A shape in world space (Parent null) or relative to Parent.
+	auto Shape = [this](ETakeShape S, const FVector& At, const FVector& Scale, const FRotator& Rot, const FLinearColor& Col,
+		USceneComponent* Parent = nullptr, bool bShadow = true) -> UStaticMeshComponent*
+	{
+		UStaticMeshComponent* C = FTakeShapes::AddShapeAtRuntime(this, S, Parent ? Parent : Root.Get(), FVector::ZeroVector, Scale, Col, bShadow);
+		if (!C)
+		{
+			return nullptr;
+		}
+		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		if (Parent)
+		{
+			C->SetRelativeLocationAndRotation(At, Rot);
+		}
+		else
+		{
+			C->SetWorldLocationAndRotation(At, Rot);
+		}
+		RigComps.Add(C);
+		return C;
+	};
+	// A bar (cube or cylinder) from A to B, Thick cm across.
+	auto Bar = [&Shape](const FVector& A, const FVector& B, float Thick, const FLinearColor& Col, ETakeShape S = ETakeShape::Cylinder) -> UStaticMeshComponent*
+	{
+		const FVector D = B - A;
+		const float L = static_cast<float>(D.Size());
+		if (L < 1.f)
+		{
+			return nullptr;
+		}
+		return Shape(S, (A + B) * 0.5f, FVector(Thick / 100.f, Thick / 100.f, L / 100.f), FRotationMatrix::MakeFromZ(D / L).Rotator(), Col);
+	};
+	// A pipe batten along X through At, hung on two cables into the dark.
+	auto Batten = [&Bar, this](const FVector& At)
+	{
+		const FVector Half(BattenLength * 0.5f, 0.f, 0.f);
+		Bar(At - Half, At + Half, 6.f, Steel);
+		for (const float Sgn : { -1.f, 1.f })
+		{
+			const FVector End = At + Half * Sgn * 0.9f;
+			Bar(End, End + FVector(0.f, 0.f, 1600.f), 1.5f, Iron);
+		}
+	};
+
+	// ---- Nora's catwalk: stringers, a grating of slats, posts, two rails, hangers ----
+	if (bBuildCatwalk && FVector::Dist(CatwalkFrom, CatwalkTo) > 50.f)
+	{
+		const FVector D = (CatwalkTo - CatwalkFrom).GetSafeNormal();
+		const float L = static_cast<float>(FVector::Dist(CatwalkFrom, CatwalkTo));
+		const FVector Side = FVector::CrossProduct(FVector::UpVector, D).GetSafeNormal() * (CatwalkWidth * 0.5f);
+		for (const float Sgn : { -1.f, 1.f })
+		{
+			const FVector Off = Side * Sgn;
+			Bar(CatwalkFrom + Off, CatwalkTo + Off, 9.f, Iron, ETakeShape::Cube);
+			Bar(CatwalkFrom + Off + FVector(0.f, 0.f, 105.f), CatwalkTo + Off + FVector(0.f, 0.f, 105.f), 5.f, Steel);
+			Bar(CatwalkFrom + Off + FVector(0.f, 0.f, 55.f), CatwalkTo + Off + FVector(0.f, 0.f, 55.f), 3.f, Iron);
+			for (float s = 0.f; s <= L + 1.f; s += 250.f)
+			{
+				const FVector P = CatwalkFrom + D * s + Off;
+				Bar(P, P + FVector(0.f, 0.f, 105.f), 4.f, Iron, ETakeShape::Cube);
+				if (FMath::Fmod(s, 500.f) < 1.f)
+				{
+					Bar(P + FVector(0.f, 0.f, 105.f), P + FVector(0.f, 0.f, 1200.f), 1.5f, Iron);
+				}
+			}
+		}
+		for (float s = 15.f; s < L; s += 32.f)
+		{
+			const FVector P = CatwalkFrom + D * s;
+			Bar(P - Side, P + Side, 3.f, Steel, ETakeShape::Cube);
+		}
+	}
+
+	// ---- The lamp: a pipe batten, a C-clamp with a brass T-handle, a stem, and the lamp on its tilt ----
+	Batten(LampAt + FVector(0.f, 0.f, 70.f));
+	Shape(ETakeShape::Cube, LampAt + FVector(0.f, 0.f, 70.f), FVector(0.2f, 0.17f, 0.26f), FRotator::ZeroRotator, Iron);
+	ClampJaw = Shape(ETakeShape::Cube, LampAt + FVector(0.f, 13.f, 70.f), FVector(0.16f, 0.05f, 0.22f), FRotator::ZeroRotator, Iron);
+	ClampHandle = Shape(ETakeShape::Cylinder, LampAt + FVector(0.f, 30.f, 70.f), FVector(0.06f, 0.06f, 0.36f), FRotator(0.f, 0.f, 90.f), Brass);
+	Bar(LampAt + FVector(0.f, 0.f, 58.f), LampAt, 7.f, Iron);
+	Shape(ETakeShape::Sphere, LampAt, FVector(0.14f), FRotator::ZeroRotator, Iron);
+
+	LampTilt = NewObject<USceneComponent>(this, TEXT("S4LampTilt"));
+	LampTilt->SetupAttachment(Root);
+	LampTilt->RegisterComponent();
+	AddInstanceComponent(LampTilt);
+	LampTilt->SetWorldLocation(LampAt);
+	RigComps.Add(LampTilt);
+	// Its +X is the beam: a black drum, a rear cap, the lens, four barn doors.
+	Shape(ETakeShape::Cylinder, FVector(-8.f, 0.f, 0.f), FVector(0.56f, 0.56f, 0.9f), FRotator(90.f, 0.f, 0.f), Iron, LampTilt);
+	Shape(ETakeShape::Cylinder, FVector(-55.f, 0.f, 0.f), FVector(0.42f, 0.42f, 0.08f), FRotator(90.f, 0.f, 0.f), Steel, LampTilt);
+	Shape(ETakeShape::Cube, FVector(-5.f, 0.f, 32.f), FVector(0.5f, 0.08f, 0.06f), FRotator::ZeroRotator, Brass, LampTilt);	// the operator's handle
+	LampLens = Shape(ETakeShape::Cylinder, FVector(38.f, 0.f, 0.f), FVector(0.46f, 0.46f, 0.03f), FRotator(90.f, 0.f, 0.f), LensOff, LampTilt, false);
+	SignalMid(LampLens, LampColour * 4.f);
+	Shape(ETakeShape::Cube, FVector(52.f, 0.f, 27.f), FVector(0.28f, 0.5f, 0.015f), FRotator(-18.f, 0.f, 0.f), Iron, LampTilt);
+	Shape(ETakeShape::Cube, FVector(52.f, 0.f, -27.f), FVector(0.28f, 0.5f, 0.015f), FRotator(18.f, 0.f, 0.f), Iron, LampTilt);
+	Shape(ETakeShape::Cube, FVector(52.f, 27.f, 0.f), FVector(0.28f, 0.015f, 0.5f), FRotator(0.f, 18.f, 0.f), Iron, LampTilt);
+	Shape(ETakeShape::Cube, FVector(52.f, -27.f, 0.f), FVector(0.28f, 0.015f, 0.5f), FRotator(0.f, -18.f, 0.f), Iron, LampTilt);
+
+	LampLight = NewObject<USpotLightComponent>(this, TEXT("S4LampLight"));
+	LampLight->SetupAttachment(LampTilt);
+	LampLight->SetMobility(EComponentMobility::Movable);
+	LampLight->RegisterComponent();
+	AddInstanceComponent(LampLight);
+	LampLight->SetRelativeLocation(FVector(42.f, 0.f, 0.f));
+	LampLight->SetIntensityUnits(ELightUnits::Candelas);
+	LampLight->SetIntensity(LampCandelas);
+	LampLight->SetOuterConeAngle(LampConeDegrees);
+	LampLight->SetInnerConeAngle(LampConeDegrees * 0.6f);
+	LampLight->SetAttenuationRadius(3000.f);
+	LampLight->SetLightColor(LampColour);
+	LampLight->SetVolumetricScatteringIntensity(3.f);
+	LampLight->SetCastShadows(true);
+	RigComps.Add(LampLight);
+
+	// The shaft: a translucent cone from the lens to where it lands (stretched each frame by AimLamp).
+	UMaterialInterface* BeamMat = BeamMaterial;
+	if (!BeamMat)
+	{
+		BeamMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Take/Look/M_S4Beam.M_S4Beam"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	}
+	if (BeamMat)
+	{
+		LampShaft = Shape(ETakeShape::Cone, FVector(300.f, 0.f, 0.f), FVector(1.f), FRotator(90.f, 0.f, 0.f), LampColour, LampTilt, false);
+		if (LampShaft)
+		{
+			UMaterialInstanceDynamic* Mid = LampShaft->CreateDynamicMaterialInstance(0, BeamMat);
+			if (Mid)
+			{
+				Mid->SetVectorParameterValue(FTakeShapes::ColorParam, LampColour);
+				Mid->SetScalarParameterValue(TEXT("Opacity"), BeamOpacity);
+			}
+		}
+	}
+	// The glare on the guard's eyes (shown while he is blinded).
+	LampPool = Shape(ETakeShape::Sphere, EastDoorEyes(), FVector(0.3f), FRotator::ZeroRotator, LampColour, nullptr, false);
+	SignalMid(LampPool, LampColour * 6.f);
+	if (LampPool)
+	{
+		LampPool->SetVisibility(false);
+	}
+
+	// ---- The sandbag: its batten over the cart's latch, the hemp line, the bag, a frayed stub on the hook ----
+	Batten(BattenAt);
+	Shape(ETakeShape::Cube, BattenAt + FVector(0.f, 0.f, -6.f), FVector(0.12f, 0.12f, 0.12f), FRotator::ZeroRotator, Iron);	// the cleat
+	Bar(BattenAt, BattenAt - FVector(0.f, 0.f, 18.f), 2.5f, Hemp);	// the stub that stays when the line is cut
+	SandLine = Shape(ETakeShape::Cylinder, BattenAt, FVector(0.025f, 0.025f, 1.f), FRotator::ZeroRotator, Hemp);
+	Sandbag = Shape(ETakeShape::Cylinder, BattenAt, FVector(0.34f, 0.34f, 0.5f), FRotator::ZeroRotator, Sackcloth);
+	// The latch it will hit: a brass catch on the cart's top rail.
+	Shape(ETakeShape::Cube, CartLatch() + FVector(0.f, 0.f, 4.f), FVector(0.14f, 0.1f, 0.08f), FRotator::ZeroRotator, Brass);
+
+	StepRigs(0.f);
+}
+
+void AScene4Catwalk::AimLamp(const FRotator& Aim)
+{
+	LampAimNow = Aim;
+	if (LampTilt)
+	{
+		LampTilt->SetWorldRotation(Aim);
+	}
+}
+
+void AScene4Catwalk::StepRigs(float Dt)
+{
+	// ---- the lamp ----
+	if (LampT >= 0.f)
+	{
+		LampT += Dt;
+	}
+	const FVector Eyes = EastDoorEyes();
+	FVector Target = LampParkedAim;
+	float Wobble = 0.f;
+	if (LampT >= 0.f)
+	{
+		const float A = FMath::Clamp(LampT / FMath::Max(LampSwingSeconds, 0.05f), 0.f, 1.f);
+		Target = FMath::Lerp(LampParkedAim, Eyes, A * A);	// it falls into the swing
+		if (A >= 1.f)
+		{
+			const float T = LampT - LampSwingSeconds;
+			Wobble = FMath::Sin(T * 15.f) * 6.f * FMath::Exp(-T * 3.f);
+		}
+	}
+	FRotator Aim = (Target - LampAt).Rotation();
+	Aim.Pitch += Wobble;
+	AimLamp(Aim);
+	const bool bLit = !bWindowClosed;
+	if (LampLight)
+	{
+		LampLight->SetVisibility(bLit);
+		LampLight->SetIntensity(LampT >= 0.f ? LampCandelas * 1.6f : LampCandelas);
+	}
+	if (LampLens)
+	{
+		if (UMaterialInstanceDynamic* Mid = Cast<UMaterialInstanceDynamic>(LampLens->GetMaterial(0)))
+		{
+			Mid->SetVectorParameterValue(FTakeShapes::ColorParam, bLit ? LampColour * 4.f : LensOff);
+		}
+	}
+	if (LampShaft)
+	{
+		const float Len = FMath::Max(static_cast<float>(FVector::Dist(LampAt, Target)) - 45.f, 50.f);
+		const float Rad = 25.f + Len * FMath::Tan(FMath::DegreesToRadians(LampConeDegrees));
+		LampShaft->SetRelativeLocation(FVector(45.f + Len * 0.5f, 0.f, 0.f));
+		LampShaft->SetRelativeScale3D(FVector(Rad / 50.f, Rad / 50.f, Len / 100.f));
+		LampShaft->SetVisibility(bLit);
+	}
+	if (LampPool)
+	{
+		const bool bGlare = bLit && LampT >= LampSwingSeconds && (SpotLeft > 0.f || Phase == EPhase::Track || Phase == EPhase::Doors);
+		LampPool->SetVisibility(bGlare);
+		if (bGlare)
+		{
+			const float Pulse = 0.28f + 0.05f * FMath::Sin(GetSceneSeconds() * 9.f);
+			LampPool->SetWorldLocationAndRotation(Eyes, FRotator::ZeroRotator);
+			LampPool->SetWorldScale3D(FVector(Pulse));
+		}
+	}
+	// The clamp: the jaw springs open and the T-handle spins off and drops.
+	if (ClampJaw)
+	{
+		const float Open = LampT >= 0.f ? FMath::Clamp(LampT / 0.12f, 0.f, 1.f) : 0.f;
+		ClampJaw->SetWorldLocationAndRotation(LampAt + FVector(0.f, 13.f + 10.f * Open, 70.f), FRotator(0.f, 0.f, -35.f * Open));
+	}
+	if (ClampHandle)
+	{
+		const FVector Home = LampAt + FVector(0.f, 30.f, 70.f);
+		if (LampT < 0.f)
+		{
+			ClampHandle->SetWorldLocationAndRotation(Home, FRotator(0.f, 0.f, 90.f));
+			ClampHandle->SetVisibility(true);
+		}
+		else
+		{
+			const float T = LampT;
+			const FVector P = Home + FVector(0.f, 120.f * T, 160.f * T - 490.f * T * T);
+			ClampHandle->SetWorldLocationAndRotation(P, FRotator(T * 900.f, 0.f, 90.f + T * 1400.f));
+			ClampHandle->SetVisibility(P.Z > FloorZ + 5.f);
+		}
+	}
+
+	// ---- the sandbag ----
+	if (BagT >= 0.f)
+	{
+		BagT += Dt;
+	}
+	const float BagHalf = 25.f;
+	const FVector Hang = BattenAt - FVector(0.f, 0.f, SandbagHang + BagHalf);
+	const FVector Hit = CartLatch() + FVector(0.f, 0.f, BagHalf + 6.f);
+	FVector Bag = Hang;
+	float LineLen = SandbagHang;
+	if (BagT >= 0.f)
+	{
+		const float A = FMath::Clamp(BagT / FMath::Max(SandbagDropSeconds, 0.05f), 0.f, 1.f);
+		Bag = FMath::Lerp(Hang, Hit, A * A);
+		if (A >= 1.f && !bLatchHit)
+		{
+			// The latch: the cart rolls, this frame.
+			bLatchHit = true;
+			bCartUsed = true;
+			CartT = 0.f;
+			FlashLeft = 0.12f;
+			if (Cart)
+			{
+				Cart->RollSeconds = CartRollSeconds;
+				Cart->Fire();
+			}
+			PlaceTowerOnCart();
+			if (UTakeAudioComponent* Au = UTakeAudioComponent::Get(this))
+			{
+				Au->PlayCue(TEXT("sfx_thud"));
+			}
+			TAKE_LOG(TEXT("S4 LATCH: the cart rolls"));
+		}
+		if (bLatchHit)
+		{
+			// Off the latch onto the floor beside it.
+			const float B = FMath::Clamp((BagT - SandbagDropSeconds) / 0.25f, 0.f, 1.f);
+			Bag = FMath::Lerp(Hit, FVector(Hit.X - 45.f, Hit.Y - 30.f, FloorZ + BagHalf * 0.7f), B);
+		}
+	}
+	if (Sandbag)
+	{
+		Sandbag->SetWorldLocationAndRotation(Bag, bLatchHit ? FRotator(0.f, 0.f, 70.f * FMath::Clamp((BagT - SandbagDropSeconds) / 0.25f, 0.f, 1.f)) : FRotator::ZeroRotator);
+	}
+	if (SandLine)
+	{
+		// Hanging: from the hook to the bag. Cut: it falls with the bag, and lies limp once the bag is down.
+		const FVector Top = BagT < 0.f ? BattenAt - FVector(0.f, 0.f, 18.f) : Bag + FVector(0.f, 0.f, BagHalf + LineLen);
+		const FVector Bot = Bag + FVector(0.f, 0.f, BagHalf);
+		SandLine->SetVisibility(!bLatchHit);
+		const float L = static_cast<float>(FVector::Dist(Top, Bot));
+		SandLine->SetWorldLocationAndRotation((Top + Bot) * 0.5f, FRotator::ZeroRotator);
+		SandLine->SetWorldScale3D(FVector(0.025f, 0.025f, FMath::Max(L, 1.f) / 100.f));
+	}
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Nora's feed: the lane, the guards, the two rigs and what each will do
 // ---------------------------------------------------------------------------------------------------------------------
 
 void AScene4Catwalk::DrawSceneHud(UCanvas* Canvas)
@@ -1006,15 +1411,16 @@ void AScene4Catwalk::DrawSceneHud(UCanvas* Canvas)
 	const float W = Canvas->ClipX;
 	const float H = Canvas->ClipY;
 	const float S = H / 1080.f;
+	const float Now = GetSceneSeconds();
 
-	// Through the grating: a faint steel mesh over the feed, heavier at the edges (vertigo).
+	// Through the grating: a faint steel mesh over the feed.
 	const float Step = 120.f * S;
-	for (float X = FMath::Fmod(GetSceneSeconds() * 3.f * S, Step); X < W; X += Step)
+	for (float X = FMath::Fmod(Now * 3.f * S, Step); X < W; X += Step)
 	{
-		HudRect(Canvas, X, 0.f, 2.f * S, H, FLinearColor(0.f, 0.f, 0.f, 0.22f));	// a tile: line items ignore alpha
+		HudRect(Canvas, X, 0.f, 2.f * S, H, FLinearColor(0.f, 0.f, 0.f, 0.14f));
 	}
-	HudRect(Canvas, 0.f, 0.f, W, 60.f * S, FLinearColor(0.f, 0.f, 0.f, 0.35f));
-	HudRect(Canvas, 0.f, H - 60.f * S, W, 60.f * S, FLinearColor(0.f, 0.f, 0.f, 0.35f));
+	HudRect(Canvas, 0.f, 0.f, W, 60.f * S, FLinearColor(0.f, 0.f, 0.f, 0.45f));
+	HudRect(Canvas, 0.f, H - 70.f * S, W, 70.f * S, FLinearColor(0.f, 0.f, 0.f, 0.55f));
 
 	auto Proj = [Canvas](const FVector& P, FVector2D& Out) -> bool
 	{
@@ -1022,33 +1428,47 @@ void AScene4Catwalk::DrawSceneHud(UCanvas* Canvas)
 		Out = FVector2D(Sc.X, Sc.Y);
 		return Sc.Z > 0.0;
 	};
-
-	// The lane: Vance's walk from the bar to the curtain, gold dashes on the floor.
-	for (int32 i = 0; i + 1 < Lane.Num(); ++i)
+	auto Dashed = [&](const FVector& A, const FVector& B, const FLinearColor& Col, float Thick, float DashCm)
 	{
-		const FVector A = Lane[i] + FVector(0.f, 0.f, 3.f);
-		const FVector B = Lane[i + 1] + FVector(0.f, 0.f, 3.f);
-		const int32 N = FMath::Max(1, FMath::CeilToInt(FVector::Dist2D(A, B) / 60.f));
+		const int32 N = FMath::Max(2, FMath::CeilToInt(FVector::Dist(A, B) / DashCm));
 		for (int32 s = 0; s < N; s += 2)
 		{
 			FVector2D P0, P1;
 			if (Proj(FMath::Lerp(A, B, float(s) / N), P0) && Proj(FMath::Lerp(A, B, float(FMath::Min(s + 1, N)) / N), P1))
 			{
-				HudLine(Canvas, P0, P1, LaneGold, 4.f * S);
+				HudLine(Canvas, P0, P1, Col, Thick);
 			}
 		}
-	}
-	if (Lane.Num() > 0)
+	};
+	const FVector Gap = GetActorLocation();
+	const FVector GapFwd = GetActorForwardVector();
+	auto WatchedBy = [&](const FVector& P) -> int32
 	{
-		FVector2D P;
-		if (Proj(Lane[0], P))
+		if (FVector::DotProduct(P - Gap, GapFwd) > 0.0)
 		{
-			HudText(Canvas, TEXT("VANCE (AT THE BAR)"), P.X, P.Y + 10.f * S, LaneGold, false, true);
+			return INDEX_NONE;
 		}
-	}
+		for (int32 i = 0; i < Guards.Num(); ++i)
+		{
+			const FScene4Guard& G = Guards[i];
+			if (G.bDistracted)
+			{
+				continue;
+			}
+			FVector D = P - G.Loc;
+			D.Z = 0.0;
+			const double Dist = D.Size();
+			if (Dist <= G.ConeRange && Dist > 1.0
+				&& FVector::DotProduct(D / Dist, GuardForward(G)) >= FMath::Cos(FMath::DegreesToRadians(G.ConeHalfAngle)))
+			{
+				return i;
+			}
+		}
+		return INDEX_NONE;
+	};
 
-	// The cones.
-	int32 Eyes = 0;
+	// The guards' sight: faint wedges; only the ones that cross the lane stand out.
+	TArray<FString> Watchers;
 	for (int32 i = 0; i < Guards.Num(); ++i)
 	{
 		const FScene4Guard& G = Guards[i];
@@ -1057,87 +1477,178 @@ void AScene4Catwalk::DrawSceneHud(UCanvas* Canvas)
 		{
 			Col = ConeAlibi;
 		}
-		const bool bFlashSpotted = (i == SpottedBy) && FMath::Fmod(GetSceneSeconds() * 6.f, 1.f) < 0.5f;
-		const float Alpha = G.bSeesLane ? (bFlashSpotted ? 0.65f : 0.32f) : 0.14f;
-		Eyes += G.bSeesLane ? 1 : 0;
-
-		const float Z = (Cart ? FloorZ : static_cast<float>(G.Loc.Z)) + 4.f;
-		const FVector Apex(G.Loc.X, G.Loc.Y, Z);
+		if (G.bSeesLane)
+		{
+			Watchers.Add(G.Label);
+		}
+		const FVector Apex(G.Loc.X, G.Loc.Y, FloorZ + 4.f);
 		FVector2D A2;
 		if (!Proj(Apex, A2))
 		{
 			continue;
 		}
-		const int32 Seg = 14;
-		FVector2D Prev;
-		bool bPrev = false;
-		for (int32 k = 0; k <= Seg; ++k)
+		if (!G.bDistracted)
 		{
-			const float Ang = G.FaceYaw - G.ConeHalfAngle + 2.f * G.ConeHalfAngle * k / Seg;
-			const FVector Edge = Apex + FRotator(0.f, Ang, 0.f).Vector() * G.ConeRange;
-			FVector2D E2;
-			const bool bOk = Proj(Edge, E2);
-			if (bOk && bPrev)
+			const bool bFlash = (i == SpottedBy) && FMath::Fmod(Now * 6.f, 1.f) < 0.5f;
+			const float Alpha = G.bSeesLane ? (bFlash ? 0.5f : 0.2f) : 0.07f;
+			const int32 Seg = 14;
+			FVector2D Prev;
+			bool bPrev = false;
+			for (int32 k = 0; k <= Seg; ++k)
 			{
-				if (const FTexture* Tex = Canvas->DefaultTexture ? Canvas->DefaultTexture->GetResource() : nullptr)
+				const float Ang = G.FaceYaw - G.ConeHalfAngle + 2.f * G.ConeHalfAngle * k / Seg;
+				FVector2D E2;
+				const bool bOk = Proj(Apex + FRotator(0.f, Ang, 0.f).Vector() * G.ConeRange, E2);
+				if (bOk && bPrev)
 				{
-					FCanvasTriangleItem Tri(A2, Prev, E2, Tex);
-					Tri.SetColor(FLinearColor(Col.R, Col.G, Col.B, Alpha));
-					Tri.BlendMode = SE_BLEND_Translucent;
-					Canvas->DrawItem(Tri);
+					if (const FTexture* Tex = Canvas->DefaultTexture ? Canvas->DefaultTexture->GetResource() : nullptr)
+					{
+						FCanvasTriangleItem Tri(A2, Prev, E2, Tex);
+						Tri.SetColor(FLinearColor(Col.R, Col.G, Col.B, Alpha));
+						Tri.BlendMode = SE_BLEND_Translucent;
+						Canvas->DrawItem(Tri);
+					}
 				}
-				HudLine(Canvas, Prev, E2, FLinearColor(Col.R, Col.G, Col.B, 0.8f), 2.f * S);
+				if (bOk && (k == 0 || k == Seg))
+				{
+					HudLine(Canvas, A2, E2, FLinearColor(Col.R, Col.G, Col.B, G.bSeesLane ? 0.7f : 0.3f), 1.5f * S);
+				}
+				Prev = E2;
+				bPrev = bOk;
 			}
-			if (bOk && (k == 0 || k == Seg))
-			{
-				HudLine(Canvas, A2, E2, FLinearColor(Col.R, Col.G, Col.B, 0.6f), 2.f * S);
-			}
-			Prev = E2;
-			bPrev = bOk;
 		}
-		HudRect(Canvas, A2.X - 7.f * S, A2.Y - 7.f * S, 14.f * S, 14.f * S, FLinearColor(Col.R, Col.G, Col.B, 0.95f));
-		HudText(Canvas, G.Label, A2.X, A2.Y - 46.f * S, FLinearColor(Col.R, Col.G, Col.B, 1.f), false, true);
-		HudText(Canvas, G.State, A2.X, A2.Y - 26.f * S, FLinearColor(0.85f, 0.85f, 0.85f, 0.9f), false, true);
+		HudRect(Canvas, A2.X - 6.f * S, A2.Y - 6.f * S, 12.f * S, 12.f * S, FLinearColor(Col.R, Col.G, Col.B, 0.95f));
+		HudText(Canvas, G.Label, A2.X, A2.Y - 44.f * S, FLinearColor(Col.R, Col.G, Col.B, 1.f), false, true);
+		HudText(Canvas, G.State, A2.X, A2.Y - 24.f * S, FLinearColor(0.88f, 0.88f, 0.85f, 0.95f), false, true);
 	}
 
-	// The two rigs.
-	if (Spot)
+	// The lane: gold where nobody looks, red where a guard does.
+	for (int32 i = 0; i + 1 < Lane.Num(); ++i)
 	{
-		FVector2D P;
-		if (Proj(Spot->GetActorLocation() + FVector(0.f, 0.f, 150.f), P))
+		const FVector A = Lane[i] + FVector(0.f, 0.f, 3.f);
+		const FVector B = Lane[i + 1] + FVector(0.f, 0.f, 3.f);
+		const int32 N = FMath::Max(1, FMath::CeilToInt(FVector::Dist2D(A, B) / 45.f));
+		for (int32 s = 0; s < N; s += 2)
 		{
-			HudText(Canvas, bSpotUsed ? (SpotLeft > 0.f ? FString::Printf(TEXT("SPOT  %.1f s"), SpotLeft) : TEXT("SPOT  COOLED")) : TEXT("[1] SPOT CLAMP"), P.X, P.Y, bSpotUsed ? ConeOff : LaneGold, false, true);
+			const FVector Q0 = FMath::Lerp(A, B, float(s) / N);
+			const FVector Q1 = FMath::Lerp(A, B, float(FMath::Min(s + 1, N)) / N);
+			FVector2D P0, P1;
+			if (Proj(Q0, P0) && Proj(Q1, P1))
+			{
+				HudLine(Canvas, P0, P1, WatchedBy((Q0 + Q1) * 0.5f) != INDEX_NONE ? ConeRed : LaneGold, 5.f * S);
+			}
 		}
 	}
-	if (Cart)
+	if (Lane.Num() > 0)
 	{
 		FVector2D P;
-		if (Proj(Cart->GetActorLocation() + FVector(0.f, 0.f, 160.f), P))
+		if (Proj(Lane[0] + FVector(0.f, 0.f, 200.f), P))
 		{
-			HudText(Canvas, bCartUsed ? (bCrashed ? TEXT("") : TEXT("ROLLING...")) : TEXT("[2] CART LATCH"), P.X, P.Y, bCartUsed ? ConeOff : LaneGold, false, true);
+			HudText(Canvas, TEXT("VANCE"), P.X, P.Y - 20.f * S, LaneGold, false, true);
+		}
+		if (Proj(Lane.Last(), P))
+		{
+			HudText(Canvas, TEXT("THE CURTAIN"), P.X, P.Y + 8.f * S, LaneGold, false, true);
+		}
+	}
+
+	// A device's card: a leader from the rig to a box with its key, its name and what it does (or did).
+	auto Card = [&](const FVector& At, float DX, float DY, const FString& Key, const FString& Title, const FString& Line,
+		const FLinearColor& Col, float Bar)
+	{
+		FVector2D A;
+		if (!Proj(At, A))
+		{
+			return;
+		}
+		const float BW = 470.f * S;
+		const float BH = (Bar >= 0.f ? 92.f : 80.f) * S;
+		const FVector2D Box(FMath::Clamp(A.X + DX * S, 10.f * S, W - BW - 10.f * S), FMath::Clamp(A.Y + DY * S, 70.f * S, H - BH - 80.f * S));
+		HudLine(Canvas, A, FVector2D(Box.X + (DX < 0.f ? BW : 0.f), Box.Y + BH * 0.5f), FLinearColor(Col.R, Col.G, Col.B, 0.9f), 2.f * S);
+		HudRect(Canvas, A.X - 5.f * S, A.Y - 5.f * S, 10.f * S, 10.f * S, Col);
+		HudRect(Canvas, Box.X, Box.Y, BW, BH, FLinearColor(0.f, 0.f, 0.f, 0.72f));
+		HudRect(Canvas, Box.X, Box.Y, 5.f * S, BH, Col);
+		if (!Key.IsEmpty())
+		{
+			HudRect(Canvas, Box.X + 16.f * S, Box.Y + 12.f * S, 44.f * S, 34.f * S, Col);
+			HudText(Canvas, Key, Box.X + 38.f * S, Box.Y + 13.f * S, FLinearColor::Black, false, true);
+		}
+		const float TX = Box.X + (Key.IsEmpty() ? 18.f : 72.f) * S;
+		HudText(Canvas, Title, TX, Box.Y + 12.f * S, Col, false);
+		HudText(Canvas, Line, Box.X + 18.f * S, Box.Y + 50.f * S, FLinearColor(0.93f, 0.93f, 0.9f, 1.f), false);
+		if (Bar >= 0.f)
+		{
+			HudRect(Canvas, Box.X + 18.f * S, Box.Y + BH - 12.f * S, (BW - 36.f * S), 5.f * S, FLinearColor(1.f, 1.f, 1.f, 0.15f));
+			HudRect(Canvas, Box.X + 18.f * S, Box.Y + BH - 12.f * S, (BW - 36.f * S) * FMath::Clamp(Bar, 0.f, 1.f), 5.f * S, Col);
+		}
+	};
+
+	// [1] The spotlight.
+	{
+		const FVector Eyes = EastDoorEyes();
+		if (!bSpotUsed)
+		{
+			Dashed(LampAt, Eyes, FLinearColor(1.f, 0.95f, 0.75f, 0.85f), 2.5f * S, 40.f);	// where it will swing
+			FVector2D E;
+			if (Proj(Eyes, E))
+			{
+				HudText(Canvas, TEXT("HIS EYES"), E.X, E.Y + 12.f * S, FLinearColor(1.f, 0.95f, 0.75f, 0.95f), false, true);
+			}
+			Card(LampAt, 60.f, -150.f, TEXT("1"), TEXT("THE SPOTLIGHT CLAMP"), TEXT("Loosen it: the lamp swings into the EAST DOOR guard's eyes."), LaneGold, -1.f);
+		}
+		else if (bWindowClosed)
+		{
+			Card(LampAt, 60.f, -150.f, FString(), TEXT("THE SPOTLIGHT"), TEXT("Bulb blown. The East Door guard can see again."), ConeRed, -1.f);
+		}
+		else
+		{
+			Card(LampAt, 60.f, -150.f, FString(), TEXT("THE SPOTLIGHT  -  EAST DOOR BLINDED"), TEXT("Guard 1 is yelling up at it. The bulb won't last."), ConeAlibi, SpotLeft / FMath::Max(SpotSeconds, 0.1f));
+		}
+	}
+	// [2] The sandbag line.
+	{
+		const FVector Mess = Cart ? Cart->GetEffectPoint() : CartLatch();
+		if (BagT < 0.f)
+		{
+			Dashed(CartLatch(), Mess + FVector(0.f, 0.f, 10.f), FLinearColor(1.f, 0.95f, 0.75f, 0.85f), 2.5f * S, 30.f);	// where the cart will roll
+			Card(BattenAt - FVector(0.f, 0.f, SandbagHang * 0.5f), -530.f, -40.f, TEXT("2"), TEXT("THE SANDBAG LINE"), TEXT("Cut it: the bag hits the cart's latch, the champagne rolls."), LaneGold, -1.f);
+		}
+		else
+		{
+			const bool bSent = bGuard2Sent || bAlibi;
+			Card(BattenAt - FVector(0.f, 0.f, SandbagHang * 0.5f), -530.f, -40.f, FString(), bCrashed ? TEXT("THE CHAMPAGNE  -  CRASHED") : TEXT("THE CHAMPAGNE  -  ROLLING"),
+				bCrashed ? (bSent ? FString(TEXT("The West Pillar guard is at the mess, with help.")) : FString(TEXT("West Pillar's at the mess. Guard 2 holds: Guard 1 isn't rattled yet.")))
+						 : FString(TEXT("...")), ConeAlibi, -1.f);
 		}
 		FVector2D M;
-		if (Proj(Cart->GetEffectPoint(), M))
+		if (Proj(Mess, M))
 		{
-			HudText(Canvas, bCrashed ? TEXT("CRASH") : TEXT("WEST PILLAR"), M.X, M.Y + 8.f * S, FLinearColor(0.8f, 0.8f, 0.8f, 0.8f), false, true);
+			HudText(Canvas, bCrashed ? TEXT("THE MESS") : TEXT("WEST PILLAR"), M.X, M.Y + 8.f * S, FLinearColor(0.85f, 0.85f, 0.85f, 0.85f), false, true);
 		}
 	}
 
 	// The feed's own labels and the job.
 	HudText(Canvas, TEXT("NORA  -  RIGGING CAM  -  +60 FT"), 40.f * S, 16.f * S, FLinearColor(0.9f, 0.9f, 0.9f, 1.f), false);
-	if (FMath::Fmod(GetSceneSeconds(), 1.f) < 0.6f)
+	if (FMath::Fmod(Now, 1.f) < 0.6f)
 	{
 		HudText(Canvas, TEXT("REC"), W - 110.f * S, 16.f * S, ConeRed, false);
 	}
-	const bool bClear = Eyes == 0;
-	HudText(Canvas, bClear ? TEXT("LANE CLEAR  -  [SPACE] CUE VANCE") : FString::Printf(TEXT("LANE WATCHED BY %d"), Eyes), W * 0.5f, 70.f * S,
-		bClear ? ConeAlibi : ConeRed, true, true);
-	HudText(Canvas, TEXT("[1] Loosen the spotlight clamp      [2] Drop the line on the cart latch      [SPACE] Cue Vance when no cone is red on the gold lane"),
-		W * 0.5f, H - 46.f * S, FLinearColor(0.95f, 0.95f, 0.9f, 1.f), false, true);
+	const bool bClear = Watchers.Num() == 0;
+	if (bClear)
+	{
+		const float Pulse = 0.75f + 0.25f * FMath::Sin(Now * 7.f);
+		HudText(Canvas, TEXT("LANE CLEAR  -  PRESS [SPACE] TO SEND VANCE"), W * 0.5f, 72.f * S, FLinearColor(ConeAlibi.R, ConeAlibi.G, ConeAlibi.B, Pulse), true, true);
+	}
+	else
+	{
+		HudText(Canvas, FString::Printf(TEXT("CLEAR VANCE'S LANE  -  WATCHED BY %s"), *FString::Join(Watchers, TEXT(", "))), W * 0.5f, 72.f * S, ConeRed, true, true);
+	}
+	HudText(Canvas, TEXT("[1] Spotlight clamp       [2] Sandbag line       [SPACE] Send Vance when no guard sees the gold lane"),
+		W * 0.5f, H - 50.f * S, FLinearColor(0.95f, 0.95f, 0.9f, 1.f), false, true);
 
 	if (FlashLeft > 0.f)
 	{
-		HudRect(Canvas, 0.f, 0.f, W, H, FLinearColor(1.f, 1.f, 1.f, 0.25f * FlashLeft / 0.12f));
+		HudRect(Canvas, 0.f, 0.f, W, H, FLinearColor(1.f, 1.f, 1.f, 0.2f * FlashLeft / 0.12f));
 	}
 }
 

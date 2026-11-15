@@ -4,6 +4,8 @@
 # lock, after the existing pipeline and after tools/script/scene3.py (the rope guards are Scene 3's):
 #     "<engine python>" -I tools/ue_mcp.py py tools/script/scene4.py 110
 # Switches: S4_OFF = True only clears. S4_SHOTS = True also writes stills to C:\Jam\Builds\script\s4.
+# S4_PLAN = True also writes a top-down plan of the lane's area (to lay a lane that clears every prop).
+# Also removes the drone (ADroneWatcher and its two path points) from the level: Marwan's QA, Nov 15 evening.
 import sys, os, importlib, math
 sys.path.insert(0, r"C:\Jam\megajam\tools\sets")
 import common as C
@@ -13,6 +15,7 @@ import unreal
 TAG = "script_s4"
 OFF = bool(globals().get("S4_OFF"))
 SHOTS = bool(globals().get("S4_SHOTS"))
+PLAN = bool(globals().get("S4_PLAN"))
 OUT = r"C:\Jam\Builds\script\s4"
 ADIR = "/Game/Take/Audio/Script/S4"
 eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
@@ -29,6 +32,14 @@ CRASH = (1960.0, -1520.0)               # the mess: at the West Pillar (the colu
 # curtain, into the dark aisle. The last point is inside the auditorium.
 # It keeps west of the seated benches (x 1900-2100, y +-200..470), then takes the centre aisle to the gap.
 LANE = ((1250.0, -1330.0), (1650.0, -950.0), (1800.0, -120.0), (2300.0, -30.0), (2420.0, 0.0), (2720.0, 0.0))
+# Nora's rigs (AScene4Catwalk builds them at play from these points). The lamp hangs under a pipe batten in front of
+# the East Door guard, lit on a harmless patch of floor until its clamp is loosened; the sandbag hangs on a batten
+# straight over the cart's latch; Nora's own catwalk runs under her camera.
+LAMP_AT = (1960.0, 160.0, 520.0)
+LAMP_PARK = (1720.0, 520.0, 0.0)
+BATTEN = (CART[0], CART[1], 560.0)
+CATWALK = ((960.0, -1700.0, 900.0), (960.0, 1000.0, 900.0))
+BEAM_MAT = "/Game/Take/Look/M_S4Beam"
 # The guards (Scene 3 places them; labels from tools/script/scene3.py): label -> role, cone name, pace.
 GUARDS = (
     ("S3_Guard_NorthGap", "EAST_DOOR", "EAST DOOR", (2260.0, 380.0), (0.0, 250.0), 0.0),
@@ -135,6 +146,78 @@ def guards():
     return out
 
 
+def remove_drone():
+    """The drone and its two path points, gone from the level (the old flow's watcher; nothing in the script uses it)."""
+    gone = []
+    for a in C.actors():
+        lab = a.get_actor_label()
+        if isinstance(a, unreal.DroneWatcher) or lab.startswith("Drone_Path_"):
+            gone.append(lab)
+            eas.destroy_actor(a)
+    REPORT.append("drone removed: %s" % (", ".join(gone) or "none left"))
+
+
+def beam_material():
+    """M_S4Beam: unlit, additive, two-sided; Color (vector) x Opacity (scalar) -> emissive. The lamp's visible shaft."""
+    if unreal.EditorAssetLibrary.does_asset_exist(BEAM_MAT):
+        return unreal.load_asset(BEAM_MAT)
+    pkg, name = BEAM_MAT.rsplit("/", 1)
+    m = unreal.AssetToolsHelpers.get_asset_tools().create_asset(name, pkg, unreal.Material, unreal.MaterialFactoryNew())
+    m.set_editor_property("blend_mode", unreal.BlendMode.BLEND_ADDITIVE)
+    m.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+    m.set_editor_property("two_sided", True)
+    mel = unreal.MaterialEditingLibrary
+    col = mel.create_material_expression(m, unreal.MaterialExpressionVectorParameter, -600, 0)
+    col.set_editor_property("parameter_name", "Color")
+    col.set_editor_property("default_value", unreal.LinearColor(1.0, 0.9, 0.72, 1.0))
+    op = mel.create_material_expression(m, unreal.MaterialExpressionScalarParameter, -600, 200)
+    op.set_editor_property("parameter_name", "Opacity")
+    op.set_editor_property("default_value", 0.22)
+    # Softer at the cone's grazing edges: a fresnel turned around (bright face-on, gone at the silhouette).
+    fr = mel.create_material_expression(m, unreal.MaterialExpressionFresnel, -600, 350)
+    one = mel.create_material_expression(m, unreal.MaterialExpressionOneMinus, -400, 350)
+    mel.connect_material_expressions(fr, "", one, "")
+    mul = mel.create_material_expression(m, unreal.MaterialExpressionMultiply, -350, 100)
+    mel.connect_material_expressions(col, "", mul, "A")
+    mel.connect_material_expressions(op, "", mul, "B")
+    mul2 = mel.create_material_expression(m, unreal.MaterialExpressionMultiply, -150, 150)
+    mel.connect_material_expressions(mul, "", mul2, "A")
+    mel.connect_material_expressions(one, "", mul2, "B")
+    mel.connect_material_property(mul2, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    mel.recompile_material(m)
+    unreal.EditorAssetLibrary.save_asset(BEAM_MAT, only_if_is_dirty=False)
+    REPORT.append("made %s" % BEAM_MAT)
+    return m
+
+
+def check_lane():
+    """Sweeps Vance's capsule (r 40, half-height 88) along each stretch of the lane against walls and props; reports
+    what it would bump. The tracking shot walks him on his own feet, so the lane has to clear everything."""
+    w = unreal.EditorLevelLibrary.get_editor_world()
+    types = [unreal.ObjectTypeQuery.OBJECT_TYPE_QUERY1, unreal.ObjectTypeQuery.OBJECT_TYPE_QUERY2]
+    bad = 0
+    for i, ((ax, ay), (bx, by)) in enumerate(zip(LANE, LANE[1:])):
+        a, b = unreal.Vector(ax, ay, 100.0), unreal.Vector(bx, by, 100.0)
+        try:
+            hits = unreal.SystemLibrary.capsule_trace_multi_for_objects(w, a, b, 40.0, 88.0, types, False, [],
+                                                                        unreal.DrawDebugTrace.NONE, True)
+        except Exception as e:
+            REPORT.append("lane check failed: %s" % e)
+            return
+        if isinstance(hits, tuple):
+            hits = hits[-1] if hits and isinstance(hits[-1], (list, tuple)) else []
+        for h in hits or []:
+            t = h.to_tuple()
+            actor = next((x for x in t if isinstance(x, unreal.Actor)), None)
+            loc = next((x for x in t if isinstance(x, unreal.Vector)), None)
+            lab = actor.get_actor_label() if actor else "?"
+            if lab.startswith("S4_") or "Floor" in lab:
+                continue
+            bad += 1
+            REPORT.append("LANE %d->%d bumps %s at (%.0f, %.0f)" % (i, i + 1, lab, loc.x if loc else 0, loc.y if loc else 0))
+    REPORT.append("lane check: %d bumps" % bad)
+
+
 def scene():
     sp = eas.spawn_actor_from_class(unreal.TargetPoint, vec(NORA), unreal.Rotator(0.0, -30.0, 20.0))
     sp.set_actor_label("S4_StartSpot_Nora")
@@ -156,7 +239,13 @@ def scene():
     s.set_editor_property("birds_eye_camera", bird)
     s.set_editor_property("track_camera", track)
     s.set_editor_property("cart", ct)
-    s.set_editor_property("spot", spots[0] if spots else None)
+    s.set_editor_property("spot", None)     # Nora's own lamp (built by the scene) is the rigged spot now
+    s.set_editor_property("lamp_at", vec(LAMP_AT))
+    s.set_editor_property("lamp_parked_aim", vec(LAMP_PARK))
+    s.set_editor_property("batten_at", vec(BATTEN))
+    s.set_editor_property("catwalk_from", vec(CATWALK[0]))
+    s.set_editor_property("catwalk_to", vec(CATWALK[1]))
+    s.set_editor_property("beam_material", beam_material())
     s.set_editor_property("lane", [vec(p) for p in LANE])
     s.set_editor_property("guards", guards())
     for prop, name in VOICES.items():
@@ -182,8 +271,13 @@ def shots():
 
 gone, shown = C.clear(TAG)
 REPORT.append("cleared %d, shown %d" % (gone, shown))
+remove_drone()
 if not OFF:
     scene()
+    check_lane()
+    if PLAN:
+        os.makedirs(OUT, exist_ok=True)
+        REPORT.append(C.plan("s4_plan", 1000.0, 2800.0, -2000.0, 600.0, 400.0, out_dir=OUT))
     if SHOTS:
         shots()
 "\n".join(str(r) for r in REPORT)

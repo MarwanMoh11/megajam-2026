@@ -1,16 +1,19 @@
 // Scene 4. INT. THE CATWALKS / LIGHTING RIG - CONTINUOUS (Nora, raw). Owner: s4-catwalk (docs/script/s4.md).
 //
 // Nora (Maya) on the catwalk over the hall: a bird's-eye camera looks down through the grating at the rope; each of
-// the four rope guards draws his patrol cone (red while it covers Vance's lane). Two sabotages from above:
-//   [1] the rigged spotlight: loosen a clamp, the follow spot (AFollowSpot) swings down and blinds the EAST DOOR
-//       guard; GUARD 1 turns to yell up at it while it burns.
-//   [2] the champagne line: a weighted line taps the latch of the service cart (ACartDevice) carrying a champagne
-//       tower; it rolls and the glasses crash at the WEST PILLAR. The WEST guard goes to the mess; if GUARD 1 is
-//       yelling at the spot, he sends GUARD 2 to help ("...go help the staff clean that mess").
-//   [SPACE] cue Vance: every cone must be off the lane, or it is a retake. The cart first (no spot) = the guards close
-//       ranks, a retake. The VipAlibi flag (Scene 3) excuses GUARD 2 (he has Vance on his clipboard).
-// Lane clear and cued: CutTo(Vance, TrackCamera), one unbroken tracking shot alongside Vance as he strolls the lane
-// past the distracted guards, through the crimson curtain at the rope gap, and the doors swing shut. FinishScene.
+// the four rope guards has a faint sight wedge, and Vance's gold lane turns red wherever a guard sees it. Two rigs
+// hang in her view (built here as shapes at play, each with a card saying what it is and what it will do):
+//   [1] the spotlight clamp: a lit lamp under a pipe batten, clamped on a harmless patch of floor. Loosened, its
+//       brass T-handle spins off, the lamp swings into the EAST DOOR guard's eyes (shaft, glare); GUARD 1 yells up at
+//       it. The bulb lasts SpotSeconds; if it blows before Vance is cued, the window is gone (a retake).
+//   [2] the sandbag line: a sandbag hangs on a hemp line over the champagne cart (ACartDevice). Cut, it drops onto
+//       the cart's latch, the cart rolls and the tower crashes at the WEST PILLAR: that guard goes to the mess. If
+//       GUARD 1 is yelling at the spot (either order), he sends GUARD 2 to help ("...go help the staff clean that
+//       mess"). The VipAlibi flag (Scene 3) excuses GUARD 2 (he has Vance on his clipboard).
+//   [SPACE] send Vance: no guard may see the lane, or it is a retake.
+// Lane clear and cued: CutTo(Vance, TrackCamera), one unbroken tracking shot alongside Vance as he walks the lane on
+// his own feet (movement component: his walk cycle plays, props block him; the lane is laid to clear them) past the
+// distracted guards, through the crimson curtain at the rope gap, and the doors swing shut. FinishScene.
 //
 // The scene drives its guards (moves them itself) and its two devices (FireAt/Fire + StepDevice) while active.
 // tools/script/scene4.py places this actor (tag script_s4) at the rope gap, facing into the auditorium (+X), and
@@ -134,9 +137,61 @@ public:
 
 	// ---- tuning ----
 
+	// ---- Nora's rigs, built here as shapes at play (tools/script/scene4.py sets the points; world cm) ----
+
+	/** The rigged lamp: the pivot of its yoke, hung under a pipe batten over the hall, in Nora's view. */
+	UPROPERTY(EditAnywhere, Category = "Scene4|Rig")
+	FVector LampAt = FVector(1950.f, 120.f, 520.f);
+	/** Where the lit lamp points while it is clamped (a harmless pool on the floor). */
+	UPROPERTY(EditAnywhere, Category = "Scene4|Rig")
+	FVector LampParkedAim = FVector(1700.f, 450.f, 0.f);
+	/** Loosened, it swings onto the East Door guard's eyes over this long (with a damped wobble after), s. */
+	UPROPERTY(EditAnywhere, Category = "Scene4|Rig")
+	float LampSwingSeconds = 0.45f;
+	UPROPERTY(EditAnywhere, Category = "Scene4|Rig")
+	float LampCandelas = 9000.f;
+	UPROPERTY(EditAnywhere, Category = "Scene4|Rig")
+	float LampConeDegrees = 11.f;
+	UPROPERTY(EditAnywhere, Category = "Scene4|Rig")
+	FLinearColor LampColour = FLinearColor(1.f, 0.9f, 0.72f);
+	/** The visible shaft of light (a translucent cone). Null: /Game/Take/Look/M_S4Beam, else no shaft mesh. */
+	UPROPERTY(EditAnywhere, Category = "Scene4|Rig")
+	TObjectPtr<class UMaterialInterface> BeamMaterial;
+	UPROPERTY(EditAnywhere, Category = "Scene4|Rig")
+	float BeamOpacity = 0.22f;
+
+	/** The sandbag's hook: on a pipe batten straight over the cart's latch. The line hangs SandbagHang below it. */
+	UPROPERTY(EditAnywhere, Category = "Scene4|Rig")
+	FVector BattenAt = FVector(1700.f, -1880.f, 560.f);
+	UPROPERTY(EditAnywhere, Category = "Scene4|Rig")
+	float SandbagHang = 260.f;
+	/** The sandbag's fall to the latch, s (it starts falling on the press). */
+	UPROPERTY(EditAnywhere, Category = "Scene4|Rig")
+	float SandbagDropSeconds = 0.28f;
+	/** The pipe battens' length, cm (both rigs hang under one). */
+	UPROPERTY(EditAnywhere, Category = "Scene4|Rig")
+	float BattenLength = 500.f;
+
+	/** Nora's own catwalk under her camera: deck from CatwalkFrom to CatwalkTo (deck height), width, rails. */
+	UPROPERTY(EditAnywhere, Category = "Scene4|Rig")
+	bool bBuildCatwalk = true;
+	UPROPERTY(EditAnywhere, Category = "Scene4|Rig")
+	FVector CatwalkFrom = FVector(960.f, -1600.f, 900.f);
+	UPROPERTY(EditAnywhere, Category = "Scene4|Rig")
+	FVector CatwalkTo = FVector(960.f, 900.f, 900.f);
+	UPROPERTY(EditAnywhere, Category = "Scene4|Rig")
+	float CatwalkWidth = 90.f;
+
+	/** Nobody pressed anything for this long: Nora points at the lamp (once), s. */
+	UPROPERTY(EditAnywhere, Category = "Scene4|Tune")
+	float HintSeconds = 9.f;
+	/** The spot went cold before Vance was cued: the retake comes this long after, s. */
+	UPROPERTY(EditAnywhere, Category = "Scene4|Tune")
+	float WindowClosedSeconds = 2.5f;
+
 	/** How long the spot blinds the East Door guard (and Guard 1 yells), s. */
 	UPROPERTY(EditAnywhere, Category = "Scene4|Tune")
-	float SpotSeconds = 7.f;
+	float SpotSeconds = 10.f;
 	/** The cart's roll to the crash, s. */
 	UPROPERTY(EditAnywhere, Category = "Scene4|Tune")
 	float CartRollSeconds = 1.6f;
@@ -179,6 +234,12 @@ public:
 	/** Longest the tracking shot may run before it finishes anyway, s (Vance stuck on something). */
 	UPROPERTY(EditAnywhere, Category = "Scene4|Track")
 	float TrackMaxSeconds = 25.f;
+	/** The camera keeps this far off anything it would hit between it and Vance, cm. */
+	UPROPERTY(EditAnywhere, Category = "Scene4|Track")
+	float TrackCamClearance = 35.f;
+	/** Vance made no headway for this long (something in his way): he is stepped on along the lane, s. */
+	UPROPERTY(EditAnywhere, Category = "Scene4|Track")
+	float StuckSeconds = 0.5f;
 
 	/** The champagne tower on the cart: tiers (bottom has Tiers glasses a side... a pyramid), glass size, cm. */
 	UPROPERTY(EditAnywhere, Category = "Scene4|Champagne")
@@ -282,6 +343,47 @@ private:
 	float FlashLeft = 0.f;		// the HUD's white flick on a press
 	FTransform BirdHome;
 	bool bBirdHome = false;
+
+	// The rigs (runtime shapes; Transient so they are never saved).
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UActorComponent>> RigComps;
+	UPROPERTY(Transient)
+	TObjectPtr<USceneComponent> LampTilt;		// at LampAt: aims the lamp (its +X is the beam)
+	UPROPERTY(Transient)
+	TObjectPtr<UStaticMeshComponent> LampLens;
+	UPROPERTY(Transient)
+	TObjectPtr<UStaticMeshComponent> LampShaft;
+	UPROPERTY(Transient)
+	TObjectPtr<UStaticMeshComponent> LampPool;
+	UPROPERTY(Transient)
+	TObjectPtr<class USpotLightComponent> LampLight;
+	UPROPERTY(Transient)
+	TObjectPtr<UStaticMeshComponent> ClampHandle;
+	UPROPERTY(Transient)
+	TObjectPtr<UStaticMeshComponent> ClampJaw;
+	UPROPERTY(Transient)
+	TObjectPtr<UStaticMeshComponent> Sandbag;
+	UPROPERTY(Transient)
+	TObjectPtr<UStaticMeshComponent> SandLine;
+	FRotator LampAimNow = FRotator::ZeroRotator;
+	float LampT = -1.f;			// seconds since the clamp was loosened (< 0: clamped)
+	float BagT = -1.f;			// seconds since the line was cut (< 0: hanging)
+	bool bLatchHit = false;
+	bool bHinted = false;
+	bool bWindowClosed = false;
+	FVector VanceLast = FVector::ZeroVector;
+	float StuckFor = 0.f;
+	ECollisionResponse VancePawnResponse = ECR_Block;
+	bool bVanceGhosted = false;
+
+	void BuildRigs();
+	void StepRigs(float Dt);
+	void AimLamp(const FRotator& Aim);
+	FVector EastDoorEyes() const;
+	FVector CartLatch() const;
+	void PlaceVanceAtBar();
+	void GhostVance(bool bGhost);
+	void SendGuard2IfOrdered();
 
 	void BuildTower();
 	void PlaceTowerOnCart();

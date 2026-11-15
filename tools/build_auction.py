@@ -1500,15 +1500,8 @@ trigger("Trigger_Dais", "Dais", MARK_DAIS[0] - 140.0, MARK_DAIS[0] + 140.0, -150
 tape("RedTape_Aisle", TAPE_X0, TAPE_X1, -GAP + 10.0, GAP - 10.0)
 tape("RedTape_Dais", DAIS_TAPE[0], DAIS_TAPE[1], DAIS_TAPE[2], DAIS_TAPE[3], DAIS_H)
 
-# The drone: a loop down the centre aisle and back, 8 bars; it arrives on the 4-bar line after Scene 2 starts. It
-# flies above the catwalk's rail.
-d1 = spawn(unreal.PatrolPoint, (DRONE_PATH[0][0], DRONE_PATH[0][1], 0), label="Drone_Path_1", folder="Take")
-setp(d1, bars=4)
-d2 = spawn(unreal.PatrolPoint, (DRONE_PATH[1][0], DRONE_PATH[1][1], 0), label="Drone_Path_2", folder="Take")
-setp(d2, bars=4)
-drone = spawn(unreal.DroneWatcher, (DRONE_PATH[0][0], DRONE_PATH[0][1], 0), label="Drone", folder="Take")
-setp(drone, label="DRONE", path_points=[d1, d2], cone_radius=DRONE_RADIUS, fly_height=720.0, arrive_on="Scene2",
-     instrument=unreal.WatcherInstrument.TRUMPET, seen_line='BROADCAST: "Who is the gentleman in white?"')
+# No drone (Marwan's QA, Nov 15 evening: "useless and makes no narrative sense"). tools/script/scene4.py also
+# removes one left in the level.
 
 # The beam across the gap in the rope.
 beam = spawn(unreal.BeamWatcher, (ROPE_X, -GAP, 0), label="Beam", folder="Take")
@@ -1587,8 +1580,7 @@ setp(m_trap, appear_on="Winch", action_needs="Case", action_seconds=0.4, action_
      action_verb="Dropping through the stage trap", action_while_seen=True, stand_radius=85.0)
 # The paid way out: the gold door past the band. Two guards hold it; something saved has to take them both.
 m_bow = mark("Mark_Bow", "THE BOW", MARK_BOW)
-setp(m_bow, action_needs="Case", action_seconds=0.5, action_trigger="Bow", action_verb="Taking a bow",
-     needs_blind_drone=True)
+setp(m_bow, action_needs="Case", action_seconds=0.5, action_trigger="Bow", action_verb="Taking a bow")
 m_side = mark("Mark_Side", "THE GOLD DOOR", MARK_SIDE)
 setp(m_side, action_needs="Case", action_seconds=0.3, action_trigger="ExitSide", action_verb="Out by the gold side exit")
 
