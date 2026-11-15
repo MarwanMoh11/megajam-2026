@@ -166,8 +166,8 @@ void AScene2Van::BeginScene()
 		FeedTarget->InitCustomFormat(512, 384, PF_B8G8R8A8, false);
 		FeedTarget->UpdateResourceImmediate(true);
 	}
-	FVector Plate;
-	if (CallScene1ByName(this, TEXT("GetPlatePoint"), &Plate, sizeof(FVector)) && !Plate.IsNearlyZero()) { FeedAt = Plate; }
+	FVector PlateAt;
+	if (CallScene1ByName(this, TEXT("GetPlatePoint"), &PlateAt, sizeof(FVector)) && !PlateAt.IsNearlyZero()) { FeedAt = PlateAt; }
 	FeedCapture->TextureTarget = FeedTarget;
 	FeedCapture->FOVAngle = FeedFov;
 	FeedCapture->SetWorldLocationAndRotation(FeedFrom, Scene2Local::LookQuat(FeedFrom, FeedAt));
@@ -459,8 +459,8 @@ void AScene2Van::DrawSceneHud(UCanvas* Canvas)
 		const float PY = DY + R + K.Px(70.f);
 		const bool bReady = Sync >= 1.f && Phase == EScene2Phase::Tune;
 		const bool bLocked = Phase == EScene2Phase::Locked;
-		const FLinearColor Ink = bLocked ? Phosphor : bReady ? Paper : A_(Ash, 0.6f);
-		const FTakeInk Words = FTakeInk::Of(Ink, Ink);
+		const FLinearColor InkC = bLocked ? Phosphor : bReady ? Paper : A_(Ash, 0.6f);
+		const FTakeInk Words = FTakeInk::Of(InkC, InkC);
 		const FString Prompt = bLocked ? TEXT("Bypass patched") : bReady ? TEXT("[SPACE] Patch the bypass cable") : TEXT("[SPACE] Patch the bypass (sync first)");
 		K.Rich(EType::Goal, Prompt, SX + PanelW * 0.5f, PY, PanelW, 1, Words);
 		// the toggle: down until the lock, then slammed up
