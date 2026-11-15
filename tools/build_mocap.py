@@ -224,6 +224,18 @@ def stage_retarget():
     todo = [k for k in keys() if EAL.does_asset_exist("%s/%s" % (CLIP_DIR, k))
             and (FORCE or not EAL.does_asset_exist("%s/%s" % (OUT_DIR, k)))]
     done = 0
+    # The batch op ticks Slate every frame (cancel check): with a realtime level viewport each tick re-renders the
+    # level and a clip takes minutes instead of a second. Viewport realtime off for the run, back on after.
+    les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
+    les.editor_set_viewport_realtime(False)
+    try:
+        return retarget_groups(todo, rtg, ybot, manny)
+    finally:
+        les.editor_set_viewport_realtime(True)
+
+
+def retarget_groups(todo, rtg, ybot, manny):
+    done = 0
     while todo:
         if out_of_time():
             return False

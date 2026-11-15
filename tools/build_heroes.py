@@ -39,6 +39,7 @@ HEROES = [
     dict(name="Vex", rodin="heroes_vex", source=MANNY, cam="C", height=0.98, yaw=0.0),
 ]
 ARM_MIN_DEG = 2.0                   # arm-angle differences below this are left alone
+ARM_PASSES = 4                      # --- W3 cast2 --- residual passes after the swing back (0: off)
 ARM_REACH = 12.0                    # cm outward of the shoulder joint where the arm sample starts
 ROUGHNESS = 0.7
 TRANSFER = "hybrid"                 # "closest": ClosestPointOnSurface everywhere. "hybrid": also InpaintWeights (copies
@@ -480,6 +481,25 @@ def build(hero):
         p2 = swing(tp, wl, ua_l, out_l, -ang["l"] if abs(ang["l"]) >= ARM_MIN_DEG else 0.0)
         p2 = swing(p2, wr, ua_r, out_r, -ang["r"] if abs(ang["r"]) >= ARM_MIN_DEG else 0.0)
         set_positions(T, p2)
+        recompute_normals(T)
+
+    # --- W3 cast2 --- close the residual: the weighted swing back lands short (vertices with part of the arm's weight
+    # turn only part of the way), which left the arms held out in the bind pose and so out in every animation (Marwan:
+    # "fix his arms"). Measure again against the mannequin and swing the rest, a few passes.
+    if posed:
+        for _pass in range(ARM_PASSES):
+            tp = positions(T)
+            lo, hi = bbox(tp)
+            res = {}
+            for side, piv, out in (("l", ua_l, out_l), ("r", ua_r, out_r)):
+                res[side] = arm_angle(tp, piv, out, lo[2], hi[2] - lo[2])[0] - arm_angle(sp, piv, out, slo[2], sh)[0]
+            log("%s arms pass %d: residual %+.1f / %+.1f deg" % (name, _pass, res["l"], res["r"]))
+            if all(abs(d) < ARM_MIN_DEG * 0.5 for d in res.values()):
+                break
+            wl, wr = side_weights(T, len(tp), groups)
+            p2 = swing(tp, wl, ua_l, out_l, -res["l"])
+            p2 = swing(p2, wr, ua_r, out_r, -res["r"])
+            set_positions(T, p2)
         recompute_normals(T)
 
     # the skeletal mesh

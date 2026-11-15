@@ -3,31 +3,37 @@
   "asset": "/Game/Take/Anim/Mocap/SitIdle_A",
   "seconds": 6.4,
   "loop": true,
-  "source": "Mixamo: Sitting Idle (Sitting In Chair Hands Resting On Thighs)"
+  "source": "Mixamo: Sitting Idle (Sitting In Chair Hands Resting On Thighs)",
+  "hip_height": 57.5
  },
  "SitIdle_B": {
   "asset": "/Game/Take/Anim/Mocap/SitIdle_B",
   "seconds": 4.0,
   "loop": true,
-  "source": "Mixamo: Sitting (Sitting Looking Side To Side)"
+  "source": "Mixamo: Sitting (Sitting Looking Side To Side)",
+  "hip_height": 57.8
  },
  "SitClap": {
   "asset": "/Game/Take/Anim/Mocap/SitClap",
   "seconds": 6.5,
   "loop": true,
-  "source": "Mixamo: Sitting Clap (Sitting Unethusiastic Clap)"
+  "source": "Mixamo: Sitting Clap (Sitting Unethusiastic Clap)",
+  "hip_height": 57.6
  },
  "SitTalk": {
   "asset": "/Game/Take/Anim/Mocap/SitTalk",
   "seconds": 44.97,
   "loop": true,
-  "source": "Mixamo: Sitting Talking (Sitting And Talking To Another Person)"
+  "source": "Mixamo: Sitting Talking (Sitting And Talking To Another Person)",
+  "hip_height": 58.3
  },
  "SitDrink": {
   "asset": "/Game/Take/Anim/Mocap/SitDrink",
   "seconds": 15.2,
   "loop": false,
-  "source": "Mixamo: Sitting Drinking (Having A Seat And Drinking A Canned Beverage)"
+  "source": "Mixamo: Sitting Drinking (Having A Seat And Drinking A Canned Beverage)",
+  "hip_height": 48.4,
+  "start_s": 5.7
  },
  "StandIdle_A": {
   "asset": "/Game/Take/Anim/Mocap/StandIdle_A",
@@ -123,13 +129,15 @@
   "asset": "/Game/Take/Anim/Mocap/Piano",
   "seconds": 22.83,
   "loop": true,
-  "source": "Mixamo: Piano Playing (Playing Multiple Runs On A Piano)"
+  "source": "Mixamo: Piano Playing (Playing Multiple Runs On A Piano)",
+  "hip_height": 60.4
  },
  "Drums": {
   "asset": "/Game/Take/Anim/Mocap/Drums",
   "seconds": 4.7,
   "loop": true,
-  "source": "Mixamo: Playing Drums (Basic Rock Beat)"
+  "source": "Mixamo: Playing Drums (Basic Rock Beat)",
+  "hip_height": 66.2
  },
  "Bass": {
   "asset": "/Game/Take/Anim/Mocap/Bass",

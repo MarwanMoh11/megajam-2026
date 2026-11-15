@@ -13,7 +13,9 @@
 # hall_zones.json and the placed props at run time (HALL below), never from fixed coordinates. Sight cues stay the
 # brightest thing on any floor: guard torch 3000 cd (pale, a shaft), drone 1800, marks 260 cd from 3.2 m.
 import sys, importlib; sys.path.insert(0, r"C:\Jam\megajam\tools\sets"); import common as C; importlib.reload(C)
+import json
 import math
+import os
 import re
 
 import unreal
@@ -110,7 +112,13 @@ STREET_EXTRA = [
 # Nothing lands a pool on the rows, the centre aisle, the front floor or within MARK_CLEAR of a mark: lamps sit on the
 # bar, the phone desk and the walls (sconces wash the wallpaper), the band gets a stage spot on the bandstand.
 HALL = dict(bar_cd=150.0, bar_r=380.0, phone_cd=130.0, phone_r=330.0, band_cd=650.0, band_cone=34.0, band_r=1300.0,
-            tv_cd=260.0, sconce_cd=75.0, sconce_r=330.0, sconce_z=300.0, sconce_every=950.0, mark_clear=320.0)
+            tv_cd=0.0, sconce_cd=75.0, sconce_r=330.0, sconce_z=300.0, sconce_every=1200.0, mark_clear=320.0,
+            # the house light (the dimmer takes it): a wide wash over each half of the rows and over the front floor
+            house_cd=700.0, house_cone=46.0, house_r=2200.0, front_cd=900.0, front_cone=40.0,
+            # the room's focus: a warm front key from the catwalk's height onto the lot and the lectern
+            focus_cd=1300.0, focus_cone=16.0, focus_r=2600.0,
+            # the reception end (lobby doors to the last row): two warm chandelier glows over the cocktail tables
+            recep_cd=180.0, recep_r=750.0, recep_z=420.0)
 HX0, HX1, HY0, HY1 = -1000.0, 4400.0, -2000.0, 2000.0   # the hall's shell (build_auction), not its layout
 
 
@@ -122,7 +130,6 @@ def _bounds(pat):
 
 
 def hall_lights():
-    import json, os
     with open(os.path.join(os.path.dirname(os.path.abspath(C.__file__)), "hall_zones.json"), encoding="utf-8") as f:
         Z = json.load(f)
     fz, h, out = float(Z.get("floor_z", 0.0)), HALL, []
@@ -155,13 +162,32 @@ def hall_lights():
         yaw = math.degrees(math.atan2(by - sy, bx - sx))
         pitch = -math.degrees(math.atan2(sz - bz, ((bx - sx) ** 2 + (by - sy) ** 2) ** 0.5))
         out.append(("hall", "Band_Spot", (sx, sy, sz), h["band_cd"], h["band_r"], TUNG, (pitch, yaw, h["band_cone"])))
-    # the TV riser: a cool studio key from above its road case (the broadcast's own light, not the house's)
-    b = _bounds(r"Set_Hall_Roadcase_\d+")
+    # the TV riser: a cool studio key from above its road case (off by default: tv_cd 0, the riser has its lamps)
+    b = _bounds(r"Set_Hall_Roadcase_\d+") if h["tv_cd"] > 0 else None
     if b:
         out.append(("hall", "TV_Key", ((b[0] + b[1]) / 2, (b[2] + b[3]) / 2, b[5] + 330.0), h["tv_cd"], 520.0,
                     (0.85, 0.9, 1.0), (-90.0, 0.0, 40.0)))
-    # sconces on the long walls, from the back of the rows to the front floor, clear of marks
+    # the house: top-down washes from the roof over the rows' two halves and the front floor (house light, not pools)
     r = Z.get("rows", {})
+    rx0, rx1, top = float(r.get("x0", 800.0)), float(r.get("x1", 3150.0)), fz + 1340.0
+    for side, y in (("S", -600.0), ("N", 600.0)):
+        out.append(("hall", "House_%s" % side, ((rx0 + rx1) / 2, y, top), h["house_cd"], h["house_r"], TUNG,
+                    (-90.0, 0.0, h["house_cone"])))
+    ff = Z.get("front_floor")
+    if ff:
+        out.append(("hall", "House_Front", ((ff["min"][0] + ff["max"][0]) / 2, 0.0, top), h["front_cd"], h["house_r"],
+                    TUNG, (-90.0, 0.0, h["front_cone"])))
+    # the focus: from over the front row at the catwalk's height, onto the case (the lot) and the lectern beside it
+    cs = Z.get("case")
+    if cs:
+        fx, fz2 = rx1 - 150.0, fz + float(Z.get("catwalk_z", 900.0)) + 150.0
+        pitch = -math.degrees(math.atan2(fz2 - cs[2], cs[0] - fx))
+        out.append(("hall", "Dais_Focus", (fx, cs[1], fz2), h["focus_cd"], h["focus_r"], TUNG, (pitch, 0.0, h["focus_cone"])))
+    # the reception end, between the lobby doors and the rows: warm overhead glows (the cocktail tables stand here)
+    for side, y in (("S", -700.0), ("N", 700.0)):
+        out.append(("hall", "Reception_%s" % side, ((HX0 + rx0) / 2, y, fz + h["recep_z"]), h["recep_cd"], h["recep_r"],
+                    TUNG, None))
+    # sconces on the long walls, from the back of the rows to the front floor, clear of marks
     x, x1 = float(r.get("x0", 0.0)) - 1200.0, float(Z.get("front_floor", {}).get("max", [HX1 - 800.0])[0])
     i = 0
     while x <= x1:
@@ -194,7 +220,6 @@ def desk_lights():
 
 
 def work_lights():
-    import json, os
     dims = [a for a in eas.get_all_level_actors() if a.get_class().get_name() == "HouseDimmer"]
     if not dims:
         return []
