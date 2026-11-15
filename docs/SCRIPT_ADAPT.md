@@ -73,6 +73,7 @@ list, this file wins. Fallback: tag `pre-script-fallback` (6876e0b) and `C:\Jam\
 - **Hold the lock for any editor work** (scripts, PIE, save) and for Build.bat: `tools/editor_lock.py acquire <session>
   --note "..."`, release when done, at most ~10 minutes a hold. Do C++, scripts and assets outside the editor while
   you wait.
+- **Never a lone `.h` in `Source/`.** A header with a UCLASS/USTRUCT/UENUM and no `.cpp` (or a `.cpp` that does not compile) breaks every build in this shared tree, including others' restarts. Write the `.h` and its `.cpp` together and keep both compiling; draft unfinished code outside `Source/` (e.g. `docs/script/drafts/`) until it builds.
 - **Live Coding** (function bodies) compiles everyone's files: keep your files compiling at all times; if the compile
   breaks on someone else's file, message them, do not edit it.
 - **New UCLASS / UPROPERTY / header changes need an editor restart.** Batch them. Only the lock holder exits the
