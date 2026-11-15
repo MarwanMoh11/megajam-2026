@@ -1697,3 +1697,16 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
 - **The sneak** has no beat any more. Each torch watcher faces the film for 8-9 s with the torch lowered (blind), turns, checks the aisle for 3.5-4 s, then turns back. HUD chips show which way each one is looking, with a 1.5 s turn warning. Vance crouch-sneaks along the south wall, and hud-guidance's door goal shows if he gets lost.
 - **What went wrong:** the running editor's DLL predated my header, because Live Coding can't add UPROPERTYs. The full rebuild then hit unity-build clashes between sessions' file-local names (`Chrome`, `Bone`, `Margin`, `Z`). I renamed them with the coordinator's OK, and s7-reelswap fixed its leaking namespaces. My first rename produced a duplicate `CarChrome`, so the cabin's became `CabinChrome`. A reboot at 22:33 dropped the lock queue.
 - **23:xx, first look in play (D3D11 editor):** shot B reads (the mirror on its stalk, rain on the glass, streetlamp glows sliding past), but the mirror shows a bright blur, not his face, and shot A sits chest-close on a passenger's shirt and bow tie. Three Live Coding passes: the capture now records the exposed image, smaller and fainter drops, and the head is found by bone name. Shot A and the mirror image were still wrong in the last look. Left for Marwan's QA.
+
+## Nov 15, ~23:10 Cairo: sound, finishing pass
+- The Say-line routing in ScriptSequencer.cpp is committed (a70f79c): every scene line plays through the take's voice
+  player, so the score ducks under it. The old take's heartbeat and ringing loops are now silent under the script
+  (960be3c; lands with the next Build.bat).
+- The receptionist's three desk lines for Scene 3 (S3_Desk, S3_DeskAlibi, S3_DeskAgain) are imported.
+- One logged play-in-editor pass (tools/audio/audio_pie.py) through scenes 0-8 and the credits: each scene got its
+  own score with crossfades at the cuts (band, muffled band in the van, quartet in the hall, sneak, chase, band for
+  the credits); Scenes 1 and 5 stayed silent so their own music plays; the score ducked to 0.45 under each voice line;
+  a retake tape-stopped the quartet and brought it back when the retake rolled; the hall's murmur, room tone and
+  scattered clinks, laughs, steps and trays played in Scenes 3 and 4. The old band never played.
+- What went wrong: the PC rebooted at 22:33 mid-queue and one lock wait timed out on a nine-session queue; the
+  import ran on the third try.
