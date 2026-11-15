@@ -1779,3 +1779,7 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
 - The brain now reads `ATakeCharacter::IsCrouching()` and `IsRunning()` from chars-locomotion's hooks. Crouching makes
   footsteps silent and shrinks the sight profile, and running carries 8 m and fills the meter x1.4. Before, it guessed
   from `bIsCrouched` and speed alone. Compiled with Live Coding (23:43); not checked in PIE.
+
+## Nov 16, ~00:05 Cairo: Scene 8 start faces the east door
+- **Changed:** `S8_StartSpot` turned to yaw 0 (`START_YAW` in scene8.py), so Vance faces the door he runs out of and the follow camera sits in the room behind him instead of against the monitor wall (the 22:53 look had it tight on his back). Level saved.
+- **Went wrong:** two PIE looks at 00:00 never reached Scene 8: `Reel.Script.Jump 8` was ignored and the run played Scenes 1 and 2. The new start framing is unseen.

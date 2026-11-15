@@ -165,7 +165,7 @@ light("ExitGlow_In", (DOOR[0], -3255.0, 262.0), 40.0, 380.0, (0.25, 1.0, 0.45))
 # y -2600..-2020; prop store x 800..2600, y -3300..-2600, its door x 1700).
 F2 = 450.0
 START = (-2650.0, -1680.0, F2 + 95.0)
-START_YAW = 90.0
+START_YAW = 0.0                                 # facing the east door he runs out of: the follow camera sits behind him in the room, not in the wall
 COLE_START = (-1960.0, -1700.0, F2)            # on the fire stair's landing, outside the east door
 COLE_MARK = (-2330.0, -1690.0, F2)             # just in through the east door
 SMOKE = (-2650.0, -1260.0, F2)                 # out of the north door, on the lobby balcony (where the guards come)
