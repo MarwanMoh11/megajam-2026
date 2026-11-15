@@ -16,6 +16,8 @@
 #include "Engine/Canvas.h"
 #include "Engine/World.h"
 #include "Sound/SoundBase.h"
+#include "EngineUtils.h"
+#include "HAL/IConsoleManager.h"
 
 namespace Scene3Local
 {
@@ -27,6 +29,25 @@ namespace Scene3Local
 	const FString OptionHead[2] = { TEXT("PLAY ALONG"), TEXT("BRUSH OFF") };
 
 	double RealNow(const UWorld* World) { return World ? World->GetRealTimeSeconds() : 0.0; }
+
+	// Test aid (no keyboard over MCP): Reel.S3.Key 1 | 2 | E sends that key press to an active Scene 3.
+	FAutoConsoleCommandWithWorldAndArgs KeyCommand(TEXT("Reel.S3.Key"), TEXT("Scene 3: press 1, 2 or E"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (!World || Args.Num() == 0)
+			{
+				return;
+			}
+			const FKey Key = Args[0] == TEXT("1") ? EKeys::One : Args[0] == TEXT("2") ? EKeys::Two : EKeys::E;
+			for (TActorIterator<AScene3Foyer> It(World); It; ++It)
+			{
+				if (It->IsActive())
+				{
+					It->HandleSceneKey(Key, true);
+					TAKE_LOG(TEXT("SCENE3 test key %s"), *Args[0]);
+				}
+			}
+		}));
 }
 
 AScene3Foyer::AScene3Foyer()
@@ -600,7 +621,7 @@ void AScene3Foyer::DrawSceneHud(UCanvas* Canvas)
 		Kit.Text(EType::Tag, Tag, X, Y, TakeStyle::Julian);
 	}
 
-	// The goal line, low in the picture.
+	// The goal line, at the top of the picture (the subtitles own the bottom).
 	FString Goal;
 	switch (Beat)
 	{
@@ -620,7 +641,7 @@ void AScene3Foyer::DrawSceneHud(UCanvas* Canvas)
 	}
 	if (!Goal.IsEmpty())
 	{
-		Kit.Text(EType::Goal, Goal, Kit.CX(), Kit.PicBottom() - Kit.Px(130.f), FLinearColor(Paper.R, Paper.G, Paper.B, 0.85f),
+		Kit.Text(EType::Goal, Goal, Kit.CX(), Kit.PicY + Kit.Px(34.f), FLinearColor(Paper.R, Paper.G, Paper.B, 0.85f),
 			ETakeAlign::Centre);
 	}
 

@@ -1336,3 +1336,8 @@ animation, you can't move it or change it." He was looking at the searchlight on
   went stale during that 4-minute build and s5 took it for its own restart (which shipped the contract). Rule since:
   a scene's .h and .cpp land together. The editor lock is not a queue, so Spine waited 25 minutes to place the
   sequencer. Checked in PIE: Jump 1 (Vance, letterbox, slug), Jump 6 (Cole, raw, subtitle), Fail (scene restarts).
+
+## Nov 15 14:50 Cairo - s3-foyer: Scene 3 playable
+- `AScene3Foyer` (Take/Script/Scene3Foyer.*) + `tools/script/scene3.py` (tag script_s3): the critic stumbles down the grand stair, champagne splash, Play Along / Brush Off choice (VipAlibi), the main hall with four ice sculptures, four Pendleton rope guards with clipboards, Max's V.O., FinishScene; past the rope a guard spends the alibi or tackles (FailScene). Voices: `tools/script/scene3_audio.py` (ElevenLabs). Level saved and committed.
+- Went wrong: Live Coding crashed the editor (second time today); new Script/*.cpp files are unity-built so it can't patch them. Use Build.bat restarts only.
+- PIE checks via `Reel.Script.Jump 3`, raw keys through InputToolset.ApplyInput (keyName "One"/"Two"), teleports from Python.
