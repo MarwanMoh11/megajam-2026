@@ -3,6 +3,8 @@
 #include "Script/ScriptSequencer.h"
 #include "EngineUtils.h"
 #include "HAL/IConsoleManager.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundBase.h"
@@ -169,6 +171,9 @@ void AScriptSequencer::BeginPlay()
 	// and Tick starts the first scene when it goes.
 	PendingStart = GScriptJump > 0 ? GScriptJump : StartScene;
 	GScriptJump = 0;
+	// Playtesting a packaged build (no console): Reel.exe -Scene=7 opens on scene 7.
+	int32 CmdScene = 0;
+	if (FParse::Value(FCommandLine::Get(), TEXT("Scene="), CmdScene) && CmdScene > 0) { PendingStart = CmdScene; }
 }
 
 void AScriptSequencer::EnterScriptMode()
