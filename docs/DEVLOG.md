@@ -1677,7 +1677,8 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
 - **Went wrong:** Live Coding failed with no readable reason, and the usage limit hit mid-task. A GPU crash at frame 0
   (DXGI device removed on the first viewport present) killed the editor twice after the reboot. Starting it with
   `-d3d11` got past it. The first PIE run showed Cole standing on the trunk at the end of the drag, and the vault's safe
-  half-blocking the way out of the room. Both are fixed in code and the set script. The helpers were renamed with an
+  half-blocking the way out of the room. The safe is moved (route check clear); the drag now stops short and Cole
+  sidesteps to the trunk (Live Coded, not yet seen in play). The helpers were renamed with an
   S6 prefix after the unity build clashed on generic names.
 
 ## Nov 15, ~22:55 Cairo: Scene 8 escape plays end to end
