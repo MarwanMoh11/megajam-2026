@@ -70,11 +70,11 @@ CUT = (DOOR[0] - 62.0, DOOR[0] + 62.0)
 CUT_TOP = 235.0
 CUT_TAG = TAG + ":wallcut"
 for w in C.actors():
-    if CUT_TAG in C.tags(w):
+    if any(t.startswith(CUT_TAG) for t in C.tags(w)):
         for c in w.get_components_by_class(unreal.PrimitiveComponent):
             c.set_visibility(True, False)
-            c.set_collision_enabled(unreal.CollisionEnabled.QUERY_AND_PHYSICS)
-        C._set_tags(w, [t for t in C.tags(w) if t != CUT_TAG])
+            c.set_collision_profile_name([t for t in C.tags(w) if t.startswith(CUT_TAG + "=")][0].split("=", 1)[1] if [t for t in C.tags(w) if t.startswith(CUT_TAG + "=")] else "BlockAll")
+        C._set_tags(w, [t for t in C.tags(w) if not t.startswith(CUT_TAG)])
 walls = [w for w in C.find("Service_South.*") if isinstance(w, unreal.StaticMeshActor)]
 if walls:
     w = walls[0]
@@ -82,8 +82,9 @@ if walls:
     wm = w.static_mesh_component.get_material(0)
     for c in w.get_components_by_class(unreal.PrimitiveComponent):
         c.set_visibility(False, False)
-        c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
-    C._set_tags(w, C.tags(w) + [CUT_TAG])
+        prof = c.get_collision_profile_name()
+        c.set_collision_profile_name("NoCollision")
+    C._set_tags(w, C.tags(w) + [CUT_TAG + "=" + str(prof)])
     out.append("cut %s %s" % (w.get_actor_label(), [round(v) for v in b]))
 else:
     b, wm = None, None
@@ -176,17 +177,22 @@ ROUTE = [
     (-1900.0, -1555.0, 0.0),    # 4 the foot of the lower flight
     (-1975.0, -1470.0, 0.0),    # 5 the door into the lobby
     (-1975.0, -1300.0, 0.0),    # 6 the lobby
-    (-1300.0, -1000.0, 0.0),    # 7 past the south pillars
-    (-1100.0, -650.0, 0.0),     # 8 east of the bench
-    (-1060.0, -270.0, 0.0),     # 9 the opening into the hall
-    (-860.0, -270.0, 0.0),      # 10 in the hall, west of the projectionist's stair
-    (-900.0, -1300.0, 0.0),     # 11 down the hall's west end
-    (-300.0, -1880.0, 0.0),     # 12 the staff door
-    (-300.0, -2200.0, 0.0),     # 13 through it, into the backstage corridor
-    (1700.0, -2300.0, 0.0),     # 14 east down the corridor: the chase
-    (1700.0, -2750.0, 0.0),     # 15 through the prop store door
-    (1325.0, -2900.0, 0.0),     # 16 between the crates, to the fire exit
+    (-1150.0, -1180.0, 0.0),    # 7 south of the guests at the cocktail table (x -1397..-1202, y -1110..-945)
+    (-1130.0, -800.0, 0.0),     # 8 up their east side
+    (-1320.0, -680.0, 0.0),     # 9 west of the bench (x -1230..-1170) and the planter
+    (-1320.0, -150.0, 0.0),     # 10 up to the opening
+    (-1000.0, -40.0, 0.0),      # 11 the opening into the hall (y -350..350)
+    (-520.0, -40.0, 0.0),       # 12 north of the S3 set piece and the projectionist's stair (to y -135)
+    (-520.0, -950.0, 0.0),      # 13 down its east side
+    (-200.0, -950.0, 0.0),      # 14 east, short of the guests at y -1110..-1012
+    (-200.0, -1300.0, 0.0),     # 15 past them
+    (-300.0, -1880.0, 0.0),     # 16 the staff door
+    (-300.0, -2200.0, 0.0),     # 17 through it, into the backstage corridor
+    (1700.0, -2300.0, 0.0),     # 18 east down the corridor: the chase
+    (1700.0, -2750.0, 0.0),     # 19 through the prop store door
+    (1325.0, -2900.0, 0.0),     # 20 between the crates, to the fire exit
 ]
+CORRIDOR = 17                                  # the route point where the corridor starts
 GUARDS_ENTER = (-1975.0, -1470.0, 0.0)         # they come down the fire stair after them
 STUMBLE_X = 500.0                              # the stumble lands in the corridor about here
 
@@ -200,7 +206,7 @@ def route_len(pts, upto=None):
 
 
 # The trail distance from the stair foot to the stumble, less the guards' starting gap (AScene8Alley.GapStart).
-_corr = route_len(ROUTE, 13) + (STUMBLE_X - ROUTE[13][0])
+_corr = route_len(ROUTE, CORRIDOR) + (STUMBLE_X - ROUTE[CORRIDOR][0])
 STUMBLE_AFTER = max(300.0, _corr - route_len(ROUTE, 5) - 1000.0)
 
 # Blockers along the flat legs: a 32 cm sphere swept 60 cm over the floor (the stair legs are not checked).
@@ -215,7 +221,7 @@ for i in range(1, len(ROUTE)):
                                                  unreal.DrawDebugTrace.NONE, True)
     hit = r[0] if isinstance(r, tuple) else r
     if hit:
-        parts = unreal.GameplayStatics.break_hit_result(hit)
+        parts = hit.to_tuple()
         who = [x for x in parts if isinstance(x, unreal.Actor)]
         loc = [x for x in parts if isinstance(x, unreal.Vector)]
         blocked.append("%d->%d %s at %s" % (i - 1, i, who[0].get_actor_label() if who else "?",
@@ -247,6 +253,9 @@ else:
         a.set_editor_property(k, unreal.Vector(*v))
     a.set_editor_property("StumbleAfter", STUMBLE_AFTER)
     a.set_editor_property("CarCueDistance", 1300.0)
+    a.set_editor_property("MinGap", 450.0)                                # just behind his follow camera's boom (360)
+    a.set_editor_property("GapEnd", 800.0)                                # corners slow him: room to spare
+    a.set_editor_property("GuardRunSpeed", 420.0)
     out.append("route %d points, %.0f m; guards from the stair foot, stumble %.0f cm after they appear"
                % (len(ROUTE), route_len(ROUTE) / 100.0, STUMBLE_AFTER))
     out.append("placed %s at %s" % (a.get_actor_label(), DOOR))

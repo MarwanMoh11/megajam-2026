@@ -728,12 +728,15 @@ void AScene8Alley::TickEscape(float DeltaSeconds, ATakeCharacter* Vance, ATakeCh
 	GuardsT += DeltaSeconds;
 
 	// The gap: they hold Target behind him, closing as the chase goes on; standing still lets them close to MinGap.
-	const bool bStill = Vance->GetVelocity().Size2D() < 60.f;
+	// They keep his pace (slow corners cost nothing); only standing still lets them run him down.
+	const float VSpeed = Vance->GetVelocity().Size2D();
+	const bool bStill = VSpeed < 60.f;
 	const float Gap = Head - LeadDist;
 	const float Target = bStill ? MinGap : FMath::Lerp(GapStart, GapEnd, FMath::Clamp(GuardsT / FMath::Max(0.1f, GapCloseSeconds), 0.f, 1.f));
-	const float Speed = FMath::Clamp(GuardRunSpeed + 1.2f * (Gap - Target), 0.f, GuardRunMax);
+	const float Base = bStill ? GuardRunSpeed : FMath::Min(VSpeed, GuardRunSpeed + 40.f);
+	const float Speed = FMath::Clamp(Base + 1.2f * (Gap - Target), 0.f, GuardRunMax);
 	LeadDist = FMath::Min(LeadDist + Speed * DeltaSeconds, FMath::Max(LeadDist, Head - MinGap));
-	if (!bOutside && Head - LeadDist < MinGap + 80.f) { StallT += DeltaSeconds; }
+	if (!bOutside && bStill && Head - LeadDist < MinGap + 80.f) { StallT += DeltaSeconds; }
 	else { StallT = FMath::Max(0.f, StallT - 2.f * DeltaSeconds); }
 	if (!bWarned && StallT > 1.2f)
 	{

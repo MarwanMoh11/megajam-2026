@@ -1574,3 +1574,14 @@ a reverse shot. `Reel.Script.Jump N` while scene N has only just started no long
   s7-fight and s8-escape before the build.
 - **Went wrong:** the restarted editor sat on its splash for minutes. Its startup `Build.bat -Mode=ValidatePlatforms`
   waits on the UnrealBuildTool mutex behind every session's snapshot compile check.
+
+## Nov 15, ~20:30 Cairo: Scene 8 is a played escape (s8-escape)
+Marwan: no teleport out the back, make them actually escape, running, a guards' chase in the hallway. Scene 8 now opens in
+the security room where Scene 7's fight ends. Cole kicks in with a smoke grenade ("Max is out back! Move!") and leads.
+Vance runs 103 m of real building (fire stair, lobby, hall, staff door, backstage corridor, prop store) to a fire exit
+with a real opening cut in the wall, out into the rainy alley and the car. Three armed guards (new AScene8Chaser) run his
+own trail with a closing gap and fire muzzle flashes, tracers and sparks beside him; they never hit him. A stumble in the
+corridor lets them close; standing still means Caught. Agreed with s7-fight (start spot), s7-route (route), s6-backstage
+(Cole rigs the prop store door) and s8-car-mirror (their finale API in the Mirror beat). What went wrong: the autopilot
+PIE run got "Caught" (guard speed ignored slow corners: fixed in C++, waits for the next restart build) and stuck in the
+doorway (the old wall's collision profile came back: now cut with the NoCollision profile).
