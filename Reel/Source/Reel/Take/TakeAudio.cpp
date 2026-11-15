@@ -500,7 +500,7 @@ void UTakeAudioComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 	const bool bRolling = Director->Phase == ETakePhase::Rolling;
 	float HeartTarget = 0.f;
 	float RingTarget = 0.f;
-	if (bRolling)
+	if (bRolling && !Director->bScriptDriven)	// the old take's heartbeat/ringing never play under the script
 	{
 		HeartTarget = Director->bJulianSeen ? HeartbeatVolume : 0.f;
 		const float Composure = Director->Composure ? Director->Composure->GetComposure() : 100.f;
