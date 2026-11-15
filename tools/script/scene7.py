@@ -197,7 +197,72 @@ def scene():
             c.set_relative_scale3d(unreal.Vector(s, s, s))
             if k == "master_reel":
                 REPORT.append("reel %.0f %.0f %.0f -> scale %.2f" % (bb.max.x - bb.min.x, bb.max.y - bb.min.y, bb.max.z - bb.min.z, s))
+    REPORT.append(tune(b))
     return "scene: S7_Booth placed"
+
+
+# Booth-space camera moves found in the PIE shots (from, to, fov), and the cast's Mixamo clips swapped for their
+# SK_Mannequin copies in /Game/Take/Anim/Mocap (the YBot-skeleton clips don't play on the cast meshes).
+SHOT_TUNE = {
+    "Swap": ((-30, -340, 210), (-30, -160, 185), 45),
+    "Line": ((-140, -10, 175), (60, 300, 165), 35),
+    "Screen": ((700, 100, 120), (5188, -300, 150), 30),
+}
+MOCAP = ("Use", "Lift", "Refuse", "Talk", "Stand")
+
+
+def tune(b):
+    shots = b.get_editor_property("shots")
+    for k, (f, t, fov) in SHOT_TUNE.items():
+        sh = shots[k]
+        fv, tv = unreal.Vector(*f), unreal.Vector(*t)
+        sh.set_editor_property("location", fv)
+        sh.set_editor_property("rotation", unreal.MathLibrary.find_look_at_rotation(fv, tv))
+        sh.set_editor_property("fov", float(fov))
+        shots[k] = sh
+    b.set_editor_property("shots", shots)
+    anims = b.get_editor_property("anims")
+    swapped = []
+    for k in MOCAP:
+        a = anims.get(k) if hasattr(anims, "get") else anims[k]
+        if a is None:
+            continue
+        m = unreal.load_asset("/Game/Take/Anim/Mocap/" + a.get_name())
+        if m:
+            anims[k] = m
+            swapped.append(k)
+    b.set_editor_property("anims", anims)
+    sm = smoke_material()
+    if sm:
+        b.set_editor_property("smoke_material", sm)
+    return "tune: %d shots, mocap %s, smoke %s" % (len(SHOT_TUNE), swapped, bool(sm))
+
+
+def smoke_material():
+    """M_S7_Smoke: unlit translucent grey, soft at the edges (fresnel), for Cole's smoke puffs."""
+    path = "/Game/Take/Script/S7/M_S7_Smoke"
+    if eal.does_asset_exist(path):
+        return unreal.load_asset(path)
+    mel = unreal.MaterialEditingLibrary
+    m = unreal.AssetToolsHelpers.get_asset_tools().create_asset("M_S7_Smoke", "/Game/Take/Script/S7", unreal.Material,
+                                                                unreal.MaterialFactoryNew())
+    m.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
+    m.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+    m.set_editor_property("two_sided", True)
+    col = mel.create_material_expression(m, unreal.MaterialExpressionConstant3Vector, -400, 0)
+    col.set_editor_property("constant", unreal.LinearColor(0.33, 0.32, 0.31, 1.0))
+    mel.connect_material_property(col, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    fr = mel.create_material_expression(m, unreal.MaterialExpressionFresnel, -600, 200)
+    fr.set_editor_property("exponent", 1.5)
+    inv = mel.create_material_expression(m, unreal.MaterialExpressionOneMinus, -400, 200)
+    mel.connect_material_expressions(fr, "", inv, "")
+    mul = mel.create_material_expression(m, unreal.MaterialExpressionMultiply, -200, 200)
+    mul.set_editor_property("const_b", 0.55)
+    mel.connect_material_expressions(inv, "", mul, "A")
+    mel.connect_material_property(mul, "", unreal.MaterialProperty.MP_OPACITY)
+    mel.recompile_material(m)
+    eal.save_loaded_asset(m)
+    return m
 
 
 def shots():

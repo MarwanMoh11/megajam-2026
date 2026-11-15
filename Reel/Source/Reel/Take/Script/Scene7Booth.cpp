@@ -222,11 +222,11 @@ AScene7Booth::AScene7Booth()
 		{ TEXT("HitMed"), TEXT("/Game/Characters/Mannequins/Anims/Rifle/HitReact/MM_HitReact_Front_Med_01.MM_HitReact_Front_Med_01") },
 		{ TEXT("FallBack"), TEXT("/Game/Characters/Mannequins/Anims/Death/MM_Death_Back_01.MM_Death_Back_01") },
 		{ TEXT("FallFront"), TEXT("/Game/Characters/Mannequins/Anims/Death/MM_Death_Front_01.MM_Death_Front_01") },
-		{ TEXT("Use"), TEXT("/Game/Take/Anim/Mixamo/Clips/Use.Use") },
-		{ TEXT("Lift"), TEXT("/Game/Take/Anim/Mixamo/Clips/Lift.Lift") },
-		{ TEXT("Refuse"), TEXT("/Game/Take/Anim/Mixamo/Clips/Refuse.Refuse") },
-		{ TEXT("Talk"), TEXT("/Game/Take/Anim/Mixamo/Clips/Talk_A.Talk_A") },
-		{ TEXT("Stand"), TEXT("/Game/Take/Anim/Mixamo/Clips/StandIdle_A.StandIdle_A") },
+		{ TEXT("Use"), TEXT("/Game/Take/Anim/Mocap/Use.Use") },
+		{ TEXT("Lift"), TEXT("/Game/Take/Anim/Mocap/Lift.Lift") },
+		{ TEXT("Refuse"), TEXT("/Game/Take/Anim/Mocap/Refuse.Refuse") },
+		{ TEXT("Talk"), TEXT("/Game/Take/Anim/Mocap/Talk_A.Talk_A") },
+		{ TEXT("Stand"), TEXT("/Game/Take/Anim/Mocap/StandIdle_A.StandIdle_A") },
 	};
 	for (const FAnimPath& P : AnimPaths)
 	{
@@ -259,12 +259,12 @@ AScene7Booth::AScene7Booth()
 	StilettoInHand = FTransform(FRotator(0.f, 0.f, 0.f), FVector(14.f, 0.f, 0.f), FVector(0.25f, 0.012f, 0.03f));
 
 	// Cameras, booth space (+X to the glass, +Y north to Pendleton's door, floor at z 0).
-	Shots.Add(TEXT("Swap"), MakeShot(FVector(-90.f, -40.f, 200.f), FVector(30.f, -150.f, 190.f), 40.f));
+	Shots.Add(TEXT("Swap"), MakeShot(FVector(-30.f, -340.f, 210.f), FVector(-30.f, -160.f, 185.f), 45.f));
 	Shots.Add(TEXT("Door"), MakeShot(FVector(-150.f, -100.f, 170.f), FVector(110.f, 500.f, 110.f), 45.f));
 	Shots.Add(TEXT("Insert"), MakeShot(FVector(-130.f, 100.f, 125.f), FVector(-50.f, 40.f, 100.f), 30.f));
-	Shots.Add(TEXT("Line"), MakeShot(FVector(-55.f, 15.f, 172.f), FVector(60.f, 300.f, 160.f), 35.f));
+	Shots.Add(TEXT("Line"), MakeShot(FVector(-140.f, -10.f, 175.f), FVector(60.f, 300.f, 165.f), 35.f));
 	Shots.Add(TEXT("Alarm"), MakeShot(FVector(40.f, 330.f, 150.f), FVector(-110.f, 470.f, 140.f), 45.f));
-	Shots.Add(TEXT("Screen"), MakeShot(FVector(150.f, 150.f, 170.f), FVector(1000.f, 100.f, 60.f), 50.f));
+	Shots.Add(TEXT("Screen"), MakeShot(FVector(700.f, 100.f, 120.f), FVector(5188.f, -300.f, 150.f), 30.f));
 	Shots.Add(TEXT("Parry"), MakeShot(FVector(150.f, -200.f, 90.f), FVector(-20.f, 150.f, 140.f), 50.f));
 	Shots.Add(TEXT("ParryHit"), MakeShot(FVector(-110.f, 60.f, 110.f), FVector(30.f, -130.f, 140.f), 40.f));
 	Shots.Add(TEXT("Block"), MakeShot(FVector(60.f, -40.f, 100.f), FVector(0.f, 170.f, 160.f), 40.f));
