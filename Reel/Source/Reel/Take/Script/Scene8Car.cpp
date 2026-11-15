@@ -615,9 +615,11 @@ void AScene8Car::BeginFinale()
 		if (UAnimationAsset* A = SitAnim.IsNull() ? nullptr : SitAnim.LoadSynchronous()) { VanceBody->PlayAnimation(A, true); }
 	}
 	// The mirror turned to Vance's face (he set it so he could see himself).
-	const FVector Face = VanceBody ? S8HeadOf(VanceBody) + FVector(0.f, 0.f, 4.f)
-		: GetActorTransform().TransformPosition(PassengerSeat + FVector(0.f, 0.f, 72.f));
-	MirrorHead->SetWorldRotation((MirrorHead->GetComponentLocation() - Face).Rotation());
+	// The glass faces shot B's camera square on (aimed at his head it tilted away from us); the capture behind it
+	// is re-aimed at his eyes every tick, so the mirror shows his face whatever the glass's angle.
+	const FVector Viewer = GetActorTransform().TransformPosition(ShotBCam);
+	MirrorHead->SetWorldRotation((MirrorHead->GetComponentLocation() - Viewer).Rotation());
+	MirrorHead->SetRelativeScale3D(FVector(1.f, 1.3f, 1.3f));	// a bigger glass: more of him in the frame
 	MirrorCapture->bCaptureEveryFrame = true;
 	MirrorCapture->SetActive(true);
 	FinaleCam->SetActive(true);
