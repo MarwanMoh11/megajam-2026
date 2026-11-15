@@ -115,6 +115,8 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Scene2|Sound")
 	TObjectPtr<USoundBase> LineOpen;		// "Palm reader? Seriously?!..."
 	UPROPERTY(EditAnywhere, Category = "Scene2|Sound")
+	TObjectPtr<USoundBase> LineRetake;		// "Again. Three seconds, Vance..."
+	UPROPERTY(EditAnywhere, Category = "Scene2|Sound")
 	TObjectPtr<USoundBase> LineLock;		// "You're a French duke now..."
 	UPROPERTY(EditAnywhere, Category = "Scene2|Sound")
 	TObjectPtr<USoundBase> LineNotYet;		// "Not yet, not yet!"
@@ -132,6 +134,9 @@ public:
 	TObjectPtr<USoundBase> SfxLock;			// BZZT-LOCK
 	UPROPERTY(EditAnywhere, Category = "Scene2|Sound")
 	TObjectPtr<USoundBase> SfxToggle;
+	/** The van's idle and the rack's hum, looped while we are in the van. */
+	UPROPERTY(EditAnywhere, Category = "Scene2|Sound")
+	TObjectPtr<USoundBase> AmbHum;
 
 	// ---- AScriptScene ----
 	virtual void PostInitializeComponents() override;
@@ -168,6 +173,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextureRenderTarget2D> FeedTarget;
+	UPROPERTY(Transient)
+	TObjectPtr<class UAudioComponent> HumComp;
+	void StopHum();
 
 	/** The HUD kit (type, keycaps, stamps): a member so its runtime fonts stay referenced. */
 	UPROPERTY(Transient)

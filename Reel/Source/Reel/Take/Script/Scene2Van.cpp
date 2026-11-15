@@ -12,6 +12,7 @@
 #include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundBase.h"
+#include "Components/AudioComponent.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogScene2, Log, All);
 
@@ -150,17 +151,25 @@ void AScene2Van::BeginScene()
 	FeedCapture->SetWorldLocationAndRotation(FeedFrom, Scene2Local::LookQuat(FeedFrom, FeedAt));
 	FeedCapture->bCaptureEveryFrame = true;
 	PoseOpening(0.f);
+	StopHum();
+	if (AmbHum) { HumComp = UGameplayStatics::SpawnSound2D(this, AmbHum, 0.8f); }
 	if (GetRetakes() > 0)	// a retake skips the street: straight back to the dials (instant retry)
 	{
 		const float OpenLen = OpeningBeats.X + OpeningBeats.Y + OpeningBeats.Z + OpeningBeats.W;
 		PoseOpening(OpenLen);
 		SetPhase(EScene2Phase::Tune);
-		Say(TEXT("MAX"), TEXT("Again. Three seconds, Vance. Don't touch that glass."), LineOpen);
+		Say(TEXT("MAX"), TEXT("Again. Three seconds, Vance. Don't touch that glass."), LineRetake);
 	}
+}
+
+void AScene2Van::StopHum()
+{
+	if (HumComp) { HumComp->FadeOut(0.25f, 0.f); HumComp = nullptr; }
 }
 
 void AScene2Van::EndScene()
 {
+	StopHum();
 	FeedCapture->bCaptureEveryFrame = false;
 	Super::EndScene();
 }
@@ -327,6 +336,7 @@ void AScene2Van::TickScene(float DeltaSeconds)
 		{
 			SetPhase(EScene2Phase::Vance);
 			FeedCapture->bCaptureEveryFrame = false;
+			StopHum();
 			CutTo(EScriptPov::Vance, VanceCamera);
 			bPalmCalled = CallScene1(TEXT("PalmAccepted"));
 			if (!bPalmCalled) { Say(TEXT("BOUNCER"), TEXT("Enjoy the screening, Your Grace.")); }
@@ -355,7 +365,7 @@ void AScene2Van::DrawSceneHud(UCanvas* Canvas)
 	if (!Canvas) { return; }
 	FTakeHudKit& K = Kit;
 	K.Begin(Canvas, FPlatformTime::Seconds(), 0.f);
-	const float S = K.Px(1.f);
+	const float S = K.S;
 
 	if (Phase == EScene2Phase::Opening)
 	{
