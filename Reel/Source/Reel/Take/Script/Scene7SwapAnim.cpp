@@ -26,7 +26,7 @@ void FScene7SwapAnimProxy::PreUpdate(UAnimInstance* InAnimInstance, float DeltaS
 
 namespace Scene7SwapAnimLocal
 {
-	FCompactPoseBoneIndex Bone(const FBoneContainer& BC, const FString& Name)
+	FCompactPoseBoneIndex SwapBone(const FBoneContainer& BC, const FString& Name)
 	{
 		const int32 MeshIndex = BC.GetPoseBoneIndexForBoneName(FName(*Name));
 		if (MeshIndex == INDEX_NONE) { return FCompactPoseBoneIndex(INDEX_NONE); }
@@ -52,10 +52,10 @@ namespace Scene7SwapAnimLocal
 	/** The hand's fingers direction, knuckle line (index minus pinky) and palm facing, in component space. */
 	bool HandFrame(FCSPose<FCompactPose>& CS, const FBoneContainer& BC, const TCHAR* S, bool bRight, FVector& F, FVector& K, FVector& P)
 	{
-		const FCompactPoseBoneIndex H = Bone(BC, FString::Printf(TEXT("hand_%s"), S));
-		const FCompactPoseBoneIndex M = Bone(BC, FString::Printf(TEXT("middle_01_%s"), S));
-		const FCompactPoseBoneIndex Ix = Bone(BC, FString::Printf(TEXT("index_01_%s"), S));
-		const FCompactPoseBoneIndex Pk = Bone(BC, FString::Printf(TEXT("pinky_01_%s"), S));
+		const FCompactPoseBoneIndex H = SwapBone(BC, FString::Printf(TEXT("hand_%s"), S));
+		const FCompactPoseBoneIndex M = SwapBone(BC, FString::Printf(TEXT("middle_01_%s"), S));
+		const FCompactPoseBoneIndex Ix = SwapBone(BC, FString::Printf(TEXT("index_01_%s"), S));
+		const FCompactPoseBoneIndex Pk = SwapBone(BC, FString::Printf(TEXT("pinky_01_%s"), S));
 		if (!H.IsValid() || !M.IsValid() || !Ix.IsValid() || !Pk.IsValid()) { return false; }
 		const FVector HP = CS.GetComponentSpaceTransform(H).GetLocation();
 		F = (CS.GetComponentSpaceTransform(M).GetLocation() - HP).GetSafeNormal();
@@ -68,9 +68,9 @@ namespace Scene7SwapAnimLocal
 	void SolveArm(FCSPose<FCompactPose>& CS, const FBoneContainer& BC, const TCHAR* S, bool bRight, const FScene7SwapHand& H, float PalmOffset, float GripDegrees)
 	{
 		if (H.Alpha <= KINDA_SMALL_NUMBER) { return; }
-		const FCompactPoseBoneIndex UI = Bone(BC, FString::Printf(TEXT("upperarm_%s"), S));
-		const FCompactPoseBoneIndex LI = Bone(BC, FString::Printf(TEXT("lowerarm_%s"), S));
-		const FCompactPoseBoneIndex HI = Bone(BC, FString::Printf(TEXT("hand_%s"), S));
+		const FCompactPoseBoneIndex UI = SwapBone(BC, FString::Printf(TEXT("upperarm_%s"), S));
+		const FCompactPoseBoneIndex LI = SwapBone(BC, FString::Printf(TEXT("lowerarm_%s"), S));
+		const FCompactPoseBoneIndex HI = SwapBone(BC, FString::Printf(TEXT("hand_%s"), S));
 		if (!UI.IsValid() || !LI.IsValid() || !HI.IsValid()) { return; }
 
 		FVector F, K, P;
@@ -106,7 +106,7 @@ namespace Scene7SwapAnimLocal
 		{
 			for (int32 J = 1; J <= 3; ++J)
 			{
-				const FCompactPoseBoneIndex I = Bone(BC, FString::Printf(TEXT("%s_0%d_%s"), Finger, J, S));
+				const FCompactPoseBoneIndex I = SwapBone(BC, FString::Printf(TEXT("%s_0%d_%s"), Finger, J, S));
 				const float Deg = GripDegrees * G * (J == 1 ? 0.75f : 1.f);
 				Turn(CS, I, FQuat(K, Sign * FMath::DegreesToRadians(Deg)));
 			}
@@ -114,7 +114,7 @@ namespace Scene7SwapAnimLocal
 		// The thumb closes a little across the palm.
 		for (int32 J = 2; J <= 3; ++J)
 		{
-			const FCompactPoseBoneIndex I = Bone(BC, FString::Printf(TEXT("thumb_0%d_%s"), J, S));
+			const FCompactPoseBoneIndex I = SwapBone(BC, FString::Printf(TEXT("thumb_0%d_%s"), J, S));
 			Turn(CS, I, FQuat(F, (bRight ? -1.f : 1.f) * FMath::DegreesToRadians(GripDegrees * 0.4f * G)));
 		}
 	}
@@ -145,8 +145,8 @@ bool FScene7SwapAnimProxy::Evaluate(FPoseContext& Output)
 		const FQuat Q(Pose.LeanAxis.GetSafeNormal(), FMath::DegreesToRadians(Pose.Lean / 3.f));
 		for (const TCHAR* Name : { TEXT("spine_01"), TEXT("spine_03"), TEXT("spine_05") })
 		{
-			FCompactPoseBoneIndex I = Bone(BC, Name);
-			if (!I.IsValid() && FCString::Strcmp(Name, TEXT("spine_05")) == 0) { I = Bone(BC, TEXT("spine_02")); }
+			FCompactPoseBoneIndex I = SwapBone(BC, Name);
+			if (!I.IsValid() && FCString::Strcmp(Name, TEXT("spine_05")) == 0) { I = SwapBone(BC, TEXT("spine_02")); }
 			Turn(CS, I, Q);
 		}
 	}
@@ -154,9 +154,9 @@ bool FScene7SwapAnimProxy::Evaluate(FPoseContext& Output)
 	// The head looks (neck takes 40%, the head the rest), at most 70 degrees off the chest's facing.
 	if (Pose.LookAlpha > KINDA_SMALL_NUMBER)
 	{
-		const FCompactPoseBoneIndex Neck = Bone(BC, TEXT("neck_01"));
-		const FCompactPoseBoneIndex Head = Bone(BC, TEXT("head"));
-		const FCompactPoseBoneIndex Chest = Bone(BC, TEXT("spine_05")).IsValid() ? Bone(BC, TEXT("spine_05")) : Bone(BC, TEXT("spine_03"));
+		const FCompactPoseBoneIndex Neck = SwapBone(BC, TEXT("neck_01"));
+		const FCompactPoseBoneIndex Head = SwapBone(BC, TEXT("head"));
+		const FCompactPoseBoneIndex Chest = SwapBone(BC, TEXT("spine_05")).IsValid() ? SwapBone(BC, TEXT("spine_05")) : SwapBone(BC, TEXT("spine_03"));
 		if (Head.IsValid() && Chest.IsValid())
 		{
 			// The chest's facing: the component's forward (+Y for the mannequin) carried by the lean.
