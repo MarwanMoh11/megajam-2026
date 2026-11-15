@@ -5,7 +5,7 @@ and the one editor (`tools/editor_lock.py`). His words are kept as written.
 
 | Session | Notes |
 |---|---|
-| `s12-exterior` (Scenes 1-2) | "Remove the massive unrealistic signs like invited guests and quit in the entrance." "Fix hi for the cars in the bottom right looks ugly." "Make the van look better." |
+| `s12-exterior` (Scenes 1-2) | "Remove the massive unrealistic signs like invited guests and quit in the entrance." "Make the van look better." |
 | `s3-foyer-hall` | "I can't interact with the bidder reception." "Right as I enter the main hall right above the entrance is the area where the projector is stored with floating stairs? Fix that." |
 | `s4-catwalk` | "Remove the drone, it's useless and makes no narrative sense." "Loosen lamp is not obvious to what it is and the whole catwalk system deserves a proper overhaul, but the concept is great and the execution needs tweaking." "When I press space to make Vance go he has no animations and he phases through props." |
 | `s5-auditorium` | "Pendleton's mouth doesn't move correctly, ruining immersion." "Add a more seamless transition between the Pendleton speech and cutting back to the main character, more dialogue as to where he is going; it feels like he just teleported silently to the side, there is no cohesion." "The screen just keeps counting down then shows frames: add a looping film there that's longer, maybe some fun Easter eggs." "Make the sneaking to the door easier: the guard should look away for longer and it shouldn't be a beat thing at all." |
@@ -18,4 +18,4 @@ and the one editor (`tools/editor_lock.py`). His words are kept as written.
 | `chars-locomotion` | "Add animations to everyone, walking animations etc." "Add running in the game only in the scenes that really need it." "Render proper gun models for them." "Pendleton's arms are non-existent in the cutscene or not rigged properly." |
 | `stealth-ai` | "Add proper NPC logic like real stealth games." |
 | `sound` | "There is something terribly wrong with the sound design, I suspect it's a bug." "Music cut off completely after the first dialogue option." "No murmurs, no sound effects, nothing at the main hall point, just the voices dialogue." "The hacker should have a different sound from the bouncer." |
-| `hud-guidance` | "The dialogue option text overflows outside the box." "There is a weird floating black button in front of my main character." "There should be guidance as to where to go next, visually natural ones as well." |
+| `hud-guidance` | "The dialogue option text overflows outside the box." "There is a weird floating black button in front of my main character." "There should be guidance as to where to go next, visually natural ones as well." "Fix UI for the cards in the bottom right, looks ugly" (typed as "Fix hi for the cars"; corrected by Marwan). |
