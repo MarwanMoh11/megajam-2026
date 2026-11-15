@@ -103,6 +103,17 @@ namespace
 		Vance->SetActorRotation(R);
 	}
 
+	// A cast character's dressed body is a separate actor attached to it (ACastMember), which
+	// SetActorHiddenInGame does not reach: hide or show the attached actors with it.
+	void SetHiddenWithKids(AActor* A, bool bHide)
+	{
+		if (!A) { return; }
+		A->SetActorHiddenInGame(bHide);
+		TArray<AActor*> Kids;
+		A->GetAttachedActors(Kids, true, true);
+		for (AActor* K : Kids) { if (K) { K->SetActorHiddenInGame(bHide); } }
+	}
+
 	void ShowCarBody(AActor* Car, bool bShow)
 	{
 		if (!Car) { return; }
@@ -273,7 +284,7 @@ void AScene8Alley::FreeCast()
 	for (ATakeCharacter* C : { GetPovCharacter(), GetCole() })
 	{
 		if (!C) { continue; }
-		C->SetActorHiddenInGame(false);
+		SetHiddenWithKids(C, false);
 		C->SetActorEnableCollision(true);
 		if (UCharacterMovementComponent* M = C->GetCharacterMovement())
 		{
@@ -360,14 +371,14 @@ void AScene8Alley::Enter(EScene8Beat NewBeat)
 	case EScene8Beat::Dive:
 		if (Vance)
 		{
-			Vance->SetActorHiddenInGame(true);
+			SetHiddenWithKids(Vance, true);
 			Vance->SetActorEnableCollision(false);
 			if (UCharacterMovementComponent* M = Vance->GetCharacterMovement()) { M->DisableMovement(); }
 		}
 		if (Car) { Car->SetRiders(true, true); }
 		if (ATakeCharacter* Cole = GetCole())
 		{
-			Cole->SetActorHiddenInGame(true);
+			SetHiddenWithKids(Cole, true);
 			Cole->SetActorEnableCollision(false);
 			bColeIn = true;
 		}
@@ -399,7 +410,7 @@ void AScene8Alley::SeatVance()
 	if (!Vance || !Car) { return; }
 	if (UCharacterMovementComponent* M = Vance->GetCharacterMovement()) { M->DisableMovement(); }
 	Vance->SetActorEnableCollision(false);
-	Vance->SetActorHiddenInGame(false);
+	SetHiddenWithKids(Vance, false);
 	const float Half = Vance->GetCapsuleComponent() ? Vance->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() : 90.f;
 	const FVector Seat = Car->GetPassengerSeatWorld();
 	Vance->SetActorLocationAndRotation(Seat + FVector(0.f, 0.f, Half - SeatDrop),
@@ -516,7 +527,7 @@ void AScene8Alley::TickScene(float DeltaSeconds)
 			if (FVector::Dist2D(Cole->GetFeetLocation(), Back) < 120.f)
 			{
 				bColeIn = true;
-				Cole->SetActorHiddenInGame(true);
+				SetHiddenWithKids(Cole, true);
 				Cole->SetActorEnableCollision(false);
 				Car->SetRiders(false, true);
 			}
