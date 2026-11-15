@@ -57,7 +57,7 @@ public:
 
 	/** Headlights' intensity (candelas) at rest, and on the flare when the car rounds the corner. */
 	UPROPERTY(EditAnywhere, Category = "Scene8")
-	float HeadlightCd = 9000.f;
+	float HeadlightCd = 2500.f;
 
 	UPROPERTY(EditAnywhere, Category = "Scene8")
 	float FlareCd = 60000.f;

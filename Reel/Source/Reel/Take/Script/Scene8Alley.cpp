@@ -16,6 +16,7 @@
 #include "Engine/TargetPoint.h"
 #include "Engine/World.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/Controller.h"
 #include "Kismet/GameplayStatics.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
@@ -93,6 +94,15 @@ namespace
 
 	// The generated GT is a closed shell (its windows are only texture): the mirror camera sits inside it, so the body
 	// is hidden for the mirror shot and shown again on a reset. Only a body whose mesh loaded is shown.
+	// Seated, Vance faces the way the car does. The character turns with its controller's rotation, so that turns too.
+	void FaceForward(APawn* Vance, AActor* Car)
+	{
+		if (!Vance || !Car) { return; }
+		const FRotator R(0.f, Car->GetActorRotation().Yaw, 0.f);
+		if (AController* C = Vance->GetController()) { C->SetControlRotation(R); }
+		Vance->SetActorRotation(R);
+	}
+
 	void ShowCarBody(AActor* Car, bool bShow)
 	{
 		if (!Car) { return; }
@@ -394,6 +404,7 @@ void AScene8Alley::SeatVance()
 	const FVector Seat = Car->GetPassengerSeatWorld();
 	Vance->SetActorLocationAndRotation(Seat + FVector(0.f, 0.f, Half - SeatDrop),
 		FRotator(0.f, Car->GetActorRotation().Yaw, 0.f), false, nullptr, ETeleportType::TeleportPhysics);
+	FaceForward(Vance, Car);
 	// The rear-view mirror looks back at his eyes (about 60 cm over the seat).
 	const FVector Face = Seat + FVector(0.f, 0.f, 60.f);
 	if (MirrorCam)
@@ -587,6 +598,7 @@ void AScene8Alley::TickScene(float DeltaSeconds)
 			const FVector Shake(0.f, FMath::Sin(BeatT * 31.f) * 0.35f, FMath::Sin(BeatT * 23.f) * 0.5f);
 			const FVector At = Car->GetMirrorWorld() + Shake;
 			MirrorCam->SetActorLocationAndRotation(At, (Face - At).Rotation());
+			FaceForward(Vance, Car);	// the mouse must not turn him away from the mirror
 		}
 		if (!bTie && BeatT >= TieAt)
 		{
