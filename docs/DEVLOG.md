@@ -953,3 +953,79 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
     hours with the integration half done (editor built, level not rebuilt).
   - **Mixamo:** computer use could not drive Chrome (browsers are read-only for it), so the Claude in Chrome extension
     was used instead.
+
+## Sun Nov 15, 01:35 - 03:40 (Cairo): second feedback, wave 3, four integration rounds
+
+- **Marwan's second feedback (01:35), from the build the set agents had saved before the integration:** (1) seated
+  guests hover above the chairs and a grey box pokes out under one; (2) the band ignores the real props: the old box
+  piano is still there, the bassist stands off the bass, the pianist is not at the keys, the drummer is not on the kit;
+  (3) the follow spot is rigid and its ray goes through solid objects; the player can skip the queue; the line "who
+  shined the light" comes too late and off-screen, with nobody standing at the detector; (4) in the lobby it is unclear
+  who talks, who to greet and what to do, and the bidding desk sits off to the side; (5) the lobby's picture frames are
+  empty flat colours and clip into the wallpaper; (6) the hall has a huge gap between the rows and the screen, and he
+  can walk up to the reel because the guards are distracted: the guests should see him too, an old film should play on
+  the screen, and the player should have to use the Cut (his reference: the "Lights Out" chapter of Uncharted 4);
+  (7) the balconies and terraces are far too low. At 02:25 he added: Julian's arms hang out from his body.
+- **What changed:**
+  - **The hall is an auction in progress:** rows of chairs from the dais back toward the lobby doors with a centre
+    aisle, a dressed dais (podium, the case on a runner, a LOT 41 sign), the bar, the band and a TV riser behind or
+    beside the rows, a standing-room rank and cocktail tables at the reception. Everything over the hall became a
+    catwalk level hung from the roof at 9 m (open rails, no legs), reached through a closed projection box over the
+    lobby doors.
+  - **The heist:** in house light the front floor and the dais are in view of the room. After 1 s the nearest guests
+    turn and point and a murmur plays; at 2.5 s it is the blooper "THE ROOM SAW HIM". The only way across is the dark:
+    Maya, on the catwalk, throws the house dimmer, the old film plays on the screen, the guests look at it, the hall
+    goes to 8% for 16 s, and Julian swaps the reel in the dark. Vance finding the dummy starts the alarm; the getaway is
+    unchanged. Vex gets one beat, at the winch.
+  - **The opening:** Julian waits in the queue and an invisible wall holds him behind the guest ahead ("Wait your
+    turn, pal"). A doorman stands by the detector, in shot, and refuses him; the follow-up is the slow-time aside, the
+    glance to Maya, the searchlight, and the doorman turning to the light with "Who turned that light on?!".
+  - **The lobby:** the desk and paddle board moved onto the way in; a clerk turns, raises a hand and greets; the camera
+    eases to him once; one goal line.
+  - **Cast:** seated guests fitted to their chairs (77 of 77 checked), the band at the real props, 28 Mixamo clips
+    retargeted onto the mannequin for the seated guests and the band, Julian's arms in at his sides.
+  - **Pictures:** 16 pictures rendered from our own sets and cast, put into 41 frames, and an old film material for the
+    screen. **Lighting:** a pass over the street, lobby, side rooms and hall (about 67 new lights), brighter guard
+    torch and drone searchlight. **Follow spot:** it swings on a spring and its beam is traced and stops at what it
+    hits. **Voices:** 22 new lines and the room's murmur, voiced and imported.
+- **How the agents were run:** the orchestrator (Claude Fable) only planned, relayed and committed. Seven Claude Opus
+  agents at high effort each owned their files: stage (hall layout, catwalk), heist2 (the room watch, dimmer, film,
+  the Cut), opening (queue, doorman, lobby), cast2 (seats, band, arms), spot (follow spot and devices), pictures,
+  and a lighting agent; the earlier time and mocap agents finished their parts. One integrator agent did all the editor
+  builds and level rebuilds, in rounds A to D (about 01:55, 02:25, 03:08, 03:32). An agent got into a round by writing
+  `ready\<agent>.txt` after a clean game-target compile check (run with the editor open) and a clean re-run of its
+  level script; the editor was shared through the lock file. Agents judged their work in play, not in captures.
+- **Results:** round D at 03:32, editor target built in 50 s, level rebuilt (223 guests, 132 seated). `t_s3b` (the heist)
+  and `t_full` both reach PRINT IT: `t_s3b` "exit=SIDE grade=DIRECTOR'S CUT time=46.7 cuts=11 bloopers=2"; `t_full`
+  "exit=TRAP grade=ROUGH CUT time=142.8 cuts=14 bloopers=0" (queue, gate, desk, floor, Vex at the winch, the trap).
+  Standing at the front-row mark for 20 s raised no blooper. The follow spot fired at a guard from Maya's post blinded
+  him for 4 s. No missing assets in the play log. Nobody has yet listened to the new voices at normal speed.
+- **What went wrong:**
+  - Scene captures come out near black here, so everything had to be judged in play; the lit interiors and the dark
+    dais were first read from unlit shots.
+  - `build_auction.py` ended by running the overlay scripts before `import_props` placed the props, which undid the
+    front's stanchion removals. The last line was dropped and the order is now written down.
+  - Round A crashed the editor in `build_cast.py`: `ACastMember::FitSeat` indexed an empty pose array from
+    `OnConstruction`. The integrator made it return early and fit the seat in play.
+  - The follow-spot agent's marker came after round B was built, so round B had its code as it stood at 02:11.
+  - The follow-spot beam stopped at an invisible collision wall along the catwalk rail (z 900-1060), not at the guard;
+    fixed by skipping the first 1.5 m of the trace.
+  - The integrator's trimmed heist script skipped Vex's walk to the winch in round C, so the trap never opened and
+    PRINT IT was not reached until round D.
+  - Julian's "arms out" was not the skeleton (the bind matched the mannequin within 2 degrees): the wide jacket and the
+    rigid open hands read as held out. The fix is a rest-arms layer on the hero meshes. The grey camouflage patches on
+    his suit were the mannequin's tint materials still painted over the hero mesh.
+  - In round C the guard saw Julian at the place the goal line sent him (the front-row place) on bar 9, every time,
+    with composure at zero by bar 10. In round D he stood at the front-row mark for 20 s with no blooper (the guard
+    spotted him once during the warp in); the cause was not isolated.
+  - In round C the dais stayed visibly lit when the house went to 8%. The lighting agent made its dais lights plain
+    lights that the dimmer takes, and in round D the dais was dark ("72 house lights to 8%").
+  - The old film played sideways on the screen (stills rotated 90 degrees, two copies with a frame line between). It
+    was being fixed at the time of writing.
+  - After the first re-stage the rear rows were mostly empty chairs; the next pass cut the chairs from 560 to 142
+    instead of adding guests, and moved the TV riser off the centre line.
+  - Two lines flashed in the same frame in the lobby, a key pressed during a cut flight was dead, and cutting back
+    without firing the light moved the tutorial on; opening fixed these in its round.
+  - The doorman at first reacted to the beam's position mid-swing, 44 m away; the fix (react to where it settles) waits
+    for the next build.
+  - The orchestrator's time estimates for the rounds ran ahead of the clock.

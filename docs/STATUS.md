@@ -7,6 +7,141 @@ fixed cameras and hard cuts: a whole take plays from the street to PRINT IT, wit
 first full take is played on the build with the look. Next: **gate 2**, Marwan plays a full take cold. Theme:
 **Director's Cut**.
 
+## The QA pass as built, Nov 14-15 (read this first: it overrides the sections below where they differ)
+
+Marwan played the build on Nov 14 and wrote 22 QA notes, then a second round of feedback on Nov 15 at 01:35 (see
+`docs/DEVLOG.md`, two entries). The work is in the repo (local commits up to 3aceae9 at 03:40; check `git log` for
+later ones). State at the end of integration round D (Sun 03:32): the editor target builds and both scripted tests reach
+PRINT IT. Notes from the agents are in `C:\Jam\Builds\qa\REPORTS.md`.
+
+### The game, scene by scene, as a player now meets it
+- **Title card:** a new legend and controls row.
+- **Scene 1, the queue:** Julian starts third in the line outside the hotel. Guests step into the scanner one by one
+  and the doorman waves each through. An invisible wall that blocks only characters holds Julian behind the guest
+  ahead; pushing makes that guest turn ("Wait your turn, pal"). His turn comes about 7 s into the first take. A doorman
+  stands beside the detector, in shot, facing the line, with a small lamp on him, and refuses Julian with the stop hand.
+- **The first switch:** Julian's aside, then slow time, then the camera glances to Maya and the tutorial teaches [2].
+  Maya's searchlight aims into the arch. That frame the doorman turns to the light and says "Who turned that light
+  on?!" and the camera pans onto him. Cutting back without firing returns the tutor to [2]. A key pressed during the
+  cut flight waits and fires on landing. The searchlight is not among Maya's options from Scene 2.
+- **The lobby:** the reception desk and paddle board stand on the way in, centred. The clerk turns, raises a hand and
+  greets; the camera eases to him once per session; one goal line (sign in at the desk); on the desk mark Julian lifts
+  paddle 41 and the clerk answers.
+- **The great hall:** an auction in progress. Rows face the dais, a centre aisle, standing guests at the row ends,
+  the reception's cocktail tables, the bar, the band (grand piano, drums, upright bass, trumpet, singer) and the TV
+  riser (off the centre line, behind the rows). The dais has the podium, the case on a runner and a LOT 41 sign; the
+  screen is 10 x 7.3 m. A guard patrols the aisle.
+- **The catwalk:** everything over the hall is one technical level hung from the roof at 9 m (deck z 900, open rails,
+  no legs). The way up is a closed projection box over the lobby doors. Maya, Vex and the devices (follow spot,
+  banner, pyro, dimmer, projector) are up there.
+- **The heist, in order:** (1) Julian walks the reserved aisle to the front rows; a mark, THE FRONT ROW (3100,-60),
+  is somewhere he can stand as long as he likes. (2) In house light, on the front floor or the dais, the three nearest
+  guests glance at once; at 1 s 14 heads turn, two point, a murmur plays and Vex teaches ("Maya: take the house lights
+  down"); at 2.5 s it is the blooper THE ROOM SAW HIM. Being seen halfway through the lift or the swap counts too.
+  (3) [2] Maya throws the house dimmer: the old film plays on the screen, every guest looks at it, the house goes to
+  8% for 16 s, held while Julian's hands are on the keycard or the case. (4) [1] Julian lifts the keycard and swaps
+  the reel for the dummy; the house comes up, Vance finds it, the alarm starts, the getaway is unchanged (Vex at the
+  winch opens the trap).
+- **Cast:** about 220 guests, 132 seated on the cushions, feet down; the band at the real props; the leads are Rodin
+  models skinned to the mannequin skeleton; Julian's arms rest at his sides.
+
+### What replaced what
+- **The HUD:** minimal (`bMinimalHud`). One prompt lane at the bottom (refusal, flashed key, mark action, taught cut
+  key, Use), a goal line that fades. No composure meter: stress is shown by a screen wash, a closing vignette pulled
+  away from the watcher who holds him, edge burn and a pulse, with a side glow toward that watcher.
+- **Sight:** no red frames, no T marks, no dotted lines (`bDrawnSightOverlays` false). Light instead: a torch pool on
+  each guard that swings onto Julian when it holds him, haze and a lens glint on the drone, red and green lamps on the
+  scanner, warm pools on the marks.
+- **The look:** the film filter keeps colour (saturation 0.62, a split tone, a muted period palette) and stays grainy
+  (`FilmColour 0` = the old monochrome).
+- **Sound:** the band's turn warnings play only when their watcher is in range, with cooldowns, 8 more variants, small
+  jitter and never the same phrase twice running (`bSmartWarnings`). The metronome and all beat pulses stay gone.
+- **Slow time:** the music is held (low-passed, ducked) and rejoins on a beat; used for the teaching beats.
+- **Pictures:** 16 pictures rendered from our own sets and cast fill 41 lobby frames and the rooms' canvases; both
+  street poster cases show a poster; an old film (`M_OldFilm`: leader, stills, flicker, scratches) plays on the
+  screen.
+- **Devices:** full models with a pilot lamp and a warm pool, a lever, crank or rope that moves on the press frame; the
+  follow spot and searchlight swing on a spring and the beam is traced and stops at what it hits.
+- **Lighting:** a pass of about 67 lights over the street, lobby, side rooms and hall; a stronger guard torch (3000 cd)
+  and drone searchlight (4000 cd).
+- **Voices:** 104 manifest sounds in `/Game/Take/Audio`, including 22 new lines and the room's murmur.
+
+### Lifted from the kill list by Marwan's notes
+Slow motion (the first switch and the heist), guests that walk (the queue), animations beyond the idle (28 Mixamo
+clips on the mannequin, the band at its props), and generated and rigged character models (Julian, Maya and Vex from
+Rodin, skinned to the mannequin skeleton). Colour is allowed; the period is 1940s noir. Where this contradicts the kill
+list or the sections below, the notes win.
+
+### The level pipeline, in order (`build_auction.py` no longer runs `run_all` itself)
+1. Editor closed: `Build.bat ReelEditor Win64 Development` (50-104 s), start the editor.
+2. `build_auction.py` (its chain runs `dress_auction.py` and `build_cast.py`; about 62 s).
+3. `tools/build_frames.py`.
+4. `import_props.py` with `PROPS_ONLY=("materials","place","check")` (about 32 s).
+5. `tools/sets/run_all.py`: front, hall, rooms, devices, build_heroes, pictures, lights (about 100 s); save.
+Order matters: `run_all` before `import_props` undoes the front's stanchion removals. Game-target compile check with the
+editor open: `Build.bat Reel Win64 Development`. Overlays are re-runnable and tagged (`set_hall`, `set_rooms`,
+`set_pictures`, `set_lights`). Hall positions come from `tools/sets/hall_zones.json`; seats from `hall_seats.json`.
+
+### The scripted tests (shots dir `C:\Jam\Builds\shots`)
+- `t_s3b` (the heist): PASS in round D, "PRINT IT exit=SIDE grade=DIRECTOR'S CUT time=46.7 cuts=11 bloopers=2".
+- `t_full` (queue, gate, desk, floor, Vex at the winch, the trap): PASS, "exit=TRAP grade=ROUGH CUT time=142.8 cuts=14
+  bloopers=0".
+- In `t_s3b`'s second blooper the reason logs as COMPOSURE_ZERO and the test does not check it. The tests must walk
+  Maya to the dimmer first, or set `bHeistTrick` off.
+
+### Main switches
+| Area | Switch |
+|---|---|
+| Opening | `AQueueLine`: `bHoldLine`, `bDoorman`, `bLobbyGreet`, `bReactAtRealSpeed`; director `bQueueScene1` |
+| Heist | director `bHeistTrick`; `ARoomWatch` `bRoomWatches`, `NoticeSeconds`, `SeenSeconds`; dimmer `PreviewSeconds`, `KeepNearRadius` |
+| HUD | `bMinimalHud`; Take, Composure and Film `Stress` groups |
+| Sight | director `bDrawnSightOverlays`, `FrameDisplay`; guard `SightLightEdge`, `SightLightMaxConeDegrees` |
+| Look | director `FilmColour`; `tools/build_look.py`; `tools/sets/lights.py` `AREAS`, `SCALE`, `HALL` |
+| Sound | `bSmartWarnings`, `bSlowTimeEnabled`, `MinSlowScale`, `MaxSlowHoldSeconds` |
+| Cast | console `Reel.Cast.Acting 0`; `bHeroRestArms`, `bBandClips`; `build_cast.py` `BAND_CLIPS` |
+| Devices | follow spot `bBeamStopsAtHit`, `BeamNearSkip`, `SwingFrequencyHz`; `tools/sets/devices.py` |
+| Sets | `tools/sets/*.py` `ON` / `HALL_OFF` / `ROOMS_ONLY`; remove a script from `run_all.py` to drop its overlay |
+
+### Not done / unverified
+- Follow spot: the beam landing on a person was only seen in logs ("SPOT beam lands on PatrolGuard_3", guard blinded
+  4 s); swing not confirmable from stills; frame time with the shadowed beam not measured; the searchlight after the
+  rail fix; hall_zones.json lists a second follow spot at (1550,-150) with no actor.
+- The old film plays sideways on the screen (stills rotated 90 degrees, two copies): being fixed at the time of writing.
+  The leader countdown was not seen.
+- Opening: the doorman's reaction to where the beam settles (not mid-swing) compiles but needs the next build; the beam
+  pool in the arch is unconfirmed; `build_cast.py` still places the clerk at the old desk (suggested `STAFF_AT` =
+  (-2050, 630)); Julian's answer to the clerk is not logged.
+- Cast: band clips judged in stills only; no sliding check over a full clip loop; Julian's bow untested; Vex's arms
+  unconfirmed; every guest is still the engine mannequin with tints, hats and skirts, so note 4 is met by costume and
+  colour only; the leads stand arms-out in the group stills (re-render if time).
+- Sound: nobody has listened to the new voices, Maya's spoken "E.", the slow-time rejoin or the band at normal speed
+  ("band: music beats off the clock, reseek" logs while the editor ran slowly in the background; confirm at full speed).
+  Unused: `vo_chief_nomatch`, `vo_chief_light`.
+- Lighting: the guard holding Julian and the dimmer's effect on the new lights not watched in play; GPU time measured at
+  48 lights (+0.35 ms), not at 67; the drone cue; street sedans still mostly silhouettes; backstage around Vex dark.
+- Look and sets: Rooms not shot lit; new pawn-blocking props unchecked in play; the dock shutter cannot open; the fire
+  stairs got only small wall items; the three lobby cards may show halos; lettering on pictures is the engine's default
+  sans; the Wave 1 look items (front's stanchions gilt, exit signs gold).
+- Heist: Scene 2's gold mark on the dais can draw the eye in light; the wrong way (seen in light) not re-run after round
+  D; no dummy reel prop, no lever or projector sound; the guard saw Julian at the front-row place every time in round C
+  (not at the mark in round D) and the cause was not isolated.
+- Scripts and packaging: the second pass of the scripted tests (blooper reason), the Shipping package, zip and push for
+  this pass are not done.
+
+### Only Marwan can judge
+- Feel: queue pace and wait (7 s), the slow-time scale and glance framing, how much the lobby camera ease steers the
+  walk, the swap's 1.2 s, 16 s of dark, 1 s / 2.5 s of the room watch, the front row's safe feel.
+- Look: colour saturation 0.62 and the warm/cool balance, how dark 8% reads and whether the case is findable with its
+  pool dimmed, the film's brightness and pacing, the burgundy hall, the stress effect strengths, pictures' treatments,
+  torch shaft and drone haze strength, the room's brightness at 1.8x, the street's silhouetted cars, the clerk's key,
+  how full the room reads, the riser's place, the projection box, the 8 m shutter drop, Maya's climb (+2.5 s).
+- Animation: whether the acting reads natural for a black-tie crowd (Drums is a rock take, Bass a bass-guitar take),
+  seated women without a skirt shape, the heroes' rigid open hands, rest-arm angles, skin-shell faces, gown shapes.
+- Sound: variants and how often warnings play, slow-time muffle and rejoin, the murmur, the pulse against an audio
+  heartbeat, whether the new lines land, the doorman's hand-to-the-glare gesture (it is the stop-hand pose), speaker
+  lamps.
+- Devices: follow spot swing weight and overshoot, shaft and pool strength, device sizes and pilot brightness.
+
 ## Gate 1 answer, Nov 13 about 18:15: Marwan changed three rules
 
 Marwan asked for three changes after the test box. **Where this section differs from the text below, this section
@@ -1179,6 +1314,8 @@ The rules live in one director actor, `ATakeDirector`, which ticks after the pla
 | Finish | Snap to black, clapper, PRINT IT, the sting, your director's cut |
 
 ## Kill list (final)
+
+**Lifted by the QA pass (Nov 14-15):** slow motion, walking guests, animations beyond the idle, and modelled and rigged leads are back in; see "The QA pass as built" at the top. The camera wheel and flights between characters below still stand.
 
 **Cut in the subtraction pass:**
 - The bluff: it was Marwan's "live AI interrogation". It would come back pre-voiced if wanted.
