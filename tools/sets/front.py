@@ -41,7 +41,7 @@ INSIDE = ((-2750.0, 1150.0), (-2600.0, 1250.0), (-2450.0, 1150.0))   # where sca
 KEEP = [(START[0], START[1], 0.0),
         (SCAN_X - 270.0, 300.0, 0.0), (SCAN_X, SCAN_Y, 0.0),       # the scanner's mark and gate
         (LX0 - T - 70.0, 0.0, 0.0), (VOID_X0 + 20.0, 0.0, 0.0),    # the doorman, the chief
-        (-2200.0, 740.0, 0.0),                                      # the desk mark
+        (-2430.0, 630.0, 0.0),                                      # the desk mark (W3 opening: moved with the desk)
         (TERRACE_X0 + 55.0, SCAN_Y, F2), (TERRACE_X0 + 25.0, SCAN_Y + 150.0, F2)] + \
     [(x, y, 0.0) for (x, y) in INSIDE]
 # Routes on the ground floor (polylines): the queue (front first, then along the kerb), the guests' way in through the
@@ -50,7 +50,7 @@ ROUTES = [[(SCAN_X - 270.0, 300.0), (SCAN_X - 355.0, 315.0), (SCAN_X - 440.0, 32
            (PAVE_X0 + 85.0, 790.0)],
           [(SCAN_X - 90.0, SCAN_Y), (SCAN_X + 130.0, SCAN_Y), (FRONT + 160.0, SCAN_Y + 60.0), INSIDE[0]],
           [(FRONT + 160.0, SCAN_Y + 60.0), INSIDE[1]], [(FRONT + 160.0, SCAN_Y + 60.0), INSIDE[2]],
-          [(LX0 + 130.0, 330.0), (-2200.0, 740.0), (LX1, 300.0)], [(-2200.0, 740.0), (LX1, -300.0)]]
+          [(LX0 + 130.0, 330.0), (-2430.0, 630.0), (-2400.0, 330.0), (LX1, 300.0)], [(-2400.0, 330.0), (LX1, -300.0)]]
 
 # --- meshes and materials ----------------------------------------------------------------------------------------------
 CUBE, CYL, SPH, CONE = ("/Engine/BasicShapes/" + n for n in ("Cube", "Cylinder", "Sphere", "Cone"))
@@ -500,7 +500,10 @@ if ON["carpet"]:
         K.box((PAVE_X0 + 60.0, VOID_X0 + 80.0, y0, y1, 1.2, 2.2), TRIM)
 
 # --- the lobby: the reception desk (Rodin) and what is on it -----------------------------------------------------------
-DESK = (-2300.0, -2100.0, 900.0, 1300.0, 0.0, 110.0)
+# --- W3 opening: the desk moved onto the way in (centre y 1100 -> 630): it faces the doors beside the stair's foot,
+# where the eye goes coming in; the paddle board moves with it. DESK_DY moves both.
+DESK_DY = -470.0
+DESK = (-2300.0, -2100.0, 900.0 + DESK_DY, 1300.0 + DESK_DY, 0.0, 110.0)
 if ON["desk"]:
     hide_in([r"Lobby_Desk_\d+", r"Desk_Screen_\d+"], LOBBY)
     d = place("front_desk", DESK, yaw=90.0, mode="stretch", collide=False, shadow=True)
@@ -548,13 +551,13 @@ if ON["desk"]:
     K.cube((x, y, top + 4.5), (2.0, 32.0, 9.0), TRIM, (0.0, -12.0, tangent(-38.0) + 90.0))
     # Behind the clerk: the bidders' paddle board, numbered paddles on hooks.
     rx0 = -1985.0
-    if kept_clear(rx0, 1100.0, why="paddle board"):
-        K.box((rx0, rx0 + 28.0, 1020.0, 1180.0, 0.0, 205.0), PANEL, collide=True, shadow=True)
-        K.box((rx0 - 2.0, rx0, 1020.0, 1180.0, 196.0, 205.0), TRIM)
-        text("BIDDERS", rx0 - 2.5, 1100.0, 188.0, 180.0, 9.0, (0.80, 0.72, 0.52))
+    if kept_clear(rx0, 1100.0 + DESK_DY, why="paddle board"):
+        K.box((rx0, rx0 + 28.0, 1020.0 + DESK_DY, 1180.0 + DESK_DY, 0.0, 205.0), PANEL, collide=True, shadow=True)
+        K.box((rx0 - 2.0, rx0, 1020.0 + DESK_DY, 1180.0 + DESK_DY, 196.0, 205.0), TRIM)
+        text("BIDDERS", rx0 - 2.5, 1100.0 + DESK_DY, 188.0, 180.0, 9.0, (0.80, 0.72, 0.52))
         for row, z in enumerate((160.0, 128.0, 96.0)):
             for k in range(6):
-                py = 1035.0 + k * 26.0
+                py = 1035.0 + DESK_DY + k * 26.0
                 K.add(CYL, LINEN, (rx0 - 2.0, py, z), (0.0, 90.0, 0.0), (0.15, 0.15, 0.012))
                 K.box((rx0 - 2.4, rx0 - 1.2, py - 1.4, py + 1.4, z - 19.0, z - 7.0), PANEL)
                 if (row * 6 + k) % 2 == 0:

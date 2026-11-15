@@ -228,7 +228,7 @@ public:
 
 	/** Eases the look of the character the player is on onto Target over Seconds (real time). WASD or the mouse past
 	 *  GlanceMouseBreak hands the look back on that frame; a flight or SnapTo ends it. */
-	void StartLookPan(const FVector& Target, float Seconds);
+	void StartLookPan(const FVector& Target, float Seconds, bool bThroughWalk = false);	// W3 opening: bThroughWalk, WASD keeps it (the lobby's ease toward the clerk steers the walk)
 	bool IsLookPanning() const { return bLookPan; }
 
 	/** This frame's real (undilated) seconds, clamped to 0..0.1: what runs on it is not slowed by a slowed world. */
@@ -333,6 +333,7 @@ protected:
 	FVector GlanceFromLocation = FVector::ZeroVector;
 	FRotator GlanceFromRotation = FRotator::ZeroRotator;
 	float GlanceFromFOV = 90.f;
+	bool bLookPanThroughWalk = false;	// W3 opening
 
 	bool bLookPan = false;
 	float LookPanElapsed = 0.f;

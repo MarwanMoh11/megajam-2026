@@ -288,6 +288,13 @@ void ATakeCharacter::ApplyHeroMesh()
 		MeshComp->SetSkeletalMeshAsset(Want);
 		TintMIDs.Reset();
 	}
+	// --- W3 cast2 --- the mannequin's tint MIDs (or a Blueprint's override materials) outlive a mesh swap: on the hero
+	// mesh they painted the mannequin's texture over the hero's UVs (Julian's grey "camouflage"). The hero wears its own.
+	if (!HeroMesh.IsNull() && MeshComp->GetSkeletalMeshAsset() == Want && MeshComp->OverrideMaterials.Num() > 0)
+	{
+		MeshComp->EmptyOverrideMaterials();
+		TintMIDs.Reset();
+	}
 }
 
 void ATakeCharacter::ApplyLookToBoom()

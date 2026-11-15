@@ -7,7 +7,13 @@
 # (the queue, the lobby's centre, the hall's centre aisle). No shadows, movable, no haze. The hall's lights are plain
 # unattached PointLights inside AHouseDimmer's box (-1000..4400, -2000..2000), so they go down with the house.
 # Switches: LIGHTS_AREAS (a wrapper global) runs part of it; SCALE scales every light; an entry's candelas is its own.
+# W3 lights (Nov 15): finished by agent "lights". AREA_SCALE lifts an area (the side rooms read near-black in play);
+# the street's four build_auction lamps move from the old box lamp heads to front.py's Rodin globes (MOVE_LAMPS);
+# moonlight on the far lane's sedans, the newsstand's bulb; the lobby's lamps brighter; the hall is placed from
+# hall_zones.json and the placed props at run time (HALL below), never from fixed coordinates. Sight cues stay the
+# brightest thing on any floor: guard torch 3000 cd (pale, a shaft), drone 1800, marks 260 cd from 3.2 m.
 import sys, importlib; sys.path.insert(0, r"C:\Jam\megajam\tools\sets"); import common as C; importlib.reload(C)
+import math
 import re
 
 import unreal
@@ -15,6 +21,8 @@ import unreal
 TAG = "set_lights"
 AREAS = globals().get("LIGHTS_AREAS") or ("street", "lobby", "hall", "rooms")
 SCALE = 1.0                         # every light's candelas x this
+AREA_SCALE = dict(street=1.0, lobby=1.0, hall=1.0, rooms=1.8)   # W3 lights: rooms x1.8 (near-black in play)
+MOVE_LAMPS = dict(z=395.0, cd=57.0)  # W3 lights: build_auction's street lamps into the Rodin globes (False = leave)
 F2 = 450.0
 PAVE_X0 = -4100.0                   # build_auction's LX0 - 900: the street lamps stand at PAVE_X0 + 40 (front.py)
 eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
@@ -23,18 +31,18 @@ TUNG = (1.0, 0.72, 0.45)            # shaded lamps, sconces
 BULB = (1.0, 0.80, 0.58)            # bare bulbs
 WORK = (1.0, 0.92, 0.80)            # work lamps, the street's lamps on the road
 EMBER = (1.0, 0.55, 0.30)           # the ranges, the switchboard's lamps
+MOON = (0.70, 0.80, 1.0)            # W3 lights: cool night light from across the road (noir: warm near, cool far)
 
 # area, name, (x, y, z), candelas, radius, colour, and for a spot (pitch, yaw, outer cone). The story it lights.
 LIGHTS = [
     # the lobby: the reception desk's banker's lamp, the two seating groups' lamps (off the centre)
-    ("lobby", "Desk_Lamp", (-2196.0, 1060.0, 150.0), 60.0, 300.0, TUNG, None),
-    ("lobby", "Seating_W", (-3080.0, 1180.0, 165.0), 55.0, 320.0, TUNG, None),
-    ("lobby", "Seating_E", (-1290.0, 1110.0, 125.0), 45.0, 260.0, TUNG, None),
-    # the hall: the bar's back-bar lamps, the band's stand lamps (north of the dais, away from the aisle)
-    ("hall", "Bar_W", (950.0, -1570.0, 200.0), 70.0, 320.0, TUNG, None),
-    ("hall", "Bar_E", (1450.0, -1570.0, 200.0), 70.0, 320.0, TUNG, None),
-    ("hall", "Band_W", (3800.0, 1520.0, 190.0), 60.0, 300.0, TUNG, None),
-    ("hall", "Band_E", (3960.0, 1680.0, 190.0), 60.0, 300.0, TUNG, None),
+    # W3 lights: the desk, the clerk and the paddle board were grey in play: brighter lamps, a picture light on the board
+    ("lobby", "Desk_Lamp", (-2196.0, 1060.0, 150.0), 110.0, 340.0, TUNG, None),
+    ("lobby", "Seating_W", (-3080.0, 1180.0, 165.0), 100.0, 360.0, TUNG, None),
+    ("lobby", "Seating_E", (-1290.0, 1110.0, 125.0), 110.0, 380.0, TUNG, None),
+    ("lobby", "Seating_SW", (-3080.0, -1100.0, 165.0), 90.0, 360.0, TUNG, None),
+    ("lobby", "Desk_Board", (-2120.0, 1150.0, 300.0), 160.0, 420.0, TUNG, (-35.0, 90.0, 30.0)),
+    # the hall: placed at run time from hall_zones.json and the placed props (hall_lights below; W3 lights)
     # backstage corridor: the ghost light at the far end
     ("rooms", "Corridor_Ghost", (-950.0, -2560.0, 175.0), 80.0, 280.0, BULB, None),
     # kitchen: two ranges going (a low ember glow), two pendants over the prep line
@@ -84,8 +92,85 @@ LIGHTS = [
 # The street: under each new globe (front.py's lamps stand where the old Lamp_Post boxes were), a spot aimed out over
 # the road and the parked sedans, not back onto the pavement where the queue walks. And a shop-front glow on the south
 # pavement's dressing, against the facade.
-STREET_SPOT = dict(dx=-30.0, z=395.0, cd=240.0, radius=900.0, pitch=-55.0, yaw=180.0, cone=55.0, colour=WORK)
-STREET_EXTRA = [("street", "South_Pavement", (-3300.0, -1500.0, 260.0), 60.0, 420.0, TUNG, None)]
+STREET_SPOT = dict(dx=-30.0, z=395.0, cd=650.0, radius=1000.0, pitch=-38.0, yaw=180.0, cone=50.0, colour=WORK)   # W3: was 240 cd, pitch -55 (over the roofs)
+STREET_EXTRA = [
+    # W3 lights: the south pavement read black in play: the newsstand's bulb under its awning, a shop-front glow
+    ("street", "South_Pavement", (-3300.0, -1500.0, 260.0), 110.0, 520.0, TUNG, None),
+    ("street", "Newsstand_Bulb", (-3640.0, -1500.0, 235.0), 120.0, 420.0, BULB, None),
+    ("street", "South_Shopfront", (-3330.0, -2050.0, 380.0), 220.0, 900.0, TUNG, (-55.0, 200.0, 45.0)),
+    # W3 lights: the far lane's sedans (x -5400) in moonlight from over the road's middle, cool against the lamps
+    ("street", "Moon_FarLane_S", (-4750.0, -400.0, 650.0), 260.0, 1100.0, MOON, (-48.0, 180.0, 32.0)),
+    ("street", "Moon_FarLane_N", (-4750.0, 600.0, 650.0), 260.0, 1100.0, MOON, (-48.0, 180.0, 32.0)),
+]
+
+
+# --- W3 lights: the great hall, from tools/sets/hall_zones.json (agent stage's) and what hall.py placed, at run time.
+# All plain unattached Point/SpotLights inside the house, so AHouseDimmer takes them down with the house lights.
+# Nothing lands a pool on the rows, the centre aisle, the front floor or within MARK_CLEAR of a mark: lamps sit on the
+# bar, the phone desk and the walls (sconces wash the wallpaper), the band gets a stage spot on the bandstand.
+HALL = dict(bar_cd=150.0, bar_r=380.0, phone_cd=130.0, phone_r=330.0, band_cd=650.0, band_cone=34.0, band_r=1300.0,
+            tv_cd=260.0, sconce_cd=75.0, sconce_r=330.0, sconce_z=300.0, sconce_every=950.0, mark_clear=320.0)
+HX0, HX1, HY0, HY1 = -1000.0, 4400.0, -2000.0, 2000.0   # the hall's shell (build_auction), not its layout
+
+
+def _bounds(pat):
+    try:
+        return C.bounds(pat)
+    except Exception:                                           # noqa: BLE001
+        return None
+
+
+def hall_lights():
+    import json, os
+    with open(os.path.join(os.path.dirname(os.path.abspath(C.__file__)), "hall_zones.json"), encoding="utf-8") as f:
+        Z = json.load(f)
+    fz, h, out = float(Z.get("floor_z", 0.0)), HALL, []
+    marks = [(a.get_actor_location().x, a.get_actor_location().y) for a in C.find(r"Mark_\w+")]
+    clear = lambda x, y: all((x - mx) ** 2 + (y - my) ** 2 > h["mark_clear"] ** 2 for mx, my in marks)  # noqa: E731
+    # the bar: two back-bar lamps over the bar's back edge (the wall side), lighting the bottles, the barman, the top
+    b = _bounds(r"Set_Hall_Bar_Body_\d+")
+    if b:
+        back = b[2] - 35.0 if (b[2] + b[3]) < 0 else b[3] + 35.0
+        for i, fx in enumerate((0.25, 0.75)):
+            out.append(("hall", "Bar_%d" % i, (b[0] + fx * (b[1] - b[0]), back, b[5] + 120.0), h["bar_cd"], h["bar_r"],
+                        TUNG, None))
+    # the phone desk: a green-shaded desk lamp's worth over the baize
+    b = _bounds(r"Set_Hall_Desk_Baize_\d+")
+    if b:
+        out.append(("hall", "Phones", ((b[0] + b[1]) / 2, (b[2] + b[3]) / 2, b[5] + 110.0), h["phone_cd"], h["phone_r"],
+                    TUNG, None))
+    # the band: a stage spot from in front and above, on the members' centroid (hall_band.json)
+    try:
+        with open(os.path.join(os.path.dirname(os.path.abspath(C.__file__)), "hall_band.json"), encoding="utf-8") as f:
+            band = [v for k, v in json.load(f).items() if isinstance(v, dict)]
+    except Exception:                                           # noqa: BLE001
+        band = []
+    if band:
+        bx, by = sum(m["x"] for m in band) / len(band), sum(m["y"] for m in band) / len(band)
+        bz = sum(m["z"] for m in band) / len(band) + 110.0
+        cx, cy = (HX0 + HX1) / 2, 0.0                               # come in from the room's side, 4 m out, 5 m up
+        d = max(((cx - bx) ** 2 + (cy - by) ** 2) ** 0.5, 1.0)
+        sx, sy, sz = bx + (cx - bx) / d * 400.0, by + (cy - by) / d * 400.0, bz + 450.0
+        yaw = math.degrees(math.atan2(by - sy, bx - sx))
+        pitch = -math.degrees(math.atan2(sz - bz, ((bx - sx) ** 2 + (by - sy) ** 2) ** 0.5))
+        out.append(("hall", "Band_Spot", (sx, sy, sz), h["band_cd"], h["band_r"], TUNG, (pitch, yaw, h["band_cone"])))
+    # the TV riser: a cool studio key from above its road case (the broadcast's own light, not the house's)
+    b = _bounds(r"Set_Hall_Roadcase_\d+")
+    if b:
+        out.append(("hall", "TV_Key", ((b[0] + b[1]) / 2, (b[2] + b[3]) / 2, b[5] + 330.0), h["tv_cd"], 520.0,
+                    (0.85, 0.9, 1.0), (-90.0, 0.0, 40.0)))
+    # sconces on the long walls, from the back of the rows to the front floor, clear of marks
+    r = Z.get("rows", {})
+    x, x1 = float(r.get("x0", 0.0)) - 1200.0, float(Z.get("front_floor", {}).get("max", [HX1 - 800.0])[0])
+    i = 0
+    while x <= x1:
+        for wy in (HY0 + 30.0, HY1 - 30.0):
+            if clear(x, wy):
+                out.append(("hall", "Sconce_%d" % i, (x, wy, fz + h["sconce_z"]), h["sconce_cd"], h["sconce_r"], TUNG,
+                            None))
+                i += 1
+        x += h["sconce_every"]
+    return out
 
 
 def light(area, name, p, cd, radius, colour, spot):
@@ -98,8 +183,8 @@ def light(area, name, p, cd, radius, colour, spot):
     c = a.get_component_by_class(unreal.SpotLightComponent if spot else unreal.PointLightComponent)
     c.set_mobility(unreal.ComponentMobility.MOVABLE)
     c.set_editor_property("intensity_units", unreal.LightUnits.CANDELAS)
-    c.set_editor_property("intensity", float(cd) * SCALE)
-    c.set_editor_property("attenuation_radius", float(radius))
+    c.set_editor_property("intensity", float(cd) * SCALE * AREA_SCALE.get(area, 1.0))
+    c.set_editor_property("attenuation_radius", float(radius) * (1.2 if AREA_SCALE.get(area, 1.0) > 1.0 else 1.0))
     c.set_editor_property("cast_shadows", False)
     c.set_editor_property("volumetric_scattering_intensity", 0.0)
     c.set_editor_property("light_color", unreal.Color(r=int(colour[0] * 255), g=int(colour[1] * 255),
@@ -119,6 +204,16 @@ if "street" in AREAS:
     todo += [("street", "Lamp_%d" % i, (PAVE_X0 + 40.0 + s["dx"], float(y), s["z"]), s["cd"], s["radius"], s["colour"],
               (s["pitch"], s["yaw"], s["cone"])) for i, y in enumerate(ys)]
     todo += STREET_EXTRA
+    if MOVE_LAMPS:   # W3 lights: the old lamp heads hung at PAVE_X0 - 30, z 450; the globes are at PAVE_X0 + 40
+        for a in eas.get_all_level_actors():
+            if isinstance(a, unreal.PointLight) and re.match(r"Lamp_\d+$", a.get_actor_label()):
+                p = a.get_actor_location()
+                if PAVE_X0 - 200.0 < p.x < PAVE_X0 + 100.0 and 350.0 < p.z < 480.0 and abs(p.y) > 500.0:
+                    a.set_actor_location(unreal.Vector(PAVE_X0 + 40.0, p.y, MOVE_LAMPS["z"]), False, False)
+                    a.get_component_by_class(unreal.PointLightComponent).set_editor_property("intensity", MOVE_LAMPS["cd"])
+                    placed.append(a.get_actor_label() + " moved")
+if "hall" in AREAS:
+    todo += hall_lights()
 for e in todo:
     light(*e)
     placed.append(e[1])

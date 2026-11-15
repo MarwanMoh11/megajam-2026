@@ -159,6 +159,27 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Take")
 	TObjectPtr<class UPointLightComponent> HitGlow;
 
+	/** The lens glows while the beam burns: an unlit disc over the lens, this wide, cm (0: none). */
+	UPROPERTY(EditAnywhere, Category = "Take|Spot")
+	float LensGlowSize = 30.f;
+
+	/** ...this bright (emissive multiplier on BeamColour). */
+	UPROPERTY(EditAnywhere, Category = "Take|Spot")
+	float LensGlow = 6.f;
+
+	UPROPERTY(VisibleAnywhere, Category = "Take")
+	TObjectPtr<UStaticMeshComponent> LensDisc;
+
+	/** The light starts this far in front of the lens, cm (inside the lamp, the lamp would shadow its own light). */
+	UPROPERTY(EditAnywhere, Category = "Take|Spot")
+	float LightClearance = 4.f;
+
+	/** The haze's bright blob at the beam's apex (inverse-square spike in the volumetric fog): sets
+	 *  r.VolumetricFog.InverseSquaredLightDistanceBiasScale to this at BeginPlay (engine default 1; higher: no blob,
+	 *  the shaft unchanged further out). 0: leave the setting alone. */
+	UPROPERTY(EditAnywhere, Category = "Take|Spot")
+	float FogApexBias = 8.f;
+
 	/** Where the beam ends now: the first solid thing it meets, or the target (the lamp's lens while it is dark). */
 	FVector GetBeamEnd() const;
 

@@ -158,7 +158,7 @@ void ATakePlayerController::PlayerTick(float DeltaTime)
 	if (bLookPan)
 	{
 		LookPanMouse += FMath::Abs(MouseX) + FMath::Abs(MouseY);
-		if (!Axes.IsZero() || LookPanMouse > GlanceMouseBreak)
+		if ((!Axes.IsZero() && !bLookPanThroughWalk) || LookPanMouse > GlanceMouseBreak)
 		{
 			bLookPan = false;
 			TAKE_LOG(TEXT("LOOKPAN handed back (%s)"), Axes.IsZero() ? TEXT("mouse") : TEXT("WASD"));
@@ -532,8 +532,9 @@ void ATakePlayerController::StepGlance(float RealDt)
 		FMath::Lerp(GlanceFromFOV, GlanceFOV, E));
 }
 
-void ATakePlayerController::StartLookPan(const FVector& Target, float Seconds)
+void ATakePlayerController::StartLookPan(const FVector& Target, float Seconds, bool bThroughWalk)
 {
+	bLookPanThroughWalk = bThroughWalk;
 	if (!Current || IsInFlight())
 	{
 		return;

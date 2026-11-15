@@ -266,7 +266,8 @@ def slot(spec, dev, m):
     if spec.get("lens"):
         lens = part(at, yaw, dims, spec["lens"])
         p.update(show_beam_shape=False, swing_model=True, lens_yaw=float(lyaw),
-                 lens_offset=vec(turn(sub(lens, at), -ayaw)))
+                 lens_offset=vec(turn(sub(lens, at), -ayaw)),
+                 lens_glow_size=float(spec.get("lens_glow", 0.35 * min(dims[1], dims[2]))))  # W3 spot
     for k, v in p.items():
         try:
             dev.set_editor_property(k, v)

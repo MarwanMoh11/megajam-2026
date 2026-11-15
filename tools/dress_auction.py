@@ -222,7 +222,7 @@ CHARGE_DX = 30.0                           # the pyro charges stand this far ups
 BATTEN_STEP, BRACE_OUT, BRACE_TOP = 240.0, 70.0, 260.0
 TUBE_STEP, TUBE_Z, TUBE_L, TUBE_H = 600.0, 220.0, 120.0, 8.0
 ROAD_CASES = (400.0, 1150.0, 2250.0, 3850.0)   # x of the stacks against the corridor's back wall
-TRUSS_Z = F2 + 420.0
+TRUSS_Z = k("CAT_Z", F2) + 420.0           # --- W3 stage --- over the catwalk level (was F2 + 420)
 HOUSING_STEP = 200.0
 BACK_SIGNS = (("PROPS", 1700.0, 290.0), ("STAGE RIGHT", 3880.0, 300.0))   # text, x, z on the corridor's back wall
 
@@ -1234,7 +1234,7 @@ def dress_back():
 
 
 def dress_catwalk():
-    z = F2
+    z = k("CAT_Z", F2)                         # --- W3 stage --- the catwalk level's deck (was F2)
     # Camera tape along both edges of the catwalk and round the platform (flat: under everything, never in the way).
     x0, x1 = GALLERY_X1, PLAT[0]
     for (y0, y1) in ((CAT_Y0 + 1, CAT_Y0 + 6), (CAT_Y1 - 6, CAT_Y1 - 1)):

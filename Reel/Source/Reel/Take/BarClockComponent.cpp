@@ -5,6 +5,7 @@
 #include "Components/AudioComponent.h"
 #include "HAL/PlatformTime.h"
 #include "Kismet/GameplayStatics.h"
+#include "Misc/App.h"
 #include "Sound/SoundWave.h"
 #include "Sound/SoundWaveProcedural.h"
 #include "TakeAudio.h"
@@ -417,7 +418,11 @@ void UBarClockComponent::Advance(float DeltaSeconds)
 		if (Music >= 0.0)
 		{
 			const double Error = Music - (TotalBeats + StepBeats);
-			if (FMath::Abs(Error) > static_cast<double>(FMath::Max(0.05f, SnapBeats)))
+			// QA time: on a long frame (under 10 fps: the editor throttled in the background) the music's start and
+			// its reports lag by frames, so a gap there is not a real hitch: steer only, never reseek. Reseeking there
+			// gave up the follow at the take's start (integration look, Nov 15: five reseeks at about 3 fps).
+			const bool bLongFrame = FApp::GetDeltaTime() > 0.1;
+			if (!bLongFrame && FMath::Abs(Error) > static_cast<double>(FMath::Max(0.05f, SnapBeats)))
 			{
 				++Reseeks;
 				UE_LOG(LogTemp, Warning, TEXT("TAKE band: music %.2f beats off the clock at %s, reseek %d"), Error,
@@ -1228,7 +1233,7 @@ float UBarClockComponent::WarningGate(EWatcherInstrument Instrument)
 	const float Range = RangeFor(Instrument);
 	if (Range > 0.f && Nearest > Range)
 	{
-		UE_LOG(LogTemp, Verbose, TEXT("TAKE band: warning %d held at %s, its watcher %.0f cm away"), Slot, *GetTimecode(), Nearest);
+		UE_LOG(LogTemp, Log, TEXT("TAKE band: warning %d held at %s (out of range: %.0f cm)"), Slot, *GetTimecode(), Nearest);
 		return 0.f;	// it does not matter to Julian where he is
 	}
 	if (!bInStretch[Slot])
@@ -1236,15 +1241,18 @@ float UBarClockComponent::WarningGate(EWatcherInstrument Instrument)
 		// The first turn since he came into its range: at once, in full.
 		bInStretch[Slot] = true;
 		LastWarningBeats[Slot] = Now;
+		UE_LOG(LogTemp, Log, TEXT("TAKE band: warning %d played at %s (first in range: %.0f cm)"), Slot, *GetTimecode(), Nearest);
 		return 1.f;
 	}
 	const float Cooldown = Nearest <= CloseRange ? CloseCooldownSeconds : WarningCooldownSeconds;
 	const double Since = LastWarningBeats[Slot] < 0.0 ? TNumericLimits<double>::Max() : (Now - LastWarningBeats[Slot]) * SecondsPerBeat;
 	if (Since < static_cast<double>(Cooldown) - 0.01)
 	{
+		UE_LOG(LogTemp, Log, TEXT("TAKE band: warning %d held at %s (cooldown: %.1f of %.1f s)"), Slot, *GetTimecode(), Since, Cooldown);
 		return 0.f;	// he heard it a moment ago
 	}
 	LastWarningBeats[Slot] = Now;
+	UE_LOG(LogTemp, Log, TEXT("TAKE band: warning %d played at %s (repeat after %.1f s, %.0f cm)"), Slot, *GetTimecode(), Since, Nearest);
 	return FMath::Clamp(RepeatLevel, 0.f, 1.f);
 }
 

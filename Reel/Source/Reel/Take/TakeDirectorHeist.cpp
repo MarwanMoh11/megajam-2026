@@ -13,12 +13,22 @@
 //     before) and SaveCheckpoint(the case mark, "THE CASE"), the checkpoint the case mark used to save itself.
 //   The house comes up without a swap: NoSwapLine; the dimmer is free and can run the preview again.
 // Off (bHeistTrick false, or no dimmer or case mark): nothing here runs and the case mark is left as the map made it.
+//
+// W3 heist2 (Marwan's second feedback, item 6): the room watches. An ARoomWatch in the level (RoomWatch.h) makes the
+// seated guests see Julian at the front (the floor before the dais, and the dais) in house light: a glance, a murmur
+// at 1 s, the blooper at 2.5 s. The keycard's lift mark is now like the case: half way through it in the light, the
+// room sees him. So the dimmer unlocks when Julian is in the hall (Scene2), and the order is: Julian to the front row,
+// [2] Maya throws the dimmer on the catwalk, the old film plays on the big screen, [1] Julian goes up in the dark, lifts
+// the keycard, swaps the reel; Maya holds the house while his hands are busy; the house comes up and the alarm runs.
+// The goal line is this file's from Scene2 whenever Julian is at the front, the house is dark, or he has the keycard.
 
 #include "TakeDirector.h"
 
 #include "HouseDimmer.h"
+#include "EngineUtils.h"
 #include "Julian.h"
 #include "Mark.h"
+#include "RoomWatch.h"
 #include "TakeCharacter.h"
 #include "TakeGameInstance.h"
 #include "WinchDevice.h"
@@ -36,6 +46,9 @@ namespace TakeHeistLocal
 
 	/** Vex counts as posted at the winch within its use ring plus this, cm. */
 	constexpr float PostedSlack = 50.f;
+
+	/** Where the guests look on Julian: this far above his capsule's middle, cm (about his face). */
+	constexpr float HeadAboveCentre = 70.f;
 }
 
 bool ATakeDirector::IsHeistOn() const
@@ -54,6 +67,10 @@ void ATakeDirector::BeginHeist()
 	bHeistSwapHandled = false;
 	bHeistWasDark = false;
 	bHeistReaching = false;
+	HeistRoom = nullptr;
+	HeistLiftMark = nullptr;
+	bHeistLiftReaching = false;
+	bHeistRoomGrace = false;
 
 	for (ADevice* EachDevice : Devices)
 	{
@@ -65,12 +82,28 @@ void ATakeDirector::BeginHeist()
 	}
 	const FName CaseName(TakeTriggers::Case);
 	const FName SwapName(TakeHeistLocal::SwapTrigger);
+	const FName KeycardName(TakeTriggers::Keycard);
 	for (AMark* EachMark : Marks)
 	{
-		if (EachMark && EachMark->IsActionMark()
-			&& (EachMark->ActionTrigger == CaseName || EachMark->ActionTrigger == SwapName))
+		if (!EachMark || !EachMark->IsActionMark())
+		{
+			continue;
+		}
+		if (!HeistCaseMark && (EachMark->ActionTrigger == CaseName || EachMark->ActionTrigger == SwapName))
 		{
 			HeistCaseMark = EachMark;
+		}
+		else if (!HeistLiftMark && EachMark->ActionTrigger == KeycardName)
+		{
+			HeistLiftMark = EachMark;
+		}
+	}
+	if (UWorld* const World = GetWorld())
+	{
+		for (TActorIterator<ARoomWatch> It(World); It; ++It)
+		{
+			HeistRoom = *It;
+			It->ResetRoom();
 			break;
 		}
 	}
@@ -94,6 +127,13 @@ void ATakeDirector::BeginHeist()
 		CaseMark->ActionVerb = Dimmer->SwapVerb;
 	}
 
+	// The crew hint on the dais (past the rope) names the dimmer too while the room watches.
+	const ARoomWatch* const Room = Cast<ARoomWatch>(HeistRoom.Get());
+	if (Room && Room->bRoomWatches && SceneHints.IsValidIndex(2) && !Dimmer->HintLine.IsEmpty())
+	{
+		SceneHints[2] = Dimmer->HintLine;
+	}
+
 	// The crew hint at the keycard's checkpoint names the dimmer (the case's checkpoint keeps the winch's hint).
 	const UTakeGameInstance* const GI = GetTakeGameInstance();
 	if (GI && GI->CheckpointTriggers.Contains(FName(TakeTriggers::Keycard)) && !GI->CheckpointTriggers.Contains(CaseName)
@@ -101,7 +141,8 @@ void ATakeDirector::BeginHeist()
 	{
 		SceneHints[3] = Dimmer->HintLine;
 	}
-	TAKE_LOG(TEXT("HEIST on: %s swaps the reel, %s takes the house down"), *CaseMark->MarkName, *Dimmer->DeviceName);
+	TAKE_LOG(TEXT("HEIST on: %s swaps the reel, %s takes the house down; the room %s"), *CaseMark->MarkName,
+		*Dimmer->DeviceName, !Room ? TEXT("is not in the level") : (Room->bRoomWatches ? TEXT("watches") : TEXT("is off")));
 }
 
 void ATakeDirector::OnHeistBlooper()
@@ -129,6 +170,10 @@ void ATakeDirector::StepHeist(float DeltaSeconds)
 	const FName SwapName(TakeHeistLocal::SwapTrigger);
 	const bool bKeycard = HasFired(FName(TakeTriggers::Keycard));
 	const bool bDark = Dimmer->IsHouseDark();
+	const bool bBlind = Dimmer->IsRoomBlind();	// dark, or still dim on the way up: the room is on the screen
+	ARoomWatch* const Room = Cast<ARoomWatch>(HeistRoom.Get());
+	const bool bRoomOn = Room && Room->bRoomWatches && !HasFired(CaseName);
+	const FVector Feet = Julian ? Julian->GetFeetLocation() : FVector::ZeroVector;
 
 	auto SaveCaseCheckpoint = [this, CaseMark]()
 	{
@@ -155,6 +200,8 @@ void ATakeDirector::StepHeist(float DeltaSeconds)
 		bHeistTaught = bKeycard;
 		bHeistSwapHandled = HasFired(SwapName);
 		bHeistWasDark = bDark;
+		// Restored onto a mark in view (the dais): the room lets him be until he has stepped out of view once.
+		bHeistRoomGrace = bRoomOn && Julian && Room->IsInView(Feet);
 		if (HasFired(SwapName) && !HasFired(CaseName))
 		{
 			// Never saved like this; if it ever is, the house is up and Vance finds the dummy now.
@@ -168,7 +215,7 @@ void ATakeDirector::StepHeist(float DeltaSeconds)
 	if (bKeycard && !bHeistTaught)
 	{
 		bHeistTaught = true;
-		if (!HasFired(CaseName) && !Dimmer->TeachLine.IsEmpty())
+		if (!HasFired(CaseName) && !bRoomOn && !Dimmer->TeachLine.IsEmpty())	// the room's murmur teaches otherwise
 		{
 			Flash(Dimmer->TeachLine, ETakeFlashKind::Line, 6.f);
 		}
@@ -178,6 +225,56 @@ void ATakeDirector::StepHeist(float DeltaSeconds)
 	if (bDark && !bHeistWasDark && !Dimmer->PreviewLine.IsEmpty())
 	{
 		Flash(Dimmer->PreviewLine, ETakeFlashKind::Line, 4.f);
+	}
+
+	// 2b. The room watches the front (W3 heist2): a glance, a murmur, then the blooper. Not in the dark.
+	if (bRoomOn && Julian)
+	{
+		if (bHeistRoomGrace && !Room->IsInView(Feet))
+		{
+			bHeistRoomGrace = false;
+		}
+		if (!bHeistRoomGrace)
+		{
+			const FVector Head = Julian->GetActorLocation() + FVector(0.f, 0.f, TakeHeistLocal::HeadAboveCentre);
+			if (Room->StepRoom(DeltaSeconds, Feet, Head, bBlind, this) == ERoomReaction::Seen)
+			{
+				TAKE_LOG(TEXT("HEIST the room saw him at the front (house light %.0f%%)"), Dimmer->GetHouseLevel() * 100.f);
+				RequestBlooper(EBlooperReason::SeenAtCase);
+				return;
+			}
+		}
+	}
+
+	// 2c. The keycard is lifted on the dais in front of the room: like the case, only in the dark (W3 heist2).
+	AMark* const LiftMark = HeistLiftMark.Get();
+	if (bRoomOn && LiftMark && !bKeycard)
+	{
+		const float Alpha = LiftMark->GetActionAlpha();
+		const bool bReaching = Alpha > 0.f;
+		if (bReaching && !bHeistLiftReaching && Julian)
+		{
+			Julian->PlayGesture(FName(TEXT("Lift")));	// the cast contract (cast2)
+		}
+		bHeistLiftReaching = bReaching;
+		if (!bBlind && Alpha >= Dimmer->SeenAtCaseAlpha)
+		{
+			if (!Room->SeenLine.IsEmpty())
+			{
+				Flash(Room->SeenLine, ETakeFlashKind::Line, 3.f);
+			}
+			TAKE_LOG(TEXT("HEIST the room saw him lift the keycard in the light"));
+			RequestBlooper(EBlooperReason::SeenAtCase);
+			return;
+		}
+		if (bDark && bReaching)
+		{
+			const float StillNeeds = (1.f - Alpha) * LiftMark->ActionSeconds + TakeHeistLocal::HoldMargin;
+			if (Dimmer->GetDarkSecondsLeft() < StillNeeds)
+			{
+				Dimmer->HoldPreviewFor(StillNeeds);
+			}
+		}
 	}
 
 	// 3. Julian at the case, before the swap: his hands go to it; in the light the room sees him.
@@ -191,7 +288,7 @@ void ATakeDirector::StepHeist(float DeltaSeconds)
 		}
 		bHeistReaching = bReaching;
 
-		if (!bDark && Alpha >= Dimmer->SeenAtCaseAlpha)
+		if (!bBlind && Alpha >= Dimmer->SeenAtCaseAlpha)
 		{
 			RoomSawHim(TEXT("the house lights were up"));
 			return;
@@ -211,7 +308,7 @@ void ATakeDirector::StepHeist(float DeltaSeconds)
 	if (HasFired(SwapName) && !bHeistSwapHandled)
 	{
 		bHeistSwapHandled = true;
-		if (!bDark)
+		if (!bBlind)
 		{
 			RoomSawHim(TEXT("the swap finished in the light"));
 			return;
@@ -250,8 +347,11 @@ void ATakeDirector::StepHeist(float DeltaSeconds)
 	}
 	bHeistWasDark = bDarkNow;
 
-	// 6. The goal line, over UpdateObjective's, from the keycard until the case is open.
-	if (!bKeycard || HasFired(CaseName) || Phase != ETakePhase::Rolling)
+	// 6. The goal line, over UpdateObjective's, until the case is open: from the keycard; with the room watching, from
+	// Scene 2 whenever Julian is at the front or the house is dark (the aisle keeps the scene's own lines).
+	const bool bOurs = bKeycard || (bRoomOn && HasFired(FName(TakeTriggers::Scene2))
+		&& (Dimmer->IsRunning() || Room->IsAtFront(Feet)));
+	if (!bOurs || HasFired(CaseName) || Phase != ETakePhase::Rolling)
 	{
 		HeistLoggedObjective.Reset();
 		return;
@@ -265,13 +365,21 @@ void ATakeDirector::StepHeist(float DeltaSeconds)
 	else if (Dimmer->IsHouseDark())
 	{
 		const int32 Left = FMath::CeilToInt(Dimmer->GetDarkSecondsLeft());
-		LogKey = CurrentCamera == ETakeCamera::A ? FString(TEXT("Lights down: swap the reel at the case"))
-			: FString(TEXT("[1] JULIAN: swap the reel at the case while it is dark"));
+		const bool bLiftFirst = bRoomOn && HeistLiftMark && !bKeycard;
+		LogKey = CurrentCamera == ETakeCamera::A
+			? FString(bLiftFirst ? TEXT("Lights down: up to the dais, lift VANCE's keycard, swap the reel at the case")
+				: TEXT("Lights down: swap the reel at the case"))
+			: FString(bLiftFirst ? TEXT("[1] JULIAN: up to the dais while it is dark")
+				: TEXT("[1] JULIAN: swap the reel at the case while it is dark"));
 		Line = FString::Printf(TEXT("%s.   %d s"), *LogKey, Left);
 	}
 	else if (CurrentCamera == ETakeCamera::A)
 	{
-		if (!bJulianExposed)
+		if (bRoomOn && Room->IsInView(Feet) && !bHeistRoomGrace)
+		{
+			Line = TEXT("The whole room can see you up here: back to the crowd");
+		}
+		else if (!bJulianExposed)
 		{
 			// Vex at the winch first, as before: the alarm follows the swap by a second.
 			bool bVexPosted = true;
@@ -289,8 +397,9 @@ void ATakeDirector::StepHeist(float DeltaSeconds)
 				}
 			}
 			Line = bVexPosted
-				? FString(TEXT("[2] MAYA: dim the HOUSE LIGHTS. In the dark, JULIAN swaps the reel at the case"))
-				: FString(TEXT("Post [3] VEX at the CURTAIN WINCH. Then [2] MAYA dims the HOUSE LIGHTS for the swap"));
+				? FString(bKeycard ? TEXT("[2] MAYA: dim the HOUSE LIGHTS. In the dark, JULIAN swaps the reel at the case")
+					: TEXT("[2] MAYA: dim the HOUSE LIGHTS. In the dark, JULIAN goes up for the keycard and the reel"))
+				: FString(TEXT("Post [3] VEX at the CURTAIN WINCH. Then [2] MAYA dims the HOUSE LIGHTS"));
 		}
 	}
 	else if (CurrentCamera == ETakeCamera::B)
@@ -303,7 +412,7 @@ void ATakeDirector::StepHeist(float DeltaSeconds)
 		}
 		else
 		{
-			Line = TEXT("Walk MAYA to the HOUSE DIMMER, at the west rail of her platform");
+			Line = TEXT("Walk MAYA to the HOUSE DIMMER on the catwalk");
 		}
 	}
 

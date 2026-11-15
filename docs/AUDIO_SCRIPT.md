@@ -135,6 +135,17 @@ Model `eleven_multilingual_v2`. Earpiece lines (BROADCAST, MAYA, VEX) are band-p
 | `vo_security_nobody` | SECURITY | Nobody leaves! | The guards come in at the alarm | its words | ~1.1 s |
 | `vo_security_there` | SECURITY | There! The man in white! | A guard sees him in the finale | its words | ~2.2 s |
 | `vo_security_there_2` | SECURITY | Stop that man! | The guards, second and later | variant of: There! The man in white! | ~1.5 s |
+| `vo_julian_aside` | JULIAN | Not on the list. Maya, I need a distraction. | Scene 1: the scanner has refused him; the slow and the pan to Maya start | its words | ~3.8 s |
+| `vo_maya_teach_use` | MAYA | Nobody watches the crew. Swing my light onto the scanner: E. | Scene 1, first switch: the view has landed on Maya at the searchlight | its words | ~4.5 s |
+| `vo_maya_teach_back` | MAYA | It's blind. Cut back to Julian with 1. (said: *It's blind. Cut back to Julian with one.*) | Scene 1, first switch: the scanner blinded | its words | ~3.4 s |
+| `vo_vex_teach_dimmer` | VEX | Not with the whole room watching. Maya: house lights down, roll the preview. Every eye goes to the screen. | Scene 3, as the keycard lands (the lesson) | its words | ~7.6 s |
+| `vo_maya_dimmer` | MAYA | House lights down. Rolling the preview. | Scene 3, HOUSE DIMMER fires (its FireLine) | its words | ~2.6 s |
+| `vo_vance_preview` | VANCE | Ladies and gentlemen: a first glimpse of Lot 41. (said: *Ladies and gentlemen: a first glimpse of Lot forty-one.*) | Scene 3, the house goes down | its words | ~3.8 s |
+| `vo_maya_swap` | MAYA | Clean swap. Bringing the house up. | Scene 3, Julian swaps the reel in the dark | its words | ~2.6 s |
+| `vo_vance_discover` | VANCE | And here it is... a newsreel?! | Scene 3, the house comes up and Vance opens the dummy (the alarm's line follows) | its words | ~2.6 s |
+| `vo_maya_noswap` | MAYA | House is up. Get him beside the case and I'll roll it again. | Scene 3, the preview ends with no swap | its words | ~5.3 s |
+| `vo_vance_seen` | VANCE | Sir! Step away from that case! | Scene 3, Julian at the case with the house up (THE ROOM SAW HIM follows) | its words | ~2.6 s |
+| `vo_maya_hint_case` | MAYA | Not in the light. Get him beside the case, cut to me, I take the house down, then swap it. | Scene 3, the crew hint after two bloopers at the keycard's checkpoint | its words | ~8.0 s |
 
 ### Sound effects
 

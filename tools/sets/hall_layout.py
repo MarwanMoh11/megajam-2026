@@ -10,14 +10,21 @@ import random
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-# --- the audience: one row of chairs over each of build_auction's 12 benches (their hidden boxes keep the collision) ---
-BENCH_X = (-400.0, -200.0, 0.0, 200.0, 400.0, 600.0)     # build_auction.py: Bench x centres, 70 cm deep
-BENCH_Y = (250.0, 1000.0)                                  # each side of the centre aisle (and mirrored)
-PER_ROW = 12                                               # 62.5 cm a chair
+# --- the audience (W3 stage): two blocks of rows facing the dais either side of the centre aisle, one chair over each
+# build_auction Bench box (hidden, it keeps the collision). The reserved block starts 4.5 m off the dais; the general
+# block sits behind the cross aisle at the rope. tools/sets/hall_zones.json has the same numbers.
+ROWS = (                                                   # (row x centres, chairs a side): build_auction ROWS_*
+    tuple(3150.0 - 100.0 * i for i in range(8)),           # reserved: 3150 .. 2450, 14 a side
+    tuple(2100.0 - 100.0 * i for i in range(8)),           # general: 2100 .. 1400, 12 a side
+)
+PER_SIDE = (14, 12)
+ROW_Y0, PITCH = 180.0, 62.0                                # the aisle edge, 62 cm a chair
+OFFER = ((3, 1.0), (5, 0.45), (8, 0.15))                   # (rows from the front of the room, share of their seats offered)
 CHAIR_H = 92.0                                             # the gilt ballroom chair stands 92 cm
 SEAT_FRAC = 83.0 / 171.2                                   # its seat's top over its height (measured off the mesh)
 SEAT_Z = round(CHAIR_H * SEAT_FRAC, 1)                     # 44.6
-LEGS = ((0.0, -340.0), (400.0, -340.0), (600.0, -590.0))   # catwalk legs inside the bench rows: no chair there
+LEGS = ()                                                  # the catwalk hangs from the roof now: no legs in the rows
+JULIAN_SEAT = (2100.0, -211.0)                             # his bidder's seat: kept free for him (hall_zones julian_place)
 PROPS_ON_SEATS = 14                                        # empty seats with a catalogue or a paddle: not offered to cast
 # The phone bids (chairs facing the desk, north) and the bar stools (facing the bar, south).
 PHONE_SEATS = ((1880.0, -1640.0), (2000.0, -1640.0), (2120.0, -1640.0))
@@ -42,17 +49,31 @@ HELD = ("BAND_TRUMPET",)                                   # no prop stands for 
 
 
 def chair_seats():
-    """[(x, y, yaw, bench x)] of every audience chair, front to back."""
+    """[(x, y, yaw)] of every audience chair, front row first."""
     out = []
-    for bx in BENCH_X:
-        for s in (1.0, -1.0):
-            step = (BENCH_Y[1] - BENCH_Y[0]) / PER_ROW
-            for i in range(PER_ROW):
-                y = s * (BENCH_Y[0] + step * (i + 0.5))
-                if any(abs(bx - lx) < 40.0 and abs(y - ly) < 36.0 for (lx, ly) in LEGS):
-                    continue
-                out.append((bx, y, 0.0))
+    for rows, n in zip(ROWS, PER_SIDE):
+        for bx in rows:
+            for s in (1.0, -1.0):
+                for i in range(n):
+                    y = s * (ROW_Y0 + PITCH * (i + 0.5))
+                    if any(abs(bx - lx) < 40.0 and abs(y - ly) < 36.0 for (lx, ly) in LEGS):
+                        continue
+                    out.append((bx, y, 0.0))
     return out
+
+
+def offered(i, x, y):
+    """Whether chair i goes to cast: the front rows full, thinning toward the back (frame time: about 170 offered)."""
+    if abs(x - JULIAN_SEAT[0]) < 1.0 and abs(y - JULIAN_SEAT[1]) < 1.0:
+        return False
+    order = sorted({cx for (cx, _cy, _cyaw) in chair_seats()}, reverse=True).index(x)
+    share, k = 0.0, 0
+    for (n, sh) in OFFER:
+        if order < k + n:
+            share = sh
+            break
+        k += n
+    return random.Random(i * 7919 + 41).random() < share
 
 
 def seats_with_props():
@@ -64,7 +85,8 @@ def seats_with_props():
 
 def seats_json():
     taken = set(seats_with_props())
-    out = [dict(x=x, y=y, z=SEAT_Z, yaw=yaw) for i, (x, y, yaw) in enumerate(chair_seats()) if i not in taken]
+    out = [dict(x=x, y=y, z=SEAT_Z, yaw=yaw) for i, (x, y, yaw) in enumerate(chair_seats())
+           if i not in taken and offered(i, x, y)]
     out += [dict(x=x, y=y, z=SEAT_Z, yaw=90.0) for (x, y) in PHONE_SEATS]
     out += [dict(x=x, y=y, z=STOOL_Z, yaw=270.0) for (x, y) in STOOLS]
     return out

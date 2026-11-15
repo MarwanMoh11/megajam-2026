@@ -947,6 +947,7 @@ public:
 	TObjectPtr<AMark> HeistLiftMark;
 
 	bool bHeistLiftReaching = false;
+	bool bHeistRoomGrace = false;
 	// --- end QA heist ---
 
 protected:

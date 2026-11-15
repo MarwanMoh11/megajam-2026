@@ -10,6 +10,8 @@
 #include "Components/SpotLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
+#include "HAL/IConsoleManager.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "TakeCharacter.h"
 #include "TakeDirector.h"
 #include "TakeShapes.h"
@@ -59,6 +61,12 @@ AFollowSpot::AFollowSpot()
 	HitGlow->SetAttenuationRadius(260.f);
 	HitGlow->SetVolumetricScatteringIntensity(0.f);
 	HitGlow->SetVisibility(false);
+
+	// W3 spot: the glowing lens (unlit disc; BeginPlay gives it the signal material).
+	LensDisc = FTakeShapes::CreateShape(this, TEXT("LensDisc"), ETakeShape::Cylinder, Root, FVector(0.f, 0.f, 80.f),
+		FVector(0.3f, 0.3f, 0.01f), FRotator::ZeroRotator, false);
+	LensDisc->SetCastShadow(false);
+	LensDisc->SetVisibility(false);
 }
 
 void AFollowSpot::BeginPlay()
@@ -94,6 +102,28 @@ void AFollowSpot::BeginPlay()
 		HitGlow->SetIntensity(FMath::Max(HitGlowCandelas, 0.f));
 		HitGlow->SetAttenuationRadius(FMath::Max(HitGlowRadius, 10.f));
 		HitGlow->SetVisibility(false);
+	}
+
+	if (LensDisc)
+	{
+		LensDisc->SetVisibility(false);
+		if (UMaterialInterface* const Signal = FTakeShapes::GetSignalMaterial())
+		{
+			UMaterialInstanceDynamic* const Glow = UMaterialInstanceDynamic::Create(Signal, this);
+			Glow->SetVectorParameterValue(FTakeShapes::ColorParam, BeamColour * FMath::Max(LensGlow, 0.f));
+			LensDisc->SetMaterial(0, Glow);
+		}
+		else
+		{
+			FTakeShapes::SetColour(LensDisc, BeamColour);
+		}
+	}
+	if (FogApexBias > 0.f)
+	{
+		if (IConsoleVariable* const Bias = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricFog.InverseSquaredLightDistanceBiasScale")))
+		{
+			Bias->Set(FogApexBias, ECVF_SetByCode);
+		}
 	}
 
 	// At rest, facing where the model was set.
@@ -264,6 +294,10 @@ void AFollowSpot::UpdateBeam()
 		{
 			HitGlow->SetVisibility(false);
 		}
+		if (LensDisc)
+		{
+			LensDisc->SetVisibility(false);
+		}
 		bBeamOn = false;
 		BeamHitActor.Reset();
 	};
@@ -364,12 +398,23 @@ void AFollowSpot::UpdateBeam()
 	// light), aimed along it: a spot light shines along its X axis. It reaches just past the end (the shaft stops).
 	if (Light)
 	{
-		const double Clearance = bFromModel ? FMath::Min(8.0, Length * 0.5)
+		const double Clearance = bFromModel ? FMath::Min(static_cast<double>(FMath::Max(LightClearance, 0.f)), Length * 0.5)
 			: FMath::Min(static_cast<double>(Body->Bounds.SphereRadius) + 5.0, Length * 0.5);
 		Light->SetWorldLocationAndRotation(BeamStart + BeamDir * Clearance, BeamDir.Rotation());
 		const float Reach = bBeamStopsAtHit ? static_cast<float>(Length) + FMath::Max(BeamSpill, 0.f) : LightRadius;
 		Light->SetAttenuationRadius(FMath::Clamp(Reach, 50.f, FMath::Max(LightRadius, 50.f)));
 		Light->SetVisibility(true);
+	}
+	if (LensDisc)
+	{
+		const bool bDisc = bFromModel && LensGlowSize > 0.f;
+		if (bDisc)
+		{
+			const float Wide = LensGlowSize / 100.f;
+			LensDisc->SetWorldLocationAndRotation(BeamStart, FQuat::FindBetweenNormals(FVector::UpVector, BeamDir));
+			LensDisc->SetWorldScale3D(FVector(Wide, Wide, 0.01f));
+		}
+		LensDisc->SetVisibility(bDisc);
 	}
 	if (HitGlow)
 	{

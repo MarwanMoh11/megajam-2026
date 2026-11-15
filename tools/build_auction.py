@@ -31,6 +31,12 @@ HALL_H = 1400.0
 F2 = 450.0                        # the second floor (top of its slab); the catwalk is on it
 CAT_Z = F2
 SLAB = 20.0
+# --- W3 stage --- the catwalk level: everything over the hall is hung high in the roof (tools/sets/hall_zones.json)
+CAT_Z = 900.0                     # the catwalk's deck top (the hall is 14 m high; the old second floor was 4.5 m)
+CAT_X0 = -760.0                   # the catwalk head runs along the projection box's front, x CAT_X0..GALLERY_X1
+BOOTH = (-1000.0, -760.0, -200.0, 800.0, 1150.0)   # the projection box over the lobby doors: x0, x1, y0, y1, roof top
+HANG_Z = HALL_H - 40.0            # the hangers run up to the roof trusses' underside
+# --- end W3 stage
 TOP = 900.0                       # top of the two-storey walls
 LX0, LX1 = -3200.0, -1000.0       # the lobby block, as wide as the hall; the lobby itself is LY0..LY1
 LY0, LY1 = -1400.0, 1400.0
@@ -47,9 +53,9 @@ EX1 = 5300.0                      # east wing: from the hall's east wall to here
 VAULT_Y0, VAULT_Y1 = -1000.0, 1000.0
 HATCHES = (600.0, 3000.0, 4150.0) # service hatches in the south wall (X centres): a counter Vex looks over
 HATCH_HALF, HATCH_Z0, HATCH_Z1 = 150.0, 110.0, 320.0
-WALK_Y0 = 1650.0                  # the long walkway runs along the north wall from here to HY1
+WALK_Y0 = 1800.0                  # the long walkway runs along the north wall from here to HY1 (W3 stage: was 1650)
 BRIDGE_X0, BRIDGE_X1 = 1400.0, 1700.0   # the bridge crosses from the walkway out over the floor
-BRIDGE_Y0 = -350.0
+BRIDGE_Y0 = -200.0                # W3 stage: was -350; the projector's throw passes south of its end
 RAIL_H = 100.0
 T = 20.0                          # wall thickness
 
@@ -74,21 +80,28 @@ SCAN_DEPTH = 180.0                # its frame (and its red tape) reaches this fa
 MARK_SCANNER = (SCAN_X - 270.0, 300.0)   # the gold mark at the scanner, 90 cm outside the tape
 DOORMAN = (LX0 - T - 70.0, 0.0)   # at the doors, looking down the carpet
 CHIEF = (VOID_X0 + 20.0, 0.0)     # the security chief at the foot of the grand stair, looking at the doors
-MARK_DESK = (-2200.0, 740.0)      # the registration desk: a place to park Julian while the crew walk
+MARK_DESK = (-2430.0, 630.0)      # the registration desk: Julian signs in here (W3 opening: in front of the moved desk)
 MARK_FLOOR = (-700.0, 0.0)        # Scene 2 starts here: the checkpoint just inside the hall
 # The broadcast drone films the centre aisle, and its camera riser blocks the aisle: Julian goes round by a side aisle.
-RISER = (150.0, 450.0, -230.0, 230.0)   # x0, x1, y0, y1: between the bench rows, 80 cm high
-MARK_SEAT = (-300.0, 1090.0)      # an aisle seat at the end of a bench row
+RISER = (1040.0, 1340.0, -230.0, 230.0)   # x0, x1, y0, y1: at the head of the rear rows' aisle, 80 cm high (W3 stage)
+MARK_SEAT = (1700.0, 1060.0)      # an aisle seat at the end of a rear row (W3 stage: was -300, 1090)
+# --- W3 stage --- the seats: two blocks of rows facing the dais either side of the centre aisle (hall_layout.py)
+ROWS_FRONT = tuple(3150.0 - 100.0 * i for i in range(8))   # reserved bidders, past the rope: 3150 .. 2450
+ROWS_REAR = tuple(2100.0 - 100.0 * i for i in range(8))    # general seats, before it: 2100 .. 1400
+ROW_Y0, ROW_Y1_FRONT, ROW_Y1_REAR = 180.0, 1048.0, 924.0    # row blockers |y| from the aisle to the row's far end
+JULIAN_PLACE = (2100.0, -211.0)   # his bidder's seat: the rear block's front row, south aisle seat, by the rope mark
+# --- end W3 stage
 MARK_COCKTAILS = (1100.0, 950.0)  # beside a cocktail table on the open floor
 MARK_ROPE = (2200.0, 0.0)         # the safe mark before the rope, and a checkpoint
 ROPE_X = 2400.0
 GAP = 150.0                       # half-width of the gap in the rope: the beam crosses it
-AISLE_X1 = 3550.0                 # display cases wall the aisle from the rope to here: the only way to the dais
+AISLE_X1 = 3185.0                 # the reserved rows wall the aisle from the rope to here (W3 stage: cases to 3550)
 TAPE_X0, TAPE_X1 = 2450.0, 3550.0 # red tape inside the aisle: 11 m = 4.4 s at 250 cm/s
 DAIS_X0, DAIS_H = 3600.0, 20.0
 MARK_DAIS = (3700.0, 0.0)         # the mark past the rope: a checkpoint no frame covers
-GUARD = (3000.0, -600.0)          # he looks across the aisle (yaw +90) for 3 bars, then away (yaw -90) for 1
-GUARD_RANGE, GUARD_HALF_ANGLE = 900.0, 45.0   # covers the aisle's full width for its whole length
+GUARD = (3250.0, -450.0)          # W3 stage: at the front of the house (was 3000, -600 in what are now seats)
+GUARD_YAW_ON, GUARD_YAW_OFF = 150.0, -90.0    # down the aisle for 3 bars, away (south) for 1
+GUARD_RANGE, GUARD_HALF_ANGLE = 1000.0, 50.0  # covers the aisle between the rows, both edges, rope to front row
 DRONE_PATH = ((-600.0, 0.0), (1750.0, 0.0))   # the drone's loop over the floor: there in 4 bars, back in 4
 DRONE_RADIUS = 300.0              # its red circle; it turns back 1.5 m short of the rope mark
 # The dais: Vance at the podium, the lift mark behind him, the bodyguard beside the podium.
@@ -232,9 +245,15 @@ def blocker(label, x0, x1, y0, y1, z0, z1):
     return unseen(box(label, x0, x1, y0, y1, z0, z1, m_wall, folder="Set/Blockers"))
 
 
-def rail(x0, y0, x1, y1):
-    """An open rail along a second-floor edge (a top bar and posts) with an unseen wall behind it."""
-    z0, z1 = F2, F2 + RAIL_H
+def rail(x0, y0, x1, y1, z=None):
+    """An open rail along a second-floor edge (a top bar and posts) with an unseen wall behind it. W3 stage: z (the
+    deck's top) for the catwalk level, which also gets a knee rail."""
+    z0, z1 = (F2 if z is None else z), (F2 if z is None else z) + RAIL_H
+    if z is not None:
+        if abs(x1 - x0) > abs(y1 - y0):
+            box("Rail", min(x0, x1), max(x0, x1), y0 - 2, y0 + 2, z0 + 46, z0 + 50, m_trim, folder="Set/Rails")
+        else:
+            box("Rail", x0 - 2, x0 + 2, min(y0, y1), max(y0, y1), z0 + 46, z0 + 50, m_trim, folder="Set/Rails")
     if abs(x1 - x0) > abs(y1 - y0):
         x0, x1 = min(x0, x1), max(x0, x1)
         box("Rail", x0, x1, y0 - 4, y0 + 4, z1 - 8, z1, m_trim, folder="Set/Rails")
@@ -278,9 +297,9 @@ def wall2(label, axis, pos, a0, a1, mat, ground=(), upper=(), top=TOP):
     wall(label, axis, pos, a0, a1, F2 - SLAB, top, mat, [(c, D_HALF, F2, F2 + D_H) for c in upper])
 
 
-def stairs(label, x, y, yaw, run, rise, width, z0, n, mat):
-    """n steps climbing from (x, y, z0) in the direction yaw (0, 90, 180 or 270), solid down to the floor, with an
-    unseen ramp over the step edges so a walker glides up instead of bumping."""
+def stairs(label, x, y, yaw, run, rise, width, z0, n, mat, base=0.0):
+    """n steps climbing from (x, y, z0) in the direction yaw (0, 90, 180 or 270), solid down to the floor (W3 stage:
+    or down to base), with an unseen ramp over the step edges so a walker glides up instead of bumping."""
     dx, dy = round(math.cos(math.radians(yaw))), round(math.sin(math.radians(yaw)))
     d, h = run / n, rise / n
     for i in range(n):
@@ -289,7 +308,7 @@ def stairs(label, x, y, yaw, run, rise, width, z0, n, mat):
             xs, ys = sorted((x + dx * a0, x + dx * a1)), (y - width / 2, y + width / 2)
         else:
             xs, ys = (x - width / 2, x + width / 2), sorted((y + dy * a0, y + dy * a1))
-        box(label, xs[0], xs[1], ys[0], ys[1], 0.0, z0 + (i + 1) * h, mat, folder="Set/Stairs")
+        box(label, xs[0], xs[1], ys[0], ys[1], base, z0 + (i + 1) * h, mat, folder="Set/Stairs")
     # The ramp's top face runs from one tread before the first step (z0) to the top step's edge (z0 + rise).
     p = math.atan2(rise, run)
     th = 20.0
@@ -629,8 +648,7 @@ wall("Hall_West", "y", HX0 - T, HY0, HY1, 0, F2 - SLAB, m_wall, [(0.0, DOOR_HALF
 wall("Hall_West", "y", HX0 - T, HY0, HY1, F2 - SLAB, HALL_H, m_wall, [(0.0, 150.0, F2, F2 + D_H)])
 box("Hall_East", HX1, HX1 + T, HY0 - T, HY1 + T, 0, HALL_H, m_wall)
 wall("Hall_North", "x", HY1, HX0 - T, HX1, 0, F2 - SLAB, m_wall, [(150.0, 100.0, 0.0, D_H), (1900.0, 100.0, 0.0, D_H)])
-wall("Hall_North", "x", HY1, HX0 - T, HX1, F2 - SLAB, HALL_H, m_wall,
-     [(600.0, D_HALF, F2, F2 + D_H), (3000.0, D_HALF, F2, F2 + D_H)])
+wall("Hall_North", "x", HY1, HX0 - T, HX1, F2 - SLAB, HALL_H, m_wall)   # W3 stage: no upper doors (no walkway at F2)
 wall("Hall_South", "x", HY0 - T, HX0 - T, HX1, 0, HALL_H, m_wall,
      [(c, HATCH_HALF, HATCH_Z0, HATCH_Z1) for c in HATCHES] + [(-300.0, D_HALF, 0.0, D_H)])
 exit_sign("y", HX0, 0.0, 1, z=400.0, half=60.0)
@@ -641,10 +659,12 @@ for cx in (-500.0, 400.0, 1300.0, 2200.0, 3100.0, 4000.0):
         box("Column", cx - 60, cx + 60, cy - 60, cy + 60, 0, HALL_H, m_trim)
     box("Truss", cx - 15, cx + 15, HY0, HY1, HALL_H - 40, HALL_H, m_trim)
 
-# Auction seating: benches either side of the centre aisle, behind Julian's start.
-for bx in (-400.0, -200.0, 0.0, 200.0, 400.0, 600.0):
-    box("Bench", bx - 35, bx + 35, 250, 1000, 0, 60, m_trim)
-    box("Bench", bx - 35, bx + 35, -1000, -250, 0, 60, m_trim)
+# Auction seating: rows either side of the centre aisle, from 4.5 m off the dais back toward the doors (W3 stage). Each
+# row's hidden box keeps the collision (tools/sets/hall.py stands the chairs on it), so the rows wall the aisle.
+for (rows, y1) in ((ROWS_FRONT, ROW_Y1_FRONT), (ROWS_REAR, ROW_Y1_REAR)):
+    for bx in rows:
+        box("Bench", bx - 35, bx + 35, ROW_Y0, y1, 0, 60, m_trim)
+        box("Bench", bx - 35, bx + 35, -y1, -ROW_Y0, 0, 60, m_trim)
 
 # Lots on plinths along the north wall, the champagne bar and the phone-bid desks on the south side.
 for lx in (-300.0, 600.0, 2500.0, 3400.0):
@@ -653,53 +673,96 @@ for lx in (-300.0, 600.0, 2500.0, 3400.0):
 box("Bar", 800, 1600, -1560, -1470, 0, 110, m_trim)
 box("Phone_Desk", 1800, 2200, -1560, -1480, 0, 100, m_trim)
 
-# The second floor inside the hall: the west gallery, the walkway along the north wall, the bridge. Open rails.
-box("Gallery_West", HX0, GALLERY_X1, HY0, WALK_Y0, F2 - SLAB, F2, m_deck, folder="Set/Catwalk")
-box("Walkway", HX0, HX1, WALK_Y0, HY1, F2 - SLAB, F2, m_deck, folder="Set/Catwalk")
-box("Bridge", BRIDGE_X0, BRIDGE_X1, BRIDGE_Y0, WALK_Y0, F2 - SLAB, F2, m_deck, folder="Set/Catwalk")
-rail(GALLERY_X1, HY0, GALLERY_X1, CAT_Y0)
-rail(GALLERY_X1, CAT_Y1, GALLERY_X1, WALK_Y0)
-# The catwalk and the lighting platform. Their decks stop a walker but not a sight line or a camera (open grating),
-# so the drone still sees the floor through them.
-soft(box("Catwalk", GALLERY_X1, PLAT[0], CAT_Y0, CAT_Y1, F2 - SLAB, F2, m_deck, folder="Set/Catwalk"))
-soft(box("Light_Platform", PLAT[0], PLAT[1], PLAT[2], PLAT[3], F2 - SLAB, F2, m_deck, folder="Set/Catwalk"))
-rail(GALLERY_X1, CAT_Y0, PLAT[0], CAT_Y0)
-rail(GALLERY_X1, CAT_Y1, PLAT[0], CAT_Y1)
-rail(PLAT[0], PLAT[2], PLAT[0], CAT_Y0)
-rail(PLAT[0], CAT_Y1, PLAT[0], PLAT[3])
-rail(PLAT[0], PLAT[2], PLAT[1], PLAT[2])
-rail(PLAT[0], PLAT[3], PLAT[1], PLAT[3])
-rail(PLAT[1], PLAT[2], PLAT[1], PLAT[3])
-for (lx, ly) in ((0.0, -340.0), (400.0, -340.0), (600.0, -590.0), (750.0, -590.0), (460.0, -820.0), (750.0, -820.0)):
-    box("Catwalk_Leg", lx - 8, lx + 8, ly - 8, ly + 8, 0, F2 - SLAB, m_trim, folder="Set/Catwalk")
-# The broadcast's camera riser fills the centre aisle between the bench rows.
+# --- W3 stage --- The catwalk level, high in the roof (deck top CAT_Z, open rails, hung on rods from the trusses, no
+# legs). Every deck is open grating: it stops a walker but not a sight line or a camera, so the drone and the follow
+# spot see through it. The way up is the projection box over the lobby doors: the gallery door (F2) opens into it,
+# two flights climb inside, and its front door lets out onto the catwalk head at CAT_Z.
+bx0, bx1, by0, by1, btop = BOOTH
+box("Booth_Floor", bx0, bx1, by0, by1, F2 - SLAB, F2, m_deck, folder="Set/Catwalk")
+wall("Booth_Front", "y", bx1 - T, by0 - T, by1 + T, F2 - SLAB, btop, m_wall, [(0.0, D_HALF, CAT_Z, CAT_Z + 220.0)])
+wall("Booth_Side", "x", by0 - T, bx0, bx1 - T, F2 - SLAB, btop, m_wall)
+wall("Booth_Side", "x", by1, bx0, bx1 - T, F2 - SLAB, btop, m_wall)
+box("Booth_Roof", bx0, bx1, by0 - T, by1 + T, btop - SLAB, btop, m_deck, folder="Set/Catwalk")
+for py in (by0 + 60.0, by1 - 60.0):                       # corbels under the box, on the back wall
+    box("Booth_Corbel", bx0, bx0 + 60.0, py - 20, py + 20, F2 - SLAB - 120.0, F2 - SLAB, m_trim, folder="Set/Catwalk")
+for py in (-500.0, 500.0):                                # the projection ports in its front (dark glass)
+    box("Booth_Port", bx1 - 1.0, bx1 + 1.0, py - 30, py + 30, 700.0, 740.0, m_glow, folder="Set/Catwalk")
+lane_a, lane_b, mid_y = (bx0 + 55.0), (bx1 - T - 55.0), 514.0     # two lanes 110 wide; the landing between them
+half = (CAT_Z - F2) / 2.0
+stairs("Booth_Stair", lane_a, 150.0, 90.0, mid_y - 150.0, half, 110.0, F2, 13, m_deck, base=F2 - SLAB)
+box("Booth_Landing", bx0, bx1 - T, mid_y, by1, F2 - SLAB, F2 + half, m_deck, folder="Set/Stairs")
+stairs("Booth_Stair", lane_b, mid_y, 270.0, mid_y - 150.0, half, 110.0, F2 + half, 13, m_deck, base=F2 - SLAB)
+box("Booth_Top", bx0, bx1 - T, by0, 150.0, CAT_Z - SLAB, CAT_Z, m_deck, folder="Set/Catwalk")
+rail(bx0, 150.0, lane_b - 55.0, 150.0, z=CAT_Z)             # the top landing's edge over the first flight
+lamp((bx0 + bx1) / 2, 300.0, z=btop - 40.0, cd=6.0, radius=500.0, rgb=WORK)
+
+# The catwalk head along the box's front, the catwalk out to the lighting platform, the walkway along the north wall
+# and the bridge from it out over the house.
+deck = lambda lbl, x0, x1, y0, y1: soft(box(lbl, x0, x1, y0, y1, CAT_Z - SLAB, CAT_Z, m_deck, folder="Set/Catwalk"))
+deck("Catwalk_Head", CAT_X0, GALLERY_X1, -450.0, HY1)
+deck("Catwalk", GALLERY_X1, PLAT[0], CAT_Y0, CAT_Y1)
+deck("Light_Platform", PLAT[0], PLAT[1], PLAT[2], PLAT[3])
+deck("Walkway", GALLERY_X1, HX1, WALK_Y0, HY1)
+deck("Bridge", BRIDGE_X0, BRIDGE_X1, BRIDGE_Y0, WALK_Y0)
+rail(CAT_X0, -450.0, CAT_X0, by0 - T, z=CAT_Z)
+rail(CAT_X0, by1 + T, CAT_X0, HY1, z=CAT_Z)
+rail(CAT_X0, -450.0, GALLERY_X1, -450.0, z=CAT_Z)
+rail(GALLERY_X1, -450.0, GALLERY_X1, CAT_Y0, z=CAT_Z)
+rail(GALLERY_X1, CAT_Y1, GALLERY_X1, WALK_Y0, z=CAT_Z)
+rail(GALLERY_X1, CAT_Y0, PLAT[0], CAT_Y0, z=CAT_Z)
+rail(GALLERY_X1, CAT_Y1, PLAT[0], CAT_Y1, z=CAT_Z)
+rail(PLAT[0], PLAT[2], PLAT[0], CAT_Y0, z=CAT_Z)
+rail(PLAT[0], CAT_Y1, PLAT[0], PLAT[3], z=CAT_Z)
+rail(PLAT[0], PLAT[2], PLAT[1], PLAT[2], z=CAT_Z)
+rail(PLAT[0], PLAT[3], PLAT[1], PLAT[3], z=CAT_Z)
+rail(PLAT[1], PLAT[2], PLAT[1], PLAT[3], z=CAT_Z)
+rail(GALLERY_X1, WALK_Y0, BRIDGE_X0, WALK_Y0, z=CAT_Z)
+rail(BRIDGE_X1, WALK_Y0, HX1, WALK_Y0, z=CAT_Z)
+rail(BRIDGE_X0, BRIDGE_Y0, BRIDGE_X0, WALK_Y0, z=CAT_Z)
+rail(BRIDGE_X1, BRIDGE_Y0, BRIDGE_X1, WALK_Y0, z=CAT_Z)
+rail(BRIDGE_X0, BRIDGE_Y0, BRIDGE_X1, BRIDGE_Y0, z=CAT_Z)
+
+
+def hanger(x, y):
+    box("Catwalk_Hanger", x - 3, x + 3, y - 3, y + 3, CAT_Z, HANG_Z, m_trim, folder="Set/Catwalk")
+
+
+def header(x0, x1, y0, y1):
+    """A steel beam just under the trusses, carrying the hangers between them."""
+    box("Catwalk_Header", x0, x1, y0, y1, HANG_Z - 30.0, HANG_Z, m_trim, folder="Set/Catwalk")
+
+
+for y in (-450.0, 300.0, 1100.0, 1900.0):                 # the head: rods on its open edge, a beam to the truss at -500
+    hanger(GALLERY_X1 - 8, y)
+header(GALLERY_X1 - 15, GALLERY_X1, -460.0, HY1)
+for x in (-500.0, 0.0, 400.0):                            # the catwalk: both rails, at the trusses and between
+    for y in (CAT_Y0 - 8, CAT_Y1 + 8):
+        hanger(x, y)
+for (x, y) in ((PLAT[0] + 8, PLAT[2] - 8), (PLAT[1] + 8, PLAT[2] - 8), (PLAT[0] + 8, PLAT[3] + 8), (PLAT[1] + 8, PLAT[3] + 8)):
+    hanger(x, y)
+for y in (PLAT[2] - 8, PLAT[3] + 8):                      # the platform's beams, from the truss at 400
+    header(390.0, PLAT[1] + 15, y - 8, y + 8)
+for x in (-500.0, 400.0, 1300.0, 2200.0, 3100.0, 4000.0):  # the walkway's open edge, at every truss
+    hanger(x, WALK_Y0 - 8)
+for x in (BRIDGE_X0 - 8, BRIDGE_X1 + 8):                  # the bridge: rods each side, beams from the north wall
+    header(x - 8, x + 8, BRIDGE_Y0 - 10, HY1)
+    for y in (BRIDGE_Y0, 500.0, 1200.0):
+        hanger(x, y)
+# --- end W3 stage
+# The broadcast's camera riser fills the centre aisle at the head of the rear rows.
 box("Broadcast_Riser", RISER[0], RISER[1], RISER[2], RISER[3], 0, 80, m_trim)
-rail(GALLERY_X1, WALK_Y0, BRIDGE_X0, WALK_Y0)
-rail(BRIDGE_X1, WALK_Y0, HX1, WALK_Y0)
-rail(BRIDGE_X0, BRIDGE_Y0, BRIDGE_X0, WALK_Y0)
-rail(BRIDGE_X1, BRIDGE_Y0, BRIDGE_X1, WALK_Y0)
-rail(BRIDGE_X0, BRIDGE_Y0, BRIDGE_X1, BRIDGE_Y0)
-for sx in (BRIDGE_X0 + 10, BRIDGE_X1 - 10):
-    box("Bridge_Leg", sx - 10, sx + 10, BRIDGE_Y0 - 10, BRIDGE_Y0 + 10, 0, F2 - SLAB, m_trim, folder="Set/Catwalk")
-for sx in (0.0, 900.0, 2600.0, 3500.0):
-    box("Walkway_Leg", sx - 10, sx + 10, WALK_Y0 - 10, WALK_Y0 + 10, 0, F2 - SLAB, m_trim, folder="Set/Catwalk")
-for sy in (-1500.0, -700.0, 700.0, 1500.0):
-    box("Gallery_Leg", GALLERY_X1 - 10, GALLERY_X1 + 10, sy - 10, sy + 10, 0, F2 - SLAB, m_trim, folder="Set/Catwalk")
-for ly in (-1000.0, 1000.0):
-    lamp(-800.0, ly)
 
 # The rope: a low wall with a gap. Past it, display cases wall an aisle to the dais.
 box("Rope_South", ROPE_X - 10, ROPE_X + 10, HY0, -GAP, 0, 110, m_rope)
 box("Rope_North", ROPE_X - 10, ROPE_X + 10, GAP, HY1, 0, 110, m_rope)
-box("Cases_South", ROPE_X + 10, AISLE_X1, -GAP - 60, -GAP, 0, 110, m_case)
-box("Cases_North", ROPE_X + 10, AISLE_X1, GAP, GAP + 60, 0, 110, m_case)
+# W3 stage: no display cases: the reserved rows wall the aisle (their Bench boxes above).
 
 # The dais: a low stage with the podium, the gold case, and a dark screen on the end wall.
 box("Dais", DAIS_X0, HX1, -1200, 1200, 0, DAIS_H, m_dais)
 box("Podium", 3780, 3840, -520, -440, DAIS_H, DAIS_H + 120, m_trim)
 box("Case_Plinth", 4130, 4190, -30, 30, DAIS_H, DAIS_H + 90, m_trim)
 signal(box("Case_Reel", 4140, 4180, -20, 20, DAIS_H + 90, DAIS_H + 130, m_gold), m_sig_gold, 2)
-box("Screen", HX1 - 10, HX1, -700, 700, 300, 900, m_floor)
+box("Screen", HX1 - 10, HX1, -500, 500, 235, 965, m_floor)   # W3 stage: 10 x 7.3 m, an old print's frame (was 14 x 6)
 
 # Scene 3's set. The lots table stands between the case and the stage trap; the band's PA stacks stand between
 # the dais and the gold side exit and are the only cover from the guards at that door; a shutter frame closes the
@@ -740,7 +803,7 @@ for px in (VOID_X0, VOID_X1):
 
 # The grand stair: up the middle of the atrium to the east balcony, facing the door to the hall's gallery.
 stairs("Grand_Stair", VOID_X0 + 100, 0.0, 0, VOID_X1 - (VOID_X0 + 100), F2, 400.0, 0.0, 30, m_trim)
-box("Lobby_Desk", -2300, -2100, 900, 1300, 0, 110, m_trim)
+box("Lobby_Desk", -2300, -2100, 430, 830, 0, 110, m_trim)   # W3 opening: moved onto the way in (was y 900..1300)
 for (bx, by0, by1) in ((-3050.0, 800.0, 1200.0), (-1200.0, 200.0, 600.0)):
     box("Lobby_Bench", bx - 30, bx + 30, -by1, -by0, 0, 50, m_trim)
     box("Lobby_Bench", bx - 30, bx + 30, by0, by1, 0, 50, m_trim)
@@ -999,7 +1062,7 @@ for dx in (-700.0, -400.0):
     box("Bin", dx, dx + 240, SY0 - 160, SY0 - 45, -21, 110, m_door, folder="Set/Street")
 
 # --- the lobby --------------------------------------------------------------------------------------------------------
-deco("Desk_Screen", -2180, -2170, 1060, 1140, 110, 150, m_glow)
+deco("Desk_Screen", -2180, -2170, 590, 670, 110, 150, m_glow)   # W3 opening: with the desk
 guest(-2050.0, 1100.0, facing=180.0)                    # the receptionist
 guest(-2370.0, 1050.0, facing=0.0)
 for (px, py) in ((-3140, 1330), (-3140, -1330), (-1090, 1330), (-1090, -1330), (-1090, 430), (-1090, -430)):
@@ -1085,7 +1148,7 @@ for cx in (-500.0, 400.0, 1300.0, 2200.0, 3100.0, 4000.0):   # a banner on every
         deco("Column_Banner_Hem", cx - 45, cx + 45, s * 1231, s * 1239, 588, 600, m_gold)
 plant(4330.0, -1100.0, DAIS_H)
 for s in (1, -1):
-    easel(4230.0, s * 480.0, DAIS_H)
+    easel(4230.0, s * 650.0, DAIS_H)                    # W3 stage: off the (narrower) screen (was 480)
 # Scene 3's dressing: lots on the table, the closed trap, the band on its riser, signs at the two doors.
 for i, m in enumerate((m_gold, m_case, m_head)):
     deco("Lot", LOTS[0] + 30 + i * 45, LOTS[0] + 60 + i * 45, LOTS[2] + 40 + i * 30, LOTS[2] + 80 + i * 30,
@@ -1113,17 +1176,17 @@ sign("LOT 41: THE DIRECTOR'S CUT", 4125.0, 0.0, DAIS_H + 165.0, 180.0, size=18.0
 sign("CREW ONLY", 3000.0, BY0 + 6.0, 215.0, 90.0, size=22.0)
 for (kx, ky, ks) in ((3760.0, -3200.0, 70.0), (3840.0, -3190.0, 50.0), (3560.0, -3210.0, 60.0)):
     prop("Flight_Case", kx - ks / 2, kx + ks / 2, ky - 30, ky + 30, 0, ks, m_floor)
-# The second floor of the hall: benches, onlookers and a film camera on the west gallery; cases on the walkway.
-for s in (1, -1):
-    prop("Gallery_Bench", -990, -940, s * 400, s * 900, F2, F2 + 45, m_trim)
-guest(-660.0, 500.0, z=F2, facing=0.0)
-guest(-665.0, 575.0, z=F2, facing=-12.0)
-guest(-660.0, -700.0, z=F2, facing=0.0)
-tripod(-660.0, -1000.0, F2)
-plant(-950.0, 1550.0, F2)
-plant(-950.0, -1900.0, F2)
+# W3 stage: no west gallery any more (its benches, onlookers, tripod and plants are gone); flight cases on the
+# catwalk walkway, and the reception where the old benches stood: cocktail tables and guests standing round them
+# (their own dice, so the rest of the layout's draws stay as they were).
 for (x0, x1, h) in ((1000, 1110, 60), (2200, 2330, 85), (3500, 3620, 60)):
-    prop("Flight_Case", x0, x1, 1950, 1995, F2, F2 + h, m_floor)
+    prop("Flight_Case", x0, x1, 1950, 1995, CAT_Z, CAT_Z + h, m_floor)
+_rnd_keep = rnd
+rnd = random.Random(1115)
+for (mx, my, n) in ((-350, 700, 3), (100, 950, 2), (350, 450, 2), (-300, -650, 2), (200, -900, 3), (550, -450, 2),
+                    (750, 900, 2)):
+    mingle(float(mx), float(my), n)
+rnd = _rnd_keep
 
 # --- the north wing ---------------------------------------------------------------------------------------------------
 for cx in (-900.0, -300.0, 300.0, 900.0, 1500.0, 2100.0):   # the preview gallery
@@ -1298,7 +1361,7 @@ for cy in (-330.0, 0.0, 330.0):
 spot("Key_Scanner", SCAN_X - 360.0, SCAN_Y - 20.0, 470.0, 0.0, -58.0, 420.0, 30.0, 1200.0, WARM, shadows=True)
 lamp(SCAN_X - 30.0, SCAN_Y, z=235.0, cd=2.2, radius=320.0, rgb=REDL)
 lamp(VEX_START[0], VEX_START[1] + 150.0, z=400.0, cd=30.0, radius=1100.0, rgb=WORK)
-lamp((PLAT[0] + PLAT[1]) / 2, (PLAT[2] + PLAT[3]) / 2, z=F2 + 300.0, cd=45.0, radius=900.0, rgb=WORK)
+lamp((PLAT[0] + PLAT[1]) / 2, (PLAT[2] + PLAT[3]) / 2, z=CAT_Z + 280.0, cd=20.0, radius=900.0, rgb=WORK)
 # The lobby: a chandelier's worth over the atrium, a key down the grand stair.
 lamp((VOID_X0 + VOID_X1) / 2, 0.0, z=820.0, cd=250.0, radius=2600.0)   # step 4 pass 3: 420 lit the lobby past Julian
 spot("Key_Stair", VOID_X0 - 200.0, 0.0, 860.0, 0.0, -55.0, 450.0, 26.0, 2400.0, WARM, shadows=True)
@@ -1317,9 +1380,9 @@ for ry in (-750.0, 750.0):
 # Red at the rope, on both sides of the gap. Work light on the bridge and the walkway (the making-of).
 for ry in (-GAP - 60.0, GAP + 60.0):
     lamp(ROPE_X, ry, z=150.0, cd=12.0, radius=420.0, rgb=REDL)
-lamp((BRIDGE_X0 + BRIDGE_X1) / 2, -100.0, z=F2 + 300.0, cd=45.0, radius=900.0, rgb=WORK)
+lamp((BRIDGE_X0 + BRIDGE_X1) / 2, 300.0, z=CAT_Z + 280.0, cd=15.0, radius=900.0, rgb=WORK)
 for wx in (300.0, 2400.0, 3700.0):
-    lamp(wx, (WALK_Y0 + HY1) / 2, z=F2 + 300.0, cd=45.0, radius=1100.0, rgb=WORK)
+    lamp(wx, (WALK_Y0 + HY1) / 2, z=CAT_Z + 280.0, cd=15.0, radius=1100.0, rgb=WORK)
 
 # =====================================================================================================================
 # The rules: the director, the characters, marks, watchers, devices, the scene triggers and the crew posts.
@@ -1370,7 +1433,7 @@ mark("Mark_Start", "THE QUEUE", START)
 mark("Mark_Scanner", "SCANNER", MARK_SCANNER)
 scanner = spawn(unreal.ScannerWatcher, (SCAN_X, SCAN_Y, 0), label="Scanner", folder="Take")
 setp(scanner, label="SCANNER", gate_half_width=SCAN_HALF, frame_depth=SCAN_DEPTH,
-     seen_line='CHIEF: "No match. Hold there, sir."', blinded_line='CHIEF: "Who turned that light on?!"')
+     seen_line='DOORMAN: "No match. Hold there, sir."', blinded_line='DOORMAN: "Who turned that light on?!"')   # W3 opening: the man at the scanner
 tape("RedTape_Scanner", SCAN_X - SCAN_DEPTH, SCAN_X, SCAN_Y - SCAN_HALF, SCAN_Y + SCAN_HALF)
 # The carpet is the invited guests' lane: red tape from the kerb to the doors, the doorman's frame straight down it.
 tape("RedTape_Carpet", PAVE_X0 + 60.0, FRONT - 30.0, -LANE_ROPE + 10.0, LANE_ROPE - 10.0)
@@ -1401,6 +1464,9 @@ setp(queue_line, places=[unreal.Vector(qx, qy, 0.0) for qx, qy in QUEUE_PLACES],
      scan_point=unreal.Vector(SCAN_X - 90.0, SCAN_Y, 0.0),
      way_in=[unreal.Vector(SCAN_X + 130.0, SCAN_Y, 0.0), unreal.Vector(FRONT + 160.0, SCAN_Y + 60.0, 0.0)],
      inside_spots=[unreal.Vector(sx, sy, 0.0) for sx, sy in ((-2750.0, 1150.0), (-2600.0, 1250.0), (-2450.0, 1150.0))])
+# --- W3 opening: the receptionist stands at the moved desk in play (build_cast still dresses him at (-2050, 1100)).
+setp(queue_line, clerk_from=unreal.Vector(-2050.0, 1100.0, 0.0), clerk_point=unreal.Vector(-2050.0, 630.0, 0.0),
+     clerk_yaw=180.0)
 # --- end QA scene1
 
 # --- Scene 2, The Floor -----------------------------------------------------------------------------------------------
@@ -1448,11 +1514,11 @@ setp(beam, label="BEAM", end_b=unreal.Vector(0, 2 * GAP, 0), live_from_bar=1, dr
      instrument=unreal.WatcherInstrument.HI_HAT)
 
 # The guard stands beside the aisle and turns on bar lines.
-p1 = spawn(unreal.PatrolPoint, (GUARD[0], GUARD[1], 0), yaw=90.0, label="Patrol_1", folder="Take")
+p1 = spawn(unreal.PatrolPoint, (GUARD[0], GUARD[1], 0), yaw=GUARD_YAW_ON, label="Patrol_1", folder="Take")
 setp(p1, bars=3)
-p2 = spawn(unreal.PatrolPoint, (GUARD[0], GUARD[1], 0), yaw=-90.0, label="Patrol_2", folder="Take")
+p2 = spawn(unreal.PatrolPoint, (GUARD[0], GUARD[1], 0), yaw=GUARD_YAW_OFF, label="Patrol_2", folder="Take")
 setp(p2, bars=1)
-guard = spawn(unreal.PatrolGuard, (GUARD[0], GUARD[1], 0), yaw=90.0, label="Guard", folder="Take")
+guard = spawn(unreal.PatrolGuard, (GUARD[0], GUARD[1], 0), yaw=GUARD_YAW_ON, label="Guard", folder="Take")
 setp(guard, label="GUARD", frame_range=GUARD_RANGE, frame_half_angle=GUARD_HALF_ANGLE, patrol_points=[p1, p2],
      instrument=unreal.WatcherInstrument.BASS, seen_line='GUARD: "Sir? That aisle is closed."')
 
@@ -1474,15 +1540,15 @@ setp(bodyguard, label="BODYGUARD", frame_range=BODYGUARD_RANGE, frame_half_angle
      arrive_on="PastRope", seen_line='BODYGUARD: "Step away from the podium."')
 
 # Maya's devices on the lighting platform: the follow spot, and the winch of the banner over the rope.
-spot_dev = spawn(unreal.FollowSpot, (SPOT[0], SPOT[1], F2), label="Spot", folder="Take")
+spot_dev = spawn(unreal.FollowSpot, (SPOT[0], SPOT[1], CAT_Z), label="Spot", folder="Take")
 setp(spot_dev, device_name="FOLLOW SPOT", effect=unreal.DeviceEffect.BLIND, range=3500.0, duration=4.0, uses=0,
      fired_from=B, use_verb="Put the follow spot on the")
-setp(spot_dev, use_offset=use_offset(spot_dev, (SPOT_USE[0], SPOT_USE[1], F2)))
+setp(spot_dev, use_offset=use_offset(spot_dev, (SPOT_USE[0], SPOT_USE[1], CAT_Z)))
 banner = spawn(unreal.BannerDevice, BATTEN, label="Banner", folder="Take")
 setp(banner, device_name="BANNER", effect=unreal.DeviceEffect.MASK, range=600.0, duration=10.0, uses=1,
      fired_from=B, drop_distance=300.0, use_verb="Winch the banner down over the beam",
      effect_offset=unreal.Vector(ROPE_X - BATTEN[0], 0.0, 20.0 - BATTEN[2]))
-setp(banner, use_offset=use_offset(banner, (BANNER_USE[0], BANNER_USE[1], F2)))
+setp(banner, use_offset=use_offset(banner, (BANNER_USE[0], BANNER_USE[1], CAT_Z)))
 
 # Vex's devices, along the backstage corridor: the mid-floor cart (the guard), the sound desk (everything in the
 # hall, 4 s), the dais cart (Vance and the bodyguard: x2).
@@ -1546,39 +1612,69 @@ security("Security_S_Door", "SECURITY 2", SEC_S_DOOR, None, 90.0)
 security("Security_S_Flank", "SECURITY 1", None, SEC_S_POST, 90.0)
 
 # Maya's pyro board, at the south end of her platform. The charges stand along the front of the dais.
-pyro = spawn(unreal.PyroDevice, (PYRO[0], PYRO[1], F2), label="Pyro", folder="Take")
+pyro = spawn(unreal.PyroDevice, (PYRO[0], PYRO[1], CAT_Z), label="Pyro", folder="Take")
 setp(pyro, device_name="PYRO BOARD", effect=unreal.DeviceEffect.BLIND, range=PYRO_RANGE, duration=6.0, uses=1,
      fired_from=B, use_verb="Fire the pyro along the stage", locked_until="Case",
      fire_line='MAYA: "Pyro! Eyes shut!"', flare_candelas=PYRO_CD)
-setp(pyro, use_offset=use_offset(pyro, (PYRO_USE[0], PYRO_USE[1], F2)),
+setp(pyro, use_offset=use_offset(pyro, (PYRO_USE[0], PYRO_USE[1], CAT_Z)),
      effect_offset=use_offset(pyro, (PYRO_POINT[0], PYRO_POINT[1], DAIS_H)),
      flare_offsets=[use_offset(pyro, (fx, fy, DAIS_H)) for (fx, fy) in PYRO_FLARES])
 
 # --- QA heist ---
 # The swap in the dark (QA note 6; Reel/Source/Reel/Take/HouseDimmer.h tells the trick). Maya's house dimmer at the
-# west rail of her platform: after the keycard it takes the hall's lights down for the preview of Lot 41, the
-# projector on the platform's east rail lights the dark screen on the end wall, and every head turns to it. In the
-# dark Julian swaps the reel for Vex's dummy at the case. The case mark above keeps action_trigger="Case": with
-# ATakeDirector.bHeistTrick on, the C++ makes it fire "Swap" at runtime; off, the old flow plays.
-# The board's model is package devices': a 1940s theatre dimmer board, a bank of brass levers (here a plain box).
-DIMMER = (470.0, -640.0)                  # the board, at the platform's west rail
-DIMMER_USE = (545.0, -640.0)              # where Maya stands: 1.4 m from the pyro board's use point
-PROJECTOR = (745.0, -600.0, F2 + 160.0)   # the preview projector's lens, at the platform's east rail
-SCREEN_FACE = (HX1 - 12.0, 0.0, 600.0)    # the face of the dark screen on the end wall (box "Screen")
+# west rail of her platform takes the hall's lights down for the preview of Lot 41, the projector on the platform's
+# east rail lights the screen over the dais with the old film, and every head turns to it. The case mark above keeps
+# action_trigger="Case": with ATakeDirector.bHeistTrick on, the C++ makes it fire "Swap" at runtime; off, the old flow.
+# --- W3 heist2 --- the room watches (RoomWatch.h): in house light the seated guests see Julian on the floor before the
+# dais or on the dais (a glance, a murmur at 1 s, THE ROOM SAW HIM at 2.5 s), and lifting the keycard or opening the
+# case there. So the dimmer unlocks as Julian enters the hall (Scene2), and the dark is the way up. Every position
+# here comes from tools/sets/hall_zones.json (package stage); the old numbers are the fallback.
+import json as _hz_json
+_hz_path = unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir() + "../tools/sets/hall_zones.json")
+try:
+    with open(_hz_path, encoding="utf-8") as _hz_f:
+        HZ = _hz_json.load(_hz_f)
+except Exception as _hz_e:
+    unreal.log_warning("QA heist2: no hall_zones.json (%s): the old positions" % _hz_e)
+    HZ = {}
+_hz_floor = HZ.get("floor_z", 0.0)
+DIMMER = tuple(HZ.get("dimmer", (470.0, -640.0, CAT_Z)))          # the board, at the platform's west rail
+DIMMER_USE = tuple(HZ.get("maya_post", (545.0, -640.0, CAT_Z)))   # where Maya stands to throw it
+PROJECTOR = tuple(HZ.get("projector", (745.0, -600.0, CAT_Z + 160.0)))   # the preview projector's lens
+_hz_screen = HZ.get("screen", {})
+SCREEN_FACE = tuple(_hz_screen.get("centre", (HX1 - 12.0, 0.0, 600.0)))  # the middle of the screen's face
+SCREEN_SIZE = tuple(_hz_screen.get("size", (1000.0, 730.0)))             # across, tall
+SCREEN_NORMAL = tuple(_hz_screen.get("normal", (-1.0, 0.0, 0.0)))        # facing the hall
 HOUSE_POINT = (1700.0, 0.0)               # the hall's middle: the preview's range (35 m) is measured from here
+_hz_front = HZ.get("front_floor", {"min": [3185.0, -1200.0], "max": [3600.0, 1200.0]})
+_hz_dais = HZ.get("dais", {"min": [3600.0, -1200.0], "max": [4400.0, 1200.0], "z": DAIS_H})
 if hasattr(unreal, "HouseDimmer"):
-    dimmer = spawn(unreal.HouseDimmer, (DIMMER[0], DIMMER[1], F2), label="HouseDimmer", folder="Take")
+    dimmer = spawn(unreal.HouseDimmer, DIMMER, label="HouseDimmer", folder="Take")
     setp(dimmer, device_name="HOUSE DIMMER", effect=unreal.DeviceEffect.BLIND, range=3500.0, duration=0.75, uses=0,
          fired_from=B, use_verb="Bring the house lights down for the preview", use_radius=100.0,
-         locked_until="Keycard", locked_why="for the preview, after the keycard",
-         fire_line='MAYA: "House lights down. Rolling the preview."', preview_seconds=12.0,
+         locked_until="Scene2", locked_why="for the preview, once Julian is in the hall",
+         fire_line='MAYA: "House lights down. Rolling the preview."', preview_seconds=16.0,
          house_min=unreal.Vector(HX0, HY0, -100.0), house_max=unreal.Vector(HX1, HY1, HALL_H + 100.0),
-         screen_size=unreal.Vector2D(1400.0, 600.0))
-    setp(dimmer, use_offset=use_offset(dimmer, (DIMMER_USE[0], DIMMER_USE[1], F2)),
+         screen_size=unreal.Vector2D(SCREEN_SIZE[0], SCREEN_SIZE[1]))
+    try:
+        setp(dimmer, screen_normal=unreal.Vector(*SCREEN_NORMAL))
+    except Exception as _hz_e:
+        unreal.log_warning("QA heist2: HouseDimmer has no screen_normal yet (old C++): %s" % _hz_e)
+    setp(dimmer, use_offset=use_offset(dimmer, DIMMER_USE),
          effect_offset=use_offset(dimmer, (HOUSE_POINT[0], HOUSE_POINT[1], 0.0)),
          projector_offset=use_offset(dimmer, PROJECTOR), screen_offset=use_offset(dimmer, SCREEN_FACE))
 else:
     unreal.log_warning("QA heist: unreal.HouseDimmer is missing (C++ not built yet): no house dimmer, the old case flow")
+if hasattr(unreal, "RoomWatch"):
+    _hz_dz = _hz_dais.get("z", DAIS_H)
+    room = spawn(unreal.RoomWatch, ((_hz_front["min"][0] + _hz_dais["max"][0]) / 2.0, 0.0, _hz_floor),
+                 label="RoomWatch", folder="Take")
+    setp(room, front_min=unreal.Vector(_hz_front["min"][0], _hz_front["min"][1], _hz_floor - 100.0),
+         front_max=unreal.Vector(_hz_front["max"][0], _hz_front["max"][1], _hz_floor + 250.0),
+         dais_min=unreal.Vector(_hz_dais["min"][0], _hz_dais["min"][1], _hz_dz - 100.0),
+         dais_max=unreal.Vector(_hz_dais["max"][0], _hz_dais["max"][1], _hz_dz + 300.0))
+else:
+    unreal.log_warning("QA heist2: unreal.RoomWatch is missing (C++ not built yet): the room does not watch")
 # --- end QA heist ---
 
 # Vex's counterweight winch, in the wings at the east end of the corridor. The curtain: across the front of the
@@ -1631,4 +1727,5 @@ _cast = unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir() + 
 exec(open(_cast, encoding="utf-8").read(), dict(globals(), __name__="build_cast"))
 
 # --- QA found --- Last: the set overlays (tools/sets/run_all.py: front, hall, rooms, devices, heroes), so a rebuild re-applies them.
-exec(open(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir() + "../tools/sets/run_all.py"), encoding="utf-8").read(), {"__name__": "run_all"})
+# --- W3 stage --- removed (orchestrator): run_all ran before import_props had placed the props and undid front's
+# stanchion removals. The integrator runs build_frames, import_props (materials, place, check) and then run_all itself.

@@ -302,7 +302,7 @@ namespace TakeText
 		case EBlooperReason::ComposureZero: return TEXT("Composure ran out");
 		case EBlooperReason::BeamTouched: return TEXT("Walked into the beam");
 		case EBlooperReason::ClockRanOut: return TEXT("The clock ran out");
-		case EBlooperReason::SeenAtCase: return TEXT("The whole room saw him at the case");	// --- QA heist
+		case EBlooperReason::SeenAtCase: return TEXT("The whole room saw him");	// --- QA heist (W3 heist2: the front, the keycard or the case)
 		default: return TEXT("");
 		}
 	}

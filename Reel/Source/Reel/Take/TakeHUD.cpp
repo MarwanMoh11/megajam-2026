@@ -30,7 +30,10 @@ ATakeHUD::ATakeHUD()
 		TEXT("3|VEX|props and sound, backstage") };
 	TitleRules = {
 		TEXT("Get JULIAN in, lift the keycard, take the reel and get him out."),
-		TEXT("[danger] Watched, he loses his nerve: the picture drains and closes in.   [julian] Gold is his: his marks, the reel, the way out.") };
+		// --- W3 opening: the old legend (red square, gold T) named cues the QA pass removed; the light tells it now.
+		TEXT("In warm light he is one of the guests. Cool light is off-limits. A guard's torch on him: he is seen.") };
+	TitleControls = TEXT("[WASD] Walk   [MOUSE] Look   [1] [2] [3] Cut   [E] Use   [R] Retake");
+	// --- end W3 opening
 	CreditLines = {
 		TEXT("PRINT IT"),
 		TEXT("A heist shot in one take."),

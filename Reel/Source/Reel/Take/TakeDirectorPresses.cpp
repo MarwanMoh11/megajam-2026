@@ -5,6 +5,7 @@
 
 #include "Device.h"
 #include "FollowSpot.h"
+#include "QueueLine.h"
 #include "Julian.h"
 #include "TakeCharacter.h"
 #include "TakeGameInstance.h"
@@ -160,7 +161,17 @@ void ATakeDirector::HandleUse(const FTakePress& Press)
 	if (AFollowSpot* Spot = Cast<AFollowSpot>(Device))
 	{
 		FollowSpot = Spot;	// the spot in reach, not just the level's first
+		// W3 opening: the doorman at the scanner speaks first on the searchlight's landing (AQueueLine): the spot's own
+		// @fire line is held back for this press (a FireLine set means "the level gives the light its line").
+		const AQueueLine* const QueueLine = AQueueLine::Get(this);
+		const bool bQueueSpeaks = QueueLine && QueueLine->ClaimsSpotLine(Spot, CurrentUse.Watcher.Get());
+		const FString KeptFireLine = Spot->FireLine;
+		if (bQueueSpeaks && KeptFireLine.IsEmpty())
+		{
+			Spot->FireLine = TEXT("(the doorman)");
+		}
 		bFired = SpotWatcher(CurrentUse.Watcher);
+		Spot->FireLine = KeptFireLine;
 	}
 	else
 	{

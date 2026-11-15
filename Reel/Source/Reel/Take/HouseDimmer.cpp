@@ -325,6 +325,12 @@ void AHouseDimmer::SetFilm(float Play)
 	{
 		FilmMID->SetScalarParameterValue(TEXT("Play"), Play);
 		FilmMID->SetScalarParameterValue(TEXT("Brightness"), FilmBrightness);
+		if (Play > 0.f)
+		{
+			// The leader's countdown starts on this frame (T0: world seconds, the material's Time); the frame's shape.
+			FilmMID->SetScalarParameterValue(TEXT("T0"), GetWorld() ? GetWorld()->GetTimeSeconds() : -1.f);
+			FilmMID->SetScalarParameterValue(TEXT("Aspect"), FMath::Max(ScreenSize.X, 1.f) / FMath::Max(ScreenSize.Y, 1.f));
+		}
 	}
 	else if (ScreenPanel && Play > 0.f)
 	{

@@ -157,6 +157,16 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Cast")
 	bool bInstrumentProps = false;
 
+	/** --- W3 cast2 --- the band's hands (built playing, no instrument clip) moved by this to meet the real prop, in the
+	 *  player's frame (forward, right, up; cm). tools/build_cast.py measures it from the placed prop (the grand's keys). */
+	UPROPERTY(EditAnywhere, Category = "Take|Cast")
+	FVector BandReach = FVector::ZeroVector;
+
+	/** The band plays its instrument clip when one exists (Piano, Drums, Bass). Off: the playing built from bones,
+	 *  hands on the real prop (BandReach). A clip's hands sit where its own take's instrument was. */
+	UPROPERTY(EditAnywhere, Category = "Take|Cast")
+	bool bBandClips = true;
+
 	/** A generated, rigged mesh on the mannequin skeleton (package heroes): replaces the mannequin, no tint, no costume
 	 *  shells (instruments and props stay). */
 	UPROPERTY(EditAnywhere, Category = "Take|Cast")

@@ -445,9 +445,11 @@ namespace CastRig
 
 	/** The band playing, built from bones (no instrument clip), loosely on the beat: each instrument on its own
 	 *  subdivision and phase, never a whole-body jolt. */
-	void BuildBand(ECastInstrument Inst, float Beat, const FRigFrame& F, FRigLayer& O)
+	void BuildBand(ECastInstrument Inst, float Beat, const FRigFrame& F, FRigLayer& O, const FVector& Shift = FVector::ZeroVector)
 	{
 		const float Ph = F.Phase;
+		// --- W3 cast2 --- the instrument where the real prop has it: the targets moved by Shift (the actor's frame, cm).
+		auto At = [&F, &Shift](float Fw, float Ri, float Hi) { return F.Actor(Fw + ToF(Shift.X), Ri + ToF(Shift.Y), Hi + ToF(Shift.Z)); };
 		switch (Inst)
 		{
 		case ECastInstrument::Piano:
@@ -458,8 +460,8 @@ namespace CastRig
 			const float LHit = Strike(Frac(Beat * 0.5f));
 			const float RAlong = 15.f + 9.f * FMath::Sin(Beat * 6.2832f / 8.f + Ph * 6.f);
 			const float LAlong = -16.f + 6.f * FMath::Sin(Beat * 6.2832f / 16.f + 1.f);
-			O.R.Set(1.f, F.Actor(30.f, RAlong, 25.f - 2.5f * RHit), V(-0.2f, 1.f, -1.f), V(1.f, 0.f, -0.5f), V(0.f, -1.f, 0.f));
-			O.L.Set(1.f, F.Actor(30.f, LAlong, 25.f - 2.5f * LHit), V(-0.2f, -1.f, -1.f), V(1.f, 0.f, -0.5f), V(0.f, 1.f, 0.f));
+			O.R.Set(1.f, At(30.f, RAlong, 25.f - 2.5f * RHit), V(-0.2f, 1.f, -1.f), V(1.f, 0.f, -0.5f), V(0.f, -1.f, 0.f));
+			O.L.Set(1.f, At(30.f, LAlong, 25.f - 2.5f * LHit), V(-0.2f, -1.f, -1.f), V(1.f, 0.f, -0.5f), V(0.f, 1.f, 0.f));
 			O.Twist = 3.f * FMath::Sin(Beat * 6.2832f / 8.f + Ph * 6.f);
 			O.HeadPitch = -6.f - 1.5f * Strike(Frac(Beat));
 			O.LeanF = 6.f;
@@ -470,8 +472,8 @@ namespace CastRig
 			// Brushes and sticks: the right hand on the ride on every beat, the left on the snare on 2 and 4.
 			const float R = Stroke(Frac(Beat + 0.02f));
 			const float L = Stroke(Frac(Beat * 0.5f + 0.5f));
-			O.R.Set(1.f, F.Actor(18.f, 20.f, 38.f + 9.f * R), V(-0.3f, 1.f, -0.8f), V(1.f, 0.3f, -0.4f), V(0.f, -0.6f, 1.f));
-			O.L.Set(1.f, F.Actor(16.f, -13.f, 25.f + 8.f * L), V(-0.3f, -1.f, -0.8f), V(1.f, -0.2f, -0.5f), V(0.f, 0.6f, 1.f));
+			O.R.Set(1.f, At(18.f, 20.f, 38.f + 9.f * R), V(-0.3f, 1.f, -0.8f), V(1.f, 0.3f, -0.4f), V(0.f, -0.6f, 1.f));
+			O.L.Set(1.f, At(16.f, -13.f, 25.f + 8.f * L), V(-0.3f, -1.f, -0.8f), V(1.f, -0.2f, -0.5f), V(0.f, 0.6f, 1.f));
 			O.HeadPitch = -1.5f * Strike(Frac(Beat));
 			O.LeanF = 4.f;
 			break;
@@ -481,8 +483,8 @@ namespace CastRig
 			// The left hand walks the neck, the right plucks on every beat, a touch behind it (laid back).
 			const float Pluck = Strike(Frac(Beat - 0.06f));
 			const float Neck = 10.f * FMath::Sin(Beat * 6.2832f / 4.f + Ph * 6.f) + 4.f * FMath::Sin(Beat * 6.2832f / 3.f);
-			O.L.Set(1.f, F.Actor(34.f, -14.f, 128.f + Neck), V(-0.3f, -1.f, -0.6f), V(0.f, 1.f, 0.2f), V(0.f, 0.f, 1.f));
-			O.R.Set(1.f, F.Actor(34.f, 2.f + 4.f * Pluck, 84.f), V(-0.3f, 1.f, -0.8f), V(0.3f, 0.f, -1.f), V(1.f, 0.f, 0.f));
+			O.L.Set(1.f, At(34.f, -14.f, 128.f + Neck), V(-0.3f, -1.f, -0.6f), V(0.f, 1.f, 0.2f), V(0.f, 0.f, 1.f));
+			O.R.Set(1.f, At(34.f, 2.f + 4.f * Pluck, 84.f), V(-0.3f, 1.f, -0.8f), V(0.3f, 0.f, -1.f), V(1.f, 0.f, 0.f));
 			O.Twist = 2.f * FMath::Sin(Beat * 6.2832f / 2.f + Ph);
 			O.LeanS = 1.5f * FMath::Sin(Beat * 6.2832f / 4.f);
 			O.HeadPitch = -1.5f * Strike(Frac(Beat - 0.06f));
@@ -504,7 +506,7 @@ namespace CastRig
 		{
 			// A slow sway on two bars, a hand on the stand, the other opening on the phrase ends.
 			const float S = Beat * 6.2832f / 8.f;
-			O.R.Set(1.f, F.Actor(27.f, 3.f, 128.f), V(-0.3f, 1.f, -1.f), V(0.f, -0.3f, 1.f), V(0.f, -1.f, 0.f));
+			O.R.Set(1.f, At(27.f, 3.f, 128.f), V(-0.3f, 1.f, -1.f), V(0.f, -0.3f, 1.f), V(0.f, -1.f, 0.f));
 			const float Open = Bump(Frac(Beat / 8.f), 0.7f, 1.0f);
 			O.L.Set(Open, F.C + V(24.f, -28.f, -12.f), V(-0.3f, -1.f, -0.8f), V(0.7f, -0.7f, 0.2f), V(0.f, -0.6f, 1.f));
 			O.Twist = 4.f * FMath::Sin(S + Ph);
@@ -857,7 +859,7 @@ void FCastAnimProxy::ApplyLayers(FCompactPose& Pose)
 	}
 	if (A.bPlayInstrument)
 	{
-		BuildBand(A.Instrument, A.Beat, F, Band);
+		BuildBand(A.Instrument, A.Beat, F, Band, A.BandShift);
 	}
 	if (A.Hold != ECastHold::None)
 	{
@@ -919,7 +921,7 @@ void FCastAnimProxy::ApplyLayers(FCompactPose& Pose)
 		if (A.bPlayInstrument)
 		{
 			Band = FRigLayer();
-			BuildBand(A.Instrument, A.Beat, F, Band);
+			BuildBand(A.Instrument, A.Beat, F, Band, A.BandShift);
 		}
 		if (A.Hold != ECastHold::None && A.Hold != ECastHold::Podium)
 		{

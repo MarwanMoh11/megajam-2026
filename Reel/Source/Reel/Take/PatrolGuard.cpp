@@ -170,8 +170,9 @@ void APatrolGuard::UpdateWorldCues(float DeltaSeconds)
 	}
 	SightLight->SetWorldRotation(Aim);
 
-	const float RestCone = FMath::Clamp(FrameHalfAngle * SightLightConeScale, 4.f, 70.f);
-	FTakeShapes::SetCueCone(SightLight, FMath::Lerp(RestCone, HoldConeDegrees, HoldAlpha), FMath::Lerp(0.55f, 0.75f, HoldAlpha));
+	// --- W3 lights --- a capped, harder-edged rest pool (SightLightMaxConeDegrees, SightLightEdge)
+	const float RestCone = FMath::Clamp(FrameHalfAngle * SightLightConeScale, 4.f, FMath::Clamp(SightLightMaxConeDegrees, 4.f, 70.f));
+	FTakeShapes::SetCueCone(SightLight, FMath::Lerp(RestCone, HoldConeDegrees, HoldAlpha), FMath::Lerp(SightLightEdge, 0.8f, HoldAlpha));
 	const float Attenuation = Range * 1.25f;
 	if (!FMath::IsNearlyEqual(SightLight->AttenuationRadius, Attenuation, 1.f))
 	{

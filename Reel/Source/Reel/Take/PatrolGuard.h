@@ -132,25 +132,36 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Cues")
 	bool bSightLight = true;
 
-	/** The torch at rest, candelas (a lit floor reads 95-130 at about 30-40 lux). */
+	// --- W3 lights --- (900 cd, warm, 0.35 haze could not be made out in play: the hall's keys give the floor
+	// 10-15 lux and the lobby's red carpet swallows a warm pool. Now a pale hard-edged pool 3-4x the set light and a
+	// visible shaft in the haze, so "he is looking there" reads from anywhere in the room.)
+	/** The torch at rest, candelas (a lit floor reads 95-130 at about 30-40 lux). W3 lights: was 900. */
 	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "0"))
-	float SightLightCandelas = 900.f;
+	float SightLightCandelas = 3000.f;
 
-	/** The torch's colour at rest: warm tungsten. */
+	/** The torch's colour at rest: a pale hot tungsten, whiter than the set's lamps and the marks. W3: was (1, .84, .62). */
 	UPROPERTY(EditAnywhere, Category = "Take|Cues")
-	FLinearColor SightLightColour = FLinearColor(1.f, 0.84f, 0.62f);
+	FLinearColor SightLightColour = FLinearColor(1.f, 0.92f, 0.78f);
 
-	/** It aims at the floor this far along FrameRange (0..1). */
+	/** It aims at the floor this far along FrameRange (0..1). W3 lights: was 0.5. */
 	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "0.1", ClampMax = "1"))
-	float SightLightAimFraction = 0.5f;
+	float SightLightAimFraction = 0.45f;
+
+	/** W3 lights: the pool's inner cone as a share of the outer at rest (1 = a hard edge; was 0.55). */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "0", ClampMax = "0.95"))
+	float SightLightEdge = 0.75f;
+
+	/** W3 lights: the widest the rest pool gets, degrees (a 45-degree frame made a faint wash; 70 = old behaviour). */
+	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "4", ClampMax = "70"))
+	float SightLightMaxConeDegrees = 28.f;
 
 	/** The pool's half-angle as a share of FrameHalfAngle. */
 	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "0.2", ClampMax = "2"))
 	float SightLightConeScale = 1.f;
 
-	/** The beam's glow in the haze (0 = none). */
+	/** The beam's glow in the haze (0 = none). W3 lights: was 0.35; 4 shows a shaft even over the red carpet (a signal material, a pool does not show on it). */
 	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "0"))
-	float SightLightHaze = 0.35f;
+	float SightLightHaze = 4.f;
 
 	/** The torch's height under his eye, cm, and how far in front of him it is held. */
 	UPROPERTY(EditAnywhere, Category = "Take|Cues")
@@ -158,7 +169,7 @@ public:
 
 	/** While he holds Julian: candelas, colour (warmer) and half-angle of the tightened pool on him. */
 	UPROPERTY(EditAnywhere, Category = "Take|Cues", meta = (ClampMin = "0"))
-	float HoldLightCandelas = 2400.f;
+	float HoldLightCandelas = 4500.f;	// W3 lights: was 2400 (under the new rest torch)
 
 	UPROPERTY(EditAnywhere, Category = "Take|Cues")
 	FLinearColor HoldLightColour = FLinearColor(1.f, 0.55f, 0.32f);

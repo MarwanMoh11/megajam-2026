@@ -119,6 +119,9 @@ struct FCastActing
 	ECastInstrument Instrument = ECastInstrument::None;
 	bool bPlayInstrument = false;
 	float Beat = 0.f;
+	/** --- W3 cast2 --- the built playing's hand targets moved by this (the actor's frame: forward, right, up; cm), so
+	 *  the hands meet the real prop (ACastMember::BandReach). */
+	FVector BandShift = FVector::ZeroVector;
 
 	/** A new BaseSerial cross-fades from the last pose (the base clip or the copied pose changed). */
 	int32 BaseSerial = 0;

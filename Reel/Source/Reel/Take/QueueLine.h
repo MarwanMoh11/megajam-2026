@@ -37,8 +37,11 @@
 #include "QueueLine.generated.h"
 
 class ACastMember;
+class AFollowSpot;
+class AMark;
 class ATakeDirector;
 class AScannerWatcher;
+class UBoxComponent;
 class UCapsuleComponent;
 
 /** Where Scene 1 stands: the queue, then the beats of the taught first switch. */
@@ -51,7 +54,9 @@ enum class EQueueBeat : uint8
 	AskCut,		// [2]
 	AskUse,		// [E], on Maya
 	AskBack,	// [1]
-	Through		// the director's own Scene 1 lines from here
+	Through,	// past the scanner: the director's own Scene 1 lines (and the lobby's, below)
+	Lobby,		// W3 opening: in the lobby, the clerk has greeted him; the desk is the next thing
+	Done		// signed in (or gone on into the hall): nothing more from the opening
 };
 
 /** One guest in the line (or gone in). */
@@ -121,6 +126,10 @@ public:
 	bool IsTeaching() const { return bTeachingNow; }
 
 	EQueueBeat GetBeat() const { return Beat; }
+
+	/** W3 opening: the searchlight is about to fire at Target, and the doorman at the scanner will react and speak on
+	 *  its landing frame (ATakeDirector::HandleUse then holds back the spot's own @fire line, so his comes first). */
+	bool ClaimsSpotLine(const AFollowSpot* Spot, const AActor* Target) const;
 
 	// --- level data (tools/build_auction.py, Scene 1). Points are local to the actor, which stands at the origin ----
 
@@ -216,7 +225,7 @@ public:
 	bool bTeach = true;
 
 	UPROPERTY(EditAnywhere, Category = "Take|Queue|Tutor")
-	FString RefuseLine = TEXT("CHIEF: \"No match. Hold there, sir.\"");
+	FString RefuseLine = TEXT("DOORMAN: \"No match. Hold there, sir.\"");	// W3 opening: said by the man at the scanner
 
 	UPROPERTY(EditAnywhere, Category = "Take|Queue|Tutor")
 	FString AsideLine = TEXT("JULIAN: \"Not on the list. Maya, I need a distraction.\"");
@@ -274,7 +283,149 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Queue|Tutor", meta = (ClampMin = "0"))
 	float TutorMaxSeconds = 40.f;
 
+	// --- W3 opening: nobody skips the line (Marwan, Nov 15 note 3) ---------------------------------------------------
+	// An invisible wall on the Pawn channel only (cameras, sight and aim pass) across the queue lane and the pavement
+	// north of it, from just behind the guest ahead of Julian to the facade: he can stand on his place but cannot walk
+	// past, round or through the line. At the front it stands just past the gold mark until the scanner is blind. Off
+	// for good once he is through. Pushing into it: the guest ahead (or the doorman) turns to him and says so.
+
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Hold")
+	bool bHoldLine = true;
+
+	/** The wall's near face stands this far behind the place ahead of Julian's (X, cm). */
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Hold")
+	float HoldGap = 15.f;
+
+	/** ...but never closer than this in front of his own place (X, cm): he can always stand on it. */
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Hold")
+	float HoldMinLead = 60.f;
+
+	/** At the front, the wall stands this far past the gold mark (X, cm) until the scanner is blind. */
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Hold")
+	float FrontHoldLead = 70.f;
+
+	/** The wall's far end (world X: the facade) and its sides (world Y), cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Hold")
+	float HoldFarX = -3230.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Hold")
+	float HoldMinY = 190.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Hold")
+	float HoldMaxY = 1000.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Hold")
+	float HoldHeight = 260.f;
+
+	/** Julian this close to the wall (cm, past his capsule) and walking into it: the line tells him (once a while). */
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Hold")
+	float NudgeDistance = 15.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Hold")
+	float NudgeCooldown = 6.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Hold")
+	FString NudgeGuestLine = TEXT("GUEST: \"Wait your turn, pal.\"");
+
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Hold")
+	FString NudgeDoormanLine = TEXT("DOORMAN: \"One at a time, sir.\"");
+
+	// --- W3 opening: the doorman at the scanner (Marwan, Nov 15 note 3) ----------------------------------------------
+	// A uniformed man (an ACastMember spawned in play, kit Doorman) stands beside the scanner's gate, facing the line.
+	// He waves each guest through, refuses Julian (RefuseLine, the stop hand), and on the frame Maya's searchlight
+	// lands he turns to the light, shields his eyes and says LightLine, in shot. The scanner's own BlindedLine is
+	// muted while he is there (he says it).
+
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Doorman")
+	bool bDoorman = true;
+
+	/** Where he stands (world, feet) and faces (degrees). */
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Doorman", meta = (MakeEditWidget = true))
+	FVector DoormanPoint = FVector(-3610.f, 145.f, 0.f);
+
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Doorman")
+	float DoormanYaw = 150.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Doorman")
+	FLinearColor DoormanTint = FLinearColor(0.07f, 0.09f, 0.18f);
+
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Doorman")
+	FString LightLine = TEXT("DOORMAN: \"Who turned that light on?!\"");
+
+	/** His act when the light hits (Refuse: a raised palm, read as a hand against the glare). */
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Doorman")
+	FName ShieldGesture = TEXT("Refuse");
+
+	/** He reacts at real speed under slow time (like the voices), for this long, s. Off: he slows with the world. */
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Doorman")
+	bool bReactAtRealSpeed = true;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Doorman", meta = (ClampMin = "0"))
+	float ReactSeconds = 2.5f;
+
+	/** The beam lands this close to him (cm): he is dazzled and looks up at the lamp; farther, he looks where it lands. */
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Doorman")
+	float DazzleRadius = 450.f;
+
+	/** Maya's searchlight line after his (untaught takes; on the first take her lesson line follows instead). */
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Doorman")
+	FString MayaFireLine = TEXT("MAYA: \"Searchlight's on the scanner. Walk him through.\"");
+
+	// --- W3 opening: the lobby (Marwan, Nov 15 note 4) ---------------------------------------------------------------
+	// Through the doors, the clerk at the reception desk greets Julian: he turns to him, raises a hand and speaks (the
+	// subtitle names him), and the camera eases toward him once a session (it steers the walk; the mouse takes it
+	// back). The goal line names one thing: sign in at the DESK. On the desk's mark Julian takes paddle 41 (Lift),
+	// the clerk answers, and the director's own lines (post the crew, then the hall) take over. Optional: walking on
+	// into the hall ends it quietly. Off: as before.
+
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Lobby")
+	bool bLobbyGreet = true;
+
+	/** The clerk: the standing cast member nearest ClerkFrom (within ClerkFindRadius); moved to ClerkPoint (facing
+	 *  ClerkYaw) at the take's start when ClerkPoint is set (the desk moved; the cast build still stands him at the
+	 *  old one). World, cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Lobby")
+	FVector ClerkFrom = FVector(-2050.f, 1100.f, 0.f);
+
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Lobby")
+	FVector ClerkPoint = FVector::ZeroVector;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Lobby")
+	float ClerkYaw = 180.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Lobby")
+	float ClerkFindRadius = 120.f;
+
+	/** The mark Julian signs in on (its MarkName). */
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Lobby")
+	FString DeskMarkName = TEXT("THE DESK");
+
+	/** Julian's feet this close to the desk's mark sign him in, cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Lobby")
+	float DeskRadius = 90.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Lobby")
+	FString GreetLine = TEXT("CLERK: \"Good evening, sir. Bidders sign in here, at the desk.\"");
+
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Lobby")
+	FString DeskLine = TEXT("CLERK: \"Paddle forty-one, sir. The sale is through the hall doors.\"");
+
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Lobby")
+	FString PaddleNote = TEXT("Paddle 41: JULIAN is a bidder");
+
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Lobby")
+	FString DeskObjective = TEXT("Sign JULIAN in at the reception DESK: the clerk has a bidder's paddle");
+
+	/** The camera's ease toward the clerk, s (real time), and the clerk's head height over his feet, cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Lobby", meta = (ClampMin = "0"))
+	float LobbyPanSeconds = 0.9f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Lobby")
+	float ClerkHeadHeight = 150.f;
+
 	/** Bits in UTakeGameInstance::IntroShownMask (the camera ids use bits 0..2). */
+	static constexpr uint8 BitLobbyPan = 1u << 7;
+
 	static constexpr uint8 BitQueueWalked = 1u << 3;
 	static constexpr uint8 BitTaughtCut = 1u << 4;
 	static constexpr uint8 BitTaughtUse = 1u << 5;
@@ -335,6 +486,42 @@ protected:
 	FVector ToWorld(const FVector& Local) const;
 
 	AScannerWatcher* FindScanner(const ATakeDirector& Director) const;
+
+	// --- W3 opening ---
+	/** The hold wall: placed, switched and the nudge (StepGuests). */
+	void StepHold(ATakeDirector& Director);
+
+	/** The doorman: spawned; waves guests through; the light reaction on the searchlight's landing frame. */
+	void SpawnDoorman(ATakeDirector& Director);
+	void StepDoorman(ATakeDirector& Director);
+
+	/** The lobby's greeting and the desk (beats Lobby, Done). */
+	void StepLobby(ATakeDirector& Director);
+
+	/** The clerk found (and moved to the new desk) at setup. */
+	void FindClerk();
+
+	AMark* FindDeskMark(const ATakeDirector& Director) const;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBoxComponent> HoldBox;
+
+	UPROPERTY(Transient)
+	TObjectPtr<ACastMember> Doorman;
+
+	UPROPERTY(Transient)
+	TWeakObjectPtr<ACastMember> Clerk;
+
+	UPROPERTY(Transient)
+	TWeakObjectPtr<AFollowSpot> Searchlight;
+
+	bool bHoldDone = false;
+	bool bHoldOn = false;
+	double LastNudgeAt = -100.0;
+	double ReactUntil = -1.0;
+	double ClerkFaceAt = 0.0;
+	int32 WavedGuest = INDEX_NONE;
+	// --- end W3 opening
 
 	UPROPERTY(Transient)
 	TArray<FQueueGuest> Guests;

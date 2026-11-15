@@ -230,7 +230,8 @@ namespace CastKits
 	{
 		if (L.bSeated)
 		{
-			Out.Add({ETakeShape::Sphere, TEXT("thigh_l"), FVector(0.f, 9.5f, -21.f), FRotator::ZeroRotator, FVector(18.f, 38.f, 50.f), C});
+			// --- W3 cast2 --- the lap: a flatter, wider fold lying on both thighs (was an egg standing on them).
+			Out.Add({ETakeShape::Sphere, TEXT("thigh_l"), FVector(4.f, 9.5f, -23.f), FRotator::ZeroRotator, FVector(14.f, 40.f, 54.f), C});
 			// --- W3 cast2 --- the skirt falls round both shins as soft cloth (an oval tube), not a board in front of them.
 			Out.Add({ETakeShape::Cylinder, TEXT("calf_l"), FVector(1.5f, 9.5f, -15.f - 5.f * L.SkirtLength), FRotator::ZeroRotator, FVector(19.f, 36.f, 30.f + 10.f * L.SkirtLength), C});
 		}
@@ -245,7 +246,7 @@ namespace CastKits
 		if (L.bPocket) Out.Add({ETakeShape::Cube, TEXT("spine_05"), FVector(11.5f, -9.5f, -2.f), FRotator::ZeroRotator, FVector(1.2f, 4.f, 2.5f), Draw(GetTypeHash(L.Accent.R), 3) < 0.5f ? L.Shirt : L.Accent});
 		if (L.bFlower) Out.Add({ETakeShape::Sphere, TEXT("spine_05"), FVector(11.5f, -10.5f, 5.f), FRotator::ZeroRotator, FVector(2.6f, 2.6f, 2.6f), L.Accent});
 		if (L.bPearls) Out.Add({ETakeShape::Cylinder, TEXT("neck_01"), FVector(2.f, 0.f, -1.5f), FRotator::ZeroRotator, FVector(14.f, 15.f, 1.4f), Pearl});
-		if (L.bStole) Out.Add({ETakeShape::Cylinder, TEXT("spine_05"), FVector(-1.f, 0.f, 4.f), FRotator::ZeroRotator, FVector(30.f, 44.f, 7.f), L.Accent});
+		if (L.bStole) Out.Add({ETakeShape::Cylinder, TEXT("spine_05"), FVector(-1.f, 0.f, 6.f), FRotator::ZeroRotator, FVector(28.f, 42.f, 4.5f), L.Accent});	// W3 cast2: thinner (read as a neck brace)
 		if (L.bHairFlower) Out.Add({ETakeShape::Sphere, TEXT("head"), FVector(0.f, 8.5f, 15.f), FRotator::ZeroRotator, FVector(4.f, 3.f, 4.f), L.Accent});
 	}
 	void Glass(TArray<FPiece>& Out)
@@ -692,6 +693,10 @@ void ACastMember::SetupBody()
 	{
 		Body->SetCachedMaxDrawDistance(Body->LDMaxDrawDistance);
 	}
+	if (!HeroMesh.IsNull() && Body->OverrideMaterials.Num() > 0)
+	{
+		Body->EmptyOverrideMaterials();	// --- W3 cast2 --- a hero wears its own material, not the mannequin's tint MIDs
+	}
 	if (HeroMesh.IsNull())
 	{
 		// The tint, as the characters do it (M_Mannequin's "Paint Tint"); no glowing logo on the chest.
@@ -725,7 +730,7 @@ void ACastMember::SetupBody()
 		static const FName Keys[] = {TEXT("Bass"), TEXT("Trumpet"), TEXT("Drums"), TEXT("Piano"), TEXT("Sing")};
 		static const ECastInstrument Insts[] = {ECastInstrument::Bass, ECastInstrument::Trumpet, ECastInstrument::Drums, ECastInstrument::Piano, ECastInstrument::Singer};
 		const int32 Index = int32(Kit) - int32(ECastKit::BandBass);
-		if (UAnimSequenceBase* Clip = FindClip(Keys[Index]))
+		if (UAnimSequenceBase* Clip = bBandClips ? FindClip(Keys[Index]) : nullptr)	// W3 cast2: bBandClips
 		{
 			RestBase = Clip;
 			bRestIsClip = true;
@@ -736,6 +741,7 @@ void ACastMember::SetupBody()
 			RestBase = PoseAnim;
 			Acting.Instrument = Insts[Index];
 			Acting.bPlayInstrument = true;
+			Acting.BandShift = BandReach;	// --- W3 cast2 ---
 			Acting.bBendSeat = bSeated;
 		}
 	}

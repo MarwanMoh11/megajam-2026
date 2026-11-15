@@ -19,7 +19,7 @@
 #   tables     the hall's cocktail-table glasses stood on the Rodin tables' real tops (they floated 16 cm over them)
 #   extras     kentia palms in the hall's corners and wall bays
 # Switches: HALL_PARTS (a tuple of the part names above) runs only those; HALL_OFF = True only clears (back to before).
-import sys, importlib, math, os, re, traceback
+import sys, importlib, json, math, os, re, traceback
 sys.path.insert(0, r"C:\Jam\megajam\tools\sets")
 import common as C
 import hall_layout as L
@@ -28,7 +28,8 @@ importlib.reload(L)
 import unreal
 
 TAG = "set_hall"
-PARTS = globals().get("HALL_PARTS") or ("seats", "band", "broadcast", "bar", "phones", "lots", "tables", "extras")
+PARTS = globals().get("HALL_PARTS") or ("seats", "band", "broadcast", "bar", "phones", "lots", "tables", "extras",
+                                         "dais")                 # --- W3 stage --- dais
 OFF = bool(globals().get("HALL_OFF"))
 eal = unreal.EditorAssetLibrary
 mel = unreal.MaterialEditingLibrary
@@ -135,6 +136,7 @@ FLAT = {
     "Brass": ((0.30, 0.21, 0.08), 0.3), "Chrome": ((0.42, 0.42, 0.44), 0.2), "Black": ((0.014, 0.014, 0.015), 0.5),
     "Rubber": ((0.018, 0.018, 0.018), 0.85), "Tape": ((0.045, 0.045, 0.045), 0.95), "Cloth": ((0.010, 0.010, 0.012), 0.95),
     "Baize": ((0.022, 0.055, 0.032), 0.95), "Burgundy": ((0.10, 0.014, 0.024), 0.9), "Cream": ((0.50, 0.46, 0.38), 0.85),
+    "BurgundyDark": ((0.055, 0.008, 0.014), 0.95),     # --- W3 stage --- the drapes' deep pleats
     "Glass": ((0.30, 0.31, 0.30), 0.05), "Marble": ((0.025, 0.024, 0.024), 0.15), "Foliage": ((0.03, 0.06, 0.03), 0.9),
     "Leather": ((0.02, 0.012, 0.010), 0.6), "Paper": ((0.62, 0.60, 0.54), 0.9),
 }
@@ -405,7 +407,7 @@ def band():
 
 
 # --- broadcast -----------------------------------------------------------------------------------------------------------
-RISER = (150.0, 450.0, -230.0, 230.0, 80.0)
+RISER = (1040.0, 1340.0, -230.0, 230.0, 80.0)   # --- W3 stage --- build_auction RISER (was 150..450)
 
 
 def drop_riser_film_camera():
@@ -459,17 +461,18 @@ def broadcast():
     box("Riser_Skirt", x0, x1, y1, y1 + 1.0, 0.0, top - 2.0, "Cloth")
     box("Riser_Edge", x0 - 1.5, x1 + 1.5, y0 - 1.5, y1 + 1.5, top - 2.0, top + 0.4, "Black")
     # The camera on its pedestal, aimed at the dais; the operator (a guest placeholder at 280, 40) stands behind it.
-    put("hall_tvcamera", 352.0, 40.0, top, 0.0, height=178.0)
-    box("Tally", 380.0, 386.0, 36.0, 44.0, top + 178.0, top + 182.0, "OnAir")
+    dx = x0 - 150.0                                     # --- W3 stage --- the riser moved; everything on it follows
+    put("hall_tvcamera", dx + 352.0, 40.0, top, 0.0, height=178.0)
+    box("Tally", dx + 380.0, dx + 386.0, 36.0, 44.0, top + 178.0, top + 182.0, "OnAir")
     # The monitor on its stand, turned to the operator; the commentator's road case and desk microphone.
-    put("hall_monitor", 195.0, -150.0, top, math.degrees(math.atan2(40.0 + 150.0, 280.0 - 195.0)), height=150.0)
-    put("/Game/Take/Props/Roadcase/SM_Roadcase", 392.0, -178.0, top, 0.0, height=52.0, front=0.0, shadow=True)
-    put("hall_mic", 392.0, -178.0, C.top_of(C.find(r"Set_Hall_Roadcase_\d+")[-1]), 180.0, height=34.0)
+    put("hall_monitor", dx + 195.0, -150.0, top, math.degrees(math.atan2(40.0 + 150.0, 280.0 - 195.0)), height=150.0)
+    put("/Game/Take/Props/Roadcase/SM_Roadcase", dx + 392.0, -178.0, top, 0.0, height=52.0, front=0.0, shadow=True)
+    put("hall_mic", dx + 392.0, -178.0, C.top_of(C.find(r"Set_Hall_Roadcase_\d+")[-1]), 180.0, height=34.0)
     # Two lamps on stands beside and behind the camera (out of its shot), aimed at the dais.
     for s in (1, -1):
-        put("/Game/Take/Props/Lightstand/SM_Lightstand", 272.0, s * 186.0, top, 0.0, height=185.0, shadow=False)
+        put("/Game/Take/Props/Lightstand/SM_Lightstand", dx + 272.0, s * 186.0, top, 0.0, height=185.0, shadow=False)
     # ON AIR on a pole at the riser's north-west corner, lit both ways (to the house door and to the dais).
-    ox, oy = 165.0, 212.0
+    ox, oy = dx + 165.0, 212.0
     cyl("OnAir_Pole", ox, oy, top, top + 172.0, 4.0, "Black")
     box("OnAir_Box", ox - 6, ox + 6, oy - 34, oy + 34, top + 170.0, top + 196.0, "Black")
     for s in (-1, 1):
@@ -479,9 +482,9 @@ def broadcast():
     box("Step", x0 - 44.0, x0, 130.0, 215.0, 0.0, 26.0, "WalnutDark", shadow=True)
     box("Step", x0 - 22.0, x0, 130.0, 215.0, 26.0, 52.0, "WalnutDark", shadow=True)
     # The cables: down the riser's south face, along its foot, between the rows, out under the staff door.
-    box("Cable", 196.0, 200.0, y0 - 2.0, y0, 2.0, top, "Rubber")
-    box("Cable", 203.0, 207.0, y0 - 2.0, y0, 2.0, top, "Rubber")
-    cable([(201.0, -241.0), (100.0, -241.0), (100.0, -1150.0), (-300.0, -1150.0), (-300.0, -2005.0)])
+    box("Cable", dx + 196.0, dx + 200.0, y0 - 2.0, y0, 2.0, top, "Rubber")
+    box("Cable", dx + 203.0, dx + 207.0, y0 - 2.0, y0, 2.0, top, "Rubber")
+    cable([(dx + 201.0, -241.0), (dx + 100.0, -241.0), (dx + 100.0, -1150.0), (-300.0, -1150.0), (-300.0, -2005.0)])
     # By the dais: a microphone boom reaching over the podium from the floor below its south-west corner, and two more
     # lamps on stands aimed at the podium (none within 1.2 m of Vance, his bodyguard, the guard or a mark).
     bx, by = 3420.0, -840.0
@@ -648,6 +651,74 @@ def extras():
     for k, (x, y) in enumerate(PALMS):
         put(path, x, y, 0.0, k * 70.0, height=230.0, shadow=False)
     REPORT.append("extras: %d palms" % len(PALMS))
+
+
+# --- dais (W3 stage) ---------------------------------------------------------------------------------------------------------
+# The focus of the room: the big screen framed like a picture house's (black masking, a gilt frame, burgundy legs and a
+# pelmet), the lot's plinth in walnut and brass under its sign, the auctioneer's lectern dressed, a runner from the
+# dais edge to the case, two torcheres flanking it. Numbers from tools/sets/hall_zones.json. No collision anywhere.
+def dais():
+    with open(os.path.join(os.path.dirname(os.path.abspath(L.__file__)), "hall_zones.json"), encoding="utf-8") as f:
+        Z = json.load(f)
+    sx, _sy, sz = Z["screen"]["centre"]
+    w, h = Z["screen"]["size"]
+    hw, z0, z1 = w / 2.0, sz - h / 2.0, sz + h / 2.0
+    dz = Z["dais"]["z"]
+    face = sx + 2.0                                            # the screen box's face (heist lights sx, 2 cm in front)
+    # Masking 60 cm round the picture, a gilt frame round that.
+    for s in (1, -1):
+        y0, y1 = sorted((s * hw, s * (hw + 60.0)))
+        box("Screen_Mask", face - 4, face, y0, y1, z0 - 60.0, z1 + 60.0, "Cloth")
+        y0, y1 = sorted((s * (hw + 60.0), s * (hw + 70.0)))
+        box("Screen_Frame", face - 9, face, y0, y1, z0 - 70.0, z1 + 70.0, "Brass")
+    box("Screen_Mask", face - 4, face, -hw, hw, z1, z1 + 60.0, "Cloth")
+    box("Screen_Mask", face - 4, face, -hw, hw, z0 - 60.0, z0, "Cloth")
+    box("Screen_Frame", face - 9, face, -hw - 70.0, hw + 70.0, z1 + 60.0, z1 + 70.0, "Brass")
+    box("Screen_Frame", face - 9, face, -hw - 70.0, hw + 70.0, z0 - 70.0, z0 - 60.0, "Brass")
+    # Burgundy legs either side, pleated (two depths, two tones), floor to pelmet; the pelmet with a brass fringe.
+    top = z1 + 220.0
+    for s in (1, -1):
+        for i in range(11):
+            y = s * (hw + 90.0 + i * 24.0)
+            deep = i % 2
+            box("Drape", face - 30 - deep * 10, face - 14 - deep * 10, y - 13, y + 13, dz, top,
+                "BurgundyDark" if deep else "Burgundy")
+    pw = hw + 90.0 + 11 * 24.0
+    box("Pelmet", face - 46, face - 10, -pw, pw, z1 + 100.0, top + 30.0, "Burgundy")
+    box("Pelmet_Fringe", face - 48, face - 44, -pw, pw, z1 + 92.0, z1 + 100.0, "Brass")
+    cyl("Pelmet_Crest", face - 50, 0.0, z1 + 130.0, z1 + 190.0, 60.0, "Brass")
+    # The lot's plinth in walnut, a brass cap and plaque; the runner from the dais edge to it.
+    cx, cy, ctop = Z["case"]
+    box("Case_Plinth_Skin", cx - 38, cx + 38, cy - 38, cy + 38, dz, ctop - 3.0, "Walnut", shadow=True)
+    box("Case_Plinth_Cap", cx - 41, cx + 41, cy - 41, cy + 41, ctop - 3.0, ctop - 0.5, "Brass")
+    box("Case_Plinth_Base", cx - 42, cx + 42, cy - 42, cy + 42, dz, dz + 8.0, "WalnutDark")
+    box("Case_Plaque", cx - 40, cx - 38.5, cy - 16, cy + 16, ctop - 40.0, ctop - 24.0, "Brass")
+    text("LOT 41", cx - 40.6, cy, ctop - 32.0, 180.0, 5.0, (0.05, 0.035, 0.02))
+    dx0 = Z["dais"]["min"][0]
+    box("Dais_Runner", dx0 + 4, cx - 45, cy - 95, cy + 95, dz, dz + 0.6, "Burgundy")
+    for s in (1, -1):
+        box("Dais_Runner_Edge", dx0 + 4, cx - 45, s * 95 - 3, s * 95 + 3, dz, dz + 0.8, "Brass")
+    # Two torcheres flanking the lot, warm on it.
+    for s in (1, -1):
+        tx, ty = cx + 140.0, s * 260.0
+        cyl("Torchere_Foot", tx, ty, dz, dz + 4.0, 40.0, "Brass")
+        cyl("Torchere_Stem", tx, ty, dz + 4.0, dz + 190.0, 5.0, "Brass")
+        cyl("Torchere_Bowl", tx, ty, dz + 186.0, dz + 200.0, 36.0, "Brass")
+        cyl("Torchere_Glow", tx, ty, dz + 199.0, dz + 200.5, 30.0, "Lamp")
+        practical(tx, ty, dz + 230.0, 25.0, 600.0)
+    # The auctioneer's lectern: walnut skin on the podium box, brass edge, a crest to the house, lamp and gavel.
+    px, py = Z["podium"]
+    box("Lectern", px - 34, px + 34, py - 44, py + 44, dz, dz + 118.0, "Walnut", shadow=True)
+    box("Lectern_Top", px - 38, px + 38, py - 48, py + 48, dz + 118.0, dz + 123.0, "WalnutDark")
+    box("Lectern_Edge", px - 39, px + 39, py - 49, py + 49, dz + 116.0, dz + 118.0, "Brass")
+    C.spawn(CYL, (px - 35.0, py, dz + 80.0), (0.0, 90.0, 0.0), (0.34, 0.34, 0.02), tag=TAG, label=_lbl("Lectern_Crest"),
+            shadow=False, mat=M["Brass"])
+    cyl("Lectern_Lamp_Stem", px + 20.0, py + 30.0, dz + 123.0, dz + 158.0, 2.0, "Brass")
+    cyl("Lectern_Lamp_Shade", px + 14.0, py + 30.0, dz + 152.0, dz + 160.0, 16.0, "Baize", dia_y=9.0)
+    practical(px + 10.0, py + 30.0, dz + 148.0, 6.0, 220.0)
+    C.spawn(CYL, (px + 5.0, py - 25.0, dz + 126.0), (0.0, 90.0, 30.0), (0.05, 0.05, 0.22), tag=TAG,
+            label=_lbl("Gavel"), shadow=False, mat=M["WalnutDark"])
+    REPORT.append("dais: screen masked and framed %dx%d, legs and pelmet, plinth, runner, torcheres, lectern" % (w, h))
 
 
 # --- run -------------------------------------------------------------------------------------------------------------------

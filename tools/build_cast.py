@@ -46,6 +46,14 @@ STAFF_AT = ((1200.0, -1700.0), (-2050.0, 1100.0), (-2650.0, 1640.0))   # the bar
 IDLE_RATE_SPREAD = 0.1                      # idles at rates 0.9 to 1.1
 SEATED_DROP = 86.0                          # the seated fallback's drop when the seat cannot be fitted
 SEATED_TIME = 0.0
+# --- W3 cast2 ---
+SEAT_HIP_FORWARD = -7.5                     # hall chairs: the hip joints this far behind the chair's centre, cm (the
+                                            # gilt chair's back is 20.5 cm behind it: the back then rests on it)
+PIANO_SIT_FORWARD = 8.0                     # the pianist sits this far toward the keys from the bench's centre, cm
+PIANO_KEYS_IN = 8.0                         # the hands this far in from the keyboard's front edge, cm
+PIANO_BUILT_REACH = 30.0                    # where the built playing puts the hands (CastMemberAnim.cpp), cm forward
+BAND_CLIPS = True                           # False: the band plays built from bones (hands on the real props), not the
+                                            # Mixamo instrument clips (their hands sit where the take's instrument was)
 BAND_TINT = (0.07, 0.02, 0.025)             # the band in wine-dark jackets
 SINGER_TINT = (0.22, 0.025, 0.04)
 GUEST_DRAW = 3500.0                         # guests (and their pieces) are not drawn beyond this, cm
@@ -190,9 +198,10 @@ for i, (x, y, z, yaw, seated, staff) in enumerate(places):
     assigned.append((x, y, k, ci))
     lo, hi = WOMEN_SCALE if k in WOMEN_KITS else MEN_SCALE
     glass = not seated and not staff and h01("glass", i) < GLASS_SHARE
+    extra = {"seat_hip_forward": SEAT_HIP_FORWARD} if seated and seats else {}
     spawn_member(k, x, y, z, yaw, tint, seated=seated, name="Cast_Guest_%03d" % i,
                  pose_time=(i * 1.37) % 7.0, body_shadow=False, draw_distance=GUEST_DRAW,
-                 look_seed=i * 7919 + 13, body_scale=lo + (hi - lo) * h01("scale", i), holds_glass=glass)
+                 look_seed=i * 7919 + 13, body_scale=lo + (hi - lo) * h01("scale", i), holds_glass=glass, **extra)
     n_seated += seated
     n_glass += glass
 REPORT.append("guests %d (%d seated%s, %d with a glass)" % (len(places), n_seated, " on the hall's chairs" if seats else "", n_glass))
@@ -213,9 +222,23 @@ for k, (x, y, z, yaw, seated) in BAND.items():
         x, y, z, yaw, seated = e["x"], e["y"], e["z"], e.get("yaw", yaw), e.get("seated", seated)
         held = e.get("held", held)
     tint = SINGER_TINT if k == "BAND_SINGER" else BAND_TINT
+    extra = {"band_clips": BAND_CLIPS}
+    if k == "BAND_PIANO" and props_there:
+        # --- W3 cast2 --- the pianist toward the keys, the hands onto them: measured from the placed grand's bounds.
+        fx_, fy_ = math.cos(math.radians(yaw)), math.sin(math.radians(yaw))
+        x, y = x + fx_ * PIANO_SIT_FORWARD, y + fy_ * PIANO_SIT_FORWARD
+        grands = [a for a in all_actors() if isinstance(a, unreal.StaticMeshActor) and a.get_actor_label().startswith("Set_Hall_Piano_")
+                  and "Bench" not in a.get_actor_label()]
+        grands.sort(key=lambda a: math.hypot(a.get_actor_location().x - x, a.get_actor_location().y - y))
+        if grands:
+            o, e = grands[0].get_actor_bounds(False)
+            edge = min((o.x + sx * e.x - x) * fx_ + (o.y + sy * e.y - y) * fy_ for sx in (-1, 1) for sy in (-1, 1))
+            reach = max(0.0, min(40.0, edge + PIANO_KEYS_IN - PIANO_BUILT_REACH))
+            extra["band_reach"] = unreal.Vector(reach, 0.0, 0.0)
+            REPORT.append("piano: keys %.0f cm ahead of the pianist, hands moved %.0f cm" % (edge, reach))
     spawn_member(k, x, y, z, yaw, tint, seated=seated, name="Cast_" + k.title().replace("_", ""),
                  body_shadow=False, draw_distance=BAND_DRAW, instrument_props=props_there and not held,
-                 look_seed=int(h01("band", k) * 100000))
+                 look_seed=int(h01("band", k) * 100000), **extra)
     band_at.append((x, y, z))
 cx = sum(p[0] for p in band_at) / len(band_at)
 cy = sum(p[1] for p in band_at) / len(band_at)
