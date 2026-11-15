@@ -93,6 +93,11 @@ list, this file wins. Fallback: tag `pre-script-fallback` (6876e0b) and `C:\Jam\
 - 18:30-20:00 coordinator: full run 1-8, fixes routed to owners. 20:00 package (editor closed, nobody holds the
   lock), 21:00 zip checked, 22:00 Marwan uploads.
 
+### Revised at 17:20 (every session stalled on usage limits 14:50-17:15)
+- Restart now (17:20), then **18:10, 18:50, 19:30**. The coordinator runs them again (s8 is back on its scene).
+- **19:45 feature freeze** and reports. 19:45-21:00 full run 1-8 and fixes. **21:00 package**, 21:45 zip checked,
+  **22:30 upload**. Fallback zip if the take is not whole by 22:00. Hard deadline Mon 03:59.
+
 ## Done for a scene
 From `Reel.Script.Jump N`: the scene opens on its POV and look, the script's beats play in order with subtitles, the
 gameplay works and can fail into a retake, and `FinishScene` cuts to the next scene. Shots in
