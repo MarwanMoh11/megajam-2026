@@ -167,8 +167,9 @@ def scene():
     if not hasattr(unreal, "Scene7Booth"):
         return "scene: AScene7Booth not in this editor build yet (skipped)"
     ox, oy, oz = ORIGIN
-    sp = eas.spawn_actor_from_class(unreal.TargetPoint, unreal.Vector(ox + 110.0, oy - 400.0, oz + 95.0),
-                                    unreal.Rotator(0.0, 0.0, 124.0))
+    # Mid-booth facing the projector (-Y): the follow camera's 360 cm boom has ~4.7 m behind him to the north wall.
+    sp = eas.spawn_actor_from_class(unreal.TargetPoint, unreal.Vector(ox - 60.0, oy + 30.0, oz + 95.0),
+                                    unreal.Rotator(0.0, 0.0, -90.0))
     sp.set_actor_label("S7_StartSpot")
     sp.set_folder_path("Script/S7")
     C._set_tags(sp, [TAG])
