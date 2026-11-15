@@ -354,7 +354,9 @@ void AFollowSpot::UpdateBeam()
 			}
 			AActor* const What = Result.GetActor();
 			UPrimitiveComponent* const Part = Result.GetComponent();
-			const bool bHiddenPart = Part && (Part->bHiddenInGame || !Part->IsVisible());
+			// Hidden: an invisible blocker (the catwalk's RailBlock walls, ghost shapes) or a hidden-in-game part.
+			const bool bHiddenPart = (Part && (Part->bHiddenInGame || !Part->IsVisible() || !Part->CastShadow))
+				|| (What && What->IsHidden());
 			if (bHiddenPart && !Cast<AWatcher>(What))
 			{
 				Params.AddIgnoredComponent(Part);
