@@ -545,7 +545,7 @@ if ON["street"]:
         bay = hide_in([r"Dress_Bay_(Pot|Stem|Crown)_\d+"], (FRONT - 100.0, FRONT, -800.0, -300.0, -10.0, 300.0))
         if bay:
             y = sum(loc_of(a)[1] for a in bay) / len(bay)
-            place("front_palm", (FRONT - 130.0, FRONT + 10.0, y - 70.0, y + 70.0, 0.0, 200.0), yaw=35.0, shadow=True)
+            place("front_palm", (FRONT - 145.0, FRONT - 5.0, y - 70.0, y + 70.0, 0.0, 200.0), yaw=35.0, shadow=True)
 
 # --- the red carpet: pewter edge strips from the kerb to the stair ------------------------------------------------------
 if ON["carpet"]:
@@ -703,7 +703,10 @@ if ON["palms"]:
     plants = hide_in([r"Plant_\d+", r"Planter_\d+"], LOBBY)
     spots = sorted(set((round(loc_of(a)[0]), round(loc_of(a)[1]), 0.0 if loc_of(a)[2] < F2 - 10 else F2)
                        for a in plants if a.get_actor_label().startswith("Plant_")))
-    scatter_fit("front_palm", [((x - 95.0, x + 95.0, y - 95.0, y + 95.0, z, z + (175.0 if abs(y) > 1000 else 200.0)),
+    # each palm's box stops 5 cm short of the lobby's walls: the corner planters' fronds went up to 20 cm into the
+    # wallpaper (Nov 15)
+    scatter_fit("front_palm", [((max(x - 95.0, LX0 + 5.0), min(x + 95.0, LX1 - T - 5.0), max(y - 95.0, LY0 + 5.0),
+                                 min(y + 95.0, LY1 - 5.0), z, z + (175.0 if abs(y) > 1000 else 200.0)),
                                 rnd.uniform(0.0, 360.0)) for (x, y, z) in spots], shadow=True)
     say("palms: %d" % len(spots))
 

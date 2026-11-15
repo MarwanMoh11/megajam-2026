@@ -103,6 +103,11 @@ editor open: `Build.bat Reel Win64 Development`. Overlays are re-runnable and ta
 | Sets | `tools/sets/*.py` `ON` / `HALL_OFF` / `ROOMS_ONLY`; remove a script from `run_all.py` to drop its overlay |
 
 ### Not done / unverified
+- Set props pass (Sun 11:30, see DEVLOG): pictures no longer streak after a reload, the six mirrors are glass, the pier
+  glass clears the wainscot, the paddle board's back is dressed and lit, the palms stay out of the walls. Seen in scene
+  captures only: the mirrors' Lumen reflections in the real view, and the pictures in a packaged build. Left alone: the
+  stock room's pale packing discs on the floor, the vault survey camera shows black (room unlit or gone), the bare work
+  tubes backstage.
 - Follow spot: the beam landing on a person was only seen in logs ("SPOT beam lands on PatrolGuard_3", guard blinded
   4 s); swing not confirmable from stills; frame time with the shadowed beam not measured; the searchlight after the
   rail fix; hall_zones.json lists a second follow spot at (1550,-150) with no actor.
