@@ -21,14 +21,14 @@ V = unreal.Vector
 VAN_X = -5380.0
 POINTS = dict(
     steps_pos=V(-3400.0, 250.0, 220.0),        # on the theater steps, beside the queue
-    steps_look=V(-3520.0, 320.0, 150.0),       # Vance at the scanner: where the pan starts
+    steps_look=V(-3610.0, 320.0, 150.0),       # Vance at the palm plate (Scene1Marquee): where the pan starts
     windshield_pos=V(VAN_X, 1080.0, 170.0),    # just in front of the fogged windshield
     windshield_look=V(VAN_X, 1330.0, 160.0),
     inside_pos=V(VAN_X - 20.0, 1400.0, 160.0),  # through the glass, in the cab
     max_cam_pos=V(-5450.0, 1450.0, 150.0),     # the settled shot on Max at his CRT
     max_look=V(-5340.0, 1690.0, 120.0),
-    feed_from=V(-3330.0, 120.0, 420.0),        # the security camera on the facade (Set_S2_SecurityCam)
-    feed_at=V(-3520.0, 320.0, 110.0),          # the palm scanner's glass on the podium
+    feed_from=V(-3450.0, 130.0, 330.0),        # the security camera by the doors, looking down at the plate
+    feed_at=V(-3610.0, 239.0, 112.0),          # the palm plate (runtime: Scene 1 GetPlatePoint)
 )
 
 # the sounds (tools/script/scene2_audio.py imports them): property -> asset name under /Game/Take/Audio/Script/S2

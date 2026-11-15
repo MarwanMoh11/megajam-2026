@@ -195,7 +195,7 @@ private:
 	bool InWindow() const;
 	void TryPatch();
 	void Play(USoundBase* S) const;
-	/** Call a no-parameter UFUNCTION on the Scene 1 actor by name (StageForVan, PalmAccepted); false if missing. */
+	/** Call a no-parameter UFUNCTION on the Scene 1 actor by name (StageAtPlate, PalmAccepted); false if missing. */
 	bool CallScene1(FName Function) const;
 	float HesitationLimit() const;
 

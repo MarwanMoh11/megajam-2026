@@ -13,6 +13,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundBase.h"
 #include "Components/AudioComponent.h"
+#include "UObject/UnrealType.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogScene2, Log, All);
 
@@ -95,24 +96,43 @@ void AScene2Van::Play(USoundBase* S) const
 	if (S) { UGameplayStatics::PlaySound2D(this, S); }
 }
 
-bool AScene2Van::CallScene1(FName Function) const
+// Scene 1's API (AScene1Marquee, s1-marquee), called by name so neither scene includes the other's header:
+// StageAtPlate(), PalmAccepted(), bool IsPalmDone(), FVector GetPlatePoint(). Out gets the return value if its
+// size matches. False if there is no Scene 1 actor or no such function.
+static bool CallScene1ByName(const UObject* Ctx, FName Function, void* Out = nullptr, int32 OutSize = 0)
 {
-	for (TActorIterator<AScriptScene> It(GetWorld()); It; ++It)
+	UWorld* World = Ctx ? Ctx->GetWorld() : nullptr;
+	if (!World) { return false; }
+	for (TActorIterator<AScriptScene> It(World); It; ++It)
 	{
 		AScriptScene* S = *It;
 		if (!S || S->SceneNumber != 1) { continue; }
 		UFunction* F = S->FindFunction(Function);
-		if (F && F->NumParms == 0)
+		FProperty* Ret = F ? F->GetReturnProperty() : nullptr;
+		if (!F || F->NumParms > (Ret ? 1 : 0))
 		{
-			S->ProcessEvent(F, nullptr);
-			UE_LOG(LogScene2, Log, TEXT("S2 called %s on %s"), *Function.ToString(), *S->GetName());
-			return true;
+			UE_LOG(LogScene2, Warning, TEXT("S2: scene 1 (%s) has no usable %s()"), *S->GetName(), *Function.ToString());
+			return false;
 		}
-		UE_LOG(LogScene2, Warning, TEXT("S2: scene 1 (%s) has no %s()"), *S->GetName(), *Function.ToString());
-		return false;
+		TArray<uint8> Buf;
+		Buf.SetNumZeroed(FMath::Max(1, static_cast<int32>(F->ParmsSize)));
+		if (Ret) { Ret->InitializeValue_InContainer(Buf.GetData()); }
+		S->ProcessEvent(F, Buf.GetData());
+		if (Ret)
+		{
+			if (Out && Ret->GetSize() == OutSize) { Ret->CopyCompleteValue(Out, Ret->ContainerPtrToValuePtr<void>(Buf.GetData())); }
+			Ret->DestroyValue_InContainer(Buf.GetData());
+		}
+		return true;
 	}
-	UE_LOG(LogScene2, Warning, TEXT("S2: no scene 1 actor for %s()"), *Function.ToString());
 	return false;
+}
+
+bool AScene2Van::CallScene1(FName Function) const
+{
+	const bool bOk = CallScene1ByName(this, Function);
+	UE_LOG(LogScene2, Log, TEXT("S2 scene 1 %s(): %s"), *Function.ToString(), bOk ? TEXT("called") : TEXT("missing"));
+	return bOk;
 }
 
 void AScene2Van::ResetScene()
@@ -133,7 +153,7 @@ void AScene2Van::ResetScene()
 	ConsumeFlag(Scene2Local::FlagThrough);
 	UpdateTarget();
 	PoseOpening(0.f);
-	CallScene1(TEXT("StageForVan"));	// Vance at the glass, hand hovering, for a cold Jump 2 or a retake
+	CallScene1(TEXT("StageAtPlate"));	// Vance at the glass, hand hovering, for a cold Jump 2 or a retake
 }
 
 void AScene2Van::BeginScene()
@@ -146,6 +166,8 @@ void AScene2Van::BeginScene()
 		FeedTarget->InitCustomFormat(512, 384, PF_B8G8R8A8, false);
 		FeedTarget->UpdateResourceImmediate(true);
 	}
+	FVector Plate;
+	if (CallScene1ByName(this, TEXT("GetPlatePoint"), &Plate, sizeof(FVector)) && !Plate.IsNearlyZero()) { FeedAt = Plate; }
 	FeedCapture->TextureTarget = FeedTarget;
 	FeedCapture->FOVAngle = FeedFov;
 	FeedCapture->SetWorldLocationAndRotation(FeedFrom, Scene2Local::LookQuat(FeedFrom, FeedAt));
@@ -344,7 +366,9 @@ void AScene2Van::TickScene(float DeltaSeconds)
 		break;
 
 	case EScene2Phase::Vance:
-		if (ConsumeFlag(FlagThrough) || PhaseAge >= Tune(TEXT("VanceTimeout"), bPalmCalled ? VanceTimeout : 3.f))
+		bool bPalmDone = false;
+		if (bPalmCalled && PhaseAge > 0.5f) { CallScene1ByName(this, TEXT("IsPalmDone"), &bPalmDone, sizeof(bool)); }
+		if (bPalmDone || ConsumeFlag(FlagThrough) || PhaseAge >= Tune(TEXT("VanceTimeout"), bPalmCalled ? VanceTimeout : 3.f))
 		{
 			SetPhase(EScene2Phase::Done);
 			FinishScene();
