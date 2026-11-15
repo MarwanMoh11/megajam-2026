@@ -574,6 +574,8 @@ void AScene7Booth::BeginScene()
 	bCheckpointAlarm = false;
 	bPlayerWalks = true;
 	FreezeVance(GetPovCharacter(), false);
+	// The film still runs from Scene 5 (or a direct Jump 7 / retake: start it, the house dark), until the burn-out.
+	for (TActorIterator<AHouseDimmer> It(GetWorld()); It; ++It) { if (!It->IsScreening()) { It->BeginScreening(0.f); } }
 	SetStage(EScene7Stage::Approach);
 }
 
@@ -598,6 +600,7 @@ void AScene7Booth::StartAtCheckpoint()
 	ActVance(TEXT("Idle"), true);
 	AlarmLever->SetRelativeLocation(Rest.FindRef(AlarmLever).GetLocation() + FVector(0.f, 0.f, -10.f));
 	SetAlarm(true);
+	for (TActorIterator<AHouseDimmer> It(GetWorld()); It; ++It) { It->EndScreening(); }
 	SetStage(EScene7Stage::Alarm);
 	StageT = PrevT = AlarmSeconds - 1.2f;
 	Shot(TEXT("Parry"));
@@ -844,7 +847,7 @@ void AScene7Booth::TickScene(float DeltaSeconds)
 			Shot(TEXT("Screen"));
 			Cue(TEXT("sfx_film_burn"));
 			Cue(TEXT("sfx_s7_crowd_scream"), 0.9f);
-			for (TActorIterator<AHouseDimmer> It(GetWorld()); It; ++It) { It->RestoreHouseNow(); }
+			for (TActorIterator<AHouseDimmer> It(GetWorld()); It; ++It) { It->EndScreening(); }
 		}
 		if (At(2.8f))
 		{
