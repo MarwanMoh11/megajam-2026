@@ -28,9 +28,16 @@
 #include "Kismet/GameplayStatics.h"
 #include "EngineUtils.h"
 #include "Misc/App.h"
+#include "HAL/IConsoleManager.h"
 #include "UObject/ConstructorHelpers.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogScene7, Log, All);
+
+// Test hook: Reel.S7.Auto 1 and the scene plays itself (walks to the magazine, holds the swap, answers every prompt
+// 0.6 s in). For shots and the coordinator's full runs; 0 (default) is the game.
+static int32 GS7Auto = 0;
+static FAutoConsoleVariableRef GS7AutoVar(TEXT("Reel.S7.Auto"), GS7Auto,
+	TEXT("1: Scene 7 plays itself (swap, then every fight prompt answered). 0: the player plays it."));
 
 namespace
 {
@@ -740,6 +747,11 @@ void AScene7Booth::TickScene(float DeltaSeconds)
 	{
 	case EScene7Stage::Approach:
 	{
+		if (GS7Auto && !bUseDown && StageT > 1.5f)
+		{
+			PlaceVance(UseSpot, UseYaw);
+			bUseDown = true;
+		}
 		const bool bNear = V && FVector::Dist2D(V->GetActorLocation(), W(UseSpot)) <= UseRadius;
 		if (bNear && bUseDown)
 		{
@@ -892,7 +904,8 @@ void AScene7Booth::TickScene(float DeltaSeconds)
 	case EScene7Stage::Prompt:
 	{
 		const float Limit = PromptRealSeconds + (FirstTry.IsValidIndex(PromptIndex) && FirstTry[PromptIndex] && GetRetakes() == 0 ? FirstPromptBonus : 0.f);
-		if (StageReal >= Limit) { PromptMissed(); }
+		if (GS7Auto && StageReal >= 0.6f) { PromptHit(); }
+		else if (StageReal >= Limit) { PromptMissed(); }
 		break;
 	}
 	case EScene7Stage::Strike:
