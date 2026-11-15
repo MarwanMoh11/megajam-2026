@@ -3,8 +3,8 @@
 #     "<engine python>" -I tools/ue_mcp.py py tools/script/scene7_fight.py 110
 # Places the fight actor on Vance's fight mark in the security room (s7-route's layout: room x -3200..-2100,
 # y -2000..-1400, floor z 450; Vance (-2650, -1680) facing north, yaw 90), so fight space +X = world +Y and the
-# monitor bank on the south wall sits at fight X -280..-295. s7-route's Scene 7 part 1 drives it
-# (AScene7Fight::Find(this)->StartFight(this)). Then saves the level.
+# monitor bank on the south wall sits at fight X -280..-295. s7-route's AScene7Booth drives it
+# (AScene7Fight::Find(this)->StartFight(this)). Then saves the level. The report goes to C:\Jam\Builds\script\s7fight\place.txt.
 # Switches: S7F_OFF = True only clears. S7F_ANIMS = {role: asset path} overrides clips (the Mixamo fight clips).
 import sys, importlib, traceback
 sys.path.insert(0, r"C:\Jam\megajam\tools\sets")

@@ -71,6 +71,8 @@ CLIPS = {
     "Use": (False, False, "Button Pushing (Pushing A Button With The Right Hand)"),
     "Shrug": (False, False, "Shrugging (Shoulder Shrug)"),
     "Headset": (True, False, "Talking On A Cell Phone (Male Standing While Talking On A Cell Phone)"),
+    "Fight_Hook": (False, False, "Hook Punch"),                # Scene 7 fight (s7-fight): the bodyguard's hook
+    "Fight_Duck": (False, False, "Ducking"),                   # Scene 7 fight: Vance slips the hook
 }
 
 EAL = unreal.EditorAssetLibrary
