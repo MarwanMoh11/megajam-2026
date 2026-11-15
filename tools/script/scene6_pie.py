@@ -18,6 +18,27 @@ def snap(s, name, prefix):
     print(name, L.save_image(res, path) and path, flush=True)
 
 
+P_YAW = """
+import unreal
+w = unreal.EditorLevelLibrary.get_game_world()
+y = [a.get_actor_rotation().yaw for a in unreal.GameplayStatics.get_all_actors_of_class(w, unreal.Actor)
+     if "S6_Projectionist" in [str(t) for t in a.tags]]
+str(round(y[0]) if y else 999)
+"""
+
+
+def wait_facing_door(s, tries=40):
+    """Poll the projectionist's yaw until he has faced the door (90) twice running: a glance is not starting."""
+    last = None
+    for _ in range(tries):
+        ok = '"returnValue":"90"' in L.py(s, P_YAW, 30)
+        if ok and last:
+            return True
+        last = ok
+        time.sleep(0.4)
+    return False
+
+
 def main():
     a = sys.argv[1:]
     s = L.sid()
@@ -37,20 +58,21 @@ def main():
         L.console(s, "Reel.S6.Behind A", "Reel.S6.Use")
         time.sleep(0.5)
         snap(s, "1_choke", prefix)
-        time.sleep(2.6)
+        time.sleep(float(os.environ.get("S6_DRAG_WAIT", "9")))   # PIE in the background runs slow: the drag is ~3 s game time
         snap(s, "2_trunk", prefix)
         L.console(s, "TakeWarp 4525 -450 0", "TakeLook 180 0", "Reel.S6.Use")
         time.sleep(1.2)
         snap(s, "3_crash", prefix)
-        time.sleep(5.0)
+        time.sleep(float(os.environ.get("S6_LURE_WAIT", "10")))
         snap(s, "4_lured", prefix)
+        print("facing door:", wait_facing_door(s), flush=True)
         L.console(s, "Reel.S6.Behind P", "Reel.S6.Use")
         time.sleep(0.8)
         snap(s, "5_projectionist", prefix)
         L.console(s, "TakeWarp 4895 930 250", "TakeLook 90 5", "Reel.S6.Use")
         time.sleep(1.5)
         snap(s, "6_door", prefix)
-        time.sleep(3.0)
+        time.sleep(8.0)
         snap(s, "7_next", prefix)
         return
     time.sleep(3.0)

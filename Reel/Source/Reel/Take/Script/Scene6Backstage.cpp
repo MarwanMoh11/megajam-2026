@@ -632,7 +632,7 @@ bool AScene6Backstage::TryUse()
 	// The projectionist: from behind, while he faces the door.
 	if (!P.bDown && P.Body && Near(P.Body->GetActorLocation(), TakedownReach))
 	{
-		if (bGlancing || !IsBehind(P, Cole))
+		if (!IsBehind(P, Cole))	// his real facing: mid-turn counts as looking
 		{
 			Catch(P, TEXT("THE PROJECTIONIST SAW YOU"));
 		}
@@ -1022,7 +1022,7 @@ void AScene6Backstage::DrawSceneHud(UCanvas* Canvas)
 		}
 		else if (!P.bDown && P.Body && Near(P.Body->GetActorLocation(), TakedownReach + 60.f))
 		{
-			if (bGlancing || !IsBehind(P, Cole)) { Prompt = TEXT("He's looking this way"); PromptC = Red; }
+			if (!IsBehind(P, Cole)) { Prompt = TEXT("He's looking this way"); PromptC = Red; }
 			else { Prompt = TEXT("[E]  Knock out the projectionist"); }
 		}
 		else if (!bLeverPulled && Near(LeverPoint, UseReach))
