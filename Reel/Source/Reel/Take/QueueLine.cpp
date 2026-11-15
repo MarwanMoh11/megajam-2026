@@ -5,6 +5,7 @@
 #include "CastMember.h"
 #include "Components/BoxComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/PointLightComponent.h"
 #include "Device.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -406,6 +407,7 @@ void AQueueLine::StepHold(ATakeDirector& Director)
 			if (Beat == EQueueBeat::Queue)
 			{
 				Director.Flash(NudgeDoormanLine, ETakeFlashKind::Line, 2.f);
+				DoormanSpeaksUntil = Now + SpeakSeconds;
 			}
 		}
 		TAKE_LOG(TEXT("QUEUE nudge: Julian at the hold (%s)"), Ahead ? TEXT("the guest ahead") : TEXT("the doorman"));
@@ -484,6 +486,14 @@ void AQueueLine::StepDoorman(ATakeDirector& Director)
 	Doorman->FaceYaw(QueueLineLocal::YawTo(Here, LookPoint, DoormanYaw));
 	Doorman->LookAtPoint(LookPoint, ReactSeconds + 1.f);
 	Doorman->PlayGestureAt(bDazzled ? ShieldGesture : FName(TEXT("Point")), LookPoint);
+	DoormanSpeaksUntil = Now + SpeakSeconds;
+	// The live view frames him as he says it (Maya fired it: her look eases down onto him; the mouse takes it back).
+	ATakePlayerController* const PC = Director.PC;
+	if (PC && LightPanSeconds > 0.f && !PC->IsInFlight() && PC->GetCurrentCharacter()
+		&& PC->GetCurrentCharacter() != Director.Julian.Get())
+	{
+		PC->StartLookPan(Here + FVector(0.f, 0.f, 120.f), LightPanSeconds);
+	}
 	ReactUntil = Now + ReactSeconds;
 	Director.Flash(LightLine, ETakeFlashKind::Line, 2.5f);
 	// Maya's own line after his: on the first take her lesson line ("cut back with 1") follows instead.
@@ -495,6 +505,50 @@ void AQueueLine::StepDoorman(ATakeDirector& Director)
 	}
 	TAKE_LOG(TEXT("QUEUE doorman: the light (%s, beam ends %.0f cm from him)"), bDazzled ? TEXT("dazzled") : TEXT("looks where it lands"),
 		FVector::Dist(End, Here));
+}
+
+UPointLightComponent* AQueueLine::MakeLamp(const ACastMember* Who, float Yaw)
+{
+	if (!Who || (LampRestCandelas <= 0.f && LampSpeakCandelas <= 0.f))
+	{
+		return nullptr;
+	}
+	UPointLightComponent* const Lamp = NewObject<UPointLightComponent>(this, NAME_None, RF_Transient);
+	Lamp->SetMobility(EComponentMobility::Movable);
+	Lamp->SetCastShadows(false);
+	Lamp->SetIntensityUnits(ELightUnits::Candelas);
+	Lamp->SetIntensity(LampRestCandelas);
+	Lamp->SetAttenuationRadius(LampRadius);
+	Lamp->SetLightColor(FLinearColor(1.f, 0.82f, 0.6f));
+	Lamp->RegisterComponent();
+	AddInstanceComponent(Lamp);
+	const FVector Forward = FRotator(0.f, Yaw, 0.f).Vector();
+	Lamp->SetWorldLocation(Who->GetActorLocation() + Forward * LampOffset.X + FVector(0.f, 0.f, LampOffset.Z));
+	return Lamp;
+}
+
+void AQueueLine::StepLamps(ATakeDirector& Director)
+{
+	if (!DoormanLamp && Doorman)
+	{
+		DoormanLamp = MakeLamp(Doorman, DoormanYaw);
+	}
+	if (!ClerkLamp && Clerk.IsValid())
+	{
+		ClerkLamp = MakeLamp(Clerk.Get(), ClerkYaw);
+	}
+	const double Now = RealNow();
+	const float Rate = 6.f * (GetWorld() ? FMath::Min(0.1f, GetWorld()->DeltaRealTimeSeconds) : 0.016f);
+	auto Ease = [&](UPointLightComponent* Lamp, double Until)
+	{
+		if (Lamp)
+		{
+			const float Want = Now < Until ? LampSpeakCandelas : LampRestCandelas;
+			Lamp->SetIntensity(FMath::Lerp(Lamp->Intensity, Want, FMath::Clamp(Rate, 0.f, 1.f)));
+		}
+	};
+	Ease(DoormanLamp, DoormanSpeaksUntil);
+	Ease(ClerkLamp, ClerkSpeaksUntil);
 }
 
 bool AQueueLine::ClaimsSpotLine(const AFollowSpot* Spot, const AActor* Target) const
@@ -579,6 +633,7 @@ void AQueueLine::StepLobby(ATakeDirector& Director)
 		if (Desk)
 		{
 			Desk->PlayGestureAt(TEXT("Talk"), Julian->GetActorLocation() + FVector(0.f, 0.f, 60.f));
+			ClerkSpeaksUntil = Now + SpeakSeconds;
 		}
 		SayLine(Director, DeskLine);
 		if (!PaddleNote.IsEmpty())
@@ -818,6 +873,13 @@ void AQueueLine::StepLine(ATakeDirector& Director, float DeltaSeconds)
 	{
 		SetupLine(Director);
 	}
+	// W3 round B: the searchlight is Scene 1's only: once the hall's scene starts Maya is no longer offered it.
+	if (Director.Scene > 1 && Searchlight.IsValid() && Searchlight->FiredFrom == ETakeCamera::B)
+	{
+		Searchlight->FiredFrom = ETakeCamera::A;	// nobody (Julian uses nothing): its prompt is gone
+		TAKE_LOG(TEXT("QUEUE searchlight retired (Scene %d)"), Director.Scene);
+	}
+	StepLamps(Director);
 	if (bOldFlow)
 	{
 		return;
@@ -906,6 +968,7 @@ void AQueueLine::EnterBeat(ATakeDirector& Director, EQueueBeat NewBeat)
 	{
 	case EQueueBeat::Refuse:
 		SayLine(Director, RefuseLine);
+		DoormanSpeaksUntil = RealNow() + SpeakSeconds;
 		if (Director.Julian)
 		{
 			Director.Julian->PlayGesture(RefuseGesture);
@@ -976,6 +1039,7 @@ void AQueueLine::EnterBeat(ATakeDirector& Director, EQueueBeat NewBeat)
 			Desk->FaceYaw(QueueLineLocal::YawTo(Desk->GetActorLocation(), Head, ClerkYaw));
 			Desk->LookAtPoint(Head, 4.f);
 			Desk->PlayGestureAt(TEXT("Hello"), Head);
+			ClerkSpeaksUntil = RealNow() + SpeakSeconds + 1.f;
 			UTakeGameInstance* const GI = Director.GetTakeGameInstance();
 			const bool bOnJulian = PC && !PC->IsInFlight() && PC->GetCurrentCharacter() == Julian;
 			if (bOnJulian && GI && (GI->IntroShownMask & BitLobbyPan) == 0)

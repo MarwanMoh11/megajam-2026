@@ -28,7 +28,7 @@ def items():
     out = []
     for (lid, speaker, text, _key, _event, say) in M.LINES:
         words = say or text
-        v = M.VOICES[speaker]
+        v = M.VOICES[getattr(M, "LINE_VOICE", {}).get(lid, speaker)]   # QA time: a line may have its own voice
         st, sim, style = v["settings"]
         settings = {"stability": st, "similarity_boost": sim, "style": style, "use_speaker_boost": True}
         if "speed" in v:

@@ -230,10 +230,9 @@ namespace CastKits
 	{
 		if (L.bSeated)
 		{
-			// --- W3 cast2 --- the lap: a flatter, wider fold lying on both thighs (was an egg standing on them).
-			Out.Add({ETakeShape::Sphere, TEXT("thigh_l"), FVector(4.f, 9.5f, -23.f), FRotator::ZeroRotator, FVector(14.f, 40.f, 54.f), C});
-			// --- W3 cast2 --- the skirt falls round both shins as soft cloth (an oval tube), not a board in front of them.
-			Out.Add({ETakeShape::Cylinder, TEXT("calf_l"), FVector(1.5f, 9.5f, -15.f - 5.f * L.SkirtLength), FRotator::ZeroRotator, FVector(19.f, 36.f, 30.f + 10.f * L.SkirtLength), C});
+			// --- W3 cast2 --- seated: no skirt shapes at all. Every rigid shape tried here (a cone, a board at the shins, an
+			// egg on the lap, a tube round the shins) read as a box or a bucket between the knees; the body already wears
+			// the gown's colour (Paint Tint), so the seated woman is the tinted figure with her hair, hat and jewellery.
 		}
 		else
 		{
@@ -1951,7 +1950,8 @@ void ACastMember::TickCrew(float DeltaSeconds)
 	bBowFiredLast = bFired;
 
 	// A hand to the headset when a voice line starts, on the character the player is on.
-	if (Director && Character && bHeadsetOnVoice && IsActingNow())
+	// --- W3 cast2 --- only the crew who wear a headset (Maya, Vex): on Julian the hand to the ear read as a half wave.
+	if (Director && Character && bHeadsetOnVoice && Kit != ECastKit::Julian && IsActingNow())
 	{
 		const float Left = Director->VoiceSecondsLeft();
 		if (Left > 0.f && VoiceLeftLast <= 0.f && Now >= NextHeadset && !bCrewAct && Director->GetLookCamera() == Character->Id)

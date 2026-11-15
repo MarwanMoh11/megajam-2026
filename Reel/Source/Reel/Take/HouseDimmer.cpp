@@ -328,7 +328,7 @@ void AHouseDimmer::SetFilm(float Play)
 		if (Play > 0.f)
 		{
 			// The leader's countdown starts on this frame (T0: world seconds, the material's Time); the frame's shape.
-			FilmMID->SetScalarParameterValue(TEXT("T0"), GetWorld() ? GetWorld()->GetTimeSeconds() : -1.f);
+			FilmMID->SetScalarParameterValue(TEXT("T0"), GetWorld() ? GetWorld()->GetTimeSeconds() - FilmLeaderSkipSeconds : -1.f);
 			FilmMID->SetScalarParameterValue(TEXT("Aspect"), FMath::Max(ScreenSize.X, 1.f) / FMath::Max(ScreenSize.Y, 1.f));
 		}
 	}
@@ -394,7 +394,8 @@ void AHouseDimmer::GatherHouseLights()
 		}
 		ULightComponent* const Comp = LightActor->GetLightComponent();
 		if (!Comp || !Comp->IsA<ULocalLightComponent>() || Comp->GetMobility() == EComponentMobility::Static
-			|| !Comp->IsVisible() || !House.IsInsideOrOn(Comp->GetComponentLocation()))
+			|| !Comp->IsVisible() || !House.IsInsideOrOn(Comp->GetComponentLocation())
+			|| Comp->GetComponentLocation().Z >= KeepLightsAboveZ)	// W3 heist2: the catwalk keeps its work lights
 		{
 			continue;
 		}

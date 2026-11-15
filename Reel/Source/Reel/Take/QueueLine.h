@@ -42,6 +42,7 @@ class AMark;
 class ATakeDirector;
 class AScannerWatcher;
 class UBoxComponent;
+class UPointLightComponent;
 class UCapsuleComponent;
 
 /** Where Scene 1 stands: the queue, then the beats of the taught first switch. */
@@ -341,10 +342,32 @@ public:
 
 	/** Where he stands (world, feet) and faces (degrees). */
 	UPROPERTY(EditAnywhere, Category = "Take|Queue|Doorman", meta = (MakeEditWidget = true))
-	FVector DoormanPoint = FVector(-3610.f, 145.f, 0.f);
+	FVector DoormanPoint = FVector(-3650.f, 150.f, 0.f);	// round B: about 1.2 m from the detector post, in front of the gate
 
 	UPROPERTY(EditAnywhere, Category = "Take|Queue|Doorman")
-	float DoormanYaw = 150.f;
+	float DoormanYaw = 137.f;	// toward the gold mark
+
+	/** When the light lands and the player is on Maya, her look eases onto him this fast (s, real time; 0: no pan). */
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Doorman", meta = (ClampMin = "0"))
+	float LightPanSeconds = 0.45f;
+
+	/** The speaker's lamp: a small warm light (no shadows) in front of the doorman and the clerk, at RestCandelas,
+	 *  rising to SpeakCandelas while he speaks (SpeakSeconds) so the eye finds who is talking. 0 and 0: none. */
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Doorman", meta = (ClampMin = "0"))
+	float LampRestCandelas = 25.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Doorman", meta = (ClampMin = "0"))
+	float LampSpeakCandelas = 90.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Doorman", meta = (ClampMin = "0"))
+	float LampRadius = 320.f;
+
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Doorman", meta = (ClampMin = "0"))
+	float SpeakSeconds = 3.f;
+
+	/** The lamp stands this far in front of his face and above his feet, cm. */
+	UPROPERTY(EditAnywhere, Category = "Take|Queue|Doorman")
+	FVector LampOffset = FVector(70.f, 0.f, 200.f);
 
 	UPROPERTY(EditAnywhere, Category = "Take|Queue|Doorman")
 	FLinearColor DoormanTint = FLinearColor(0.07f, 0.09f, 0.18f);
@@ -508,6 +531,19 @@ protected:
 
 	UPROPERTY(Transient)
 	TObjectPtr<ACastMember> Doorman;
+
+	/** The speaker lamps (doorman, clerk) and when each stops speaking (real time). */
+	UPROPERTY(Transient)
+	TObjectPtr<class UPointLightComponent> DoormanLamp;
+
+	UPROPERTY(Transient)
+	TObjectPtr<class UPointLightComponent> ClerkLamp;
+
+	double DoormanSpeaksUntil = 0.0;
+	double ClerkSpeaksUntil = 0.0;
+
+	UPointLightComponent* MakeLamp(const ACastMember* Who, float Yaw);
+	void StepLamps(ATakeDirector& Director);
 
 	UPROPERTY(Transient)
 	TWeakObjectPtr<ACastMember> Clerk;

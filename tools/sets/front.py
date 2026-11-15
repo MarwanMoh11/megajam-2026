@@ -660,7 +660,11 @@ if ON["stair"]:
             K.box((nx - 16, nx + 16, ny - 16, ny + 16, 0.0, 112.0), MARBLE, collide=True, shadow=True)
             K.box((nx - 19, nx + 19, ny - 19, ny + 19, 112.0, 118.0), TRIM)
             K.cyl(nx, ny, 118.0, 140.0, 4.0, TRIM)
-            K.ball((nx, ny, 156.0), 32.0, GLOW)
+            # --- W3 lights --- the 32 cm glow ball read as a flat tan disc on a post: a brass gallery and a small
+            # globe (lit from in front by lights.py's Newel_* lights, so it shades round and glows)
+            K.cyl(nx, ny, 140.0, 146.0, 13.0, TRIM)
+            K.ball((nx, ny, 156.0), 19.0, GLOW, dz=21.0)
+            K.cyl(nx, ny, 165.5, 168.0, 5.0, TRIM)
 
 # --- the balcony rail: velvet swags on the atrium side, tassels at the posts, globe lamps at the four corners --------------
 if ON["balcony"]:

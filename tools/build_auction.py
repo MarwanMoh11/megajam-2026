@@ -83,15 +83,15 @@ CHIEF = (VOID_X0 + 20.0, 0.0)     # the security chief at the foot of the grand 
 MARK_DESK = (-2430.0, 630.0)      # the registration desk: Julian signs in here (W3 opening: in front of the moved desk)
 MARK_FLOOR = (-700.0, 0.0)        # Scene 2 starts here: the checkpoint just inside the hall
 # The broadcast drone films the centre aisle, and its camera riser blocks the aisle: Julian goes round by a side aisle.
-RISER = (1040.0, 1340.0, -230.0, 230.0)   # x0, x1, y0, y1: at the head of the rear rows' aisle, 80 cm high (W3 stage)
+RISER = (480.0, 780.0, -230.0, 230.0)   # x0, x1, y0, y1: behind the last row, on the aisle's axis, 80 cm high (W3 stage)
 MARK_SEAT = (1700.0, 1060.0)      # an aisle seat at the end of a rear row (W3 stage: was -300, 1090)
 # --- W3 stage --- the seats: two blocks of rows facing the dais either side of the centre aisle (hall_layout.py)
 ROWS_FRONT = tuple(3150.0 - 100.0 * i for i in range(8))   # reserved bidders, past the rope: 3150 .. 2450
-ROWS_REAR = tuple(2100.0 - 100.0 * i for i in range(8))    # general seats, before it: 2100 .. 1400
+ROWS_REAR = tuple(2100.0 - 100.0 * i for i in range(14))   # general seats, before it: 2100 .. 800 (round B: was to 1400)
 ROW_Y0, ROW_Y1_FRONT, ROW_Y1_REAR = 180.0, 1048.0, 924.0    # row blockers |y| from the aisle to the row's far end
 JULIAN_PLACE = (2100.0, -211.0)   # his bidder's seat: the rear block's front row, south aisle seat, by the rope mark
 # --- end W3 stage
-MARK_COCKTAILS = (1100.0, 950.0)  # beside a cocktail table on the open floor
+MARK_COCKTAILS = (950.0, 1010.0)  # beside a cocktail table on the north flank, off the rows' ends (W3 stage: 1100, 950)
 MARK_ROPE = (2200.0, 0.0)         # the safe mark before the rope, and a checkpoint
 ROPE_X = 2400.0
 GAP = 150.0                       # half-width of the gap in the rope: the beam crosses it
@@ -1183,9 +1183,12 @@ for (x0, x1, h) in ((1000, 1110, 60), (2200, 2330, 85), (3500, 3620, 60)):
     prop("Flight_Case", x0, x1, 1950, 1995, CAT_Z, CAT_Z + h, m_floor)
 _rnd_keep = rnd
 rnd = random.Random(1115)
-for (mx, my, n) in ((-350, 700, 3), (100, 950, 2), (350, 450, 2), (-300, -650, 2), (200, -900, 3), (550, -450, 2),
-                    (750, 900, 2)):
+for (mx, my, n) in ((-400, 650, 3), (-380, -720, 3), (120, 1000, 2), (160, -980, 2), (-150, 330, 2), (250, 620, 2),
+                    (280, -560, 2)):
     mingle(float(mx), float(my), n)
+for s in (1, -1):                                       # standing room: a rank behind the last row, beside the riser
+    for i, y in enumerate((300.0, 390.0, 485.0, 570.0, 665.0, 760.0, 850.0)):
+        guest(690.0 - (i % 2) * 25.0, s * y, facing=rnd.uniform(-12.0, 12.0))
 rnd = _rnd_keep
 
 # --- the north wing ---------------------------------------------------------------------------------------------------

@@ -28,8 +28,17 @@ VOICES = {
     "BODYGUARD": dict(voice="Harry",   voice_id="SOYHLrjzK2X1ezoPC6cr", why="rough, fierce: Vance's bodyguard", settings=(0.45, 0.8, 0.4)),
     "BROADCAST": dict(voice="Print It - Broadcast (Voice Design, candidate 1 of 2, picked by Marwan)", voice_id="zp7wscOG54kLZi18OhAE", why="harried 1950s live-TV producer, fast and clipped: the drone's producer on talkback", settings=(0.55, 0.8, 0.25)),
     "SECURITY":  dict(voice="Print It - Security (Voice Design, candidate 2 of 2, picked by Marwan)", voice_id="BKCBzTejPWQ1UuUOlatr", why="young, burly, breathless Brooklyn guard: the guards who come in at the alarm", settings=(0.35, 0.8, 0.5)),
+    # --- QA time, wave 3 (Nov 15): the reception clerk and the guests (the subtitles all say GUEST; LINE_VOICE gives
+    # each guest line its own voice).
+    "CLERK":     dict(voice="Eric",    voice_id="cjVigY5qzO86Huf0OWal", why="smooth, trustworthy, classy American: the reception clerk", settings=(0.55, 0.8, 0.2)),
+    "GUEST":     dict(voice="Bella",   voice_id="hpp4J3VqNfWAUOO0d1Us", why="a woman in the front rows, curious, hushed", settings=(0.5, 0.8, 0.3)),
+    "GUEST_OLD": dict(voice="George",  voice_id="JBFqnCBsd6RMkjVDRZzb", why="an older gentleman at the sale, mildly scandalised", settings=(0.55, 0.8, 0.25)),
+    "GUEST_GRUFF": dict(voice="Brian", voice_id="nPczCjzI2devNBz1zQrb", why="a gruff man in the rows, irritated", settings=(0.35, 0.8, 0.5)),
+    "GUEST_QUEUE": dict(voice="Liam",  voice_id="TX3LPaxmHKxFdv7VOQHJ", why="a brash young man in the queue outside", settings=(0.4, 0.8, 0.45)),
 }
 TTS_MODEL = "eleven_multilingual_v2"
+# QA time, wave 3: a line spoken by a voice other than its speaker's (generate.py).
+LINE_VOICE = {"vo_guest_house": "GUEST_OLD", "vo_guest_sit": "GUEST_GRUFF", "vo_guest_turn": "GUEST_QUEUE"}
 EARPIECE = {"MAYA", "VEX", "BROADCAST"}   # band-passed like a radio in process.py
 
 # id, speaker, text (the subtitle, word for word), key, event (for the script), say (what the voice reads, if
@@ -128,13 +137,37 @@ LINES = [
      "MAYA|Clean swap. Bringing the house up.", "Scene 3, Julian swaps the reel in the dark", None),
     ("vo_vance_discover", "VANCE", "And here it is... a newsreel?!",
      "VANCE|And here it is... a newsreel?!", "Scene 3, the house comes up and Vance opens the dummy (the alarm's line follows)", None),
-    ("vo_maya_noswap", "MAYA", "House is up. Get him beside the case and I'll roll it again.",
-     "MAYA|House is up. Get him beside the case and I'll roll it again.", "Scene 3, the preview ends with no swap", None),
+    ("vo_maya_noswap", "MAYA", "House is coming up. Get him back in the crowd, I'll roll it again.",
+     "MAYA|House is coming up. Get him back in the crowd, I'll roll it again.", "Scene 3, the preview ends with no swap", None),
     ("vo_vance_seen", "VANCE", "Sir! Step away from that case!",
      "VANCE|Sir! Step away from that case!", "Scene 3, Julian at the case with the house up (THE ROOM SAW HIM follows)", None),
-    ("vo_maya_hint_case", "MAYA", "Not in the light. Get him beside the case, cut to me, I take the house down, then swap it.",
-     "MAYA|Not in the light. Get him beside the case, cut to me, I take the house down, then swap it.",
+    ("vo_maya_hint_case", "MAYA", "Not in the light. Get him to the front row, cut to me, I take the house down. Then he goes up.",
+     "MAYA|Not in the light. Get him to the front row, cut to me, I take the house down. Then he goes up.",
      "Scene 3, the crew hint after two bloopers at the keycard's checkpoint", None),
+    # --- QA time, wave 3 (Nov 15): the opening (QueueLine.h) and the room (RoomWatch.h / .cpp).
+    ("vo_doorman_nomatch", "DOORMAN", "No match. Hold there, sir.", "DOORMAN|No match. Hold there, sir.",
+     "Scene 1, the scanner refuses Julian (the doorman at the scanner)", None),
+    ("vo_doorman_light", "DOORMAN", "Who turned that light on?!", "DOORMAN|Who turned that light on?!",
+     "Scene 1, the searchlight lands on the scanner; the doorman shields his eyes", None),
+    ("vo_doorman_onetime", "DOORMAN", "One at a time, sir.", "DOORMAN|One at a time, sir.",
+     "Scene 1, Julian pushes toward the scanner before his turn", None),
+    ("vo_guest_turn", "GUEST", "Wait your turn, pal.", "GUEST|Wait your turn, pal.",
+     "Scene 1, Julian tries to pass the guest ahead of him in the queue", None),
+    ("vo_clerk_greet", "CLERK", "Good evening, sir. Bidders sign in here, at the desk.",
+     "CLERK|Good evening, sir. Bidders sign in here, at the desk.", "Lobby, the clerk greets Julian through the doors", None),
+    ("vo_clerk_paddle", "CLERK", "Paddle forty-one, sir. The sale is through the hall doors.",
+     "CLERK|Paddle forty-one, sir. The sale is through the hall doors.", "Lobby, Julian takes his paddle at the desk", None),
+    ("vo_vex_teach_room", "VEX", "Not in front of the whole room. Back in the crowd. Maya: take the house lights down.",
+     "VEX|Not in front of the whole room. Back in the crowd. Maya: take the house lights down.",
+     "Scene 3, the room's first murmur of a take (the lesson)", None),
+    ("vo_guest_stage", "GUEST", "Who's that up by the stage?", "GUEST|Who's that up by the stage?",
+     "Scene 3, a later murmur (a woman in the front rows)", None),
+    ("vo_guest_house", "GUEST", "Is he with the auction house?", "GUEST|Is he with the auction house?",
+     "Scene 3, a later murmur (an older man)", None),
+    ("vo_guest_sit", "GUEST", "Sit down, man, we can't see.", "GUEST|Sit down, man, we can't see.",
+     "Scene 3, a later murmur (a gruff man)", None),
+    ("vo_vance_stage", "VANCE", "Sir! Step back from the stage!", "VANCE|Sir! Step back from the stage!",
+     "Scene 3, the room saw him at the front (THE ROOM SAW HIM follows)", None),
 ]
 
 # id, event, seconds (target), prompt (ElevenLabs sound effects), loop
@@ -157,6 +190,9 @@ SFX = [
     ("sfx_chime", "Keycard lifted, a checkpoint, an arrival", 0.8, "A soft bright two-note vibraphone chime, short and pleasant", False),
     ("sfx_heartbeat", "Loop: a watcher holds him", 2.0, "Tense heartbeat, two heavy thumps per second, close and muffled, seamless loop", True),
     ("sfx_ringing", "Loop: composure falling", 4.0, "High-pitched tinnitus ear ringing tone, steady and thin, seamless loop", True),
+    ("sfx_murmur", "The room notices Julian: heads turn, a murmur rises (RoomWatch)", 3.0,
+     "A crowd of a hundred people in a 1940s black-tie auction hall: a murmur rises as heads turn, hushed voices, no "
+     "clear words, then a low steady murmur, indoor, slightly reverberant", False),
 ]
 
 # id, event, bars (shipped length at 120 BPM; 0 = one-shot, trimmed), seconds to generate, kind, prompt

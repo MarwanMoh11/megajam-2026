@@ -118,6 +118,16 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Dimmer", meta = (ClampMin = "0", ClampMax = "1"))
 	float RoomSeesAboveLevel = 0.5f;
 
+	/** W3 heist2: lights at or above this height (world z) are not the house: the catwalk keeps its work lights, so
+	 *  Maya can read her board and the projector in the dark. Off by default (chandeliers hang high). */
+	UPROPERTY(EditAnywhere, Category = "Take|Dimmer")
+	float KeepLightsAboveZ = 100000.f;	// off: package lights hangs attached work lights at the board and the projector
+
+	/** W3 heist2: the film starts this far in, s (7 skips the 8..2 leader, whose count would fight the goal line's dark
+	 *  seconds; 0 shows the leader). */
+	UPROPERTY(EditAnywhere, Category = "Take|Dimmer", meta = (ClampMin = "0"))
+	float FilmLeaderSkipSeconds = 7.f;
+
 	/** The house drops to this share on the fire frame itself (the lever's clunk), then eases on to DimLevel. */
 	UPROPERTY(EditAnywhere, Category = "Take|Dimmer", meta = (ClampMin = "0", ClampMax = "1"))
 	float FirstDropLevel = 0.55f;

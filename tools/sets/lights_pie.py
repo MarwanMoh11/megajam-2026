@@ -13,7 +13,7 @@ OUT = r"C:\Jam\Builds\qa\lights"
 PLACES = {
     "street_n": (-3700.0, 1300.0, 0.0, 200.0, -12.0),       # the north pavement, the kerb lane's sedans
     "street_s": (-3650.0, -500.0, 0.0, 230.0, -12.0),       # the south pavement, newsstand, hydrant, sedans
-    "lobby_desk": (-2250.0, 450.0, 0.0, 80.0, -12.0),       # the reception desk and the desk mark
+    "lobby_desk": (-2780.0, 380.0, 0.0, 20.0, -8.0),        # the reception desk, its clerk, the newel lamps (W3: desk moved)
     "lobby_seat": (-1700.0, 600.0, 0.0, 45.0, -10.0),       # the seating group by the hall doors
     "hall_bar": (600.0, -900.0, 0.0, -60.0, -8.0),          # the bar on the south flank
     "hall_north": (600.0, 600.0, 0.0, 45.0, -8.0),          # the north flank, the phone desk

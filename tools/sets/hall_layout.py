@@ -15,11 +15,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # block sits behind the cross aisle at the rope. tools/sets/hall_zones.json has the same numbers.
 ROWS = (                                                   # (row x centres, chairs a side): build_auction ROWS_*
     tuple(3150.0 - 100.0 * i for i in range(8)),           # reserved: 3150 .. 2450, 14 a side
-    tuple(2100.0 - 100.0 * i for i in range(8)),           # general: 2100 .. 1400, 12 a side
+    tuple(2100.0 - 100.0 * i for i in range(14)),          # general: 2100 .. 800, 12 a side
 )
 PER_SIDE = (14, 12)
 ROW_Y0, PITCH = 180.0, 62.0                                # the aisle edge, 62 cm a chair
-OFFER = ((3, 1.0), (5, 0.45), (8, 0.15))                   # (rows from the front of the room, share of their seats offered)
+OFFER = ((3, 0.95), (5, 0.3), (7, 0.08), (7, 0.3))                # (rows from the front of the room, share of their seats offered)
 CHAIR_H = 92.0                                             # the gilt ballroom chair stands 92 cm
 SEAT_FRAC = 83.0 / 171.2                                   # its seat's top over its height (measured off the mesh)
 SEAT_Z = round(CHAIR_H * SEAT_FRAC, 1)                     # 44.6

@@ -486,7 +486,8 @@ def shoot(name, s):
         _, cam, look = studio_frame(s)
         return capture(name, cam, look, s["fov"], unreal.SceneCaptureSource.SCS_FINAL_COLOR_LDR,
                        flags=(("Fog", False), ("VolumetricFog", False)))
-    return capture(name, s["cam"], s["look"], s["fov"], unreal.SceneCaptureSource.SCS_FINAL_COLOR_LDR)
+    return capture(name, s["cam"], s["look"], s["fov"], unreal.SceneCaptureSource.SCS_FINAL_COLOR_LDR,
+                   flags=(("Fog", False), ("VolumetricFog", False)))   # our lamps lit the fog into halos
 
 
 # --- composites: poster, lobby cards, the leader's digits --------------------------------------------------------------

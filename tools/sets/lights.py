@@ -37,11 +37,12 @@ MOON = (0.70, 0.80, 1.0)            # W3 lights: cool night light from across th
 LIGHTS = [
     # the lobby: the reception desk's banker's lamp, the two seating groups' lamps (off the centre)
     # W3 lights: the desk, the clerk and the paddle board were grey in play: brighter lamps, a picture light on the board
-    ("lobby", "Desk_Lamp", (-2196.0, 1060.0, 150.0), 110.0, 340.0, TUNG, None),
     ("lobby", "Seating_W", (-3080.0, 1180.0, 165.0), 100.0, 360.0, TUNG, None),
     ("lobby", "Seating_E", (-1290.0, 1110.0, 125.0), 110.0, 380.0, TUNG, None),
     ("lobby", "Seating_SW", (-3080.0, -1100.0, 165.0), 90.0, 360.0, TUNG, None),
-    ("lobby", "Desk_Board", (-2120.0, 1150.0, 300.0), 160.0, 420.0, TUNG, (-35.0, 90.0, 30.0)),
+    # W3 lights: the newel lamps at the stair's foot (front.py's globes), lit from the doors' side so they shade round
+    ("lobby", "Newel_S", (-2650.0, -193.0, 160.0), 12.0, 140.0, BULB, None),
+    ("lobby", "Newel_N", (-2650.0, 193.0, 160.0), 12.0, 140.0, BULB, None),
     # the hall: placed at run time from hall_zones.json and the placed props (hall_lights below; W3 lights)
     # backstage corridor: the ghost light at the far end
     ("rooms", "Corridor_Ghost", (-950.0, -2560.0, 175.0), 80.0, 280.0, BULB, None),
@@ -173,6 +174,42 @@ def hall_lights():
     return out
 
 
+# --- W3 lights: the reception desk moved onto the way in (opening's QueueLine clerk_point): the clerk is the first
+# person to speak to Julian, so he gets a key from above the desk and a banker's lamp on it. From the placed actor.
+DESK_KEY = dict(cd=380.0, cone=30.0, radius=520.0, up=330.0, back=110.0)
+# --- W3 lights: Maya's board and the projector stay readable with the house down: shielded work lights ATTACHED to the
+# house dimmer (AHouseDimmer takes only unattached lights), straight down, tight, no haze: unseen from the floor.
+WORK_LIGHTS = dict(board_cd=140.0, board_cone=38.0, board_up=200.0, proj_cd=40.0, proj_radius=200.0)
+
+
+def desk_lights():
+    q = [a for a in eas.get_all_level_actors() if a.get_class().get_name() == "QueueLine"]
+    p = q[0].get_editor_property("clerk_point") if q else None
+    cx, cy = (p.x, p.y) if p else (-2050.0, 630.0)
+    k = DESK_KEY
+    sx, sz = cx - k["back"], k["up"]                                # over the desk, in front of him, aimed back at him
+    pitch = -math.degrees(math.atan2(sz - 150.0, k["back"]))
+    return [("lobby", "Clerk_Key", (sx, cy, sz), k["cd"], k["radius"], TUNG, (pitch, 0.0, k["cone"])),
+            ("lobby", "Desk_Lamp", (cx - 150.0, cy + 70.0, 150.0), 110.0, 340.0, TUNG, None)]
+
+
+def work_lights():
+    import json, os
+    dims = [a for a in eas.get_all_level_actors() if a.get_class().get_name() == "HouseDimmer"]
+    if not dims:
+        return []
+    with open(os.path.join(os.path.dirname(os.path.abspath(C.__file__)), "hall_zones.json"), encoding="utf-8") as f:
+        Z = json.load(f)
+    w, d, m, pr = WORK_LIGHTS, Z["dimmer"], Z["maya_post"], Z["projector"]
+    out = [light("hall", "Work_Board", ((d[0] + m[0]) / 2, (d[1] + m[1]) / 2, d[2] + w["board_up"]), w["board_cd"],
+                 w["board_up"] * 2.0, WORK, (-90.0, 0.0, w["board_cone"])),
+           light("hall", "Work_Projector", (pr[0], pr[1], pr[2] + 70.0), w["proj_cd"], w["proj_radius"], WORK, None)]
+    for a in out:
+        a.attach_to_actor(dims[0], "", unreal.AttachmentRule.KEEP_WORLD, unreal.AttachmentRule.KEEP_WORLD,
+                          unreal.AttachmentRule.KEEP_WORLD, False)
+    return [a.get_actor_label() for a in out]
+
+
 def light(area, name, p, cd, radius, colour, spot):
     cls = unreal.SpotLight if spot else unreal.PointLight
     r = unreal.Rotator(roll=0.0, pitch=spot[0], yaw=spot[1]) if spot else unreal.Rotator(0.0, 0.0, 0.0)
@@ -212,10 +249,14 @@ if "street" in AREAS:
                     a.set_actor_location(unreal.Vector(PAVE_X0 + 40.0, p.y, MOVE_LAMPS["z"]), False, False)
                     a.get_component_by_class(unreal.PointLightComponent).set_editor_property("intensity", MOVE_LAMPS["cd"])
                     placed.append(a.get_actor_label() + " moved")
+if "lobby" in AREAS:
+    todo += desk_lights()
 if "hall" in AREAS:
     todo += hall_lights()
 for e in todo:
     light(*e)
     placed.append(e[1])
+if "hall" in AREAS:
+    placed += work_lights()
 C.save_level()
 "lights: removed %d, placed %d (%s)" % (gone, len(placed), ", ".join(placed))
