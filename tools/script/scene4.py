@@ -4,7 +4,7 @@
 # lock, after the existing pipeline and after tools/script/scene3.py (the rope guards are Scene 3's):
 #     "<engine python>" -I tools/ue_mcp.py py tools/script/scene4.py 110
 # Switches: S4_OFF = True only clears. S4_SHOTS = True also writes stills to C:\Jam\Builds\script\s4.
-import sys, importlib, math
+import sys, os, importlib, math
 sys.path.insert(0, r"C:\Jam\megajam\tools\sets")
 import common as C
 importlib.reload(C)
@@ -27,7 +27,8 @@ CART_ROLL = (0.0, 0.0, 0.0)             # set below: its crash offset, local (it
 CRASH = (1960.0, -1520.0)               # the mess: at the West Pillar (the column at 2200, -1300), short of the guards
 # Vance's lane: from the bar (where Max told him to hold) across the hall, between the two gap guards, through the
 # curtain, into the dark aisle. The last point is inside the auditorium.
-LANE = ((1250.0, -1330.0), (1700.0, -900.0), (2100.0, -330.0), (2300.0, -40.0), (2420.0, 0.0), (2720.0, 0.0))
+# It keeps west of the seated benches (x 1900-2100, y +-200..470), then takes the centre aisle to the gap.
+LANE = ((1250.0, -1330.0), (1650.0, -950.0), (1800.0, -120.0), (2300.0, -30.0), (2420.0, 0.0), (2720.0, 0.0))
 # The guards (Scene 3 places them; labels from tools/script/scene3.py): label -> role, cone name, pace.
 GUARDS = (
     ("S3_Guard_NorthGap", "EAST_DOOR", "EAST DOOR", (2260.0, 380.0), (0.0, 250.0), 0.0),
@@ -141,7 +142,9 @@ def scene():
     bird = camera("S4_BirdsEyeCam", BIRDS_EYE[0], BIRDS_EYE[1], BIRDS_EYE[2])
     track = camera("S4_TrackCam", (LANE[0][0] - 100.0, LANE[0][1] - 260.0, 160.0), (LANE[0][0], LANE[0][1], 120.0), 55.0)
     ct = cart()
-    spots = [a for a in C.actors() if isinstance(a, unreal.FollowSpot)]
+    # The catwalk's follow spot: the one nearest Nora (the hall also has a far, short-range "Searchlight").
+    spots = sorted([a for a in C.actors() if isinstance(a, unreal.FollowSpot)],
+                   key=lambda a: (a.get_actor_location() - vec(NORA)).length())
     cls = getattr(unreal, "Scene4Catwalk", None)
     if cls is None:
         REPORT.append("AScene4Catwalk not in this editor build yet: scene actor NOT placed (rerun after the restart)")
@@ -171,7 +174,6 @@ def scene():
 
 
 def shots():
-    import os
     os.makedirs(OUT, exist_ok=True)
     REPORT.append(C.shot("s4_birds_eye", BIRDS_EYE[0], BIRDS_EYE[1], fov=BIRDS_EYE[2], out_dir=OUT))
     REPORT.append(C.shot("s4_cart_pillar", (1500.0, -1500.0, 260.0), (1900.0, -1700.0, 60.0), fov=70.0, out_dir=OUT))
