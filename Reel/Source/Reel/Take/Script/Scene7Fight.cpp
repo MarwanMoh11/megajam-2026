@@ -267,6 +267,11 @@ bool AScene7Fight::HandleFightKey(const FKey& Key, bool bPressed)
 ATakeCharacter* AScene7Fight::GetVance() const
 {
 	if (OwnerScene) { if (ATakeCharacter* V = OwnerScene->GetPovCharacter()) { return V; } }
+	// No driving scene (the test hook): the playing scene's POV character, else player 0's pawn.
+	for (TActorIterator<AScriptScene> It(GetWorld()); It; ++It)
+	{
+		if (It->IsActive()) { if (ATakeCharacter* V = It->GetPovCharacter()) { return V; } }
+	}
 	return Cast<ATakeCharacter>(UGameplayStatics::GetPlayerPawn(this, 0));
 }
 
@@ -487,7 +492,7 @@ void AScene7Fight::ReleaseVance(bool bToWalk)
 void AScene7Fight::BeginFight()
 {
 	ATakeCharacter* V = GetVance();
-	if (!V) { UE_LOG(LogScene7Fight, Warning, TEXT("S7FIGHT no Vance")); return; }
+	if (!V) { UE_LOG(LogScene7Fight, Warning, TEXT("S7FIGHT no Vance in %s"), *GetNameSafe(GetWorld())); return; }
 	for (FName R : { FightSlowPrompt, FightSlowStop, FightSlowMo, FightSlowCut }) { SetSlow(R, false, 1.f, 0.f); }
 
 	// Hide whatever this fight's cast stands in for.

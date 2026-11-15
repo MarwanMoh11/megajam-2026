@@ -3,6 +3,7 @@
 #   "$PY" -I tools/script/scene7_fight_pie.py [prefix]      # every prompt answered right (Reel.S7Fight.Auto 1)
 #   "$PY" -I tools/script/scene7_fight_pie.py miss          # each beat missed once, then retaken (Auto 2)
 #   "$PY" -I tools/script/scene7_fight_pie.py pie --to8    # then Reel.Script.Jump 8 and a few frames of Scene 8
+#   "$PY" -I tools/script/scene7_fight_pie.py pie --route  # booth part 2 on autopilot -> fight -> Scene 8 (160 s)
 #   "$PY" -I tools/script/scene7_fight_pie.py --stop        # stop PIE (always before releasing the lock)
 import os, sys, time, json
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "sets"))
@@ -37,6 +38,18 @@ def main():
     # Scene 7 part 0 is a walk: the quietest scene to borrow while the fight takes Vance over.
     L.console(s, "Reel.Script.Jump 7")
     time.sleep(2.0)
+    if "--route" in a:  # the real flow: s7-route's booth part on autopilot catches Vance and starts the fight,
+        # whose FinishScene cuts to Scene 8. Vance reaches the security room ~100 s in: frames from 95 s to 160 s
+        L.console(s, "Reel.S7.Auto 1", "Reel.S7Fight.Auto 1", "Reel.Script.Jump 702")
+        T0 = time.time()
+        time.sleep(95.0)
+        i = 0
+        while time.time() - T0 < 160.0:
+            snap(s, "r%02d" % i, prefix)
+            i += 1
+            time.sleep(1.0)
+        L.console(s, "Reel.S7Fight.Auto 0", "Reel.S7.Auto 0")
+        return
     L.console(s, "Reel.S7Fight.Auto %d" % (2 if prefix.startswith("miss") else 1), "Reel.S7Fight.Start")
     T0 = time.time()
     span = 30.0 if prefix.startswith("miss") else 20.0
