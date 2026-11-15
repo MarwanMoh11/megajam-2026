@@ -343,13 +343,20 @@ void AScriptSequencer::OnSay(const FString& Speaker, const FString& Line, USound
 		}
 	}
 	StopVoice();	// a new line replaces the old one in the ear too
-	if (Sound) { Voice = UGameplayStatics::SpawnSound2D(this, Sound); }
+	// The take's voice player (UTakeAudioComponent): one line at a time, and the score ducks under it.
+	ATakeDirector* Dir = ATakeDirector::Get(this);
+	if (Dir && Dir->Audio) { Dir->Audio->PlayScriptVoice(Sound, Speaker, Line); }
+	else if (Sound) { Voice = UGameplayStatics::SpawnSound2D(this, Sound); }
 }
 
 void AScriptSequencer::StopVoice()
 {
 	if (Voice) { Voice->Stop(); }
 	Voice = nullptr;
+	if (ATakeDirector* Dir = ATakeDirector::Get(this))
+	{
+		if (Dir->Audio) { Dir->Audio->StopVoice(); }
+	}
 }
 
 ATakeCharacter* AScriptSequencer::GetPovCharacter(EScriptPov ForPov) const
