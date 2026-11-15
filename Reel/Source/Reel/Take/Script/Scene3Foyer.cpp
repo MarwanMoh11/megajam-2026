@@ -647,9 +647,9 @@ void AScene3Foyer::DrawSceneHud(UCanvas* Canvas)
 		const float X = Kit.CX() + (i == 0 ? -(CardW + Gap * 0.5f) : Gap * 0.5f);
 		Kit.Rect(X, Y0, CardW, CardH, FLinearColor(0.f, 0.f, 0.f, bOn ? 0.78f : 0.55f));
 		Kit.Frame(X, Y0, CardW, CardH, Kit.Ln(bOn ? 2.f : 1.f), bOn ? TakeStyle::Julian : Silver);
-		const FTakeInk Ink = FTakeInk::Of(bOn ? TakeStyle::Julian : Bone, bOn ? TakeStyle::Julian : Bone);
+		const FTakeInk KeyInk = FTakeInk::Of(bOn ? TakeStyle::Julian : Bone, bOn ? TakeStyle::Julian : Bone);
 		const float KX = X + Kit.Px(18.f);
-		const float KW = Kit.Key(Keys[i], KX, Y0 + Kit.Px(30.f), Ink);
+		const float KW = Kit.Key(Keys[i], KX, Y0 + Kit.Px(30.f), KeyInk);
 		Kit.Text(EType::Label, Scene3Local::OptionHead[i], KX + KW + Kit.Px(12.f), Y0 + Kit.Px(30.f),
 			bOn ? TakeStyle::Julian : Bone);
 		Kit.Text(EType::Line, FString::Printf(TEXT("\"%s\""), *Lines[i]), X + Kit.Px(18.f), Y0 + Kit.Px(76.f),
