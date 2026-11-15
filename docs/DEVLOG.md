@@ -1502,3 +1502,56 @@ a reverse shot. `Reel.Script.Jump N` while scene N has only just started no long
 - **Correction (19:55):** Marwan's "cars in the bottom right" note meant the HUD cards in the bottom right ("fix UI for
   the cards"), which hud-guidance owns. The hidden kerb sedan stays: Scene 2's cross is cleaner without half a car and
   its glowing wheel ring in the corner.
+
+### Nov 15, ~20:15 Cairo - hud-guidance (Marwan's QA: dialogue box overflow, the floating black button, where to go next)
+- **Dialogue box:** the Scene 3 choice cards were a fixed 560 x 118 px with the line drawn unwrapped, so "Keep your
+  voice down, darling. I'm incognito." ran out of its card into the next one. New header-only `TakeChoiceCards.h`
+  measures every line, sizes the cards to the longest (320-620 px each), wraps to the card, grows them down to the
+  tallest wrap and stacks them in a column when the picture is too narrow for a row. Handed to s3-foyer-hall as a
+  five-line swap in `Scene3Foyer.cpp` (their file).
+- **The floating black button:** found with a PIE probe (`tools/script/hud_guide_pie.py probe`, small visible meshes
+  between the camera and Vance) and a shot from his front: Scene 3's champagne "wet mark", a dark 3 x 16 x 22 cm
+  sphere attached to Vance's capsule root at 24 cm forward. Vance's visible body is now a cast-member puppet riding
+  that capsule (Julian's own mesh is hidden), so the mark hangs in front of his chest for the whole hall walk. Sent to
+  s3-foyer-hall (remove it). Same class of fault: Scene 7's film can attaches to the hidden mesh's bones (sent to
+  s7-reelswap; chars-locomotion asked for a "visible body" getter).
+- **Where to go next:** `TakeGuide.h/.cpp` + `TakeHUDGuide.cpp`. AStageGuide posts (per scene, stepped, flag-gated)
+  light a warm pool on the goal or on an interactable, dimmer trail pools and a glow standing in a doorway; the two
+  nearest cast members glance at a goal when it lights. If the player wanders 11 s without getting closer the goal's
+  light swells and breathes, three cast glance and a crew line names it (subtitle, only into a free lane); at 17 s a
+  soft gold diamond and the objective fade in at the goal, or a chevron at the picture's edge. Scene code can also
+  call `UTakeGuideSubsystem::SetGoal(...)`. Every scene owner got a proposal and the API (shared notes).
+- **Also:** s12's devlog said "cars in the bottom right" meant the HUD cards: Scene 1's forged VIP card used the
+  engine's debug font and raw boxes. New `TakeTicketCard.h` draws it in the HUD's own type and colours with VOID as a
+  kit stamp; handed to s12-exterior as a drop-in.
+- **Went wrong:** the first two Build.bats of the evening failed on another session's header, and the machine's
+  build queue (snapshot builds from several sessions) held a restart 12 minutes; my files first compiled in sound's
+  20:12 restart.
+
+## Nov 15, 20:25 Cairo: sound, the script take's music and the main hall (QA "something terribly wrong with the sound")
+- **The bug:** the script's scenes still ran the old auction take's band. The bar clock started `mus_bed` on the
+  take's first frame and kept it under every scene. It doubled Scene 1's own muffled jazz, out of sync, and it played
+  under Scene 5's score. It dipped to 20% every eighth bar (the old band breaks). It never ducked under a scene's `Say`
+  line, because the duck only knew the old voice table. A retake's tape-stop killed it for the rest of the game:
+  the old take reloaded the level and restarted the band, and the script's retake doesn't. That is "the music cut off
+  after the first dialogue option".
+- **Changed:** the clock plays no music while the script runs. `UTakeAudioComponent::SceneMix` (tunable on the
+  director's Audio component) sets the score per scene. The title is the band and Scene 1 is its own jazz. The van
+  hears the band muffled across the street. The hall gets a new string quartet, clear in Scene 3 and from the rafters
+  in Scene 4. Scene 5 keeps its own score. Backstage and the booth get a new stealth cue, the alarm, fight and escape a
+  new chase cue, and the credits the band. A cue that carries on into the next scene plays through the cut. Every voice
+  ducks it, and the scenes' `Say` now plays through the director's voice player. A retake winds it down like a tape
+  and it comes back as the retake rolls.
+- **The main hall:** under Scenes 3 and 4 there is now a crowd murmur and room tone, plus glasses, laughs, footsteps
+  and waiters' trays scattered in 3D around the listener. New action cues for the scene sessions: stumble, tackle,
+  rope, clamp, gasp. `sfx_spot_on` and `sfx_door_close`, which Scene 4 already called but which never existed, are
+  made too.
+- **Max:** he has a new Voice Design voice, `W61sMqsWccdiqyhEKpI7`, higher and faster (pitch about 1.36x the
+  bouncer's). All seven of his lines (S2, S3, S8) were re-voiced. The bouncer is unchanged.
+- **Agents:** one sonnet-high builder generated the hall set, both scores and Max's voice (`tools/audio/hall_audio.py`,
+  about 4,200 ElevenLabs credits).
+- **Went wrong:** the first shared `Build.bat` failed on another session's UHT error (`GuardBrain.h` overriding
+  `SetActive`), which that session fixed. The second build, carrying six sessions' headers, took 5 minutes, and the
+  editor lock went stale during it.
+- **Not checked:** no PIE pass, on Marwan's "just ship". Nobody has listened to the new voice, the quartet, the scores
+  or the hall bed.
