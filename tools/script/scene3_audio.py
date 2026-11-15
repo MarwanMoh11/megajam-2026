@@ -45,6 +45,13 @@ VO = [
     ("S3_GuardTackle", "GUARD", "You're not on the list. Down you go!", (0.4, 0.8, 0.4, 1.0), False),
     ("S3_GuardAlibi", "GUARD", "Name? ...Ah, the gentleman from Zurich. Your seat isn't ready, sir. Wait by the bar.",
      (0.5, 0.8, 0.3, 1.0), False),
+    # The foyer's reception desk (s3-foyer-hall, Nov 15 evening): the clerk (Eric).
+    ("S3_Desk", "CLERK", "Good evening, sir. Paddle forty-one. Seats past the velvet rope are by assignment; the "
+     "gentlemen there have the list.", (0.55, 0.8, 0.2, 1.0), False),
+    ("S3_DeskAlibi", "CLERK", "Ah, the gentleman from Zurich. The critic mentioned you. Paddle forty-one, sir, with the "
+     "house's compliments.", (0.55, 0.8, 0.25, 1.0), False),
+    ("S3_DeskAgain", "CLERK", "The screening is through the main hall, sir. Enjoy the evening.", (0.55, 0.8, 0.2, 1.0),
+     False),
 ]
 
 

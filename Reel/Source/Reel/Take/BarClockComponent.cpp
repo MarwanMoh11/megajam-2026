@@ -938,6 +938,20 @@ int32 UBarClockComponent::BarsOf(float Seconds, int32 Override) const
 
 void UBarClockComponent::StartMusic(int32 Kind, double BaseBeats)
 {
+	// QA Nov 15 evening: the script take's music is UTakeAudioComponent's scene mix. The band's bed under the script
+	// doubled Scene 1's jazz, ran under Scene 5's score, dipped every eighth bar and died at the first retake.
+	if (const ATakeDirector* Director = Cast<ATakeDirector>(GetOwner()))
+	{
+		if (Director->bScriptDriven)
+		{
+			MusicKind = 0;
+			if (MusicAudio && MusicAudio->IsPlaying())
+			{
+				MusicAudio->Stop();
+			}
+			return;
+		}
+	}
 	UTakeAudioComponent* Audio = GetOwner() ? GetOwner()->FindComponentByClass<UTakeAudioComponent>() : nullptr;
 	USoundWave* Wave = Audio ? Cast<USoundWave>(Audio->FindSound(Kind == 2 ? HeistSound : BedSound)) : nullptr;
 	if (!MusicAudio || !Wave || Wave->Duration <= 0.f)
