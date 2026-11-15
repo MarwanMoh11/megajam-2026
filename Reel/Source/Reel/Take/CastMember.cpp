@@ -740,7 +740,7 @@ ACastMember::ACastMember()
 	GunMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Take/Props/Guns/SM_Pistol.SM_Pistol")));
 	// hand_r on the mannequin skeleton: +X runs back up the forearm, +Y out of the palm's thumb side, +Z out of the
 	// back of the hand. The grip sits across the palm with the barrel along the fingers (tools/build_gun.py probe).
-	GunGrip = FTransform(FRotator(0.f, 180.f, 0.f), FVector(-9.f, 2.f, -1.5f));
+	GunGrip = FTransform(FRotator(-8.f, 176.f, 1.f), FVector(-7.5f, 2.5f, -3.f));
 }
 
 USkeletalMeshComponent* ACastMember::GetWearer() const
@@ -1019,7 +1019,7 @@ void ACastMember::SetupBody()
 	{
 	case ECastKit::Bodyguard: Acting.Hold = ECastHold::ClaspFront; ScanAmplitude = 30.f; ScanPeriod = 9.f; break;
 	case ECastKit::Doorman: Acting.Hold = ECastHold::ClaspBack; ScanAmplitude = 25.f; ScanPeriod = 7.f; break;
-	case ECastKit::Vance: Acting.Hold = ECastHold::ClaspBack; ScanAmplitude = 30.f; ScanPeriod = 8.f; break;
+	case ECastKit::Vance: Acting.Hold = ECastHold::ClaspFront; ScanAmplitude = 30.f; ScanPeriod = 8.f; break;	// chars-locomotion: in front (clasped behind, Pendleton read as armless from the front in Scene 5)
 	case ECastKit::Guard: ScanAmplitude = 30.f + 10.f * Draw(33); ScanPeriod = 5.5f + 2.f * Draw(34); break;
 	default: break;
 	}
@@ -2202,7 +2202,7 @@ void ACastMember::ThinkWatcher(float Now)
 		}
 		else if (!bSpeaking && bVanceSpoke)
 		{
-			Acting.Hold = ECastHold::ClaspBack;
+			Acting.Hold = ECastHold::ClaspFront;
 			StartAct(ECastAct::None, 0.f, false, FVector::ZeroVector);
 			CrowdGesture(this, TEXT("Applaud"), GetActorLocation(), 3500.f, SpeechCount == 0 ? ApplauseShare : ApplauseShare * 0.5f);
 			++SpeechCount;

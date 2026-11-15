@@ -1555,3 +1555,22 @@ a reverse shot. `Reel.Script.Jump N` while scene N has only just started no long
   editor lock went stale during it.
 - **Not checked:** no PIE pass, on Marwan's "just ship". Nobody has listened to the new voice, the quartet, the scores
   or the hall bed.
+
+## Nov 15, 20:30 Cairo: characters, chars-locomotion (Marwan's QA: animations, running, guns, Pendleton's arms)
+- **Changed:** Vance, Nora and Cole now use a C++ animation instance (`UTakeLocoAnim`), replacing the template's ABP_Unarmed. It
+  drives idle, walk and jog from how far the actor really moved each frame, so scenes that slide a character with
+  `SetActorLocation` (Scene 4's Vance) get walking legs instead of a glide. A step plays when he turns on the spot. Crouch is
+  the same clip bent by code (hips down, two-bone IK holding the feet, the back bent). New hooks on `ATakeCharacter`:
+  `ScriptWalkTo` / `ScriptWalkPath` (scripted walks through the movement component: they collide, turn and ease),
+  `SetRunning`, `SetCrouching`, `GetVisibleBody`. Two new per-scene flags, `AScriptScene::bAllowRun` (Shift) and
+  `bAllowCrouch` (C / Ctrl), are off by default. Cast members moved by scene code now walk too. Guards get a pistol:
+  `ACastMember::SetArmed`, `AimAt`, `GetMuzzleLocation`, using the template's two-handed pistol aim on the upper body.
+  The pistol (`/Game/Take/Props/Guns/SM_Pistol`) is built from code by `tools/build_gun.py`; Rodin had no credits left.
+  Pendleton's arms: the rig was fine (the pistol aim moves them). His rest posture held his hands behind his back and
+  Scene 5's spot burns him to a flat cream, so from the front he had no arms. His hands are now clasped in front; s5 owns
+  the spot and plays his Speech act.
+- **What the agents did:** one Claude Opus 5.5 session wrote the C++ while the editor was closed. Its header changes
+  rode sound's Build.bat restart, and one editor burst built the pistol and took the PIE look. Hooks went to s4, s5, s6,
+  s7-fight and s8-escape before the build.
+- **Went wrong:** the restarted editor sat on its splash for minutes. Its startup `Build.bat -Mode=ValidatePlatforms`
+  waits on the UnrealBuildTool mutex behind every session's snapshot compile check.

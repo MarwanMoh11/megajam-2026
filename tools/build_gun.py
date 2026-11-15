@@ -14,6 +14,7 @@ Run inside the editor, under the editor lock:
   "<engine python>" -I tools/ue_mcp.py py tools/build_gun.py 110
 """
 import math
+import traceback
 
 import unreal
 
@@ -175,11 +176,13 @@ def stand_up(mesh):
 def make_asset():
     mesh = build_mesh()
     stand_up(mesh)
-    unreal.GeometryScript_MeshNormals.compute_split_normals(mesh, unreal.GeometryScriptSplitNormalsOptions(),
-                                                           unreal.GeometryScriptCalculateNormalsOptions())
+    normals = getattr(unreal, "GeometryScript_Normals", None) or getattr(unreal, "GeometryScript_MeshNormals", None)
+    if normals:
+        normals.compute_split_normals(mesh, unreal.GeometryScriptSplitNormalsOptions(),
+                                      unreal.GeometryScriptCalculateNormalsOptions())
     path = "%s/%s" % (DEST, NAME)
     o = unreal.GeometryScriptCreateNewStaticMeshAssetOptions()
-    o.set_editor_property("enable_recompute_normals", False)
+    o.set_editor_property("enable_recompute_normals", normals is None)
     o.set_editor_property("enable_recompute_tangents", True)
     o.set_editor_property("enable_nanite", False)
     o.set_editor_property("enable_collision", False)
@@ -228,7 +231,7 @@ def grip_probe():
     log("GunGrip rotation for hand_r: %s" % rel.rotation.rotator())
     # Axes of hand_r in mesh space (to place the grip in the palm).
     for name, v in (("X", unreal.Vector(1, 0, 0)), ("Y", unreal.Vector(0, 1, 0)), ("Z", unreal.Vector(0, 0, 1))):
-        log("hand_r %s axis in mesh space: %s" % (name, hand.transform_vector(v)))
+        log("hand_r %s axis in mesh space: %s" % (name, unreal.MathLibrary.transform_direction(hand, v)))
 
 
 try:
@@ -236,7 +239,7 @@ try:
         EAL.make_directory(DEST)
     make_asset()
 except Exception as e:  # noqa: BLE001
-    import traceback
+
     log("build failed: %s" % e)
     log(traceback.format_exc())
 grip_probe()
