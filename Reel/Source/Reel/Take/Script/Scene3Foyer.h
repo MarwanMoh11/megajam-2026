@@ -94,6 +94,43 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Scene3|Hall")
 	float AlibiPushSeconds = 0.7f;
 
+	// ---- The reception desk (tools/sets/front.py DESK: x -2300..-2100, y 430..830, the clerk behind it at +X) ----
+	// QA Nov 15: "I can't interact with the bidder reception." In the script nothing moved the clerk to the moved desk
+	// (AQueueLine does that only in the old flow) and nothing answered E there. Now: near the desk an E prompt shows;
+	// E (same frame) turns the clerk and Vance to each other, the clerk talks and hands him paddle 41 (a HUD tag).
+
+	/** The clerk. Null: the free cast member nearest ClerkFrom (within ClerkFindRadius) at BeginPlay. */
+	UPROPERTY(EditAnywhere, Category = "Scene3|Desk")
+	TObjectPtr<ACastMember> Clerk;
+	UPROPERTY(EditAnywhere, Category = "Scene3|Desk")
+	FVector ClerkFrom = FVector(-2050.f, 1100.f, 0.f);
+	UPROPERTY(EditAnywhere, Category = "Scene3|Desk")
+	float ClerkFindRadius = 150.f;
+	/** Where the clerk stands in this scene (behind the desk), facing ClerkYaw. Zero: leave him where he is. */
+	UPROPERTY(EditAnywhere, Category = "Scene3|Desk")
+	FVector ClerkPoint = FVector(-2050.f, 630.f, 0.f);
+	UPROPERTY(EditAnywhere, Category = "Scene3|Desk")
+	float ClerkYaw = 180.f;
+	/** The desk's centre (world, floor) and how close Vance's feet must be for E to work, cm. */
+	UPROPERTY(EditAnywhere, Category = "Scene3|Desk")
+	FVector DeskPoint = FVector(-2200.f, 630.f, 0.f);
+	UPROPERTY(EditAnywhere, Category = "Scene3|Desk")
+	float DeskRadius = 300.f;
+	UPROPERTY(EditAnywhere, Category = "Scene3|Desk")
+	FString DeskLine = TEXT("Good evening, sir. Paddle forty-one. Seats past the velvet rope are by assignment; the gentlemen there have the list.");
+	/** Instead of DeskLine once the critic has vouched for him (VipAlibi held). */
+	UPROPERTY(EditAnywhere, Category = "Scene3|Desk")
+	FString DeskAlibiLine = TEXT("Ah, the gentleman from Zurich. The critic mentioned you. Paddle forty-one, sir, with the house's compliments.");
+	/** Any later press. */
+	UPROPERTY(EditAnywhere, Category = "Scene3|Desk")
+	FString DeskAgainLine = TEXT("The screening is through the main hall, sir. Enjoy the evening.");
+	UPROPERTY(EditAnywhere, Category = "Scene3|Desk")
+	TObjectPtr<USoundBase> DeskSound;
+	UPROPERTY(EditAnywhere, Category = "Scene3|Desk")
+	TObjectPtr<USoundBase> DeskAlibiSound;
+	UPROPERTY(EditAnywhere, Category = "Scene3|Desk")
+	TObjectPtr<USoundBase> DeskAgainSound;
+
 	// ---- Lines (subtitles) and their voices (null: subtitle only) ----
 
 	UPROPERTY(EditAnywhere, Category = "Scene3|Lines")
@@ -158,6 +195,12 @@ private:
 	ACastMember* GuardBody(APatrolGuard* Guard) const;
 	APatrolGuard* NearestGuard(const FVector& P) const;
 	FVector VanceFeet() const;
+	bool DeskOpen() const;		// the desk answers E in this beat
+	bool NearDesk() const;
+	void UseDesk();
+
+	int32 DeskUses = 0;			// presses at the desk this take (1+: he holds paddle 41)
+	double DeskUsedAt = -1.0;	// real time, the prompt's flash
 
 	EBeat Beat = EBeat::Arrive;
 	float BeatT = 0.f;

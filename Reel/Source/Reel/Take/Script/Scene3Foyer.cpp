@@ -67,6 +67,71 @@ void AScene3Foyer::BeginPlay()
 		CriticHome = Critic->GetActorLocation();
 		CriticHomeYaw = static_cast<float>(Critic->GetActorRotation().Yaw);
 	}
+	// The clerk: the cast build stands him at the old desk (ClerkFrom); the desk moved, so he goes behind it.
+	if (!Clerk)
+	{
+		double Best = ClerkFindRadius;
+		for (TActorIterator<ACastMember> It(GetWorld()); It; ++It)
+		{
+			ACastMember* M = *It;
+			if (M && M != Critic && !M->GetAttachParentActor() && !M->bSeated)
+			{
+				const double D = FVector::Dist2D(M->GetActorLocation(), ClerkFrom);
+				if (D <= Best)
+				{
+					Best = D;
+					Clerk = M;
+				}
+			}
+		}
+	}
+	if (Clerk && !ClerkPoint.IsNearlyZero())
+	{
+		const FVector P(ClerkPoint.X, ClerkPoint.Y, Clerk->GetActorLocation().Z);
+		Clerk->SetActorLocationAndRotation(P, FRotator(0.f, ClerkYaw, 0.f), false, nullptr, ETeleportType::TeleportPhysics);
+		Clerk->FaceYaw(ClerkYaw);
+	}
+	TAKE_LOG(TEXT("SCENE3 clerk=%s"), Clerk ? *Clerk->GetActorNameOrLabel() : TEXT("NONE"));
+}
+
+bool AScene3Foyer::DeskOpen() const
+{
+	return Beat == EBeat::Arrive || Beat == EBeat::Reply || Beat == EBeat::Hall || Beat == EBeat::Vo;
+}
+
+bool AScene3Foyer::NearDesk() const
+{
+	return GetPovCharacter() && FVector::Dist2D(VanceFeet(), DeskPoint) <= DeskRadius;
+}
+
+void AScene3Foyer::UseDesk()
+{
+	++DeskUses;
+	DeskUsedAt = Scene3Local::RealNow(GetWorld());
+	ATakeCharacter* Vance = GetPovCharacter();
+	const FVector Feet = VanceFeet();
+	if (Clerk)
+	{
+		const FVector C = Clerk->GetActorLocation();
+		Clerk->FaceYaw(static_cast<float>((Feet - C).Rotation().Yaw));
+		Clerk->LookAtPoint(Feet + FVector(0.f, 0.f, 150.f), 4.f);
+		Clerk->PlayGestureAt(DeskUses == 1 ? TEXT("Talk") : TEXT("Nod"), Feet + FVector(0.f, 0.f, 120.f));
+		if (Vance)
+		{
+			const float Yaw = static_cast<float>((C - Feet).Rotation().Yaw);
+			Vance->SetActorRotation(FRotator(0.f, Yaw, 0.f));
+		}
+	}
+	if (DeskUses == 1)
+	{
+		const bool bAlibi = HasFlag(Scene3Local::VipAlibi);
+		Say(TEXT("CLERK"), bAlibi ? DeskAlibiLine : DeskLine, bAlibi ? DeskAlibiSound.Get() : DeskSound.Get());
+	}
+	else
+	{
+		Say(TEXT("CLERK"), DeskAgainLine, DeskAgainSound);
+	}
+	TAKE_LOG(TEXT("SCENE3 desk use %d"), DeskUses);
 }
 
 // --- helpers ----------------------------------------------------------------------------------------------------------
@@ -198,6 +263,8 @@ void AScene3Foyer::ResetScene()
 	bAlibiSpent = false;
 	ChoiceOpenedAt = -1.0;
 	PickedAt = -1.0;
+	DeskUses = 0;
+	DeskUsedAt = -1.0;
 	ConsumeFlag(Scene3Local::VipAlibi);	// a retake replays the choice
 	if (Critic)
 	{
@@ -569,6 +636,12 @@ bool AScene3Foyer::HandleSceneKey(const FKey& Key, bool bPressed)
 		|| Key == EKeys::Up || Key == EKeys::Down || Key == EKeys::Left || Key == EKeys::Right;
 	if (Beat != EBeat::Choice)
 	{
+		// The reception desk: E (or the mouse) by the desk, while he walks free.
+		if (bPressed && (Key == EKeys::E || Key == EKeys::LeftMouseButton) && DeskOpen() && !bFrozen && NearDesk())
+		{
+			UseDesk();
+			return true;
+		}
 		return bPressed && bFrozen && bWalkKey;
 	}
 	if (!bPressed)
@@ -624,6 +697,33 @@ void AScene3Foyer::DrawSceneHud(UCanvas* Canvas)
 		Kit.Rect(X - Kit.Px(12.f), Y - Kit.Px(16.f), TW + Kit.Px(24.f), Kit.Px(32.f), FLinearColor(0.f, 0.f, 0.f, 0.55f));
 		Kit.Frame(X - Kit.Px(12.f), Y - Kit.Px(16.f), TW + Kit.Px(24.f), Kit.Px(32.f), Kit.Ln(1.f), TakeStyle::Julian);
 		Kit.Text(EType::Tag, Tag, X, Y, TakeStyle::Julian);
+	}
+
+	// Paddle 41, once the clerk has handed it over: under the alibi's tag.
+	if (DeskUses > 0)
+	{
+		const float X = Kit.Px(40.f);
+		const float Y = Kit.PicY + Kit.Px(34.f) + (HasFlag(Scene3Local::VipAlibi) ? Kit.Px(42.f) : 0.f);
+		const FString Tag = TEXT("PADDLE 41  -  a registered bidder");
+		const float TW = Kit.Measure(EType::Tag, Tag);
+		Kit.Rect(X - Kit.Px(12.f), Y - Kit.Px(16.f), TW + Kit.Px(24.f), Kit.Px(32.f), FLinearColor(0.f, 0.f, 0.f, 0.55f));
+		Kit.Frame(X - Kit.Px(12.f), Y - Kit.Px(16.f), TW + Kit.Px(24.f), Kit.Px(32.f), Kit.Ln(1.f), Bone);
+		Kit.Text(EType::Tag, Tag, X, Y, Bone);
+	}
+
+	// The desk's prompt while he stands at it (it flashes gold for a beat after each press).
+	if (DeskOpen() && !bFrozen && NearDesk())
+	{
+		const float Y = Kit.H * 0.72f;
+		const bool bFlash = DeskUsedAt > 0.0 && Now - DeskUsedAt < 0.35;
+		const FString Words = DeskUses == 0 ? TEXT("SIGN IN AT THE DESK") : TEXT("TALK TO THE CLERK");
+		const float TW = Kit.Measure(EType::Line, Words);
+		const float KW = Kit.KeyWidth(TEXT("E"), false);
+		const float X0 = Kit.CX() - (TW + KW + Kit.Px(16.f)) * 0.5f;
+		Kit.Rect(X0 - Kit.Px(16.f), Y - Kit.Px(24.f), TW + KW + Kit.Px(48.f), Kit.Px(48.f),
+			FLinearColor(0.f, 0.f, 0.f, bFlash ? 0.8f : 0.55f));
+		Kit.Key(TEXT("E"), X0, Y, FTakeInk::Of(TakeStyle::Paper, TakeStyle::Julian));
+		Kit.Text(EType::Line, Words, X0 + KW + Kit.Px(16.f), Y, bFlash ? TakeStyle::Julian : Paper);
 	}
 
 	// The goal line, at the top of the picture (the subtitles own the bottom).
