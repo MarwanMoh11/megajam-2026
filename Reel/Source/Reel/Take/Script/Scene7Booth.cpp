@@ -1083,6 +1083,7 @@ void AScene7Booth::TickScene(float DeltaSeconds)
 		}
 		if (At(1.3f))
 		{
+			Puppet(Cole, ColeSpot, 90.f);   // the grenade gone down the stairs: he turns to Vance for the line
 			Act(Cole, TEXT("Talk"), true);
 			Say(TEXT("COLE"), ColeLine, FindS7Sound(TEXT("vo_s7_cole_move")));
 		}
