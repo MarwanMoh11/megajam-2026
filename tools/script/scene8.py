@@ -18,7 +18,7 @@ importlib.reload(C)
 TAG = "script_s8"
 eas = C.eas
 CUBE = "/Engine/BasicShapes/Cube"
-M_WALL = "/Game/Take/Materials/MI_Box_Wall"
+M_WALL = "/Game/Take/Dress/MI_Front_Facade"       # the street side of the building (dress_auction.py)
 M_DOOR = "/Game/Take/Materials/MI_Box_Door"
 M_TRIM = "/Game/Take/Materials/MI_Box_Trim"
 M_WINDOW = "/Game/Take/Materials/MI_Box_Window"
