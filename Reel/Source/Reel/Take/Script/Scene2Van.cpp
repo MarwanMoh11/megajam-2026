@@ -155,7 +155,7 @@ void AScene2Van::BeginScene()
 	if (AmbHum) { HumComp = UGameplayStatics::SpawnSound2D(this, AmbHum, 0.8f); }
 	if (GetRetakes() > 0)	// a retake skips the street: straight back to the dials (instant retry)
 	{
-		const float OpenLen = OpeningBeats.X + OpeningBeats.Y + OpeningBeats.Z + OpeningBeats.W;
+		const float OpenLen = OpeningLength();
 		PoseOpening(OpenLen);
 		SetPhase(EScene2Phase::Tune);
 		Say(TEXT("MAX"), TEXT("Again. Three seconds, Vance. Don't touch that glass."), LineRetake);
@@ -177,7 +177,7 @@ void AScene2Van::EndScene()
 void AScene2Van::PoseOpening(float T)
 {
 	using namespace Scene2Local;
-	const float B0 = OpeningBeats.X, B1 = OpeningBeats.Y, B2 = OpeningBeats.Z, B3 = OpeningBeats.W;
+	const float B0 = BeatPan, B1 = BeatCross, B2 = BeatPush, B3 = BeatSettle;
 	FVector P;
 	FQuat Q;
 	float Fov = StreetFov;
@@ -251,7 +251,7 @@ bool AScene2Van::HandleSceneKey(const FKey& Key, bool bPressed)
 	const bool bSkip = Key == EKeys::SpaceBar || Key == EKeys::Enter || Key == EKeys::E || Key == EKeys::Gamepad_FaceButton_Bottom;
 	if (Phase == EScene2Phase::Opening)
 	{
-		if (bSkip && bPressed) { PhaseAge = OpeningBeats.X + OpeningBeats.Y + OpeningBeats.Z + OpeningBeats.W; }
+		if (bSkip && bPressed) { PhaseAge = OpeningLength(); }
 		return bSkip;
 	}
 	if (Phase != EScene2Phase::Tune) { return bSkip; }
@@ -286,7 +286,7 @@ void AScene2Van::TickScene(float DeltaSeconds)
 	SinceDial += DeltaSeconds;
 	SinceSpark += DeltaSeconds;
 	SinceLock += DeltaSeconds;
-	const float OpenLen = OpeningBeats.X + OpeningBeats.Y + OpeningBeats.Z + OpeningBeats.W;
+	const float OpenLen = OpeningLength();
 
 	switch (Phase)
 	{
@@ -370,10 +370,10 @@ void AScene2Van::DrawSceneHud(UCanvas* Canvas)
 	if (Phase == EScene2Phase::Opening)
 	{
 		// the windshield's fog as the camera pushes through it: a bloom of condensation, peaking on the glass
-		const float Push0 = OpeningBeats.X + OpeningBeats.Y - 0.35f;
-		const float Push1 = OpeningBeats.X + OpeningBeats.Y + OpeningBeats.Z;
+		const float Push0 = BeatPan + BeatCross - 0.35f;
+		const float Push1 = BeatPan + BeatCross + BeatPush;
 		const float A = PhaseAge < Push0 || PhaseAge > Push1 + 0.4f ? 0.f
-			: FMath::Sin(PI * FMath::Clamp((PhaseAge - Push0) / (Push1 + 0.4f - Push0), 0.f, 1.f));
+			: FMath::Sin(UE_PI * FMath::Clamp((PhaseAge - Push0) / (Push1 + 0.4f - Push0), 0.f, 1.f));
 		if (A > 0.f)
 		{
 			Fill(Canvas, 0.f, 0.f, K.W, K.H, FLinearColor(0.78f, 0.84f, 0.86f, 0.82f * A));
@@ -400,7 +400,7 @@ void AScene2Van::DrawSceneHud(UCanvas* Canvas)
 	{
 		const float Y = K.Px(96.f) + FeedH + K.Px(30.f);
 		const bool bHot = Hesitation > 0.75f;
-		const float Pulse = bHot ? 0.5f + 0.5f * FMath::Sin(K.Now * 14.f) : 1.f;
+		const float Pulse = bHot ? 0.5f + 0.5f * FMath::Sin(static_cast<float>(K.Now) * 14.f) : 1.f;
 		K.Text(EType::Tag, TEXT("Vance's hesitation"), M, Y, bHot ? Alarm : Bone);
 		const float BY = Y + K.Px(18.f);
 		Fill(Canvas, M, BY, PanelW, K.Px(16.f), Glass);
@@ -417,7 +417,7 @@ void AScene2Van::DrawSceneHud(UCanvas* Canvas)
 	const float SyY = K.Px(96.f) + K.Px(300.f) + K.Px(22.f);
 	{
 		const bool bReady = Sync >= 1.f;
-		const float Blink = bReady ? 0.5f + 0.5f * FMath::Sin(K.Now * 12.f) : 0.f;
+		const float Blink = bReady ? 0.5f + 0.5f * FMath::Sin(static_cast<float>(K.Now) * 12.f) : 0.f;
 		K.Text(EType::Tag, bReady ? TEXT("Sync: locked on") : TEXT("Sync"), SX, SyY, bReady ? Phosphor : Bone);
 		const float BY = SyY + K.Px(18.f);
 		Fill(Canvas, SX, BY, PanelW, K.Px(16.f), Glass);
@@ -515,7 +515,7 @@ void AScene2Van::DrawScope(UCanvas* C, float X, float Y, float W, float H, float
 	K.Text(EType::Tag, TEXT("Scanner handshake"), X + K.Px(14.f), Y + K.Px(20.f), ScanAmber);
 	K.Text(EType::Tag, TEXT("Your signal"), X + W - K.Px(14.f), Y + K.Px(20.f), Phosphor, ETakeAlign::Right);
 
-	const float Ph = static_cast<float>(K.Now) * 4.f;
+	const float Ph = static_cast<float>(FMath::Fmod(K.Now, 1000.0)) * 4.f;
 	const float CY = Y + H * 0.55f;
 	const float Amp = H * 0.38f;
 	const int32 N = 120;
@@ -527,7 +527,7 @@ void AScene2Van::DrawScope(UCanvas* C, float X, float Y, float W, float H, float
 		{
 			const float U = I / static_cast<float>(N);
 			const float J = Jitter * FMath::Sin(U * 97.f + Ph * 7.f);
-			const FVector2D P(X + U * W, CY - (G * Amp) * FMath::Sin(2.f * PI * F * U + Ph) + J);
+			const FVector2D P(X + U * W, CY - (G * Amp) * FMath::Sin(2.f * UE_PI * F * U + Ph) + J);
 			if (I > 0) { Line(C, Prev, P, Col, Thick); }
 			Prev = P;
 		}
@@ -547,7 +547,7 @@ void AScene2Van::DrawDial(UCanvas* C, float CX, float CY, float R, float V, cons
 	const int32 Seg = 40;
 	for (int32 I = 0; I < Seg; ++I)
 	{
-		const float A0 = 2.f * PI * I / Seg, A1 = 2.f * PI * (I + 1) / Seg;
+		const float A0 = 2.f * UE_PI * I / Seg, A1 = 2.f * UE_PI * (I + 1) / Seg;
 		Line(C, FVector2D(CX + R * FMath::Cos(A0), CY + R * FMath::Sin(A0)), FVector2D(CX + R * FMath::Cos(A1), CY + R * FMath::Sin(A1)), Ring, K.Ln(2.f));
 		Line(C, FVector2D(CX, CY), FVector2D(CX + R * 0.92f * FMath::Cos(A0), CY + R * 0.92f * FMath::Sin(A0)), Glass, K.Ln(R * 0.16f / S));
 	}

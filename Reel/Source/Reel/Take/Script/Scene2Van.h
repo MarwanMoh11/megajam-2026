@@ -67,7 +67,14 @@ public:
 	FVector MaxLook = FVector(-5340.f, 1690.f, 120.f);
 	/** Seconds: pan on the steps, cross the street, push through the glass, settle. */
 	UPROPERTY(EditAnywhere, Category = "Scene2|Opening")
-	FVector4 OpeningBeats = FVector4(1.4f, 1.9f, 0.7f, 1.0f);
+	float BeatPan = 1.4f;
+	UPROPERTY(EditAnywhere, Category = "Scene2|Opening")
+	float BeatCross = 1.9f;
+	UPROPERTY(EditAnywhere, Category = "Scene2|Opening")
+	float BeatPush = 0.7f;
+	UPROPERTY(EditAnywhere, Category = "Scene2|Opening")
+	float BeatSettle = 1.0f;
+	float OpeningLength() const { return BeatPan + BeatCross + BeatPush + BeatSettle; }
 	UPROPERTY(EditAnywhere, Category = "Scene2|Opening")
 	float StreetFov = 62.f;
 	UPROPERTY(EditAnywhere, Category = "Scene2|Opening")
