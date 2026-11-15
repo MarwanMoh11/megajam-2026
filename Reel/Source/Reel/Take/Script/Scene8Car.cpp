@@ -217,7 +217,7 @@ namespace
 	const FLinearColor Oxblood(0.12f, 0.025f, 0.02f);	// the door cards
 	const FLinearColor Hide(0.015f, 0.014f, 0.013f);	// black leather: the dash top, the tunnel
 	const FLinearColor Walnut(0.16f, 0.06f, 0.02f);
-	const FLinearColor Chrome(0.9f, 0.9f, 0.92f);
+	const FLinearColor CabinChrome(0.9f, 0.9f, 0.92f);
 	const FLinearColor Liner(0.30f, 0.27f, 0.22f);
 	const FLinearColor Carpet(0.03f, 0.025f, 0.02f);
 	const FLinearColor Silver(0.55f, 0.56f, 0.58f);
@@ -317,7 +317,7 @@ void AScene8Car::BuildFinale()
 	// Floor, tunnel, gear lever.
 	Bit(Cube, Cabin, FVector(-65.f, 0.f, 12.f), FVector(230.f, 160.f, 4.f), Carpet, 1.f, 0.f);
 	Bit(Cube, Cabin, FVector(0.f, 0.f, 24.f), FVector(110.f, 26.f, 22.f), Hide, 0.55f, 0.f);
-	Bit(Cyl, Cabin, FVector(-12.f, 0.f, 46.f), FVector(2.f, 2.f, 30.f), Chrome, 0.12f, 1.f, FRotator(-12.f, 0.f, 0.f));
+	Bit(Cyl, Cabin, FVector(-12.f, 0.f, 46.f), FVector(2.f, 2.f, 30.f), CabinChrome, 0.12f, 1.f, FRotator(-12.f, 0.f, 0.f));
 	Bit(Sph, Cabin, FVector(-15.f, 0.f, 61.f), FVector(6.f), Walnut, 0.25f, 0.f);
 
 	// The front buckets (tan leather) and the 2+2 bench behind.
@@ -343,11 +343,11 @@ void AScene8Car::BuildFinale()
 	Bit(Cyl, Cabin, FVector(17.f, 0.f, 96.f), FVector(10.f, 160.f, 10.f), Hide, 0.5f, 0.f, AlongY);
 	Bit(Cube, Cabin, FVector(34.f, 0.f, 55.f), FVector(20.f, 160.f, 26.f), Hide, 0.7f, 0.f);
 	Bit(Cube, Cabin, FVector(40.f, 0.f, 32.f), FVector(4.f, 160.f, 44.f), Carpet, 1.f, 0.f);
-	Bit(Cube, Cabin, FVector(14.6f, 0.f, 70.f), FVector(1.f, 156.f, 1.2f), Chrome, 0.12f, 1.f);
+	Bit(Cube, Cabin, FVector(14.6f, 0.f, 70.f), FVector(1.f, 156.f, 1.2f), CabinChrome, 0.12f, 1.f);
 	const FLinearColor Amber(1.f, 0.5f, 0.18f);
 	for (const FVector& G : { FVector(14.f, -52.f, 85.f), FVector(14.f, -29.f, 85.f) })
 	{
-		Bit(Cyl, Cabin, G + FVector(0.6f, 0.f, 0.f), FVector(13.f, 13.f, 1.f), Chrome, 0.12f, 1.f, FacingBack);
+		Bit(Cyl, Cabin, G + FVector(0.6f, 0.f, 0.f), FVector(13.f, 13.f, 1.f), CabinChrome, 0.12f, 1.f, FacingBack);
 		if (UStaticMeshComponent* Face = Glow(Cabin, G, 11.f, Amber, 0.35f))
 		{
 			Face->SetRelativeScale3D(FVector(0.01f, 0.11f, 0.11f));
@@ -364,7 +364,7 @@ void AScene8Car::BuildFinale()
 	{
 		Dial->SetRelativeScale3D(FVector(0.01f, 0.16f, 0.025f));
 	}
-	Bit(Cube, Cabin, FVector(14.6f, 42.f, 80.f), FVector(1.f, 9.f, 1.5f), Chrome, 0.12f, 1.f);
+	Bit(Cube, Cabin, FVector(14.6f, 42.f, 80.f), FVector(1.f, 9.f, 1.5f), CabinChrome, 0.12f, 1.f);
 
 	// Max's wheel: a thin walnut rim on three chrome spokes, tilted to him.
 	USceneComponent* Wheel = NewObject<USceneComponent>(this, TEXT("Wheel"));
@@ -381,10 +381,10 @@ void AScene8Car::BuildFinale()
 	for (const float Deg : { 0.f, 180.f, 270.f })
 	{
 		const float A = FMath::DegreesToRadians(Deg);
-		Bit(Cube, Wheel, FVector(0.f, 9.f * FMath::Cos(A), 9.f * FMath::Sin(A)), FVector(0.8f, 18.f, 1.6f), Chrome,
+		Bit(Cube, Wheel, FVector(0.f, 9.f * FMath::Cos(A), 9.f * FMath::Sin(A)), FVector(0.8f, 18.f, 1.6f), CabinChrome,
 			0.15f, 1.f, FRotator(0.f, 0.f, Deg));
 	}
-	Bit(Cyl, Wheel, FVector::ZeroVector, FVector(6.f, 6.f, 3.f), Chrome, 0.15f, 1.f, FacingBack);
+	Bit(Cyl, Wheel, FVector::ZeroVector, FVector(6.f, 6.f, 3.f), CabinChrome, 0.15f, 1.f, FacingBack);
 	Bit(Cyl, Wheel, FVector(15.f, 0.f, 0.f), FVector(4.f, 4.f, 30.f), Hide, 0.5f, 0.f, FRotator(-90.f, 0.f, 0.f));
 
 	// The shell from inside: headliner, pillars, door cards with a walnut cap rail and a chrome handle.
@@ -395,7 +395,7 @@ void AScene8Car::BuildFinale()
 		Bit(Cube, Cabin, FVector(-97.f, S * 79.f, 113.f), FVector(6.f, 4.f, 44.f), Liner, 0.9f, 0.f);
 		Bit(Cube, Cabin, FVector(-34.f, S * 81.f, 58.f), FVector(130.f, 4.f, 62.f), Oxblood, 0.5f, 0.f);
 		Bit(Cube, Cabin, FVector(-34.f, S * 79.f, 91.f), FVector(128.f, 6.f, 3.f), Walnut, 0.22f, 0.f);
-		Bit(Cube, Cabin, FVector(-8.f, S * 77.5f, 74.f), FVector(8.f, 1.f, 1.5f), Chrome, 0.12f, 1.f);
+		Bit(Cube, Cabin, FVector(-8.f, S * 77.5f, 74.f), FVector(8.f, 1.f, 1.5f), CabinChrome, 0.12f, 1.f);
 	}
 
 	// The glass, all of it wet: the windscreen (drops creeping up it in the wind), the side windows (running back),
@@ -416,7 +416,7 @@ void AScene8Car::BuildFinale()
 	MirrorHead->RegisterComponent();
 	AddInstanceComponent(MirrorHead);
 	UStaticMeshComponent* MirrorBody = Bit(Cube, MirrorHead, FVector(1.8f, 0.f, 0.f), FVector(3.f, 27.f, 8.5f), Hide, 0.4f, 0.f);
-	UStaticMeshComponent* MirrorRim = Bit(Cube, MirrorHead, FVector(0.4f, 0.f, 0.f), FVector(0.8f, 27.8f, 9.2f), Chrome, 0.12f, 1.f);
+	UStaticMeshComponent* MirrorRim = Bit(Cube, MirrorHead, FVector(0.4f, 0.f, 0.f), FVector(0.8f, 27.8f, 9.2f), CabinChrome, 0.12f, 1.f);
 	MirrorGlass = FTakeShapes::AddShapeAtRuntime(this, ETakeShape::Plane, MirrorHead, FVector(-0.1f, 0.f, 0.f),
 		FVector(0.26f, 0.078f, 1.f), FLinearColor::Black, false);
 	MirrorGlass->SetRelativeRotation(FRotationMatrix::MakeFromXY(FVector(0.f, 1.f, 0.f), FVector(0.f, 0.f, -1.f)).Rotator());
@@ -446,7 +446,7 @@ void AScene8Car::BuildFinale()
 	Can->RegisterComponent();
 	AddInstanceComponent(Can);
 	Bit(Cyl, Can, FVector::ZeroVector, FVector(36.f, 36.f, 6.f), Silver, 0.28f, 1.f);
-	Bit(Cyl, Can, FVector(0.f, 0.f, 3.2f), FVector(36.6f, 36.6f, 1.2f), Chrome, 0.18f, 1.f);
+	Bit(Cyl, Can, FVector(0.f, 0.f, 3.2f), FVector(36.6f, 36.6f, 1.2f), CabinChrome, 0.18f, 1.f);
 	Bit(Cyl, Can, FVector(0.f, 0.f, 3.9f), FVector(8.f, 8.f, 0.4f), Hide, 0.4f, 0.f);
 	Bit(Cube, Can, FVector(-6.f, 0.f, 3.9f), FVector(9.f, 14.f, 0.3f), FLinearColor(0.7f, 0.65f, 0.5f), 0.8f, 0.f);
 

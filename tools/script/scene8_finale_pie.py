@@ -25,7 +25,9 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     if "true" not in str(L.tool(s, "EditorToolset.EditorAppToolset.IsPIERunning", {})).lower():
         L.tool(s, "EditorToolset.EditorAppToolset.StartPIE", {})
-        time.sleep(5.0)
+        time.sleep(4.0)
+        L.console(s, "TakeConfirm")                       # past the title card
+        time.sleep(1.5)
     for t in times:
         L.console(s, "Reel.S8.Finale %s" % t)
         time.sleep(1.5)                                     # streaming, the capture, auto exposure settling
