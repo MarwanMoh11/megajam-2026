@@ -30,9 +30,11 @@ for c in unreal.GameplayStatics.get_all_actors_of_class(w, unreal.TakeCharacter)
 CROUCH = r'''
 import unreal
 w = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_game_world()
-p = unreal.GameplayStatics.get_player_pawn(w, 0)
-p.set_crouching(True) if isinstance(p, unreal.TakeCharacter) else None
-"crouch %s %s" % (p.get_actor_label() if p else None, p.is_crouching() if isinstance(p, unreal.TakeCharacter) else "n/a")
+out = []   # the player pawn is a camera rig: crouch the heroes themselves (Scene 6 drives Vex/Cole)
+for c in unreal.GameplayStatics.get_all_actors_of_class(w, unreal.TakeCharacter):
+    c.set_crouching(True)
+    out.append("%s %s" % (c.get_actor_label(), c.is_crouching()))
+"crouch " + "; ".join(out)
 '''
 
 

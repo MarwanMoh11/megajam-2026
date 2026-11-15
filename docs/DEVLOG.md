@@ -1770,3 +1770,7 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
 
 ### Nov 15, 23:50 Cairo: s3-foyer-hall (one look)
 - PIE run of Scene 3 (alibi path): the critic's choice draws with the shared choice cards, above the subtitle and clear of it, and the beats run open -> choice -> hall -> rope (alibi spent) -> cut. The hall sound cues leave no log line, so whether they play is for Marwan's ear.
+- 23:50, one look after the reboot (`tools/chars_pie.py post`, shots in C:\Jam\Builds\script\chars\post_*.png).
+  Pendleton raises the pistol two-handed with his arms clearly there. Scene 8 opens on "Run! Follow Cole to the exit".
+  Scene 6's crouch flips the HUD to "CROUCHED - silent" and drops the body. The script's crouch step had picked the
+  camera pawn, so it now crouches the hero characters themselves.
