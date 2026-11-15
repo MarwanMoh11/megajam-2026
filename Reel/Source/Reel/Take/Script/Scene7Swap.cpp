@@ -266,8 +266,8 @@ FTransform AScene7Swap::BenchT() const { return Bench ? Bench->GetRelativeTransf
 FTransform AScene7Swap::BodyT(const FVector& Spot, float Yaw) const { return FTransform(FRotator(0.f, Yaw, 0.f), FVector(Spot.X, Spot.Y, 0.f)); }
 FVector AScene7Swap::BenchSpotActor() const { FVector P = BenchT().TransformPosition(BenchSpot); P.Z = 0.f; return P; }
 float AScene7Swap::BenchYawActor() const { return BenchT().Rotator().Yaw - 90.f; }
-FVector AScene7Swap::ReelOnSpindle() const { return FVector(UpperCenter.X, ReelY, UpperCenter.Z); }
-FQuat AScene7Swap::FlatOnBench() const { return BenchT().GetRotation() * Flat0; }
+FVector AScene7Swap::ReelOnSpindle() const { return FVector(Scene7SwapMesh::UpperCenter.X, Scene7SwapMesh::ReelY, Scene7SwapMesh::UpperCenter.Z); }
+FQuat AScene7Swap::FlatOnBench() const { return BenchT().GetRotation() * Scene7SwapLocal::Flat0; }
 
 AScene7Swap* AScene7Swap::Find(const UObject* WorldContextObject)
 {
