@@ -1755,3 +1755,15 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
   `SKM_Hero_Julian` (the Rodin mesh kept as `SKM_Hero_Julian_Rodin`). Previews: `C:\Jam\Art\Vance\preview_*.png`.
 - **Went wrong:** the Blender MCP connection dropped when Blender was closed, so the build moved to a headless script;
   the first import dropped the leaf bones (head, ball, finger tips) until `ignore_leaf_bones` was turned off.
+
+## Nov 15, 23:40 Cairo: Scene 7 plays from the rigged door into the fight (s7-route)
+- The booth part now drives s7-reelswap's placed swap actor: four presses with its own cameras and a stand-in Vance, then the
+  hand-back with the canister under his arm. After the catch in the security room it starts s7-fight's placed fight actor. Cole's
+  line and exit now point at the prop store (s6 wedged that door). The level has the overlay, S7_Route and S7_ReelSwap.
+- One PIE pass each found the blockers: a guest and a cocktail table standing in the projectionist's stair door; the swap's
+  bench between the booth door and the operator's spot (arrival is now anywhere in the booth); and the hand-back leaving Vance
+  wedged between the bench and the projector (he is set clear during the venue cut, off screen). Two old-box pieces were also
+  left solid, and the booth's own dress bench sat on the escape line. After the fixes, PIE runs route -> swap -> venue (film
+  dies, Pendleton, alarm) -> escape over the balcony -> caught -> the fight starts.
+- What went wrong: a PC reboot killed the lock waits, GitHub refused connections for a while, and the unity-build rule meant
+  renaming file-local helpers.
