@@ -1,18 +1,22 @@
-// Scene 7. INT. PROJECTION BOOTH - NIGHT (Vance, 35mm). Owner: the s7-booth session (docs/SCRIPT.md, Scene 7).
-// The booth is the projection box over the lobby doors, extended east by tools/script/scene7.py (tag script_s7).
-// This actor sits on the booth's floor, +X toward the viewing glass (east, down the hall to the screen), and carries
-// the whole scene: the projector's magazine and reels, the silver canister, the fire alarm, the strobes, the glass,
-// the two doors, the cameras and three puppets (Pendleton, his chief bodyguard, Cole). Vance is the real POV character.
-//
-// Beats: walk to the projector; hold Use 1.2 s (the heist's swap): the magazine opens, the master print comes out,
-// the dummy goes in, the canister latches and goes under his arm. CLICK: Pendleton and the bodyguard. "Lock the
-// building. Nobody leaves." The alarm: red strobes, the film burns out, the house screams. The fight: three prompts
-// in slow time (PARRY, BLOCK WITH CANISTER, COUNTER), a miss retakes from the alarm. Cole, smoke, "Max is out back!".
+// Scene 7, part 2 (tag Part=2). INT. PROJECTION BOOTH - CONTINUOUS (Vance, 35mm). Owner: s7-route (docs/script/s7.md).
+// Part 0 (AScene7Route) walks Vance from the rigged door to the projector mark in the booth over the lobby doors. This
+// actor sits on the booth's floor, +X toward the viewing glass, and carries the booth's set (projector, magazine,
+// reels, canister, the doors, the alarm) and the rest of Scene 7:
+//   SWAP     s7-reelswap's part 1 plays the swap (flag Canister); without it, the old hold-[E] swap (1.2 s).
+//   VENUE    cut to the auditorium: the film dies on the screen, Pendleton at the podium looks up at the booth:
+//            "Lock the building. Nobody leaves." The alarm, red strobes, the house screams.
+//   ESCAPE   back on Vance: the booth's stair door has mag-locked (red), so out by the gallery door onto the lobby's
+//            balcony (the player runs). A cut: Pendleton and his chief bodyguard coming up the grand stair. Vance
+//            slips west along the balcony into the security room.
+//   CAUGHT   they come in behind him; Pendleton's line.
+//   then FinishScene: s7-fight's part 3 (AScene7Fight) fights on these marks, then Scene 8 (s8-escape).
+// Nothing teleports Vance: he starts on the projector mark and walks every step to the fight's mark.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Script/ScriptScene.h"
+#include "Script/Scene7Route.h"
 #include "Scene7Booth.generated.h"
 
 class UStaticMeshComponent;
@@ -47,17 +51,12 @@ struct FScene7Shot
 UENUM()
 enum class EScene7Stage : uint8
 {
-	Approach,		// walk to the projector
-	Swapped,		// the canister is under his arm, a breath
-	Door,			// CLICK, they come in
-	Line,			// Pendleton's eyes drop to the canister, his line
-	Alarm,			// he slams the alarm: strobes, the film burns, screams
-	Windup,			// an attack winds up (Prompt = which)
-	Prompt,			// slow time, the prompt is up
-	Strike,			// the press landed: the move plays out
-	Miss,			// the hit lands on Vance, then the retake
-	Fall,			// Pendleton through the glass and down
-	Cole,			// the stairwell door, the smoke, the line
+	Approach,		// a cold jump: onto the projector mark
+	Swap,			// the swap (s7-reelswap's actor, or the hold-[E] fallback)
+	Swapped,		// the canister under his arm, a breath
+	Venue,			// the cut to the auditorium: the film dies, Pendleton, the alarm
+	Escape,			// the player runs Vance out across the balcony to the security room
+	Caught,			// Pendleton and the bodyguard come in behind him
 	Done
 };
 
@@ -206,11 +205,57 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Scene7|Assets") TObjectPtr<UMaterialInterface> SmokeMaterial;
 	/** Scene 7's sounds live in /Game/Take/Audio/Script/S7/<name>; missing ones fall back to these take cues. */
 	UPROPERTY(EditAnywhere, Category = "Scene7|Assets") TMap<FName, FName> CueFallbacks;
+	// ---- the venue, the escape, the catch (world space) ----
+	/** Cameras in world space: Venue (the screen and the podium), Pendleton (close on him), Stair (the grand stair from
+	 *  the balcony), Caught (inside the security room, on its door). */
+	UPROPERTY(EditAnywhere, Category = "Scene7|World") TMap<FName, FScene7Shot> WorldShots;
+	/** Pendleton at the podium for the venue cut (feet), and his yaw (facing the house and the booth). */
+	UPROPERTY(EditAnywhere, Category = "Scene7|World") FVector PodiumSpot = FVector(3890.f, -480.f, 20.f);
+	UPROPERTY(EditAnywhere, Category = "Scene7|World") float PodiumYaw = 180.f;
+	/** Scene 5's own Pendleton (and anything else with this tag) hides while Scene 7 shows ours. */
+	UPROPERTY(EditAnywhere, Category = "Scene7|World") FName VenueHideTag = TEXT("s7_venue_hide");
+	/** The two strobes' places in the venue cut, then on the escape (world). */
+	UPROPERTY(EditAnywhere, Category = "Scene7|World") TArray<FVector> StrobesVenue;
+	UPROPERTY(EditAnywhere, Category = "Scene7|World") TArray<FVector> StrobesEscape;
+	/** The escape's waypoints (the guide points at the next; reaching the first cuts to the stair). */
+	UPROPERTY(EditAnywhere, Category = "Scene7|World") TArray<FScene7RouteStep> EscapeSteps;
+	/** Vance runs (cm/s) on the escape: the alarm is going. */
+	UPROPERTY(EditAnywhere, Category = "Scene7|World") float EscapeSpeed = 470.f;
+	/** Pendleton and the bodyguard walk this path (feet, world): the grand stair's foot, up, onto the balcony. */
+	UPROPERTY(EditAnywhere, Category = "Scene7|World") TArray<FVector> GuardPath;
+	UPROPERTY(EditAnywhere, Category = "Scene7|World") float GuardSpeed = 230.f;
+	/** The bodyguard walks this far behind Pendleton on the path (cm). */
+	UPROPERTY(EditAnywhere, Category = "Scene7|World") float GuardGap = 140.f;
+	/** The security room (the fight room): feet inside this box (world x/y min..max, floor z) = caught. */
+	UPROPERTY(EditAnywhere, Category = "Scene7|World") FVector RoomMin = FVector(-3200.f, -2000.f, 450.f);
+	UPROPERTY(EditAnywhere, Category = "Scene7|World") FVector RoomMax = FVector(-2100.f, -1460.f, 450.f);
+	/** They come in by this door (outside it, then their marks). */
+	UPROPERTY(EditAnywhere, Category = "Scene7|World") FVector RoomDoorOutside = FVector(-2650.f, -1250.f, 450.f);
+	/** The fight's marks (feet, world) and yaws: s7-fight's AScene7Fight starts from here. */
+	UPROPERTY(EditAnywhere, Category = "Scene7|World") FVector VanceFightMark = FVector(-2650.f, -1680.f, 450.f);
+	UPROPERTY(EditAnywhere, Category = "Scene7|World") float VanceFightYaw = 90.f;
+	UPROPERTY(EditAnywhere, Category = "Scene7|World") FVector PendletonFightMark = FVector(-2600.f, -1470.f, 450.f);
+	UPROPERTY(EditAnywhere, Category = "Scene7|World") FVector BodyguardFightMark = FVector(-2730.f, -1500.f, 450.f);
+	UPROPERTY(EditAnywhere, Category = "Scene7|World") float CaughtSeconds = 3.4f;
+	UPROPERTY(EditAnywhere, Category = "Scene7|World") FString CaughtLine = TEXT("Going somewhere, Mr. Vance? That reel belongs to me.");
+	UPROPERTY(EditAnywhere, Category = "Scene7|World") FString VenueLine = TEXT("The booth! Lock the building. Nobody leaves.");
+	UPROPERTY(EditAnywhere, Category = "Scene7|World") float VenueSeconds = 6.0f;
+	/** Shown when the swap is done and before the stair cut (Vance into his cuff). */
+	UPROPERTY(EditAnywhere, Category = "Scene7|World") FString SwappedLine = TEXT("Le Soleil Noir. Exit, stage left.");
+
 	/** Hide these tagged actors while the scene runs (the old box's stairs and front wall). */
 	UPROPERTY(EditAnywhere, Category = "Scene7|Assets") FName HideTag = TEXT("s7_hide");
 
 protected:
 	EScene7Stage Stage = EScene7Stage::Approach;
+	int32 EscapeStep = 0;
+	float GuardDist = -1.f;		// how far Pendleton is along GuardPath; < 0 they wait at its start
+	float SavedWalkSpeed = 0.f;
+	bool bStairShot = false;	// the stair cut is up
+	float StairShotT = 0.f;
+	bool bSwapActor = false;	// s7-reelswap's actor plays the swap
+	bool bFightActor = false;
+	bool bLeftMark = false;
 	float StageT = 0.f;			// game seconds in this stage
 	float StageReal = 0.f;		// real seconds in this stage
 	int32 PromptIndex = 0;		// 0 parry, 1 block, 2 throw
@@ -252,6 +297,13 @@ protected:
 	TMap<USceneComponent*, FTransform> Rest;
 
 	void SetStage(EScene7Stage NewStage);
+	void PuppetWorld(USkeletalMeshComponent* Mesh, const FVector& World, float FaceYaw);
+	FVector PathPoint(float Dist, FVector* OutDir = nullptr) const;
+	void PlaceStrobes(const TArray<FVector>& At);
+	void SetVenueHidden(bool bHide);
+	void PointGuide();
+	FVector VanceFeet() const;
+	UPROPERTY(Transient) TArray<TObjectPtr<AActor>> VenueHidden;
 	void StartAtCheckpoint();
 	void Shot(FName Name);
 	void Cue(FName Name, float Volume = 1.f);

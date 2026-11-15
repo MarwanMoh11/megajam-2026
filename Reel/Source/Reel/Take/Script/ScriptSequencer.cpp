@@ -20,6 +20,22 @@ DEFINE_LOG_CATEGORY_STATIC(LogReelScript, Log, All);
 
 static double ScriptNow() { return FPlatformTime::Seconds(); }
 
+// Scene order (s7-route): several scene actors may share a SceneNumber; an actor tag "Part=N" orders them (no tag =
+// part 0). A scene's key is SceneNumber * 100 + Part. JumpTo(N) with N < 100 starts the first part of scene N; with
+// N >= 100 it starts exactly that key (Reel.Script.Jump 702 = scene 7, part 2; -Scene=702 too).
+static int32 ScenePart(const AScriptScene* S)
+{
+	if (!S) { return 0; }
+	for (const FName& Tag : S->Tags)
+	{
+		const FString T = Tag.ToString();
+		if (T.StartsWith(TEXT("Part="))) { return FCString::Atoi(*T.Mid(5)); }
+	}
+	return 0;
+}
+static int32 SceneKey(const AScriptScene* S) { return S ? S->SceneNumber * 100 + ScenePart(S) : 0; }
+static bool SceneMatches(const AScriptScene* S, int32 N) { return S && (N >= 100 ? SceneKey(S) == N : S->SceneNumber == N); }
+
 // ---- AScriptScene ----
 
 AScriptScene::AScriptScene()
@@ -97,7 +113,7 @@ static FAutoConsoleCommandWithWorldAndArgs GScriptJumpCmd(
 		{
 			// Scene N has only just begun (the auto-start a moment ago): don't begin it a second time.
 			const AScriptScene* A = S->GetActiveScene();
-			if (A && A->SceneNumber == N && A->GetSceneSeconds() < 0.5f) { return; }
+			if (SceneMatches(A, N) && A->GetSceneSeconds() < 0.5f) { return; }
 			S->JumpTo(N);
 		}
 		else { GScriptJump = N; }
@@ -158,7 +174,7 @@ void AScriptSequencer::BeginPlay()
 	Super::BeginPlay();
 	Scenes.Reset();
 	for (TActorIterator<AScriptScene> It(GetWorld()); It; ++It) { Scenes.Add(*It); }
-	Scenes.Sort([](const AScriptScene& A, const AScriptScene& B) { return A.SceneNumber < B.SceneNumber; });
+	Scenes.Sort([](const AScriptScene& A, const AScriptScene& B) { return SceneKey(&A) < SceneKey(&B); });
 	UE_LOG(LogReelScript, Log, TEXT("SCRIPT sequencer found %d scenes (on=%d)"), Scenes.Num(), bScriptOn ? 1 : 0);
 	if (!SpliceSound)
 	{
@@ -237,7 +253,7 @@ void AScriptSequencer::Tick(float DeltaSeconds)
 void AScriptSequencer::JumpTo(int32 SceneNumber)
 {
 	AScriptScene* Next = nullptr;
-	for (AScriptScene* S : Scenes) { if (S && S->SceneNumber == SceneNumber) { Next = S; break; } }
+	for (AScriptScene* S : Scenes) { if (SceneMatches(S, SceneNumber)) { Next = S; break; } }
 	if (!Next) { UE_LOG(LogReelScript, Warning, TEXT("SCRIPT no scene %d"), SceneNumber); return; }
 	ATakeDirector* Dir = ATakeDirector::Get(this);
 	if (Dir)
@@ -276,7 +292,7 @@ void AScriptSequencer::OnSceneFinished(AScriptScene* Scene)
 {
 	if (Scene != Active || RetakeAt >= 0.0) { return; }
 	const int32 Idx = Scenes.IndexOfByKey(Scene);
-	if (Scenes.IsValidIndex(Idx + 1)) { JumpTo(Scenes[Idx + 1]->SceneNumber); }
+	if (Scenes.IsValidIndex(Idx + 1)) { JumpTo(SceneKey(Scenes[Idx + 1])); }
 	else { Active->EndScene(); Active = nullptr; EndOfFilm(); }
 }
 
@@ -286,7 +302,7 @@ void AScriptSequencer::OnSceneFailed(AScriptScene* Scene, FName Reason)
 	UE_LOG(LogReelScript, Log, TEXT("SCRIPT blooper in scene %d: %s"), Scene->SceneNumber, *Reason.ToString());
 	RetakeAt = ScriptNow();
 	RetakeReason = Reason;
-	RetakeScene = Scene->SceneNumber;
+	RetakeScene = SceneKey(Scene);	// the part that failed, not the scene's first part
 	++Scene->Retakes;
 	StopVoice();
 	if (ATakeDirector* Dir = ATakeDirector::Get(this))

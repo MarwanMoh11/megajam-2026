@@ -1,4 +1,4 @@
-// See Scene7Booth.h. Owner: the s7-booth session.
+// See Scene7Booth.h. Owner: s7-route (was s7-booth).
 #include "Script/Scene7Booth.h"
 #include "Script/ScriptSequencer.h"
 #include "TakeCharacter.h"
@@ -7,6 +7,7 @@
 #include "TakeHudKit.h"
 #include "TakeStyle.h"
 #include "HouseDimmer.h"
+#include "TakeGuide.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/PointLightComponent.h"
@@ -107,7 +108,8 @@ AScene7Booth::AScene7Booth()
 {
 	SceneNumber = 7;
 	Pov = EScriptPov::Vance;
-	Slug = FText::FromString(TEXT("INT. PROJECTION BOOTH - NIGHT"));
+	Slug = FText::FromString(TEXT("INT. PROJECTION BOOTH - CONTINUOUS"));
+	Tags.Add(TEXT("Part=2"));	// after AScene7Route (0) and s7-reelswap's swap (1); s7-fight's fight is 3
 	bPlayerWalks = true;
 
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeF(TEXT("/Engine/BasicShapes/Cube.Cube"));
@@ -272,6 +274,26 @@ AScene7Booth::AScene7Booth()
 	Shots.Add(TEXT("Throw"), MakeShot(FVector(-150.f, 280.f, 120.f), FVector(60.f, 160.f, 100.f), 45.f));
 	Shots.Add(TEXT("Fall"), MakeShot(FVector(700.f, 350.f, -400.f), FVector(250.f, 150.f, 0.f), 50.f));
 	Shots.Add(TEXT("Cole"), MakeShot(FVector(170.f, -90.f, 175.f), FVector(110.f, -450.f, 120.f), 55.f));
+	// World cameras for the venue cut, the stair and the security room.
+	WorldShots.Add(TEXT("Venue"), MakeShot(FVector(2250.f, 900.f, 300.f), FVector(4300.f, -250.f, 480.f), 55.f));
+	WorldShots.Add(TEXT("Pendleton"), MakeShot(FVector(3480.f, -260.f, 230.f), FVector(3890.f, -480.f, 185.f), 32.f));
+	WorldShots.Add(TEXT("Stair"), MakeShot(FVector(-1350.f, 420.f, 700.f), FVector(-2350.f, 0.f, 230.f), 60.f));
+	WorldShots.Add(TEXT("Caught"), MakeShot(FVector(-2900.f, -1930.f, 650.f), FVector(-2620.f, -1420.f, 580.f), 70.f));
+	StrobesVenue = { FVector(3000.f, 1200.f, 900.f), FVector(1500.f, -1200.f, 900.f) };
+	StrobesEscape = { FVector(-1300.f, -500.f, 820.f), FVector(-2650.f, -1700.f, 820.f) };
+	{
+		FScene7RouteStep S;
+		S.At = FVector(-1180.f, 0.f, 450.f); S.Radius = 170.f; S.Objective = TEXT("Out through the lobby door");
+		EscapeSteps.Add(S);
+		S = FScene7RouteStep(); S.At = FVector(-1350.f, -1050.f, 450.f); S.Radius = 260.f;
+		S.Objective = TEXT("Along the balcony: the security room"); S.Speaker = TEXT("NORA (V.O.)");
+		S.Line = TEXT("Pendleton and his ape, coming up the grand stair. Get out of sight: the door on your left!");
+		EscapeSteps.Add(S);
+		S = FScene7RouteStep(); S.At = FVector(-2650.f, -1300.f, 450.f); S.Radius = 160.f; S.Objective = TEXT("Into the security room");
+		EscapeSteps.Add(S);
+	}
+	GuardPath = { FVector(-2750.f, 60.f, 0.f), FVector(-2560.f, 60.f, 0.f), FVector(-1500.f, 60.f, 450.f),
+		FVector(-1380.f, -250.f, 450.f) };
 	Shots.Add(TEXT("Miss"), MakeShot(FVector(60.f, 150.f, 170.f), FVector(-30.f, 40.f, 160.f), 35.f));
 }
 
@@ -297,6 +319,20 @@ void AScene7Booth::BeginPlay()
 		Cam->GetCameraComponent()->bConstrainAspectRatio = false;
 		Cams.Add(S.Key, Cam);
 	}
+
+	for (const TPair<FName, FScene7Shot>& S : WorldShots)
+	{
+		FActorSpawnParameters P;
+		P.Owner = this;
+		ACameraActor* Cam = GetWorld()->SpawnActor<ACameraActor>(ACameraActor::StaticClass(),
+			FTransform(S.Value.Rotation, S.Value.Location), P);
+		if (!Cam) { continue; }
+		Cam->GetCameraComponent()->SetFieldOfView(S.Value.Fov);
+		Cam->GetCameraComponent()->bConstrainAspectRatio = false;
+		Cams.Add(S.Key, Cam);
+	}
+	// The stair door (south) stands open: part 0 walks Vance in through it. The alarm shuts it (mag-lock).
+	DoorSouthHinge->SetRelativeRotation(FRotator(0.f, DoorOpenDegrees, 0.f));
 
 	// The rest pose of everything that moves.
 	TArray<USceneComponent*> Movers = { Magazine, MagazineHinge, MasterReel, DummyReel, LowerReel, Canister, CanisterLid,
@@ -529,13 +565,92 @@ void AScene7Booth::ApplySwap(float A)
 	LastSwapA = A;
 }
 
+void AScene7Booth::PutCanisterOnVance(bool bInHand)
+{
+	PutCanisterOn(GetPovCharacter(), bInHand);
+}
+
+// ---- the venue, the escape: helpers ---------------------------------------------------------------------------------
+
+void AScene7Booth::PuppetWorld(USkeletalMeshComponent* Mesh, const FVector& World, float FaceYaw)
+{
+	// The mannequin faces +Y in its own space: turn it -90 to face FaceYaw.
+	Mesh->SetWorldLocationAndRotation(World, FRotator(0.f, FaceYaw - 90.f, 0.f));
+}
+
+FVector AScene7Booth::PathPoint(float Dist, FVector* OutDir) const
+{
+	if (GuardPath.Num() == 0) { return GetActorLocation(); }
+	if (GuardPath.Num() == 1) { if (OutDir) { *OutDir = FVector::ForwardVector; } return GuardPath[0]; }
+	float Left = FMath::Max(0.f, Dist);
+	for (int32 i = 0; i + 1 < GuardPath.Num(); ++i)
+	{
+		const FVector Seg = GuardPath[i + 1] - GuardPath[i];
+		const float Len = Seg.Size();
+		if (Left <= Len || i + 2 == GuardPath.Num())
+		{
+			if (OutDir) { *OutDir = Seg.GetSafeNormal2D(); }
+			return GuardPath[i] + Seg * FMath::Clamp(Len > 0.f ? Left / Len : 1.f, 0.f, 1.f);
+		}
+		Left -= Len;
+	}
+	return GuardPath.Last();
+}
+
+void AScene7Booth::PlaceStrobes(const TArray<FVector>& At)
+{
+	if (At.IsValidIndex(0)) { StrobeA->SetWorldLocation(At[0]); }
+	if (At.IsValidIndex(1)) { StrobeB->SetWorldLocation(At[1]); }
+	StrobeA->SetAttenuationRadius(2600.f);
+	StrobeB->SetAttenuationRadius(2600.f);
+}
+
+void AScene7Booth::SetVenueHidden(bool bHide)
+{
+	if (bHide)
+	{
+		for (TActorIterator<AActor> It(GetWorld()); It; ++It)
+		{
+			if (It->ActorHasTag(VenueHideTag) && !It->IsHidden())
+			{
+				It->SetActorHiddenInGame(true);
+				VenueHidden.Add(*It);
+			}
+		}
+	}
+	else
+	{
+		for (AActor* A : VenueHidden) { if (A) { A->SetActorHiddenInGame(false); } }
+		VenueHidden.Reset();
+	}
+}
+
+FVector AScene7Booth::VanceFeet() const
+{
+	const ATakeCharacter* V = GetPovCharacter();
+	if (!V) { return FVector::ZeroVector; }
+	const float Half = V->GetCapsuleComponent() ? V->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() : 90.f;
+	return V->GetActorLocation() - FVector(0.f, 0.f, Half);
+}
+
+void AScene7Booth::PointGuide()
+{
+	UTakeGuideSubsystem* G = UTakeGuideSubsystem::Get(this);
+	if (!G) { return; }
+	if (Stage == EScene7Stage::Escape && EscapeSteps.IsValidIndex(EscapeStep))
+	{
+		G->SetGoal(EscapeSteps[EscapeStep].At, EscapeSteps[EscapeStep].Objective);
+	}
+	else { G->ClearGoal(); }
+}
+
 // ---- the scene ----------------------------------------------------------------------------------------------------
 
 void AScene7Booth::BeginScene()
 {
 	Super::BeginScene();
 
-	// The old box's stairs, landing and front wall would stand inside the booth: hidden while the scene runs.
+	// The old box's stairs, landing and front wall would stand inside the booth (the overlay also hides them for good).
 	Hidden.Reset();
 	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
 	{
@@ -546,85 +661,56 @@ void AScene7Booth::BeginScene()
 			Hidden.Add(*It);
 		}
 	}
-
-	if (ATakeCharacter* V = GetPovCharacter())
+	ATakeCharacter* V = GetPovCharacter();
+	if (V && !bHaveVanceMesh && V->GetMesh())
 	{
-		if (!bHaveVanceMesh && V->GetMesh())
-		{
-			VanceMeshRel = V->GetMesh()->GetRelativeLocation();
-			bHaveVanceMesh = true;
-		}
+		VanceMeshRel = V->GetMesh()->GetRelativeLocation();
+		bHaveVanceMesh = true;
 	}
+	if (V && V->GetCharacterMovement()) { SavedWalkSpeed = V->GetCharacterMovement()->MaxWalkSpeed; }
 
-	if (FirstTry.Num() != 3) { FirstTry = { true, true, true }; }
 	LampSpill->SetIntensity(LampCandela);
 	if (USoundBase* Hum = FindS7Sound(TEXT("sfx_s7_projector_hum")))
 	{
 		HumAudio->SetSound(Hum);
 		HumAudio->Play();
 	}
-
-	if (bFailing && bCheckpointAlarm)
-	{
-		bFailing = false;
-		StartAtCheckpoint();
-		return;
-	}
-	bFailing = false;
-	bCheckpointAlarm = false;
-	bPlayerWalks = true;
-	FreezeVance(GetPovCharacter(), false);
-	// The film still runs from Scene 5 (or a direct Jump 7 / retake: start it, the house dark), until the burn-out.
+	// The film still runs from Scene 5 (a cold jump: start it, the house dark), until the reel comes off.
 	for (TActorIterator<AHouseDimmer> It(GetWorld()); It; ++It) { if (!It->IsScreening()) { It->BeginScreening(0.f); } }
+
+	// s7-reelswap's part 1 played the swap (it sets Canister): skip ours, the canister goes under his arm.
+	bSwapActor = HasFlag(TEXT("Canister"));
+	bPlayerWalks = false;
+	FreezeVance(V, true);
 	SetStage(EScene7Stage::Approach);
+	UE_LOG(LogScene7, Log, TEXT("S7 booth: begin (swap already played %d)"), bSwapActor ? 1 : 0);
 }
 
 void AScene7Booth::StartAtCheckpoint()
 {
-	// The retake rolls from the alarm: the swap done, both of them in, the strobes going.
-	bSwapDone = true;
-	bPlayerWalks = false;
-	FreezeVance(GetPovCharacter(), true);
-	ApplySwap(1.f);
-	LastSwapA = 1.f;
-	MasterReel->SetHiddenInGame(true);
-	PlaceVance(FightSpot, FightYaw);
-	PutCanisterOn(GetPovCharacter(), false);
-	DoorNorthHinge->SetRelativeRotation(FRotator(0.f, DoorOpenDegrees, 0.f));
-	Pendleton->SetHiddenInGame(false);
-	Bodyguard->SetHiddenInGame(false);
-	Puppet(Pendleton, AlarmSpot, -60.f);
-	Puppet(Bodyguard, BodyguardSpot, -90.f);
-	Act(Pendleton, TEXT("Walk"), true, 0.7f);
-	Act(Bodyguard, TEXT("Idle"), true);
-	ActVance(TEXT("Idle"), true);
-	AlarmLever->SetRelativeLocation(Rest.FindRef(AlarmLever).GetLocation() + FVector(0.f, 0.f, -10.f));
-	SetAlarm(true);
-	for (TActorIterator<AHouseDimmer> It(GetWorld()); It; ++It) { It->EndScreening(); }
-	SetStage(EScene7Stage::Alarm);
-	StageT = PrevT = AlarmSeconds - 1.2f;
-	Shot(TEXT("Parry"));
 }
 
 void AScene7Booth::EndScene()
 {
-	if (ATakeDirector* D = ATakeDirector::Get(this))
-	{
-		D->EndSlow(SlowPrompt, 0.1f);
-		D->EndSlow(SlowFall, 0.1f);
-	}
 	for (AActor* A : Hidden)
 	{
-		if (A)
-		{
-			A->SetActorHiddenInGame(false);
-			A->SetActorEnableCollision(true);
-		}
+		if (A) { A->SetActorHiddenInGame(false); A->SetActorEnableCollision(true); }
 	}
 	Hidden.Reset();
+	SetVenueHidden(false);
+	Pendleton->SetHiddenInGame(true);
+	Bodyguard->SetHiddenInGame(true);
 	HumAudio->Stop();
 	SetAlarm(false);
 	VanceBackToBlueprint();
+	if (ATakeCharacter* V = GetPovCharacter())
+	{
+		if (UCharacterMovementComponent* M = V->GetCharacterMovement())
+		{
+			M->MaxWalkSpeed = SavedWalkSpeed > 0.f ? SavedWalkSpeed : V->WalkSpeed;
+		}
+	}
+	if (UTakeGuideSubsystem* G = UTakeGuideSubsystem::Get(this)) { G->ClearGoal(); }
 	bPlayerWalks = true;
 	FreezeVance(GetPovCharacter(), false);
 	Super::EndScene();
@@ -632,11 +718,6 @@ void AScene7Booth::EndScene()
 
 void AScene7Booth::ResetScene()
 {
-	if (ATakeDirector* D = ATakeDirector::Get(this))
-	{
-		D->EndSlow(SlowPrompt, 0.05f);
-		D->EndSlow(SlowFall, 0.05f);
-	}
 	// The canister back on the bench (it may be under an arm).
 	if (Canister->GetAttachParent() != Root)
 	{
@@ -646,33 +727,24 @@ void AScene7Booth::ResetScene()
 	{
 		if (R.Key) { R.Key->SetRelativeTransform(R.Value); }
 	}
+	DoorSouth->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	MasterReel->SetHiddenInGame(false);
-	Glass->SetHiddenInGame(false);
-	Stiletto->SetHiddenInGame(true);
-	Grenade->SetHiddenInGame(true);
-	CurtainHeap->SetHiddenInGame(true);
-	for (UStaticMeshComponent* S : Shards) { S->SetHiddenInGame(true); }
-	for (UStaticMeshComponent* S : SmokePuffs) { S->SetHiddenInGame(true); }
 	for (USkeletalMeshComponent* P : { Pendleton.Get(), Bodyguard.Get(), Cole.Get() })
 	{
 		P->SetHiddenInGame(true);
 		P->Stop();
 	}
-	if (Stiletto->GetAttachParent() != Root)
-	{
-		Stiletto->AttachToComponent(Root, FAttachmentTransformRules::KeepRelativeTransform);
-	}
 	SetAlarm(false);
+	SetVenueHidden(false);
 	FireLight->SetIntensity(0.f);
-	bFire = false;
-	bGlassBroken = false;
-	bSmoke = false;
-	SmokeT = ShardT = -1.f;
 	bSwapDone = false;
 	bUseDown = false;
 	SwapHeld = 0.f;
 	LastSwapA = 0.f;
-	PromptIndex = 0;
+	EscapeStep = 0;
+	GuardDist = -1.f;
+	bStairShot = false;
+	bLeftMark = false;
 	VanceBackToBlueprint();
 	bPlayerWalks = true;
 	FreezeVance(GetPovCharacter(), false);
@@ -684,57 +756,27 @@ void AScene7Booth::SetStage(EScene7Stage NewStage)
 {
 	Stage = NewStage;
 	StageT = PrevT = StageReal = 0.f;
-	UE_LOG(LogScene7, Log, TEXT("S7 stage %d prompt %d"), (int32)NewStage, PromptIndex);
+	UE_LOG(LogScene7, Log, TEXT("S7 booth stage %d"), (int32)NewStage);
+	PointGuide();
 }
 
-void AScene7Booth::BeginPrompt(int32 Index)
-{
-	PromptIndex = Index;
-	SetStage(EScene7Stage::Prompt);
-	if (ATakeDirector* D = ATakeDirector::Get(this)) { D->BeginSlow(SlowPrompt, PromptSlowScale, 0.08f); }
-}
-
-void AScene7Booth::PromptHit()
-{
-	if (ATakeDirector* D = ATakeDirector::Get(this)) { D->EndSlow(SlowPrompt, 0.06f); }
-	FirstTry[PromptIndex] = false;
-	SetStage(EScene7Stage::Strike);
-}
-
-void AScene7Booth::PromptMissed()
-{
-	if (ATakeDirector* D = ATakeDirector::Get(this)) { D->EndSlow(SlowPrompt, 0.06f); }
-	FirstTry[PromptIndex] = false;
-	SetStage(EScene7Stage::Miss);
-}
+void AScene7Booth::BeginPrompt(int32 Index) {}
+void AScene7Booth::PromptHit() {}
+void AScene7Booth::PromptMissed() {}
 
 bool AScene7Booth::HandleSceneKey(const FKey& Key, bool bPressed)
 {
-	if (Stage == EScene7Stage::Approach)
+	if (Stage == EScene7Stage::Swap)
 	{
 		if (Key == EKeys::E || Key == EKeys::LeftMouseButton)
 		{
 			bUseDown = bPressed;
+			if (bPressed && SwapHeld <= 0.f) { ActVance(TEXT("Use"), true); }
 			return true;
 		}
 		return false;
 	}
-	if (Stage == EScene7Stage::Prompt)
-	{
-		if (!bPressed) { return true; }
-		// Movement and camera keys don't count as an answer. Nor does AnyKey: the controller polls every key in
-		// EKeys::GetAllKeys, AnyKey first, and WasInputKeyJustPressed(AnyKey) is true on any press, so without this the
-		// real Q arrived second and every prompt had already been missed.
-		if (Key == EKeys::AnyKey || Key == EKeys::W || Key == EKeys::A || Key == EKeys::S || Key == EKeys::D || (Key.IsMouseButton() && Key != EKeys::LeftMouseButton) || Key == EKeys::Escape)
-		{
-			return false;
-		}
-		const FKey Want = PromptKeys.IsValidIndex(PromptIndex) ? PromptKeys[PromptIndex] : EKeys::E;
-		if (Key == Want) { PromptHit(); }
-		else { PromptMissed(); }
-		return true;
-	}
-	// Everything else is the film playing: swallow Use so the director doesn't act on it.
+	// Use is the film's own, not the director's.
 	return Key == EKeys::E || Key == EKeys::LeftMouseButton || Key == EKeys::Q || Key == EKeys::F;
 }
 
@@ -745,354 +787,233 @@ void AScene7Booth::TickScene(float DeltaSeconds)
 	StageT += DeltaSeconds;
 	StageReal += RealDt;
 	ATakeCharacter* V = GetPovCharacter();
-
 	StepFX(DeltaSeconds, RealDt);
+
+	// Pendleton and the bodyguard on their path (once they've started up the grand stair).
+	if (GuardDist >= 0.f && Stage == EScene7Stage::Escape)
+	{
+		float PathLen = 0.f;
+		for (int32 i = 0; i + 1 < GuardPath.Num(); ++i) { PathLen += FVector::Dist(GuardPath[i], GuardPath[i + 1]); }
+		const bool bWasWalking = GuardDist < PathLen;
+		GuardDist = FMath::Min(GuardDist + GuardSpeed * DeltaSeconds, PathLen);
+		FVector DirP = FVector::ForwardVector, DirB = FVector::ForwardVector;
+		const FVector P = PathPoint(GuardDist, &DirP);
+		const FVector B = PathPoint(GuardDist - GuardGap, &DirB);
+		const bool bWalking = GuardDist < PathLen;
+		// At the top they stop and look along the balcony for him.
+		const float YawP = bWalking ? DirP.Rotation().Yaw : (VanceFeet() - P).Rotation().Yaw;
+		const float YawB = bWalking ? DirB.Rotation().Yaw : (VanceFeet() - B).Rotation().Yaw;
+		PuppetWorld(Pendleton, P, YawP);
+		PuppetWorld(Bodyguard, B, YawB);
+		if (bWasWalking && !bWalking)
+		{
+			Act(Pendleton, TEXT("Stand"), true);
+			Act(Bodyguard, TEXT("Idle"), true);
+		}
+	}
 
 	switch (Stage)
 	{
 	case EScene7Stage::Approach:
 	{
-		if (GS7Auto && !bUseDown && StageT > 1.5f)
+		// Part 0 walked him onto the mark (a cold jump: StartSpot). Square him up to the magazine.
+		PlaceVance(UseSpot, UseYaw);
+		if (bSwapActor)
 		{
-			PlaceVance(UseSpot, UseYaw);
-			bUseDown = true;
+			// The swap played in part 1: the booth's props show it done, the canister under his arm.
+			ApplySwap(1.f);
+			LastSwapA = 1.f;
+			bSwapDone = true;
+			MasterReel->SetHiddenInGame(true);
+			PutCanisterOnVance(false);
+			HumAudio->Stop();
+			LampSpill->SetIntensity(0.f);
+			SetStage(EScene7Stage::Swapped);
+			StageT = PrevT = SwappedSeconds;	// straight to the cut
+			break;
 		}
-		const bool bNear = V && FVector::Dist2D(V->GetActorLocation(), W(UseSpot)) <= UseRadius;
-		if (bNear && bUseDown)
+		SetStage(EScene7Stage::Swap);
+		break;
+	}
+	case EScene7Stage::Swap:
+	{
+		if (GS7Auto && StageT > 0.8f) { bUseDown = true; }
+		if (bUseDown) { SwapHeld += DeltaSeconds; }
+		else if (SwapHeld > 0.f && SwapHeld < SwapHoldSeconds)
 		{
-			if (SwapHeld <= 0.f)
-			{
-				PlaceVance(UseSpot, UseYaw);
-				ActVance(TEXT("Use"), true);
-				Shot(TEXT("Swap"));
-				bPlayerWalks = false;
-	FreezeVance(GetPovCharacter(), true);
-			}
-			SwapHeld += DeltaSeconds;
-			ApplySwap(FMath::Clamp(SwapHeld / SwapHoldSeconds, 0.f, 1.f));
-			if (SwapHeld >= SwapHoldSeconds)
-			{
-				bSwapDone = true;
-				PutCanisterOn(V, false);
-				ActVance(TEXT("Idle"), true);
-				SetStage(EScene7Stage::Swapped);
-			}
-		}
-		else if (SwapHeld > 0.f)
-		{
-			// Let go early: the heist's rule, nothing is half done.
+			// Let go early: nothing half done.
 			SwapHeld = 0.f;
-			LastSwapA = 0.f;
 			ApplySwap(0.f);
-			MasterReel->SetHiddenInGame(false);
+			LastSwapA = 0.f;
 			VanceBackToBlueprint();
 			Shot(NAME_None);
-			bPlayerWalks = true;
-	FreezeVance(GetPovCharacter(), false);
+		}
+		if (SwapHeld > 0.f && CurrentShot != TEXT("Swap")) { Shot(TEXT("Swap")); }
+		ApplySwap(FMath::Clamp(SwapHeld / SwapHoldSeconds, 0.f, 1.f));
+		if (SwapHeld >= SwapHoldSeconds)
+		{
+			bSwapDone = true;
+			bUseDown = false;
+			MasterReel->SetHiddenInGame(true);
+			PutCanisterOnVance(false);
+			SetFlag(TEXT("Canister"));
+			// The projector runs on with nothing in the gate: the film is gone.
+			HumAudio->Stop();
+			LampSpill->SetIntensity(0.f);
+			ActVance(TEXT("Stand"), true);
+			Say(TEXT("VANCE"), SwappedLine);
+			SetStage(EScene7Stage::Swapped);
 		}
 		break;
 	}
 	case EScene7Stage::Swapped:
-		if (StageT >= SwappedSeconds) { SetStage(EScene7Stage::Door); }
-		break;
-
-	case EScene7Stage::Door:
 	{
-		if (At(0.f) || StageT == DeltaSeconds)
+		if (StageT >= SwappedSeconds + 0.6f)
 		{
-			Cue(TEXT("sfx_s7_door_click"));
-			Shot(TEXT("Door"));
-			PlaceVance(FightSpot, FightYaw);
-			ActVance(TEXT("Idle"), true);
+			// THE CUT: the auditorium. The film dies on the screen; Pendleton at the podium.
+			SetVenueHidden(true);
+			Pendleton->SetHiddenInGame(false);
+			PuppetWorld(Pendleton, PodiumSpot, PodiumYaw);
+			Act(Pendleton, TEXT("Stand"), true);
+			for (TActorIterator<AHouseDimmer> It(GetWorld()); It; ++It) { It->FlashScreen(1.f); It->EndScreening(); }
+			Cue(TEXT("sfx_film_burn"));
+			Shot(TEXT("Venue"));
+			SetStage(EScene7Stage::Venue);
+		}
+		break;
+	}
+	case EScene7Stage::Venue:
+	{
+		if (At(1.1f)) { Shot(TEXT("Pendleton")); Act(Pendleton, TEXT("Refuse"), false); }
+		if (At(1.4f)) { Say(TEXT("PENDLETON"), VenueLine, FindS7Sound(TEXT("vo_s7_pendleton_lock"))); }
+		if (At(3.6f))
+		{
+			PlaceStrobes(StrobesVenue);
+			SetAlarm(true);
+			Cue(TEXT("sfx_s7_crowd_scream"));
+			Shot(TEXT("Venue"));
+		}
+		if (StageT >= VenueSeconds)
+		{
+			// Back on Vance in the booth: the stair door has mag-locked; the lobby door is the only way out.
+			SetVenueHidden(false);
+			PlaceStrobes(StrobesEscape);
+			DoorSouthHinge->SetRelativeRotation(FRotator::ZeroRotator);
+			DoorSouth->SetCollisionProfileName(TEXT("BlockAll"));
+			DoorSouth->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+			Cue(TEXT("sfx_s7_door_click"), 0.8f);
+			// Pendleton and his bodyguard wait at the grand stair's foot (off screen) until the stair cut.
+			if (GuardPath.Num() > 0)
+			{
+				PuppetWorld(Pendleton, GuardPath[0], 0.f);
+				PuppetWorld(Bodyguard, GuardPath[0] - FVector(GuardGap, 0.f, 0.f), 0.f);
+			}
+			Bodyguard->SetHiddenInGame(false);
+			Act(Pendleton, TEXT("Stand"), true);
+			Act(Bodyguard, TEXT("Idle"), true);
+			GuardDist = -1.f;
+			VanceBackToBlueprint();
+			Shot(NAME_None);
+			if (V && V->GetCharacterMovement()) { V->GetCharacterMovement()->MaxWalkSpeed = EscapeSpeed; }
+			FreezeVance(V, false);
+			bPlayerWalks = true;
+			EscapeStep = 0;
+			bStairShot = false;
+			Say(TEXT("MAX (V.O.)"), TEXT("Alarm's tripped and your stair's mag-locked! Lobby door, Vance. Go!"));
+			SetStage(EScene7Stage::Escape);
+		}
+		break;
+	}
+	case EScene7Stage::Escape:
+	{
+		const FVector Feet = VanceFeet();
+		for (int32 i = EscapeSteps.Num() - 1; i >= EscapeStep; --i)
+		{
+			const FScene7RouteStep& S = EscapeSteps[i];
+			if (FVector::Dist2D(Feet, S.At) <= S.Radius && FMath::Abs(Feet.Z - S.At.Z) < 150.f)
+			{
+				for (int32 j = EscapeStep; j <= i; ++j)
+				{
+					if (!EscapeSteps[j].Line.IsEmpty()) { Say(EscapeSteps[j].Speaker, EscapeSteps[j].Line); }
+				}
+				// Out on the balcony: cut to them starting up the grand stair.
+				if (!bStairShot)
+				{
+					bStairShot = true;
+					StairShotT = 0.f;
+					GuardDist = 0.f;
+					Act(Pendleton, TEXT("Walk"), true, 0.75f);
+					Act(Bodyguard, TEXT("Walk"), true, 0.75f);
+					Shot(TEXT("Stair"));
+					FreezeVance(V, true);
+					bPlayerWalks = false;
+				}
+				EscapeStep = i + 1;
+				PointGuide();
+				break;
+			}
+		}
+		if (bStairShot && StairShotT >= 0.f)
+		{
+			StairShotT += DeltaSeconds;
+			if (StairShotT >= 1.8f)
+			{
+				StairShotT = -1.f;
+				Shot(NAME_None);
+				FreezeVance(V, false);
+				bPlayerWalks = true;
+			}
+		}
+		// Into the security room: caught.
+		if (StairShotT < 0.f && Feet.X >= RoomMin.X && Feet.X <= RoomMax.X && Feet.Y >= RoomMin.Y && Feet.Y <= RoomMax.Y
+			&& FMath::Abs(Feet.Z - RoomMin.Z) < 150.f)
+		{
+			bPlayerWalks = false;
+			if (UTakeGuideSubsystem* G = UTakeGuideSubsystem::Get(this)) { G->ClearGoal(); }
+			// They come in by the door behind him.
 			Pendleton->SetHiddenInGame(false);
 			Bodyguard->SetHiddenInGame(false);
-			Act(Pendleton, TEXT("Walk"), true, 0.55f);
+			PuppetWorld(Pendleton, RoomDoorOutside + FVector(40.f, 60.f, 0.f), -90.f);
+			PuppetWorld(Bodyguard, RoomDoorOutside + FVector(-60.f, 120.f, 0.f), -90.f);
+			Act(Pendleton, TEXT("Walk"), true, 0.6f);
 			Act(Bodyguard, TEXT("Walk"), true, 0.6f);
-		}
-		DoorNorthHinge->SetRelativeRotation(FRotator(0.f, DoorOpenDegrees * Ease(StageT / 0.5f), 0.f));
-		const float P = Ease((StageT - 0.3f) / 1.5f), B = Ease((StageT - 0.1f) / 1.5f);
-		Puppet(Pendleton, FMath::Lerp(PendletonDoor, PendletonSpot, P), -90.f);
-		Puppet(Bodyguard, FMath::Lerp(BodyguardDoor, BodyguardSpot, B), -100.f);
-		if (At(1.7f)) { Act(Bodyguard, TEXT("Idle"), true); }
-		if (At(1.9f)) { Act(Pendleton, TEXT("Stand"), true); }
-		if (StageT >= DoorSeconds) { SetStage(EScene7Stage::Line); }
-		break;
-	}
-	case EScene7Stage::Line:
-		if (StageT == DeltaSeconds) { Shot(TEXT("Insert")); }
-		if (At(0.9f))
-		{
-			Shot(TEXT("Line"));
-			Act(Pendleton, TEXT("Refuse"), false);
-			Say(TEXT("PENDLETON"), PendletonLine, FindS7Sound(TEXT("vo_s7_pendleton_lock")));
-		}
-		if (StageT >= LineSeconds) { SetStage(EScene7Stage::Alarm); }
-		break;
-
-	case EScene7Stage::Alarm:
-	{
-		if (StageT == DeltaSeconds)
-		{
-			Shot(TEXT("Alarm"));
-			Act(Pendleton, TEXT("Walk"), true, 0.7f);
-			bCheckpointAlarm = true;
-		}
-		if (StageT < 0.6f) { Puppet(Pendleton, FMath::Lerp(PendletonSpot, AlarmSpot, Ease(StageT / 0.55f)), 135.f); }
-		if (At(0.55f)) { Act(Pendleton, TEXT("Punch"), false, 1.3f); }
-		if (At(0.85f))
-		{
-			AlarmLever->SetRelativeLocation(Rest.FindRef(AlarmLever).GetLocation() + FVector(0.f, 0.f, -10.f));
-			SetAlarm(true);
-		}
-		if (At(1.5f))
-		{
-			Shot(TEXT("Screen"));
-			Cue(TEXT("sfx_film_burn"));
-			Cue(TEXT("sfx_s7_crowd_scream"), 0.9f);
-			for (TActorIterator<AHouseDimmer> It(GetWorld()); It; ++It) { It->EndScreening(); }
-		}
-		if (At(2.8f))
-		{
-			Shot(TEXT("Parry"));
-			Act(Pendleton, TEXT("Walk"), true, 0.7f);
-		}
-		if (StageT > 2.8f) { Puppet(Pendleton, FMath::Lerp(AlarmSpot, PendletonSpot, Ease((StageT - 2.8f) / 0.8f)), -60.f); }
-		if (At(3.6f)) { Act(Pendleton, TEXT("Stand"), true); }
-		if (StageT >= AlarmSeconds)
-		{
-			Puppet(Pendleton, PendletonSpot, -90.f);
-			PromptIndex = 0;
-			BodyguardFrom = BodyguardSpot;
-			SetStage(EScene7Stage::Windup);
+			PendletonFrom = Pendleton->GetComponentLocation();
+			BodyguardFrom = Bodyguard->GetComponentLocation();
+			GuardDist = -1.f;
+			if (V && V->GetCharacterMovement())
+			{
+				V->GetCharacterMovement()->MaxWalkSpeed = SavedWalkSpeed > 0.f ? SavedWalkSpeed : V->WalkSpeed;
+			}
+			Cue(TEXT("sfx_s7_door_kick"), 0.7f);
+			Shot(TEXT("Caught"));
+			SetStage(EScene7Stage::Caught);
 		}
 		break;
 	}
-	case EScene7Stage::Windup:
+	case EScene7Stage::Caught:
 	{
-		if (StageT == DeltaSeconds)
+		// Vance takes the last steps to his mark and turns to face them; they walk to theirs.
+		if (V)
 		{
-			if (PromptIndex == 0)
-			{
-				Shot(TEXT("Parry"));
-				Act(Bodyguard, TEXT("Hook"), false, 1.1f);
-			}
-			else if (PromptIndex == 1)
-			{
-				Shot(TEXT("Block"));
-				FaceVance(FightYaw);
-				Stiletto->SetHiddenInGame(false);
-				Stiletto->AttachToComponent(Pendleton, FAttachmentTransformRules::KeepRelativeTransform, StilettoBone);
-				Stiletto->SetRelativeTransform(StilettoInHand);
-				Act(Pendleton, TEXT("Slash"), false, 1.0f);
-				PendletonFrom = PendletonSpot;
-			}
-			else
-			{
-				Shot(TEXT("Throw"));
-				Act(Pendleton, TEXT("Slash"), false, 0.9f);
-				PendletonFrom = Pendleton->GetRelativeLocation();
-			}
+			if (FVector::Dist2D(VanceFeet(), VanceFightMark) > 15.f && StageT < 1.4f) { V->MoveToward(VanceFightMark); }
+			const float Yaw = FMath::FixedTurn(V->GetActorRotation().Yaw, VanceFightYaw, 300.f * DeltaSeconds);
+			V->SetActorRotation(FRotator(0.f, Yaw, 0.f));
 		}
-		const float A = Ease(StageT / WindupSeconds);
-		if (PromptIndex == 0)
-		{
-			Puppet(Bodyguard, FMath::Lerp(BodyguardFrom, FightSpot + FVector(10.f, 95.f, 0.f), A), -95.f);
-		}
-		else
-		{
-			const FVector To = FightSpot + FVector(PromptIndex == 1 ? 15.f : 40.f, 95.f, 0.f);
-			Puppet(Pendleton, FMath::Lerp(PendletonFrom, To, A), -90.f);
-		}
-		if (StageT >= WindupSeconds) { BeginPrompt(PromptIndex); }
-		break;
-	}
-	case EScene7Stage::Prompt:
-	{
-		const float Limit = PromptRealSeconds + (FirstTry.IsValidIndex(PromptIndex) && FirstTry[PromptIndex] && GetRetakes() == 0 ? FirstPromptBonus : 0.f);
-		if (GS7Auto && StageReal >= 0.6f) { PromptHit(); }
-		else if (StageReal >= Limit) { PromptMissed(); }
-		break;
-	}
-	case EScene7Stage::Strike:
-	{
-		if (PromptIndex == 0)
-		{
-			// Vance ducks the hook; the bodyguard's own weight carries him head first into the hot housing.
-			if (V && V->GetMesh() && bHaveVanceMesh)
-			{
-				const float Dip = StageT < 0.5f ? FMath::Sin(FMath::Clamp(StageT / 0.5f, 0.f, 1.f) * PI) : 0.f;
-				V->GetMesh()->SetRelativeLocation(VanceMeshRel + FVector(0.f, 0.f, -38.f * Dip));
-			}
-			if (StageT == DeltaSeconds) { Cue(TEXT("sfx_s7_punch"), 0.6f); }
-			const FVector From = FightSpot + FVector(10.f, 95.f, 0.f);
-			const float A = Ease((StageT - 0.1f) / 0.4f);
-			Puppet(Bodyguard, FMath::Lerp(From, SlamSpot, A), -100.f);
-			if (At(0.35f)) { ActVance(TEXT("Punch"), false, 1.2f); }
-			if (At(0.5f))
-			{
-				Shot(TEXT("ParryHit"));
-				Cue(TEXT("sfx_s7_head_slam"));
-				BurstAt(SparksFX, W(SlamSpot + FVector(20.f, -40.f, 150.f)), 1.f);
-				Act(Bodyguard, TEXT("FallFront"), false, 1.f);
-			}
-			if (At(0.75f))
-			{
-				bFire = true;
-				FireSpawnIn = 0.f;
-				Cue(TEXT("sfx_s7_fire_whoosh"));
-			}
-			if (StageT >= StrikeSeconds)
-			{
-				ActVance(TEXT("Idle"), true);
-				PromptIndex = 1;
-				SetStage(EScene7Stage::Windup);
-			}
-		}
-		else if (PromptIndex == 1)
-		{
-			if (StageT == DeltaSeconds)
-			{
-				PutCanisterOn(V, true);
-				ActVance(TEXT("Lift"), false, 1.6f);
-			}
-			if (At(0.15f))
-			{
-				Shot(TEXT("BlockHit"));
-				Cue(TEXT("sfx_s7_clang"));
-				BurstAt(SparksFX, Canister->GetComponentLocation(), 0.6f);
-			}
-			if (At(0.35f)) { Act(Pendleton, TEXT("HitMed"), false, 1.f); }
-			if (StageT > 0.35f)
-			{
-				const FVector From = FightSpot + FVector(15.f, 95.f, 0.f);
-				Puppet(Pendleton, FMath::Lerp(From, FightSpot + FVector(60.f, 170.f, 0.f), Ease((StageT - 0.35f) / 0.5f)), -110.f);
-			}
-			if (At(1.1f))
-			{
-				PutCanisterOn(V, false);
-				ActVance(TEXT("Idle"), true);
-			}
-			if (StageT >= StrikeSeconds * 0.85f)
-			{
-				PromptIndex = 2;
-				SetStage(EScene7Stage::Windup);
-			}
-		}
-		else
-		{
-			if (StageT == DeltaSeconds)
-			{
-				ActVance(TEXT("Sweep"), false, 1.3f);
-				Cue(TEXT("sfx_s7_punch"), 0.7f);
-			}
-			if (At(0.3f))
-			{
-				Act(Pendleton, TEXT("FallBack"), false, 1.4f);
-				PendletonFrom = Pendleton->GetRelativeLocation();
-			}
-			if (StageT > 0.3f)
-			{
-				Puppet(Pendleton, FMath::Lerp(PendletonFrom, GlassPoint - FVector(20.f, 0.f, 60.f), Ease((StageT - 0.3f) / 0.35f)), 180.f);
-			}
-			if (StageT >= 0.65f)
-			{
-				PendletonFallFrom = Pendleton->GetRelativeLocation();
-				SetStage(EScene7Stage::Fall);
-			}
-		}
-		break;
-	}
-	case EScene7Stage::Miss:
-	{
-		if (StageT == DeltaSeconds)
-		{
-			Shot(TEXT("Miss"));
-			Cue(TEXT("sfx_s7_punch"));
-			ActVance(PromptIndex == 1 ? TEXT("HitMed") : TEXT("HitHeavy"), false, 1.f);
-		}
-		if (StageT >= MissSeconds)
-		{
-			bFailing = true;
-			static const FName Reasons[] = { TEXT("He missed the parry"), TEXT("He missed the block"), TEXT("He missed the counter") };
-			FailScene(Reasons[FMath::Clamp(PromptIndex, 0, 2)]);
-			SetStage(EScene7Stage::Done);
-		}
-		break;
-	}
-	case EScene7Stage::Fall:
-	{
-		if (StageT == DeltaSeconds)
-		{
-			BreakGlass();
-			Shot(TEXT("Fall"));
-			if (ATakeDirector* D = ATakeDirector::Get(this)) { D->BeginSlow(SlowFall, FallSlowScale, 0.05f); }
-			Stiletto->SetHiddenInGame(true);
-		}
-		const float FallT = 0.8f;
-		if (StageT <= FallT)
-		{
-			const float A = FMath::Clamp(StageT / FallT, 0.f, 1.f);
-			// Out through the glass, a short arc, then down onto the curtains.
-			FVector P = FMath::Lerp(PendletonFallFrom, LandSpot, A);
-			P.Z = FMath::Lerp(PendletonFallFrom.Z, LandSpot.Z, A * A) + 60.f * FMath::Sin(A * PI) * (1.f - A);
-			Puppet(Pendleton, P, 180.f);
-		}
-		if (At(FallT))
-		{
-			Puppet(Pendleton, LandSpot + FVector(0.f, 0.f, 25.f), 180.f);
-			CurtainHeap->SetHiddenInGame(false);
-			Cue(TEXT("sfx_s7_body_fall"));
-			if (ATakeDirector* D = ATakeDirector::Get(this)) { D->EndSlow(SlowFall, 0.2f); }
-		}
-		if (StageT >= FallSeconds * FallSlowScale + FallT) { SetStage(EScene7Stage::Cole); }
-		break;
-	}
-	case EScene7Stage::Cole:
-	{
-		if (StageT == DeltaSeconds)
-		{
-			Shot(TEXT("Cole"));
-			Cue(TEXT("sfx_s7_door_kick"));
-			Cole->SetHiddenInGame(false);
-			Act(Cole, TEXT("Walk"), true, 0.8f);
-			FaceVance(-90.f);
-		}
-		DoorSouthHinge->SetRelativeRotation(FRotator(0.f, -DoorOpenDegrees * Ease(StageT / 0.18f), 0.f));
-		if (StageT < 0.6f) { Puppet(Cole, FMath::Lerp(ColeDoor, ColeSpot, Ease(StageT / 0.6f)), 90.f); }
-		if (At(0.6f))
-		{
-			Puppet(Cole, ColeSpot, -90.f);
-			Act(Cole, TEXT("Punch"), false, 1.f);
-		}
-		if (At(0.85f))
-		{
-			Grenade->SetHiddenInGame(false);
-			Cue(TEXT("sfx_s7_smoke"));
-		}
-		if (StageT > 0.85f && StageT < 1.45f)
-		{
-			const float A = (StageT - 0.85f) / 0.6f;
-			FVector P = FMath::Lerp(ColeSpot + FVector(0.f, 0.f, 140.f), SmokeSpot, A);
-			P.Z += 80.f * FMath::Sin(A * PI);
-			Grenade->SetRelativeLocation(P);
-		}
-		if (At(1.45f))
-		{
-			Grenade->SetHiddenInGame(true);
-			bSmoke = true;
-			SmokeT = 0.f;
-			BurstAt(FireFX, W(SmokeSpot), 0.5f);
-		}
+		const float A = Ease(StageT / 1.3f);
+		PuppetWorld(Pendleton, FMath::Lerp(PendletonFrom, PendletonFightMark, A), VanceFightYaw + 180.f);
+		PuppetWorld(Bodyguard, FMath::Lerp(BodyguardFrom, BodyguardFightMark, A), VanceFightYaw + 180.f);
 		if (At(1.3f))
 		{
-			Puppet(Cole, ColeSpot, 90.f);   // the grenade gone down the stairs: he turns to Vance for the line
-			Act(Cole, TEXT("Talk"), true);
-			Say(TEXT("COLE"), ColeLine, FindS7Sound(TEXT("vo_s7_cole_move")));
+			Act(Pendleton, TEXT("Talk"), true);
+			Act(Bodyguard, TEXT("Idle"), true);
+			Say(TEXT("PENDLETON"), CaughtLine);
 		}
-		if (StageT >= ColeSeconds)
+		if (StageT >= CaughtSeconds)
 		{
+			if (V && V->GetCharacterMovement()) { V->GetCharacterMovement()->StopMovementImmediately(); }
+			if (V) { V->SetActorRotation(FRotator(0.f, VanceFightYaw, 0.f)); }
+			// s7-fight's part 3 takes it from here, on the same marks (our puppets hide at EndScene).
 			SetStage(EScene7Stage::Done);
-			SetFlag(TEXT("Canister"));
 			FinishScene();
 		}
 		break;
@@ -1104,16 +1025,13 @@ void AScene7Booth::TickScene(float DeltaSeconds)
 
 void AScene7Booth::StepFX(float Dt, float RealDt)
 {
-	// The reels turn while the projector runs (the master print until it comes off, the dummy once it's on).
-	if (!bFire)
+	// The reels turn while the projector runs (until the master print comes off).
+	if (!bSwapDone)
 	{
 		LowerReel->AddLocalRotation(ReelSpin * Dt);
-		if (SwapHeld <= 0.f && !bSwapDone) { MasterReel->AddLocalRotation(ReelSpin * Dt); }
-		if (bSwapDone) { DummyReel->AddLocalRotation(ReelSpin * Dt); }
+		if (SwapHeld <= 0.f) { MasterReel->AddLocalRotation(ReelSpin * Dt); }
+		LampSpill->SetIntensity(LampCandela * (0.85f + 0.15f * FMath::Sin(GetWorld()->GetTimeSeconds() * 151.f)));
 	}
-	// The lamp house flickers with the shutter.
-	LampSpill->SetIntensity(LampCandela * (0.85f + 0.15f * FMath::Sin(GetWorld()->GetTimeSeconds() * 151.f)));
-
 	if (bAlarmOn)
 	{
 		const double Now = FPlatformTime::Seconds();
@@ -1122,95 +1040,25 @@ void AScene7Booth::StepFX(float Dt, float RealDt)
 		StrobeB->SetIntensity((Phase >= 0.5f && Phase < 0.85f) ? StrobeIntensity * 0.7f : 0.f);
 		if (!AlarmAudio->IsPlaying()) { AlarmAudio->Play(); }
 	}
-	if (bFire)
-	{
-		FireLight->SetIntensity(30.f + 18.f * FMath::PerlinNoise1D(GetWorld()->GetTimeSeconds() * 9.f));
-		FireSpawnIn -= Dt;
-		if (FireSpawnIn <= 0.f)
-		{
-			FireSpawnIn = 0.45f;
-			BurstAt(FireFX, Magazine->GetComponentLocation() + FVector(0.f, 0.f, 20.f), 0.35f);
-		}
-	}
-	if (ShardT >= 0.f)
-	{
-		ShardT += Dt;
-		for (int32 i = 0; i < Shards.Num() && i < ShardVel.Num(); ++i)
-		{
-			ShardVel[i].Z -= 980.f * Dt;
-			Shards[i]->AddRelativeLocation(ShardVel[i] * Dt);
-			Shards[i]->AddRelativeRotation(FRotator(200.f * Dt, 0.f, 310.f * Dt));
-			if (Shards[i]->GetRelativeLocation().Z < LandSpot.Z) { Shards[i]->SetHiddenInGame(true); }
-		}
-		if (ShardT > 3.f) { ShardT = -1.f; }
-	}
-	if (bSmoke && SmokeT >= 0.f)
-	{
-		SmokeT += Dt;
-		for (int32 i = 0; i < SmokePuffs.Num(); ++i)
-		{
-			const float A = FMath::Clamp((SmokeT - 0.12f * i) / 2.f, 0.f, 1.f);
-			if (A <= 0.f) { continue; }
-			UStaticMeshComponent* P = SmokePuffs[i];
-			P->SetHiddenInGame(false);
-			const float Ang = i * 1.7f;
-			P->SetRelativeLocation(SmokeSpot + FVector(FMath::Cos(Ang) * 60.f * A, FMath::Sin(Ang) * 60.f * A, 40.f + 160.f * A + 20.f * i));
-			P->SetRelativeScale3D(FVector(0.3f + 2.2f * A));
-		}
-	}
 }
 
 void AScene7Booth::DrawSceneHud(UCanvas* Canvas)
 {
-	if (!Canvas) { return; }
+	if (!Canvas || Stage != EScene7Stage::Swap || bSwapActor) { return; }
 	FTakeHudKit Kit;
 	Kit.Begin(Canvas, FPlatformTime::Seconds(), 0.f);
 	const float CX = Kit.CX();
-
-	if (Stage == EScene7Stage::Approach)
-	{
-		const ATakeCharacter* V = GetPovCharacter();
-		const bool bNear = V && FVector::Dist2D(V->GetActorLocation(), W(UseSpot)) <= UseRadius;
-		const float Y = Kit.H * 0.80f;
-		if (bNear)
-		{
-			const float A = FMath::Clamp(SwapHeld / SwapHoldSeconds, 0.f, 1.f);
-			const FString Words = A > 0.f ? TEXT("SWAPPING THE REEL") : TEXT("HOLD: SWAP THE REEL");
-			const float TW = Kit.Measure(TakeStyle::EType::Line, Words);
-			const float KW = Kit.KeyWidth(TEXT("E"), false);
-			const float X0 = CX - (TW + KW + Kit.Px(16.f)) * 0.5f;
-			Kit.Key(TEXT("E"), X0, Y, FTakeInk::Of(TakeStyle::Paper, TakeStyle::Julian));
-			Kit.Text(TakeStyle::EType::Line, Words, X0 + KW + Kit.Px(16.f), Y, TakeStyle::Paper);
-			// The hold bar under it.
-			const float BW = Kit.Px(320.f), BH = Kit.Px(5.f);
-			Kit.Rect(CX - BW * 0.5f, Y + Kit.Px(30.f), BW, BH, TakeStyle::Ink * FLinearColor(1, 1, 1, 0.6f));
-			Kit.Rect(CX - BW * 0.5f, Y + Kit.Px(30.f), BW * A, BH, TakeStyle::Julian);
-		}
-		else if (GetSceneSeconds() < 12.f || SwapHeld <= 0.f)
-		{
-			Kit.Text(TakeStyle::EType::Goal, TEXT("The master print is in the projector's upper magazine."), CX, Y, TakeStyle::Bone, ETakeAlign::Centre);
-		}
-		return;
-	}
-
-	if (Stage == EScene7Stage::Prompt && PromptKeys.IsValidIndex(PromptIndex))
-	{
-		const float Limit = PromptRealSeconds + (FirstTry.IsValidIndex(PromptIndex) && FirstTry[PromptIndex] && GetRetakes() == 0 ? FirstPromptBonus : 0.f);
-		const float Left = FMath::Clamp(1.f - StageReal / Limit, 0.f, 1.f);
-		const float Pop = FMath::Clamp(StageReal / 0.12f, 0.f, 1.f);
-		const float Y = Kit.H * 0.62f;
-		const FString KeyText = PromptKeys[PromptIndex].GetDisplayName().ToString();
-		const FString Words = PromptWords.IsValidIndex(PromptIndex) ? PromptWords[PromptIndex] : TEXT("");
-
-		// A dark band, the key big in the centre, the move under it, and the time running out as a bar.
-		Kit.Rect(0.f, Y - Kit.Px(80.f), Kit.W, Kit.Px(170.f), TakeStyle::Ink * FLinearColor(1, 1, 1, 0.55f * Pop));
-		Kit.Push(FVector2D(CX, Y), 0.f, 1.6f + 0.6f * (1.f - Pop));
-		const float KW = Kit.KeyWidth(KeyText, false);
-		Kit.Key(KeyText, CX - KW * 0.5f, Y, FTakeInk::Of(TakeStyle::Paper, TakeStyle::Julian));
-		Kit.Pop();
-		Kit.Text(TakeStyle::EType::Title, Words, CX, Y + Kit.Px(58.f), TakeStyle::Paper, ETakeAlign::Centre);
-		const float BW = Kit.Px(420.f), BH = Kit.Px(6.f);
-		Kit.Rect(CX - BW * 0.5f, Y + Kit.Px(84.f), BW * Left, BH, Left < 0.35f ? TakeStyle::Danger : TakeStyle::Julian);
-		Kit.Text(TakeStyle::EType::Label, FString::Printf(TEXT("%d / 3"), PromptIndex + 1), CX, Y - Kit.Px(58.f), TakeStyle::Ash, ETakeAlign::Centre);
-	}
+	const float Y = Kit.H * 0.80f;
+	const float A = FMath::Clamp(SwapHeld / SwapHoldSeconds, 0.f, 1.f);
+	const FString Words = A > 0.f ? TEXT("SWAPPING THE REEL") : TEXT("HOLD: SWAP THE REEL");
+	const float TW = Kit.Measure(TakeStyle::EType::Line, Words);
+	const float KW = Kit.KeyWidth(TEXT("E"), false);
+	const float X0 = CX - (TW + KW + Kit.Px(16.f)) * 0.5f;
+	Kit.Key(TEXT("E"), X0, Y, FTakeInk::Of(TakeStyle::Paper, TakeStyle::Julian));
+	Kit.Text(TakeStyle::EType::Line, Words, X0 + KW + Kit.Px(16.f), Y, TakeStyle::Paper);
+	const float BW = Kit.Px(320.f), BH = Kit.Px(5.f);
+	Kit.Rect(CX - BW * 0.5f, Y + Kit.Px(30.f), BW, BH, TakeStyle::Ink * FLinearColor(1, 1, 1, 0.6f));
+	Kit.Rect(CX - BW * 0.5f, Y + Kit.Px(30.f), BW * A, BH, TakeStyle::Julian);
+	Kit.Text(TakeStyle::EType::Goal, TEXT("The master print is in the projector's upper magazine."), CX, Y - Kit.Px(44.f),
+		TakeStyle::Bone, ETakeAlign::Centre);
 }

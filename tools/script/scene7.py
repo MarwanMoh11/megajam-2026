@@ -1,15 +1,18 @@
-# Scene 7, INT. PROJECTION BOOTH (docs/SCRIPT.md). Owner: the s7-booth session. A tagged, re-runnable overlay on the
+# Scene 7 (docs/SCRIPT.md, docs/script/s7.md). Owner: s7-route (was s7-booth). A tagged, re-runnable overlay on the
 # built level (tag script_s7), run under the editor lock after the existing pipeline:
 #     "<engine python>" -I tools/ue_mcp.py py tools/script/scene7.py 110
 # The booth is the projection box over the lobby doors (build_auction.py BOOTH: x -1000..-760, y -200..800, floor
 # z 450). This overlay extends it east to x -600 under the catwalk head's grating, so it is a 4 m deep room:
 #   shell    floor, ceiling, the new front wall with the viewing glass's opening (frame) and the projector's port, the
-#            north wall with Pendleton's door, the south wall with the stairwell door (Cole), landings and steps down
+#            north wall with Pendleton's door, the south wall with the stair door, and the projectionist's stair: an
+#            enclosed flight from the south landing down to the hall floor (foot door at y -1140), lit inside
+#   cut      the hall's south wall opened at Scene 5's oak door (x 3580..3720) so Vance walks through it into the
+#            backstage corridor (the pieces it replaces are hidden and lose collision; s5's slab is tagged s7_oak_slab)
 #   drapes   crimson velvet under the booth's front: a pelmet and two legs to the hall floor (Pendleton lands below)
 #   dress    a work bench, a film shelf, cans and spare reels, a fire bucket, a notice
 #   hide     tags the old box's stairs, landing, front wall and ports "s7_hide": AScene7Booth hides them while Scene 7
 #            runs (nothing is hidden in the editor or in any other scene)
-#   scene    the AScene7Booth actor (needs the editor built with Scene7Booth) and its StartSpot
+#   scene    AScene7Route (part 0: the door and the walk) and AScene7Booth (part 2, tag Part=2) and their StartSpots
 #   shots    PNGs of the set into C:\Jam\Builds\script\s7
 # Switches: S7_PARTS (tuple of the names above) runs only those; S7_OFF = True only clears.
 import sys, importlib, math, os, re, traceback
@@ -20,7 +23,11 @@ import unreal
 
 TAG = "script_s7"
 HIDE_TAG = "s7_hide"
-PARTS = globals().get("S7_PARTS") or ("shell", "drapes", "dress", "hide", "scene", "shots")
+PARTS = globals().get("S7_PARTS") or ("shell", "drapes", "dress", "hide", "cut", "scene", "shots")
+CUT_TAG = "s7_cut"                  # a level piece this overlay hid to open the oak door's wall
+SLAB_TAG = "s7_oak_slab"            # Scene 5's closed door slab: AScene7Route hides it while the door swings
+OAK = (3580.0, 3720.0, 260.0)       # the oak door's opening: x0, x1, height (scene5_dress.py DX +- DW/2, DH)
+
 OFF = bool(globals().get("S7_OFF"))
 eal = unreal.EditorAssetLibrary
 eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
@@ -100,10 +107,34 @@ def shell():
     box("Landing_North", DOOR_X[0] - 20.0, X1, Y1 + T, Y1 + 220.0, F - 20.0, F, "floor")
     box("Landing_North_Wall", DOOR_X[0] - 20.0, X1, Y1 + 220.0, Y1 + 240.0, F - 20.0, CEIL, "wall")
     box("Landing_South", DOOR_X[0] - 20.0, X1, Y0 - 200.0, Y0 - T, F - 20.0, F, "floor")
-    for i in range(6):
-        y1 = Y0 - 200.0 - 30.0 * i
-        box("Stair_South", DOOR_X[0] - 20.0, X1, y1 - 30.0, y1, F - 20.0 - 25.0 * (i + 1), F - 25.0 * (i + 1), "floor")
-    box("Stair_South_Wall", DOOR_X[0] - 40.0, DOOR_X[0] - 20.0, Y0 - 400.0, Y0 - T, F - 180.0, CEIL, "wall")
+    # The projectionist's stair (s7-route): 25 risers of 18 cm, 28 cm treads, south from the landing to the hall
+    # floor, each step a solid block down to the floor; walls both sides, a roof, a door at the foot facing south.
+    sx0, sx1 = DOOR_X[0] - 20.0, X1                  # -760 .. -600
+    n, rise, run = 25, F / 25.0, 28.0
+    top_y = Y0 - 200.0                               # -400
+    for i in range(n - 1):
+        y1 = top_y - run * i
+        box("Stair_South", sx0, sx1, y1 - run, y1, 0.0, F - rise * (i + 1), "floor")
+    foot = Y0 - 940.0                                # -1140: the foot wall's inner face
+    for (lbl, a0, a1) in (("W", sx0 - T, sx0), ("E", sx1, sx1 + T)):
+        box("Stair_Wall_" + lbl, a0, a1, foot - T, Y0 - T, 0.0, CEIL, "wall")
+    box("Stair_Foot_W", sx0 - T, sx0 + 20.0, foot - T, foot, 0.0, CEIL, "wall")
+    box("Stair_Foot_E", sx1 - 20.0, sx1 + T, foot - T, foot, 0.0, CEIL, "wall")
+    box("Stair_Foot_Lintel", sx0 + 20.0, sx1 - 20.0, foot - T, foot, 230.0, CEIL, "wall")
+    for jx in (sx0 + 20.0, sx1 - 20.0):
+        box("Stair_Foot_Casing", jx - 4.0, jx + 4.0, foot - T - 4.0, foot + 4.0, 0.0, 236.0, "trim", collide=False)
+    box("Stair_Roof", sx0 - T, sx1 + T, foot - T, Y0 - T, CEIL, CEIL + 10.0, "trim", collide=False)
+    box("Sign_Projection", sx0 + 30.0, sx1 - 30.0, foot - T - 3.0, foot - T, 245.0, 270.0, "gold", collide=False)
+    for (ly, lz) in ((foot + 150.0, 300.0), (Y0 - 420.0, F + 230.0)):
+        lt = eas.spawn_actor_from_class(unreal.PointLight, unreal.Vector((sx0 + sx1) / 2, ly, lz), unreal.Rotator(0, 0, 0))
+        lt.set_actor_label("S7_Stair_Lamp")
+        lt.set_folder_path("Script/S7")
+        C._set_tags(lt, [TAG])
+        lc = lt.get_component_by_class(unreal.PointLightComponent)
+        lc.set_editor_property("intensity_units", unreal.LightUnits.CANDELAS)
+        lc.set_editor_property("intensity", 9.0)
+        lc.set_editor_property("attenuation_radius", 520.0)
+        lc.set_editor_property("light_color", unreal.Color(r=255, g=190, b=130, a=255))
     # The mag-lock Cole overrode in Scene 6 (matches s6's facade): a steel box west of the south door with a lit lamp,
     # a steel bar across the door's head and a conduit up to the ceiling.
     box("MagLock", DOOR_X[0] - 54.0, DOOR_X[0] - 10.0, Y0, Y0 + 8.0, F + 98.0, F + 162.0, "steel", collide=False)
@@ -160,24 +191,86 @@ def hide():
                 if HIDE_TAG not in ts:
                     C._set_tags(b, ts + [HIDE_TAG])
                 n += 1
-    return "hide: %d actors tagged %s" % (n, HIDE_TAG)
+    gone = 0
+    for a in eas.get_all_level_actors():
+        if re.match(r"^Booth_(Stair|Landing|Front|Port|Top)(_\d+)?$", a.get_actor_label()):
+            a.set_actor_hidden_in_game(True)
+            a.set_actor_enable_collision(False)
+            a.set_is_temporarily_hidden_in_editor(True)
+            gone += 1
+    return "hide: %d actors tagged %s; %d old-box pieces hidden for good" % (n, HIDE_TAG, gone)
+
+
+def cut():
+    """Open the hall's south wall at the oak door: hide the wall piece(s) there (no collision) and rebuild them around
+    the opening with the same material. Also tags Scene 5's slab and clears anything standing in the doorway."""
+    x0d, x1d, hd = OAK
+    out = []
+    for a in eas.get_all_level_actors():            # undo an earlier run first
+        if CUT_TAG in C.tags(a):
+            a.set_actor_hidden_in_game(False)
+            a.set_actor_enable_collision(True)
+            a.set_is_temporarily_hidden_in_editor(False)
+    for a in eas.get_all_level_actors():
+        lbl = a.get_actor_label()
+        if lbl.startswith("S7_") or lbl.startswith("Set_S7_"):
+            continue
+        o, e = a.get_actor_bounds(False)
+        bx = (o.x - e.x, o.x + e.x, o.y - e.y, o.y + e.y, o.z - e.z, o.z + e.z)
+        in_door = bx[0] < x1d - 5 and bx[1] > x0d + 5 and bx[2] < -1990 and bx[3] > -2060 and bx[4] < hd - 10 and bx[5] > 10
+        # The slab and everything mounted on it (panels, plates, the lever): they go when the door swings.
+        on_slab = any(k in lbl for k in ("Door_Slab", "Door_Panel", "Door_Moulding", "Door_KickPlate", "Door_PushPlate",
+                                         "Door_Escutcheon", "Door_Rose", "Door_Lever", "Door_Keyhole"))
+        if on_slab and in_door:
+            C._set_tags(a, list(set(C.tags(a) + [SLAB_TAG])))
+            out.append("slab " + lbl)
+            continue
+        if not in_door or not isinstance(a, unreal.StaticMeshActor):
+            continue
+        if not (lbl.startswith("Hall_South") or lbl.startswith("Dress_Batten") or lbl.startswith("Dress_")):
+            out.append("in the doorway, left: " + lbl)
+            continue
+        smc = a.static_mesh_component
+        m = smc.get_material(0)
+        a.set_actor_hidden_in_game(True)
+        a.set_actor_enable_collision(False)
+        a.set_is_temporarily_hidden_in_editor(True)
+        C._set_tags(a, list(set(C.tags(a) + [CUT_TAG])))
+        out.append("cut " + lbl)
+        if not lbl.startswith("Hall_South"):
+            continue
+        y0, y1, z0, z1 = bx[2], bx[3], bx[4], bx[5]
+        pieces = [(bx[0], x0d, z0, z1), (x1d, bx[1], z0, z1), (x0d, x1d, max(z0, hd), z1)]
+        for (a0, a1, b0, b1) in pieces:
+            if a1 - a0 < 1.0 or b1 - b0 < 1.0:
+                continue
+            w = C.spawn(CUBE, ((a0 + a1) / 2, (y0 + y1) / 2, (b0 + b1) / 2), 0.0,
+                        ((a1 - a0) / 100.0, (y1 - y0) / 100.0, (b1 - b0) / 100.0),
+                        tag=TAG, label="S7_OakWall", folder="Script/S7", collide=True, mat=m)
+    # The corridor side of the opening: a plain steel-trimmed frame, so the cut reads as a door from backstage too.
+    for jx in (x0d, x1d):
+        box("Oak_Back_Jamb", jx - 6.0, jx + 6.0, -2032.0, -2018.0, 0.0, hd + 8.0, "trim", collide=False)
+    box("Oak_Back_Head", x0d - 6.0, x1d + 6.0, -2032.0, -2018.0, hd, hd + 12.0, "trim", collide=False)
+    return "cut: " + "; ".join(out)
 
 
 def scene():
     if not hasattr(unreal, "Scene7Booth"):
         return "scene: AScene7Booth not in this editor build yet (skipped)"
     ox, oy, oz = ORIGIN
-    # Mid-booth facing the projector (-Y): the follow camera's 360 cm boom has ~4.7 m behind him to the north wall.
-    sp = eas.spawn_actor_from_class(unreal.TargetPoint, unreal.Vector(ox - 60.0, oy + 30.0, oz + 95.0),
-                                    unreal.Rotator(0.0, 0.0, -90.0))
+    # The projector mark (UseSpot), facing the projector (+X): part 0 walks him onto it; a cold Jump 702 lands there.
+    sp = eas.spawn_actor_from_class(unreal.TargetPoint, unreal.Vector(ox - 60.0, oy - 150.0, oz + 95.0),
+                                    unreal.Rotator(0.0, 0.0, 0.0))
     sp.set_actor_label("S7_StartSpot")
     sp.set_folder_path("Script/S7")
     C._set_tags(sp, [TAG])
     b = eas.spawn_actor_from_class(unreal.Scene7Booth, unreal.Vector(ox, oy, oz), unreal.Rotator(0.0, 0.0, 0.0))
     b.set_actor_label("S7_Booth")
     b.set_folder_path("Script/S7")
-    C._set_tags(b, [TAG])
+    C._set_tags(b, [TAG, "Part=2"])
     b.set_editor_property("start_spot", sp)
+    b.set_editor_property("slug", unreal.Text("INT. PROJECTION BOOTH - CONTINUOUS"))
+    REPORT.append(route())
     # Fit the projector model to ~175 cm tall, its back on the booth's old floor line.
     pc = b.get_editor_property("projector")
     sm = pc.get_editor_property("static_mesh")
@@ -200,6 +293,28 @@ def scene():
                 REPORT.append("reel %.0f %.0f %.0f -> scale %.2f" % (bb.max.x - bb.min.x, bb.max.y - bb.min.y, bb.max.z - bb.min.z, s))
     REPORT.append(tune(b))
     return "scene: S7_Booth placed"
+
+
+def route():
+    """AScene7Route (part 0): Vance on Scene 5's door mark facing the door; the leaf in s5's oak."""
+    if not hasattr(unreal, "Scene7Route"):
+        return "route: AScene7Route not in this editor build yet (skipped)"
+    sp = eas.spawn_actor_from_class(unreal.TargetPoint, unreal.Vector(3650.0, -1900.0, 95.0), unreal.Rotator(0.0, 0.0, -90.0))
+    sp.set_actor_label("S7_Route_StartSpot")
+    sp.set_folder_path("Script/S7")
+    C._set_tags(sp, [TAG])
+    r = eas.spawn_actor_from_class(unreal.Scene7Route, unreal.Vector(3650.0, -2010.0, 0.0), unreal.Rotator(0.0, 0.0, 0.0))
+    r.set_actor_label("S7_Route")
+    r.set_folder_path("Script/S7")
+    C._set_tags(r, [TAG])
+    r.set_editor_property("start_spot", sp)
+    oak = None
+    for a in eas.get_all_level_actors():
+        if SLAB_TAG in C.tags(a) and isinstance(a, unreal.StaticMeshActor) and "Door_Slab" in a.get_actor_label():
+            oak = a.static_mesh_component.get_material(0)
+    if oak:
+        r.set_editor_property("door_material", oak)
+    return "route: S7_Route placed (door material %s)" % (oak.get_name() if oak else "default")
 
 
 # Booth-space camera moves found in the PIE shots (from, to, fov), and the cast's Mixamo clips swapped for their
