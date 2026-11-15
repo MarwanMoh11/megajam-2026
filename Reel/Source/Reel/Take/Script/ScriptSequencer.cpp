@@ -10,6 +10,7 @@
 #include "TakePlayerController.h"
 #include "TakeCharacter.h"
 #include "TakeAudio.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogReelScript, Log, All);
 
@@ -209,6 +210,12 @@ void AScriptSequencer::JumpTo(int32 SceneNumber)
 	{
 		Dir->bScriptDriven = true;
 		if (Dir->Phase != ETakePhase::Rolling) { Dir->SetPhase(ETakePhase::Rolling); }
+		// A jump past the title card or the old end: everyone free to move again (the title card holds them).
+		for (ATakeCharacter* C : Dir->Characters)
+		{
+			UCharacterMovementComponent* Move = C ? C->GetCharacterMovement() : nullptr;
+			if (Move && Move->MovementMode.GetValue() == MOVE_None) { Move->SetMovementMode(MOVE_Walking); }
+		}
 	}
 	bStarted = true;
 	PendingStart = 0;

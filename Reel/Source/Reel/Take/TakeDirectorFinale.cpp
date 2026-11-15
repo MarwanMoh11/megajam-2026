@@ -597,11 +597,24 @@ void ATakeDirector::StepLook(float DeltaSeconds, bool bSnap)
 	}
 
 	// The making-of grade on B and C, from the frame of the cut press (the flight is seen in the look it lands in).
-	const float MakingOf = (bMakingOfSplit && GetLookCamera() != ETakeCamera::A) ? 1.f : 0.f;
+	const float MakingOf = ((bMakingOfSplit || bScriptDriven) && GetLookCamera() != ETakeCamera::A) ? 1.f : 0.f;
 	if (MakingOf != AppliedMakingOf)
 	{
 		GradeMID->SetScalarParameterValue(TEXT("MakingOf"), MakingOf);
 		AppliedMakingOf = MakingOf;
+		if (bScriptDriven)
+		{
+			// The script: Vance's 1970s thriller is warm, a touch faded, with the engine's grain on top of the
+			// overlay's; the crew's raw feed is neutral and clean.
+			FPostProcessSettings& Settings = LookVolume->Settings;
+			const bool bFilm = MakingOf < 0.5f;
+			Settings.bOverride_WhiteTemp = true;
+			Settings.WhiteTemp = bFilm ? 7400.f : 6500.f;
+			Settings.bOverride_ColorSaturation = true;
+			Settings.ColorSaturation = bFilm ? FVector4(0.88f, 0.88f, 0.88f, 1.f) : FVector4(1.f, 1.f, 1.f, 1.f);
+			Settings.bOverride_FilmGrainIntensity = true;
+			Settings.FilmGrainIntensity = bFilm ? 0.35f : 0.f;
+		}
 		TAKE_LOG(TEXT("LOOK grade %s"), MakingOf > 0.5f ? TEXT("making-of") : TEXT("film"));
 	}
 	if (bSnap)
