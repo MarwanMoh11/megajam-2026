@@ -77,6 +77,8 @@ namespace TakeChoice
 
 		if (!Caption.IsEmpty())
 		{
+			const float CapW = Kit.Measure(EType::Label, Caption) + Kit.Px(28.f);	// a plate: legible on a bright set
+			Kit.Rect(Kit.CX() - CapW * 0.5f, Top - Kit.Px(42.f), CapW, Kit.Px(32.f), FTakeHudKit::A(Ink, 0.78f));
 			Kit.Text(EType::Label, Caption, Kit.CX(), Top - Kit.Px(26.f), Bone, ETakeAlign::Centre);
 		}
 		const float RowW = CardW * N + Gap * (N - 1);
@@ -100,6 +102,8 @@ namespace TakeChoice
 		}
 		if (!Hint.IsEmpty())
 		{
+			const float HintW = Kit.Measure(EType::Tag, Hint) + Kit.Px(24.f);
+			Kit.Rect(Kit.CX() - HintW * 0.5f, BottomY + Kit.Px(9.f), HintW, Kit.Px(26.f), FTakeHudKit::A(Ink, 0.7f));
 			Kit.Text(EType::Tag, Hint, Kit.CX(), BottomY + Kit.Px(22.f), Silver, ETakeAlign::Centre);
 		}
 		return Top;
