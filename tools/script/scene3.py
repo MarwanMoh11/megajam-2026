@@ -3,7 +3,7 @@
 # (script_s3) and shows what it hid, then builds again. Run under the editor lock, after the existing pipeline:
 #     "<engine python>" -I tools/ue_mcp.py py tools/script/scene3.py 110
 # Switches: S3_OFF = True only clears. S3_SHOTS = True also writes stills to C:\Jam\Builds\script\s3.
-import sys, importlib, math
+import sys, importlib, math, os
 sys.path.insert(0, r"C:\Jam\megajam\tools\sets")
 import common as C
 importlib.reload(C)
@@ -25,7 +25,8 @@ REPORT = []
 # --- numbers (docs/script/s3.md) --------------------------------------------------------------------------------------
 STAIR_X0, STAIR_X1, STAIR_TOP = -2600.0, -1500.0, 450.0
 CRITIC = (-2420.0, 90.0, 180.0)                         # x, y, yaw: four steps up the grand stair, facing down it
-START = (-3020.0, 220.0, 0.0)                           # Vance in from the doors (feet; the spot is +96)
+START = (-3020.0, 220.0, 0.0)
+CRITIC_FROM = ("Cast_Guest_016", "Cast_Guest_012", "Cast_Guest_011")   # lobby tails guests                           # Vance in from the doors (feet; the spot is +96)
 GUARD_X = 2260.0                                        # between the general rows (end x 2130) and the rope (2400)
 GUARDS = (                                              # label, y0, y1 (a tight loop along the rope), s4 role tag
     ("S3_Guard_SouthArch", -1550.0, -1150.0, "S3_WestPillar"),
@@ -104,19 +105,24 @@ def piece(mesh, loc, rot_, scale, mat, label, collide=False):
 
 # --- the critic -------------------------------------------------------------------------------------------------------
 def critic():
+    """A copy of a dressed tails guest from the cast pipeline (a bare spawned CastMember has no look: an all-tint
+    mannequin), moved four steps up the stair with a coupe."""
     x, y, yaw = CRITIC
-    m = eas.spawn_actor_from_class(unreal.CastMember, unreal.Vector(x, y, stair_z(x, y)), unreal.Rotator(0.0, 0.0, yaw))
+    src = [a for a in C.actors() if isinstance(a, unreal.CastMember) and a.get_actor_label() in CRITIC_FROM
+           and TAG not in C.tags(a)]
+    src.sort(key=lambda a: CRITIC_FROM.index(a.get_actor_label()))
+    if src:
+        m = eas.duplicate_actor(src[0], C.world(), unreal.Vector(0.0, 0.0, 0.0))
+        m.set_actor_location_and_rotation(unreal.Vector(x, y, stair_z(x, y)), unreal.Rotator(0.0, 0.0, yaw), False, False)
+        came = src[0].get_actor_label()
+    else:
+        m = eas.spawn_actor_from_class(unreal.CastMember, unreal.Vector(x, y, stair_z(x, y)), unreal.Rotator(0.0, 0.0, yaw))
+        m.set_editor_property("kit", unreal.CastKit.GUEST_TAILS)
+        came = "a bare spawn"
     m.set_actor_label("S3_Critic")
-    m.set_editor_property("kit", unreal.CastKit.GUEST_TAILS)
-    m.set_editor_property("tint", unreal.LinearColor(0.34, 0.04, 0.10, 1.0))     # a plum velvet tailcoat
     m.set_editor_property("holds_glass", True)
-    for k, v in (("vary", False),):
-        try:
-            m.set_editor_property(k, v)
-        except Exception:                                       # noqa: BLE001
-            pass
     tag(m, ["NoSetLife"])
-    REPORT.append("critic at (%.0f, %.0f, %.0f)" % (x, y, stair_z(x, y)))
+    REPORT.append("critic at (%.0f, %.0f, %.0f), copied from %s" % (x, y, stair_z(x, y), came))
     return m
 
 
@@ -213,7 +219,6 @@ def scene(critic_actor, guards):
 
 
 def shots():
-    import os
     os.makedirs(OUT, exist_ok=True)
     REPORT.append(C.shot("s3_foyer_stair", (-3100.0, 500.0, 220.0), (-2400.0, 60.0, 160.0), fov=60.0, out_dir=OUT))
     REPORT.append(C.shot("s3_hall_ice", (-700.0, 0.0, 260.0), (1500.0, 0.0, 200.0), fov=70.0, out_dir=OUT))
