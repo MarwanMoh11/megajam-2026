@@ -1444,3 +1444,22 @@ A scene's last voice line used to play on into the next scene: the sequencer cle
 `Say` now plays its line through a tracked audio component. The line stops when the scene changes, burns for a retake,
 or the film ends (Scene 8's own "Print it." plays out). A cut inside a scene leaves it playing, so dialogue can run over
 a reverse shot. `Reel.Script.Jump N` while scene N has only just started no longer begins it twice.
+
+## Nov 15, 18:30-19:30 Cairo: the heroes' and featured NPCs' arms re-rigged (bones fitted to the mesh)
+- **What changed:** Marwan: the elbows went into the body and the forearms looked broken off the upper arms, so the
+  Mixamo clips looked wrong. A probe (`tools/rig_probe.py`: plain Manny beside the cast on the same clip and frame, shot
+  by a scene capture far under the level in play-in-editor) showed Manny playing every clip right, so the retarget was
+  fine. The fault was in the skinning: VERSION 5 of `tools/build_heroes.py` bent each Rodin mesh into the mannequin's
+  pose (a weighted swing at the shoulder, then the forearm turned again about the elbow and the sleeves re-weighted),
+  which crumpled the sleeves and left the forearms hanging off at the elbow. VERSION 6 never bends the mesh: it finds
+  each arm's centre line in the Rodin mesh, turns the upper-arm and forearm bones onto it (the bones keep the
+  mannequin's lengths), skins the mannequin to those bones and transfers the weights again, puts the mannequin hands on
+  the fitted wrists, and writes the bones into each mesh's reference pose with `SkeletonModifier`. The clips set
+  absolute bone rotations, so the arms still go exactly where Manny's go. The meshes are updated in place
+  (`tools/rebuild_heroes.py`), so no level or scene reference changed. Rebuilt: Julian, Maya, Vex and the nine
+  featured NPCs.
+- **What the agents did:** one Claude Opus 5.5 session, under the editor lock, between the scene sessions.
+- **What went wrong:** a principal-axis fit on the short, thick sleeve segments drifted (a 112-degree turn); a plot of
+  the arm vertices showed Rodin's pose has the forearms bent out level, and a slice-by-slice centre line fixed it.
+  Scene captures in play-in-editor needed the probe actors placed in the editor level first (Python can't spawn into
+  the play world) and the game's grade ignores exposure overrides, so the probe dims its own lights instead.

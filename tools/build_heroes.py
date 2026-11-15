@@ -21,7 +21,8 @@ Run inside the editor, under the editor lock:
   "<engine python>" -I tools/ue_mcp.py py tools/build_heroes.py 110
 NPCS (Nov 15) are built the same way into /Game/Take/Cast/NPCs/<Name>/SKM_NPC_<Name> from C:\\Jam\\Art\\Rodin\\npc_<name>;
 they get no hook-up here (tools/build_cast.py sets their HeroMesh), and one without a .glb yet is skipped.
-A wrapper may set HEROES_ONLY = ["Julian"] (build only those) or HEROES_FORCE = True (rebuild) and exec() this file.
+A wrapper may set HEROES_ONLY = ["Julian"] (build only those), HEROES_FORCE = True (rebuild) or HEROES_NO_HOOKUP = True
+(meshes updated in place: no level edit, no level save) and exec() this file.
 tools/sets/run_all.py runs it after the set overlays (it saves the level itself).
 """
 import math
@@ -30,7 +31,7 @@ import traceback
 
 import unreal
 
-VERSION = "5"                 # bump to rebuild every hero on the next run
+VERSION = "6"                 # bump to rebuild every hero on the next run
 SRC = r"C:\Jam\Art\Rodin"
 DEST = "/Game/Take/Cast/Heroes"
 SKELETON = "/Game/Characters/Mannequins/Meshes/SK_Mannequin"
@@ -76,6 +77,9 @@ HAND_SKIN_BACK = 0.0                # ...and the bare wrist skin up to this many
 HAND_SKIN_RADIUS = 4.3              # within this many cm of the forearm's axis (the cuff stands wider)
 HAND_RADIUS = 22.0                  # within this many cm of it (the generated hand's skin that the forearm carried)
 HAND_KEEP = 0.5                     # a mannequin vertex with at least this weight on the hand and fingers is hand
+BIND_TO_MESH = True                 # VERSION 6: the arm bones fitted to the generated mesh, which is never bent (the
+                                    # swings, FOREARM_ALIGN and ARM_REBONE below bent it, and the sleeves crumpled and
+                                    # the forearms broke away at the elbow); False: the VERSION 5 path
 FOREARM_ALIGN = True                # the generated forearms turned about the elbow onto the mannequin's forearm (its
                                     # reference pose bends the elbow forward; the generated arm hangs straight), so a
                                     # bent elbow carries the sleeve along the bone and the hand meets its cuff
@@ -485,7 +489,34 @@ def build(hero):
         set_positions(S, p2)
         recompute_normals(S)
 
-    # weights: posed mannequin -> generated mesh, with the mannequin's bones
+    if BIND_TO_MESH:
+        # VERSION 6: the generated mesh is never bent. Weights from the mannequin posed by its arm angle give each arm
+        # vertex its bone; the arm bones are then turned onto the generated arm's own axes; the mannequin is skinned
+        # to those bones and the weights transferred again, so the elbow's weights sit at the fitted elbow.
+        transfer(name, S, T, len(tp), infos, by_name, full=False)
+        R = ref_xforms(infos)
+        X = dict(R)
+        for side, piv, out in (("l", ua_l, out_l), ("r", ua_r, out_r)):
+            d = ang[side] if abs(ang[side]) >= ARM_MIN_DEG else 0.0
+            if d:
+                k = _unit(_cross((out[0], out[1], 0.0), (0.0, 0.0, 1.0)))
+                turn_subtree(X, subtree(infos, by_name["upperarm_" + side].index), qaxis(k, math.radians(d)), piv)
+        W0 = read_weights(T, len(tp))
+        if _G.get("HEROES_DUMP"):                               # the fit's inputs, for working on it outside the editor
+            import json
+            with open(os.path.join(_G["HEROES_DUMP"], name + "_fit.json"), "w") as f:
+                json.dump({"tp": tp, "W": [{str(k): v for k, v in w.items()} for w in W0], "X": {str(k): v for k, v in X.items()},
+                           "bones": {k: b.index for k, b in by_name.items()},
+                           "parent": {str(b.index): b.parent_index for b in infos}}, f)
+        fit_arms(name, tp, W0, infos, by_name, X)
+        set_positions(S, skin_points(sp, read_weights(S, len(sp)), R, X))
+        recompute_normals(S)
+        transfer(name, S, T, len(tp), infos, by_name, full=True)
+        if REAL_HANDS:
+            swap_hands(name, T, src_sk, fwd, X, R)
+        return finish(hero, name, path, stamp, T, src_sk, folder, infos, by_name, X, yaw, s, ang)
+
+    # (VERSION 5 and before) weights: posed mannequin -> generated mesh, with the mannequin's bones
     o = unreal.GeometryScriptTransferBoneWeightsOptions()
     o.set_editor_property("output_target_mesh_bones", unreal.OutputTargetMeshBones.SOURCE_BONES)
     o.set_editor_property("transfer_method", unreal.TransferBoneWeightsMethod.CLOSEST_POINT_ON_SURFACE)
@@ -547,18 +578,32 @@ def build(hero):
     if REAL_HANDS:
         swap_hands(name, T, src_sk, fwd)
 
-    # the skeletal mesh
+    return finish(hero, name, path, stamp, T, src_sk, folder, infos, by_name, None, yaw, s, ang)
+
+
+def finish(hero, name, path, stamp, T, src_sk, folder, infos, by_name, X, yaw, s, ang):
+    """The skeletal mesh: updated in place when it exists (the level's actors and the scenes keep their reference),
+    else created; with X, its arm bones set onto the generated arms."""
     mi = instance(hero, folder)
-    if EAL.does_asset_exist(path):
-        EAL.delete_asset(path)
-    co = unreal.GeometryScriptCreateNewSkeletalMeshAssetOptions()
-    co.set_editor_property("use_mesh_bone_proportions", True)
-    co.set_editor_property("enable_recompute_tangents", True)
-    co.set_editor_property("materials", {"Hero": mi})
-    skm = first(NA.create_new_skeletal_mesh_asset_from_mesh(T, EAL.load_asset(SKELETON), path, co),
-                unreal.SkeletalMesh)
+    skm = EAL.load_asset(path) if EAL.does_asset_exist(path) else None
+    if skm:
+        co = unreal.GeometryScriptCopyMeshToAssetOptions()
+        co.set_editor_property("enable_recompute_tangents", True)
+        co.set_editor_property("replace_materials", True)
+        co.set_editor_property("new_materials", [mi])
+        co.set_editor_property("new_material_slot_names", ["Hero"])
+        GA.copy_mesh_to_skeletal_mesh(T, skm, co, unreal.GeometryScriptMeshWriteLOD())
+    else:
+        co = unreal.GeometryScriptCreateNewSkeletalMeshAssetOptions()
+        co.set_editor_property("use_mesh_bone_proportions", True)
+        co.set_editor_property("enable_recompute_tangents", True)
+        co.set_editor_property("materials", {"Hero": mi})
+        skm = first(NA.create_new_skeletal_mesh_asset_from_mesh(T, EAL.load_asset(SKELETON), path, co),
+                    unreal.SkeletalMesh)
     if not skm:
-        raise RuntimeError("%s: CreateNewSkeletalMeshAssetFromMesh failed" % name)
+        raise RuntimeError("%s: no skeletal mesh written" % name)
+    if X is not None:
+        set_arm_bones(name, skm, infos, by_name, X)
     try:
         skm.set_editor_property("physics_asset", src_sk.get_editor_property("physics_asset"))
     except Exception:                                           # noqa: BLE001
@@ -567,8 +612,235 @@ def build(hero):
     EAL.save_asset(path, only_if_is_dirty=False)
     b = skm.get_bounds()
     log("%s: %s, %d verts, yaw %.0f, scale %.3f, arms %+.1f / %+.1f deg, %.0f cm tall" % (
-        name, path, len(tp), yaw, s, ang["l"], ang["r"], b.box_extent.z * 2))
+        name, path, len(positions(T)), yaw, s, ang["l"], ang["r"], b.box_extent.z * 2))
     return skm
+
+
+# --- bind to the mesh (VERSION 6) -------------------------------------------------------------------------------------------
+# Quaternions are (w, x, y, z) tuples; a bone's world transform is (t, q) with unit scale (the mannequins' bones are).
+def qmul(a, b):
+    return (a[0] * b[0] - a[1] * b[1] - a[2] * b[2] - a[3] * b[3],
+            a[0] * b[1] + a[1] * b[0] + a[2] * b[3] - a[3] * b[2],
+            a[0] * b[2] - a[1] * b[3] + a[2] * b[0] + a[3] * b[1],
+            a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0])
+
+
+def qconj(q):
+    return (q[0], -q[1], -q[2], -q[3])
+
+
+def qrot(q, v):
+    r = qmul(qmul(q, (0.0, v[0], v[1], v[2])), qconj(q))
+    return (r[1], r[2], r[3])
+
+
+def qaxis(k, ang):
+    s = math.sin(ang / 2)
+    return (math.cos(ang / 2), k[0] * s, k[1] * s, k[2] * s)
+
+
+def _sub(a, b):
+    return (a[0] - b[0], a[1] - b[1], a[2] - b[2])
+
+
+def _dot(a, b):
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+
+
+def _cross(a, b):
+    return (a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0])
+
+
+def _unit(a):
+    n = math.sqrt(_dot(a, a)) or 1.0
+    return (a[0] / n, a[1] / n, a[2] / n)
+
+
+def qfromto(a, b):
+    """The shortest rotation taking direction a onto direction b, and its angle in degrees."""
+    a, b = _unit(a), _unit(b)
+    k = _cross(a, b)
+    kl = math.sqrt(_dot(k, k))
+    ang = math.atan2(kl, _dot(a, b))
+    if kl < 1e-9:
+        return (1.0, 0.0, 0.0, 0.0), 0.0
+    return qaxis((k[0] / kl, k[1] / kl, k[2] / kl), ang), math.degrees(ang)
+
+
+def ref_xforms(infos):
+    out = {}
+    for b in infos:
+        t, r = b.world_transform.translation, b.world_transform.rotation
+        out[b.index] = ((t.x, t.y, t.z), (r.w, r.x, r.y, r.z))
+    return out
+
+
+def turn_subtree(X, idx, q, pivot):
+    """Every bone in idx turned by q about pivot (world space), in place."""
+    for i in idx:
+        t, r = X[i]
+        X[i] = (tuple(p + d for p, d in zip(pivot, qrot(q, _sub(t, pivot)))), qmul(q, r))
+
+
+def _dist(a, b):
+    d = _sub(a, b)
+    return math.sqrt(_dot(d, d))
+
+
+def medial(pts, origin, axis, radius=18.0, step=2.0, start=6.0):
+    """The arm's centre line: centroids of 2 cm slices across axis from origin (points within radius of the axis)."""
+    bins = {}
+    for p in pts:
+        d = _sub(p, origin)
+        t = _dot(d, axis)
+        if t >= start and _dot(d, d) - t * t <= radius * radius:
+            bins.setdefault(int(t // step), []).append(p)
+    return [tuple(sum(p[i] for p in v) / len(v) for i in range(3)) for _k, v in sorted(bins.items()) if len(v) >= 8]
+
+
+def along(poly, first_i, length, origin):
+    """The point on the centre line (from index first_i) at length from origin (straight on past its end), its index."""
+    prev = origin
+    for i in range(first_i, len(poly)):
+        if _dist(poly[i], origin) >= length:
+            a, b = (poly[i - 1] if i > first_i else prev), poly[i]
+            da, db = _dist(a, origin), _dist(b, origin)
+            t = max(0.0, min(1.0, (length - da) / ((db - da) or 1.0)))
+            return tuple(a[j] + (b[j] - a[j]) * t for j in range(3)), i
+    last = poly[-1]
+    d = _unit(_sub(last, poly[max(0, len(poly) - 4)]))
+    ext = max(0.0, length - _dist(last, origin))
+    return tuple(last[j] + d[j] * ext for j in range(3)), len(poly)
+
+
+def fit_arms(name, tp, W, infos, by_name, X):
+    """The upper arm and the forearm bones (and everything below them) turned about their joints onto the generated
+    arm's centre line: the elbow joint goes to the point on it the upper arm's length from the shoulder joint, the
+    wrist the forearm's length on from there (the bones keep the mannequin's lengths, which every clip carries), in
+    place on X. The generated arms are not straight (Rodin bends the elbows a little), so the line is followed."""
+    for side in ("l", "r"):
+        iu, il, ih = (by_name["%s_%s" % (b, side)].index for b in ("upperarm", "lowerarm", "hand"))
+        up_sub, lo_sub = subtree(infos, iu), subtree(infos, il)
+        sh, el, wr = X[iu][0], X[il][0], X[ih][0]
+        lu, lf = _dist(sh, el), _dist(el, wr)
+        arm = [p for p, w in zip(tp, W) if sum(x for k, x in w.items() if k in up_sub) >= 0.5]
+        axis = _unit(_sub(wr, sh))
+        poly = []
+        for _ in range(3):
+            poly = medial(arm, sh, axis)
+            if len(poly) < 6:
+                break
+            axis = _unit(_sub(poly[-1], sh))
+        if len(poly) < 6:
+            log("%s arm %s: %d slices on the arm: left alone" % (name, side, len(poly)))
+            continue
+        e2, i = along(poly, 0, lu, sh)
+        w2, _i = along(poly, i, lf, e2)
+        q1, d1 = qfromto(_sub(el, sh), _sub(e2, sh))
+        turn_subtree(X, up_sub, q1, sh)
+        el, wr = X[il][0], X[ih][0]
+        q2, d2 = qfromto(_sub(wr, el), _sub(w2, el))
+        turn_subtree(X, lo_sub, q2, el)
+        log("%s arm %s: upper arm turned %.1f deg, forearm %.1f deg onto the mesh's centre line (reaches %.0f cm, "
+            "bones %.0f cm)" % (name, side, d1, d2, _dist(poly[-1], sh), lu + lf))
+
+
+def skin_points(pts, W, ref, new):
+    """Linear blend skinning: pts (bound to ref) moved to the bones in new."""
+    D = {}
+    for i in new:
+        (tr, qr), (tn, qn) = ref[i], new[i]
+        if tr == tn and qr == qn:
+            continue
+        qd = qmul(qn, qconj(qr))
+        rt = qrot(qd, tr)
+        D[i] = (qd, (tn[0] - rt[0], tn[1] - rt[1], tn[2] - rt[2]))
+    out = []
+    for p, w in zip(pts, W):
+        if not any(k in D for k in w):
+            out.append(p)
+            continue
+        acc, tw = [0.0, 0.0, 0.0], 0.0
+        for k, x in w.items():
+            if k in D:
+                qd, td = D[k]
+                r = qrot(qd, p)
+                q = (r[0] + td[0], r[1] + td[1], r[2] + td[2])
+            else:
+                q = p
+            acc = [acc[i] + x * q[i] for i in range(3)]
+            tw += x
+        out.append(tuple(c / (tw or 1.0) for c in acc))
+    return out
+
+
+def transfer(name, S, T, n, infos, by_name, full=True):
+    """Bone weights S -> T (closest point; full: also the hybrid inpaint, smoothing and rigid fingers)."""
+    o = unreal.GeometryScriptTransferBoneWeightsOptions()
+    o.set_editor_property("output_target_mesh_bones", unreal.OutputTargetMeshBones.SOURCE_BONES)
+    o.set_editor_property("transfer_method", unreal.TransferBoneWeightsMethod.CLOSEST_POINT_ON_SURFACE)
+    BW.transfer_bone_weights_from_mesh(S, T, o, unreal.GeometryScriptMeshSelection())
+    if not full:
+        return
+    W = None
+    if TRANSFER == "hybrid":
+        Wc = read_weights(T, n)
+        o.set_editor_property("transfer_method", unreal.TransferBoneWeightsMethod.INPAINT_WEIGHTS)
+        o.set_editor_property("radius_percentage", INPAINT_RADIUS)
+        o.set_editor_property("normal_threshold", INPAINT_NORMAL)
+        o.set_editor_property("num_smoothing_iterations", 6)
+        o.set_editor_property("smoothing_strength", 0.4)
+        try:
+            BW.transfer_bone_weights_from_mesh(S, T, o, unreal.GeometryScriptMeshSelection())
+            W, kept = merge(Wc, read_weights(T, n), {b.index: b.parent_index for b in infos})
+            log("%s: inpainted weights kept on %d of %d vertices" % (name, kept, n))
+        except Exception as e:                                  # noqa: BLE001
+            W = Wc
+            log("%s: inpaint failed (%s): closest point only" % (name, e))
+    if SMOOTH_ITERS or W is not None:
+        smooth_weights(T, n, SMOOTH_ITERS, SMOOTH_STRENGTH, W)
+    if RIGID_FINGERS:
+        fingers = [unreal.Name(k) for k in by_name if any(f in k for f in ("thumb_", "index_", "middle_", "ring_",
+                                                                         "pinky_"))]
+        BW.prune_bone_weights(T, fingers, unreal.GeometryScriptPruneBoneWeightsOptions(),
+                              unreal.GeometryScriptBoneWeightProfile())
+
+
+def _ue_xf(t, q):
+    return unreal.Transform(unreal.Vector(*t), unreal.Quat(q[1], q[2], q[3], q[0]).rotator(), unreal.Vector(1, 1, 1))
+
+
+def _local(X, parent, child):
+    (tp_, qp), (tc, qc) = X[parent], X[child]
+    ic = qconj(qp)
+    return qrot(ic, _sub(tc, tp_)), qmul(ic, qc)
+
+
+def set_arm_bones(name, skm, infos, by_name, X):
+    """The skeletal mesh's reference pose: each upper arm and forearm as fitted (their children follow), the mesh left
+    where it is (the bind moves, not the skin)."""
+    mod = unreal.new_object(unreal.SkeletonModifier)
+    if not mod.set_skeletal_mesh(skm):
+        raise RuntimeError("%s: SkeletonModifier could not load the mesh" % name)
+    parent = {b.index: b.parent_index for b in infos}
+    for side in ("l", "r"):
+        for b in ("upperarm", "lowerarm"):
+            i = by_name["%s_%s" % (b, side)].index
+            t, q = _local(X, parent[i], i)
+            if not mod.set_bone_transform(unreal.Name("%s_%s" % (b, side)), _ue_xf(t, q), True):
+                raise RuntimeError("%s: could not set %s_%s" % (name, b, side))
+    mod.commit_skeleton_to_skeletal_mesh()                      # False ("no modification needed") when already so
+    # read back from the mesh: every fitted joint where it was meant to be
+    mod = unreal.new_object(unreal.SkeletonModifier)
+    mod.set_skeletal_mesh(skm)
+    worst = 0.0
+    for side in ("l", "r"):
+        for b in ("lowerarm", "hand"):
+            g = mod.get_bone_transform(unreal.Name("%s_%s" % (b, side)), True).translation
+            worst = max(worst, math.sqrt(sum(c * c for c in _sub((g.x, g.y, g.z), X[by_name["%s_%s" % (b, side)].index][0]))))
+    log("%s: arm bones set on the mesh's reference pose (joints within %.2f cm of the fit)" % (name, worst))
+    if worst > 0.5:
+        raise RuntimeError("%s: arm bones not set (%.1f cm off the fit)" % (name, worst))
 
 
 # --- real hands ------------------------------------------------------------------------------------------------------------
@@ -752,7 +1024,7 @@ def rebone_arms(name, T):
     log("%s arms: %d sleeve vertices weighted again along the arm bones" % (name, changed))
 
 
-def swap_hands(name, T, src_sk, fwd=(0.0, 1.0)):
+def swap_hands(name, T, src_sk, fwd=(0.0, 1.0), X=None, R=None):
     """The generated hands cut off where their weight is mostly hand_l/hand_r (T is in the mannequin's reference pose by
     now), the source mannequin's hands (reference pose, own finger weights) appended in their place, their UVs squeezed
     onto a skin texel of the generated hand so they take its colour, their material slot the generated mesh's."""
@@ -763,6 +1035,12 @@ def swap_hands(name, T, src_sk, fwd=(0.0, 1.0)):
     # the generated hand: the cut (hand-weighted; past a plane just short of the wrist; and the bare wrist skin, close
     # to the forearm's axis, back to HAND_SKIN_BACK, which the cuff stands clear of), and the skin point (the generated
     # skin nearest the wrist joint: the colour the cuff meets)
+    # X: the fitted bones (bind to the mesh) where the generated hand is cut and the mannequin's hand goes; R: the
+    # mannequin's reference pose, where its hand is taken from. Without them both are the bones' own.
+    def at(Xs, b):
+        if Xs is None:
+            return by_name[b].world_transform.translation
+        return unreal.Vector(*Xs[by_name[b].index][0])
     tp = positions(T)
     n = len(tp)
     W = read_weights(T, n)
@@ -770,8 +1048,8 @@ def swap_hands(name, T, src_sk, fwd=(0.0, 1.0)):
     wrists = []
     for side in ("l", "r"):
         arm = subtree(_infos, by_name["lowerarm_" + side].index)
-        h = by_name["hand_" + side].world_transform.translation
-        e = by_name["lowerarm_" + side].world_transform.translation
+        h = at(X, "hand_" + side)
+        e = at(X, "lowerarm_" + side)
         wrists.append((h.x, h.y, h.z))
         d = (h.x - e.x, h.y - e.y, h.z - e.z)
         dl = math.sqrt(sum(c * c for c in d))
@@ -813,8 +1091,8 @@ def swap_hands(name, T, src_sk, fwd=(0.0, 1.0)):
     hpos = positions(H)
     for side in ("l", "r"):                                     # and the wrist, up into the sleeve (no gap at the cuff)
         arm = subtree(_infos, by_name["lowerarm_" + side].index)
-        h = by_name["hand_" + side].world_transform.translation
-        e = by_name["lowerarm_" + side].world_transform.translation
+        h = at(R, "hand_" + side)
+        e = at(R, "lowerarm_" + side)
         d = (h.x - e.x, h.y - e.y, h.z - e.z)
         dl = math.sqrt(sum(c * c for c in d))
         for v in range(hn):
@@ -829,6 +1107,23 @@ def swap_hands(name, T, src_sk, fwd=(0.0, 1.0)):
         if not (keep[a] or keep[b] or keep[c]):
             drop.append(t)
     delete_tris(H, drop)
+    if X is not None:                                           # each hand onto its fitted hand bone, rigidly
+        hpos, HWk = positions(H), read_weights(H, len(positions(H)))
+        moves = {}
+        for side in ("l", "r"):
+            i = by_name["hand_" + side].index
+            (tr, qr), (tn, qn) = R[i], X[i]
+            qd = qmul(qn, qconj(qr))
+            rt = qrot(qd, tr)
+            moves[side] = (subtree(_infos, by_name["lowerarm_" + side].index), qd,
+                           (tn[0] - rt[0], tn[1] - rt[1], tn[2] - rt[2]))
+        out = []
+        for p, w in zip(hpos, HWk):
+            side = max(moves, key=lambda sd: sum(x for k, x in w.items() if k in moves[sd][0]))
+            _s, qd, td = moves[side]
+            r = qrot(qd, p)
+            out.append((r[0] + td[0], r[1] + td[1], r[2] + td[2]))
+        set_positions(H, out)
     # skin colour: every UV onto a small patch around the skin point; one material slot
     U = unreal.GeometryScript_UVs
     U.scale_mesh_u_vs(H, 0, unreal.Vector2D(HAND_UV_SPREAD, HAND_UV_SPREAD), unreal.Vector2D(0, 0),
@@ -895,7 +1190,7 @@ def main():
         except Exception:                                       # noqa: BLE001 (one hero must not stop the others)
             log("%s FAILED: %s" % (hero["name"], traceback.format_exc().strip().splitlines()[-1][:300]))
             unreal.log_error(traceback.format_exc())
-    if built and hook_up(built) and _G.get("__name__") != "set_overlay":
+    if built and not _G.get("HEROES_NO_HOOKUP") and hook_up(built) and _G.get("__name__") != "set_overlay":
         unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).save_current_level()
     return "\n".join(REPORT)
 
