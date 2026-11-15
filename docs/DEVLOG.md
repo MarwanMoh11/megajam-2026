@@ -1256,3 +1256,21 @@ animation, you can't move it or change it." He was looking at the searchlight on
   placement overlay, save. Lesson: no Live Coding while other sessions have unbuilt changes in Source.
 - **Not checked in play:** being seen (the SEEN fill and the retake), the alibi, the torches' sweep against the real
   walk, and the score and voices (the audio was not imported yet).
+
+### Nov 15, 14:30 Cairo: s1-marquee, Scene 1 playable (EXT. THE GRAND LUMIÈRE THEATER - NIGHT)
+- `AScene1Marquee` (Take/Script/Scene1Marquee.*) runs the script's beats from `Reel.Script.Jump 1`, checked in PIE
+  through `FinishScene`. Vance waits in the existing queue (`AQueueLine`, now with a script mode the scene drives). A
+  suited floor manager is spawned at the doors, whispers to the Bouncer (the queue's doorman) and hands him the palm
+  scanner. The Bouncer bolts it onto a podium at the door (a thud, the plate lights) and gives the "Magnetic cards are
+  void" directive, while Vance's forged VIP card insert gets stamped VOID and drops away on a two-frame composure
+  flicker. Guests at the plate: BEEP, green, in. Vance steps up: "Hand on the glass." → the cut to Scene 2.
+- Scene 2's end lives here too: `PalmAccepted()` (a red laser sweep, the chime, green, the arch opens, "Enjoy the
+  screening, Your Grace", Vance walks in) and `StageAtPlate()`. s2-van calls them by name, so neither scene includes
+  the other's header.
+- Street dressing by an opus-high helper (tools/script/scene1_dress.py): an Art Deco marquee THE GRAND LUMIÈRE with
+  chasing bulbs and a sunburst crown, a vertical blade sign, the posters re-lettered for *Le Soleil Noir*, neon BAR /
+  cocktails / HOTEL, procedural wet cobbles with puddles, and rain on 9 translucent planes. The level has no
+  SSR/Lumen, so the puddle reflections of the signs are faked in the material against the signs' rectangles.
+- What went wrong: the helper waited out a whole editor outage (restarts and a Live Coding crash). Its first run
+  failed on a factory property (`initial_parent`), which I fixed on the spot. My C++ was compile-checked in a copy of
+  the project (single-file UBT) before any shared restart, so it could not break anyone's build.
