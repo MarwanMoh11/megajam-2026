@@ -311,8 +311,6 @@ USkeletalMeshComponent* AScene8Car::Sitter(const TSoftObjectPtr<USkeletalMesh>& 
 	K->RegisterComponent();
 	AddInstanceComponent(K);
 	K->SetSkeletalMeshAsset(SM);
-	K->bForceMipStreaming = true;	// the mirror's capture doesn't drive texture streaming: his face came out blank skin
-	K->PrestreamTextures(30.f, true);
 	if (UAnimationAsset* A = Anim.IsNull() ? nullptr : Anim.LoadSynchronous()) { K->PlayAnimation(A, true); }
 	return K;
 }
