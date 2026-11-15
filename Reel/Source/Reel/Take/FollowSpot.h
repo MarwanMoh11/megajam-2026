@@ -145,6 +145,11 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Spot")
 	bool bBeamShadows = true;
 
+	/** The trace starts this far out from the lens, cm: the rail the lamp stands behind (and the lamp's own parts) do
+	 *  not stop the beam (the rail still throws its thin shadow). */
+	UPROPERTY(EditAnywhere, Category = "Take|Spot")
+	float BeamNearSkip = 150.f;
+
 	/** How far past the beam's end the light still reaches, cm (the floor round and behind the lit person). */
 	UPROPERTY(EditAnywhere, Category = "Take|Spot")
 	float BeamSpill = 300.f;

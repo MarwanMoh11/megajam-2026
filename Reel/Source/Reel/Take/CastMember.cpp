@@ -1900,8 +1900,12 @@ void ACastMember::StartCrewAct(ECastAct Act, bool bPoint, const FVector& Point)
 		}
 		++Acting.BaseSerial;
 	}
-	StartAct(Act, 0.f, bPoint, Point);
-	CrewActUntil = ActUntil + Acting.BlendOut;
+	if (Act != ECastAct::None)
+	{
+		StartAct(Act, 0.f, bPoint, Point);
+		CrewActUntil = ActUntil + Acting.BlendOut;
+	}
+	PushHeroRest();
 	if (!bCrewAct)
 	{
 		// The first frame is the character's pose already: no flash of the reference pose.
@@ -1954,7 +1958,7 @@ void ACastMember::TickCrew(float DeltaSeconds)
 	if (Director && Character && bHeadsetOnVoice && Kit != ECastKit::Julian && IsActingNow())
 	{
 		const float Left = Director->VoiceSecondsLeft();
-		if (Left > 0.f && VoiceLeftLast <= 0.f && Now >= NextHeadset && !bCrewAct && Director->GetLookCamera() == Character->Id)
+		if (Left > 0.f && VoiceLeftLast <= 0.f && Now >= NextHeadset && (!bCrewAct || Now >= CrewActUntil) && Director->GetLookCamera() == Character->Id)
 		{
 			StartCrewAct(ECastAct::Headset, false, FVector::ZeroVector);
 			NextHeadset = Now + 6.f;
@@ -1962,10 +1966,21 @@ void ACastMember::TickCrew(float DeltaSeconds)
 		VoiceLeftLast = Left;
 	}
 
+	// --- W3 cast2 --- a lead on a hero mesh keeps the copied body (the arms brought to rest over its animation).
+	const bool bKeep = WantsHeroRest();
+	if (bKeep && !bCrewAct)
+	{
+		StartCrewAct(ECastAct::None, false, FVector::ZeroVector);
+	}
+	else if (!bKeep && bCrewAct && Now >= CrewActUntil && Acting.Act == ECastAct::None)
+	{
+		EndCrewAct();
+	}
 	if (!bCrewAct)
 	{
 		return;
 	}
+	PushHeroRest();
 	const float Speed = Character ? static_cast<float>(Character->GetVelocity().Size2D()) : 0.f;
 	if (Acting.Act == ECastAct::Bow && Speed > BowCancelSpeed)
 	{
@@ -1974,9 +1989,23 @@ void ACastMember::TickCrew(float DeltaSeconds)
 	}
 	Acting.bActUpperBody = Speed > 20.f;
 	PushActing();
-	if (Now >= CrewActUntil)
+	if (Now >= CrewActUntil && !bKeep)
 	{
 		EndCrewAct();
 		TAKE_LOG(TEXT("CAST ACT END %s"), *GetActorNameOrLabel());
 	}
+}
+
+bool ACastMember::WantsHeroRest() const
+{
+	const ATakeCharacter* Character = Cast<ATakeCharacter>(GetAttachParentActor());
+	return bHeroRestArms && IsActingNow() && Character && !Character->HeroMesh.IsNull();
+}
+
+void ACastMember::PushHeroRest()
+{
+	const bool bOn = WantsHeroRest();
+	Acting.HeroArmIn = bOn ? HeroArmIn : 0.f;
+	Acting.HeroElbowBend = bOn ? HeroElbowBend : 0.f;
+	Acting.HeroPalmTurn = bOn ? HeroPalmTurn : 0.f;
 }

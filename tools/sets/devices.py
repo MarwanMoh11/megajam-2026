@@ -15,6 +15,7 @@
 # fresnel lanterns in place of the catwalk's lamp cans, the catwalk and platform edge tape hidden (note 18).
 # Nothing placed here collides: no sight line, camera probe or pawn ever meets it.
 import importlib
+import json
 import math
 import os
 import sys
@@ -50,7 +51,6 @@ ZONES_FILE = r"C:\Jam\megajam\tools\sets\hall_zones.json"
 
 def zones():
     try:
-        import json
         with open(ZONES_FILE, encoding="utf-8") as f:
             return json.load(f)
     except Exception:                                               # noqa: BLE001

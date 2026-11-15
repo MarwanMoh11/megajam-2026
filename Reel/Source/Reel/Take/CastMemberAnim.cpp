@@ -806,6 +806,30 @@ void FCastAnimProxy::ApplyLayers(FCompactPose& Pose)
 		return;
 	}
 
+	// --- W3 cast2 --- a hero lead's arms at rest over the character's own animation: the upper arms in toward the body,
+	// a little more bend at the elbow, the palms turned toward the thighs (mesh space: +X left, +Y forward).
+	if (FMath::Abs(A.HeroArmIn) + FMath::Abs(A.HeroElbowBend) + FMath::Abs(A.HeroPalmTurn) > 0.01f)
+	{
+		for (int32 Side = 0; Side < 2; ++Side)
+		{
+			const bool bLeft = Side == 1;
+			const int32 U = bLeft ? CastBone::UpperL : CastBone::UpperR;
+			const int32 Lo = bLeft ? CastBone::LowerL : CastBone::LowerR;
+			const int32 H = bLeft ? CastBone::HandL : CastBone::HandR;
+			if (!Rig.Has(U) || !Rig.Has(Lo) || !Rig.Has(H))
+			{
+				continue;
+			}
+			Rig.Turn(U, FVector(0.f, 1.f, 0.f), bLeft ? A.HeroArmIn : -A.HeroArmIn);
+			Rig.Turn(Lo, FVector(1.f, 0.f, 0.f), A.HeroElbowBend);
+			const FVector Along = (Rig.Loc(H) - Rig.Loc(Lo)).GetSafeNormal();
+			if (!Along.IsNearlyZero())
+			{
+				Rig.Turn(H, Along, bLeft ? A.HeroPalmTurn : -A.HeroPalmTurn);
+			}
+		}
+	}
+
 	const bool bActProc = A.bActing && CurAct != ECastAct::None && !CurClip && ActW > 0.001f;
 	const bool bLean = FMath::Abs(Lean[0]) + FMath::Abs(Lean[1]) + FMath::Abs(Lean[2]) > 0.05f;
 	if (!A.bBendSeat && A.Hold == ECastHold::None && !A.bPlayInstrument && !bActProc && LookW < 0.01f && !bLean)

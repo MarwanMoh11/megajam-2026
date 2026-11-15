@@ -122,6 +122,10 @@ struct FCastActing
 	/** --- W3 cast2 --- the built playing's hand targets moved by this (the actor's frame: forward, right, up; cm), so
 	 *  the hands meet the real prop (ACastMember::BandReach). */
 	FVector BandShift = FVector::ZeroVector;
+	/** --- W3 cast2 --- a hero lead's arms brought to rest (ACastMember::HeroArmIn...), degrees; 0 = off. */
+	float HeroArmIn = 0.f;
+	float HeroElbowBend = 0.f;
+	float HeroPalmTurn = 0.f;
 
 	/** A new BaseSerial cross-fades from the last pose (the base clip or the copied pose changed). */
 	int32 BaseSerial = 0;

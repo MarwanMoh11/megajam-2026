@@ -344,7 +344,7 @@ void AFollowSpot::UpdateBeam()
 		{
 			Params.AddIgnoredActor(User);
 		}
-		const FVector From = BeamStart + BeamDir * 10.0;
+		const FVector From = BeamStart + BeamDir * FMath::Clamp(static_cast<double>(BeamNearSkip), 10.0, AimLength * 0.5);
 		for (int32 Try = 0; World && Try < 6; ++Try)
 		{
 			FHitResult Result;

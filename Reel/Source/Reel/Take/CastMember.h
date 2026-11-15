@@ -336,6 +336,24 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Take|Cast|Bow")
 	float BowCancelSpeed = 60.f;
 
+	// --- W3 cast2 --- a lead on a hero mesh (Julian, Maya, Vex): its body is always a copy of the character's pose
+	// with the arms brought to rest over whatever the character plays. The generated jackets are wider than the
+	// mannequin, so the template idle left their arms held out from the body with the hands open.
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Hero")
+	bool bHeroRestArms = true;
+
+	/** The upper arms turned in toward the body, degrees. */
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Hero")
+	float HeroArmIn = 9.f;
+
+	/** The elbows bent a little more, degrees. */
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Hero")
+	float HeroElbowBend = 10.f;
+
+	/** The hands turned about the forearm so the palms face the thighs, degrees. */
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Hero")
+	float HeroPalmTurn = 30.f;
+
 	/** A crew member touches the headset when a voice line starts (the one the player is on). */
 	UPROPERTY(EditAnywhere, Category = "Take|Cast|Acting")
 	bool bHeadsetOnVoice = true;
@@ -385,6 +403,8 @@ private:
 	void TickOwnWalk(float DeltaSeconds);	// WalkTo and FaceYaw
 	void TickCrew(float DeltaSeconds);
 	void StartCrewAct(ECastAct Act, bool bPoint, const FVector& Point);
+	bool WantsHeroRest() const;		// W3 cast2
+	void PushHeroRest();
 	void EndCrewAct();
 
 	FVector HeadWorld() const;
