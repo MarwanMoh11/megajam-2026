@@ -694,6 +694,7 @@ void AScene6Backstage::Catch(FName Reason)
 		return;
 	}
 	Step = EStep::Caught;
+	if (UGuardBrainComponent* Brain = S6GuardBrain(G.Body)) { Brain->SetBrainActive(false); }	// Catch aims, not the brain
 	CaughtReason = Reason;
 	CaughtAge = 0.f;
 	G.Alert = 1.f;
@@ -779,6 +780,7 @@ void AScene6Backstage::StartChoke()
 {
 	ATakeCharacter* Cole = GetPovCharacter();
 	ACastMember* M = G.Body;
+	if (UGuardBrainComponent* Brain = S6GuardBrain(M)) { Brain->SetBrainActive(false); }	// the rig owns him now
 	SetupRigs();
 	if (!Cole || !M || !ColeRig.IsReady() || !GuardRig.IsReady())
 	{
