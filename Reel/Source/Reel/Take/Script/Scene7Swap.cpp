@@ -253,11 +253,13 @@ AScene7Swap::AScene7Swap()
 		Shots.Add(Name, S);
 	};
 	Add(TEXT("Wide"), FVector(-250.f, -300.f, 150.f), FVector(-235.f, -284.f, 150.f), FVector(-10.f, -45.f, 140.f), 21.f, 4.f, 3.f);
-	Add(TEXT("Door"), FVector(-2.f, -88.f, 158.f), FVector(-4.f, -82.f, 160.f), FVector(-6.f, -12.f, 180.f), 32.f, 2.f, 2.f);
-	Add(TEXT("Reel"), FVector(-62.f, -84.f, 170.f), FVector(-56.f, -76.f, 172.f), FVector(2.f, -4.f, 172.f), 35.f, 2.2f, 1.6f);
+	// The inserts look down into the open magazine from above his head (PIE Nov 15: at chest height his arm and shoulder
+	// filled the frame); the door swings out toward the lens, so they stay on his side of it.
+	Add(TEXT("Door"), FVector(-12.f, -78.f, 240.f), FVector(-8.f, -72.f, 236.f), FVector(-4.f, -10.f, 176.f), 24.f, 2.8f, 2.f);
+	Add(TEXT("Reel"), FVector(6.f, -82.f, 246.f), FVector(4.f, -74.f, 240.f), FVector(2.f, -4.f, 172.f), 26.f, 2.8f, 1.6f);
 	Add(TEXT("Turn"), FVector(70.f, -125.f, 135.f), FVector(60.f, -130.f, 135.f), FVector(0.f, 0.f, 8.f), 26.f, 2.8f, 2.f, false, false, TEXT("spine_05"));
 	Add(TEXT("Bench"), FVector(-6.f, -58.f, BenchTop + 82.f), FVector(-6.f, -54.f, BenchTop + 78.f), FVector(0.f, 8.f, BenchTop + 6.f), 26.f, 2.8f, 2.f, false, true);
-	Add(TEXT("Spindle"), FVector(-50.f, -28.f, 152.f), FVector(-46.f, -30.f, 154.f), FVector(2.f, -6.f, 178.f), 30.f, 2.f, 1.6f);
+	Add(TEXT("Spindle"), FVector(10.f, -58.f, 228.f), FVector(8.f, -52.f, 224.f), FVector(2.f, -4.f, 176.f), 35.f, 2.8f, 1.6f);
 	Add(TEXT("Can"), FVector(-24.f, -34.f, BenchTop + 62.f), FVector(-24.f, -30.f, BenchTop + 54.f), FVector(-24.f, 4.f, BenchTop + 2.f), 30.f, 2.8f, 1.4f, false, true);
 	Add(TEXT("Face"), FVector(125.f, -55.f, 158.f), FVector(62.f, -26.f, 160.f), FVector(0.f, 0.f, 3.f), 45.f, 1.8f, 2.1f, true, false, TEXT("head"), 50.f);
 }
