@@ -1486,7 +1486,7 @@ a reverse shot. `Reel.Script.Jump N` while scene N has only just started no long
 - Went wrong: Build.bat failed in another session's new header (GuardBrain.h, a UFUNCTION over an inherited
   SetActive); the architecture went in on the old DLL while it was fixed.
 
-## Nov 15, 20:45 Cairo: Scenes 1-2, Marwan's QA on the street and the van (s12-exterior)
+## Nov 15, 19:50 Cairo: Scenes 1-2, Marwan's QA on the street and the van (s12-exterior)
 - **Changed:** `tools/script/scene1_dress.py` gained two steps. Signs: the metre-wide QUEUE, INVITED GUESTS (two),
   PRESS and CREW ONLY boards from `build_auction.py` are hidden (visibility only) and each lane gets a real-size brass
   stanchion sign holder instead (a 32 x 22 cm card on a 1 m post). Cars: the kerb sedan at y 1000 sat right under
@@ -1498,4 +1498,4 @@ a reverse shot. `Reel.Script.Jump N` while scene N has only just started no long
 - **Checked in play:** `scene1_pie.py` and `scene2_pie.py` (prefix `s12`): the queue with the new signs, the street
   cross with no car under it, the van outside and Max's interior.
 - **Went wrong:** Rodin and Tripo both had 0 credits, so a generated van mesh was not possible; the van stays built
-  from shapes. The editor was held closed for the packaging run and Marwan's playtest until about 20:00.
+  from shapes. The editor was held closed for the packaging run and Marwan's playtest until about 19:40.
