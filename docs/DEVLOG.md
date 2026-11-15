@@ -1774,3 +1774,8 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
   Pendleton raises the pistol two-handed with his arms clearly there. Scene 8 opens on "Run! Follow Cole to the exit".
   Scene 6's crouch flips the HUD to "CROUCHED - silent" and drops the body. The script's crouch step had picked the
   camera pawn, so it now crouches the hero characters themselves.
+
+## Nov 15, 23:50 Cairo: guard brain hears the game's own crouch and run (stealth-ai)
+- The brain now reads `ATakeCharacter::IsCrouching()` and `IsRunning()` from chars-locomotion's hooks. Crouching makes
+  footsteps silent and shrinks the sight profile, and running carries 8 m and fills the meter x1.4. Before, it guessed
+  from `bIsCrouched` and speed alone. Compiled with Live Coding (23:43); not checked in PIE.

@@ -375,11 +375,31 @@ AActor* UGuardBrainComponent::GetTarget() const
 	return bAutoTargetPlayer ? GuardBrainPlayerBody(this) : nullptr;
 }
 
+// Running: the game's own run (held or forced) while moving, else plain speed over RunSpeed.
+static bool GuardBrainTargetRuns(const AActor* T, float Speed2D, float RunSpeedCm)
+{
+	if (const ATakeCharacter* TC = ::Cast<ATakeCharacter>(T))
+	{
+		if (TC->IsRunning() && Speed2D > 40.f)
+		{
+			return true;
+		}
+	}
+	return Speed2D > RunSpeedCm;
+}
+
 bool UGuardBrainComponent::TargetCrouched(const AActor* T) const
 {
 	if (!T)
 	{
 		return false;
+	}
+	if (const ATakeCharacter* TC = ::Cast<ATakeCharacter>(T))
+	{
+		if (TC->IsCrouching())
+		{
+			return true;
+		}
 	}
 	if (const ACharacter* C = ::Cast<ACharacter>(T))
 	{
@@ -467,7 +487,7 @@ void UGuardBrainComponent::Sense(float Dt)
 	NoiseClock -= Dt;
 	if (!bCrouch && Speed2D > 40.f && NoiseClock <= 0.f && State != EGuardState::Alert && State != EGuardState::Caught)
 	{
-		const float R = Speed2D > RunSpeed ? RunNoiseRange : WalkNoiseRange;
+		const float R = GuardBrainTargetRuns(T, Speed2D, RunSpeed) ? RunNoiseRange : WalkNoiseRange;
 		const float FD = static_cast<float>(FVector::Dist2D(TF, Feet()));
 		if (R > 0.f && FD < R && (FD < R * 0.5f || LineClear(E, Chest, T)))
 		{
@@ -524,7 +544,7 @@ void UGuardBrainComponent::Sense(float Dt)
 			{
 				Rate *= CrouchRate;
 			}
-			Rate *= Speed2D < 20.f ? StillRate : (Speed2D > RunSpeed ? RunRate : 1.f);
+			Rate *= Speed2D < 20.f ? StillRate : (GuardBrainTargetRuns(T, Speed2D, RunSpeed) ? RunRate : 1.f);
 			if (EdgyLeft > 0.f)
 			{
 				Rate *= EdgyRate;
