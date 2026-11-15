@@ -90,6 +90,19 @@ namespace
 		}
 		return C;
 	}
+
+	// The generated GT is a closed shell (its windows are only texture): the mirror camera sits inside it, so the body
+	// is hidden for the mirror shot and shown again on a reset. Only a body whose mesh loaded is shown.
+	void ShowCarBody(AActor* Car, bool bShow)
+	{
+		if (!Car) { return; }
+		TArray<UStaticMeshComponent*> Parts;
+		Car->GetComponents(Parts);
+		for (UStaticMeshComponent* M : Parts)
+		{
+			if (M && M->GetFName() == TEXT("Body") && M->GetStaticMesh()) { M->SetVisibility(bShow); }
+		}
+	}
 }
 
 AScene8Alley::AScene8Alley()
@@ -280,6 +293,7 @@ void AScene8Alley::ResetScene()
 	if (Car)
 	{
 		Car->SetActorHiddenInGame(false);
+		ShowCarBody(Car, true);
 		PoseCar(ArrivePath, 0.f, 0.f);
 		Car->SetFlare(0.f);
 		Car->SetDoorOpen(0.f);
@@ -358,6 +372,7 @@ void AScene8Alley::Enter(EScene8Beat NewBeat)
 		break;
 	case EScene8Beat::Mirror:
 		SeatVance();
+		ShowCarBody(Car, false);
 		if (Car) { Car->SetRiders(false, true); }
 		if (USoundBase* L = Load(InteriorLoop)) { Interior = UGameplayStatics::SpawnSound2D(this, L, 0.8f); }
 		CutTo(EScriptPov::Vance, MirrorCam);
@@ -379,8 +394,8 @@ void AScene8Alley::SeatVance()
 	const FVector Seat = Car->GetPassengerSeatWorld();
 	Vance->SetActorLocationAndRotation(Seat + FVector(0.f, 0.f, Half - SeatDrop),
 		FRotator(0.f, Car->GetActorRotation().Yaw, 0.f), false, nullptr, ETeleportType::TeleportPhysics);
-	// The rear-view mirror looks back at his face (about 70 cm over the hips).
-	const FVector Face = Seat + FVector(0.f, 0.f, 72.f);
+	// The rear-view mirror looks back at his eyes (about 60 cm over the seat).
+	const FVector Face = Seat + FVector(0.f, 0.f, 60.f);
 	if (MirrorCam)
 	{
 		MirrorCam->GetCameraComponent()->SetFieldOfView(MirrorFov);
@@ -408,7 +423,7 @@ void AScene8Alley::Shoot(const FVector& Target, float Miss)
 	MuzzleFlash->SetWorldLocation(Muzzle);
 	MuzzleFlash->SetVisibility(true);
 	MuzzleLight->SetWorldLocation(Muzzle);
-	MuzzleLight->SetIntensity(4000.f);
+	MuzzleLight->SetIntensity(1200.f);
 	MuzzleAge = 0.f;
 	if (GunshotSounds.Num() > 0) { PlayAt(GunshotSounds[FMath::RandRange(0, GunshotSounds.Num() - 1)], Muzzle); }
 
@@ -426,7 +441,7 @@ void AScene8Alley::Shoot(const FVector& Target, float Miss)
 		UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, Sys, HitW, Out, FVector(0.6f));
 	}
 	SparkLight->SetWorldLocation(HitW + Out.Vector() * 15.f);
-	SparkLight->SetIntensity(1500.f);
+	SparkLight->SetIntensity(600.f);
 	SparkAge = 0.f;
 	if (RicochetSounds.Num() > 0) { PlayAt(RicochetSounds[FMath::RandRange(0, RicochetSounds.Num() - 1)], HitW, 0.8f); }
 }
@@ -440,9 +455,9 @@ void AScene8Alley::TickScene(float DeltaSeconds)
 	// Flashes die in a few frames.
 	MuzzleAge += DeltaSeconds;
 	SparkAge += DeltaSeconds;
-	MuzzleLight->SetIntensity(MuzzleAge < 0.06f ? 4000.f : 0.f);
+	MuzzleLight->SetIntensity(MuzzleAge < 0.06f ? 1200.f : 0.f);
 	MuzzleFlash->SetVisibility(MuzzleAge < 0.05f);
-	SparkLight->SetIntensity(FMath::Max(0.f, 1500.f * (1.f - SparkAge / 0.12f)));
+	SparkLight->SetIntensity(FMath::Max(0.f, 600.f * (1.f - SparkAge / 0.12f)));
 
 	// The car's run in: from the burst until it stops by the door.
 	if (Beat == EScene8Beat::Burst || Beat == EScene8Beat::Run)
@@ -568,7 +583,7 @@ void AScene8Alley::TickScene(float DeltaSeconds)
 		}
 		if (MirrorCam && Car && Vance)
 		{
-			const FVector Face = Car->GetPassengerSeatWorld() + FVector(0.f, 0.f, 72.f);
+			const FVector Face = Car->GetPassengerSeatWorld() + FVector(0.f, 0.f, 60.f);
 			const FVector Shake(0.f, FMath::Sin(BeatT * 31.f) * 0.35f, FMath::Sin(BeatT * 23.f) * 0.5f);
 			const FVector At = Car->GetMirrorWorld() + Shake;
 			MirrorCam->SetActorLocationAndRotation(At, (Face - At).Rotation());
@@ -602,8 +617,9 @@ void AScene8Alley::DrawSceneHud(UCanvas* Canvas)
 		// The goal and the fire closing in: a bar that drains over RunSeconds.
 		const float Left = FMath::Clamp(1.f - BeatT / RunSeconds, 0.f, 1.f);
 		const float BW = Kit.Px(420.f), BH = Kit.Px(8.f);
-		const float Y = Kit.PicBottom() - Kit.Px(70.f);
-		Kit.Text(TakeStyle::EType::Goal, TEXT("Get in the car"), Kit.CX(), Y - Kit.Px(30.f), TakeStyle::Paper,
+		// At the top of the picture, as in Scene 3, off the subtitle lane at the bottom.
+		const float Y = Kit.PicY + Kit.Px(62.f);
+		Kit.Text(TakeStyle::EType::Goal, TEXT("Get in the car"), Kit.CX(), Kit.PicY + Kit.Px(34.f), TakeStyle::Paper,
 			ETakeAlign::Centre);
 		Kit.Rect(Kit.CX() - BW * 0.5f, Y, BW, BH, FTakeHudKit::A(TakeStyle::Ink, 0.7f));
 		Kit.Rect(Kit.CX() - BW * 0.5f, Y, BW * Left, BH, Left < 0.3f ? TakeStyle::Danger : TakeStyle::Julian);
