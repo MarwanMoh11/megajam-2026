@@ -366,9 +366,8 @@ void AScene2Van::TickScene(float DeltaSeconds)
 		break;
 
 	case EScene2Phase::Vance:
-		bool bPalmDone = false;
-		if (bPalmCalled && PhaseAge > 0.5f) { CallScene1ByName(this, TEXT("IsPalmDone"), &bPalmDone, sizeof(bool)); }
-		if (bPalmDone || ConsumeFlag(FlagThrough) || PhaseAge >= Tune(TEXT("VanceTimeout"), bPalmCalled ? VanceTimeout : 3.f))
+		// Scene 1 sets S1PalmThrough once Vance has walked in through the gate (IsPalmDone is earlier: the chime)
+		if (ConsumeFlag(FlagThrough) || PhaseAge >= Tune(TEXT("VanceTimeout"), bPalmCalled ? VanceTimeout : 3.f))
 		{
 			SetPhase(EScene2Phase::Done);
 			FinishScene();
