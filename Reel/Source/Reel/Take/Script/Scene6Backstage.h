@@ -1,20 +1,35 @@
-// Scene 6, INT. BACKSTAGE CORRIDOR & RIGGING (Cole, raw feed). Owner: the s6-backstage session. docs/script/s6.md.
-// The vault room behind the hall's screen (x 4420..5300, y -1000..1000) is backstage: the film plays reversed on the
-// back of the screen, two ENFORCERS hold the way up to the booth door, a projectionist stands at the door.
-// Beats: (1) take Enforcer A down from behind, only while the film is loud (gunfight, explosion), and he goes in the
-// costume trunk; (2) pull the counterweight lever: the sandbag hits the thunder sheet and Enforcer B leaves the stairs
-// to look; (3) up the stairs, knock out the projectionist from behind; (4) the mag-lock override opens the booth door.
-// Everything here is self-run: the enforcers are ACastMembers this actor spawns and walks (no director watchers), the
-// props are level actors placed by tools/script/scene6.py and found by tag, the keys come through HandleSceneKey.
+// Scene 6, INT. BACKSTAGE (Cole, raw feed). Owner: the s6-backstage session. Marwan's QA, Nov 15 evening.
+// The old vault behind the hall's screen (x 4420..5300, y -1000..1000) is backstage: the film plays reversed on the
+// back of the screen, ONE enforcer guards the building's door-control box on the north wall.
+// Beats:
+//  1. SNEAK    Cole crouches (C or Ctrl, ATakeCharacter's crouch: slower, low, silent; standing footsteps carry), stays
+//              out of the guard's cone.
+//  2. LURE     the counterweight lever on the west wall drops a sandbag on the thunder sheet (east wall): the guard goes
+//              to look, his back to the room, for a long while; then he walks back to his post (the lever re-arms).
+//  3. TAKEDOWN from behind, E: a choke-hold, played by both bodies (Scene6Rig: Cole's and the guard's own meshes
+//              follow posed copies) on a side camera: the grab, the struggle, the sag, laid down.
+//  4. HIDE     E by the body: Cole drags him by the shoulders into the costume trunk; the lid shuts.
+//  5. RIG      out into the backstage corridor, E at the oak door's scanner (corridor side; Scene 5's door, Vance's way
+//              in, s7-route's part 0): panel off, wires bridged, sparks, its lamp green; an insert of the hall-side
+//              lamp going green. Flag S6DoorRigged.
+//  6. EXIT     west along the corridor, E at the prop store's door (s8-escape's route to the alley fire exit): its
+//              alarm box killed, the door wedged wide open. Flag S6ExitReady. The scene ends; off camera Cole is put
+//              on s7-route's mark by the oak door (EndMark), where Scene 7 part 0 picks him up.
+// The prop store door stands open in every other scene (the escape runs through it): Scene 6 shuts it on its start.
+// Everything is self-run: the guard is an ACastMember this actor spawns and walks, the props are level actors placed by
+// tools/script/scene6.py and found by tag, the keys come through HandleSceneKey.
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Script/ScriptScene.h"
+#include "Script/Scene6Rig.h"
 #include "Scene6Backstage.generated.h"
 
 class ACastMember;
+class ACameraActor;
 class UPointLightComponent;
 class UStaticMeshComponent;
+class UPoseableMeshComponent;
 class UMaterialInstanceDynamic;
 class USoundBase;
 
@@ -29,7 +44,7 @@ struct FS6Guard
 
 	FVector Home = FVector::ZeroVector;
 	float HomeYaw = 0.f;
-	float Range = 800.f;		// sight cone, cm
+	float Range = 1000.f;		// sight cone, cm
 	float HalfAngle = 40.f;		// degrees
 	float Alert = 0.f;			// 0..1, 1 = Cole is made
 	bool bDown = false;			// knocked out
@@ -52,79 +67,80 @@ public:
 	virtual bool HandleSceneKey(const FKey& Key, bool bPressed) override;
 	virtual void DrawSceneHud(UCanvas* Canvas) override;
 
-	// ---- the set (world points; tools/script/scene6.py may overwrite them) ----
+	// ---- the set (world points on the floor; tools/script/scene6.py writes them) ----
 
-	/** Enforcer A's patrol: walks between these two, pausing at each end. */
+	/** The guard's post by the door-control box, and the way he faces there. He scans ScanDegrees either side. */
 	UPROPERTY(EditAnywhere, Category = "Scene6|Set")
-	FVector PatrolA0 = FVector(4700.f, -620.f, 0.f);
+	FVector GuardPost = FVector(4850.f, 800.f, 0.f);
 	UPROPERTY(EditAnywhere, Category = "Scene6|Set")
-	FVector PatrolA1 = FVector(4700.f, 640.f, 0.f);
-	/** Enforcer B's post: the top of the stairs, facing down them. */
+	float GuardYaw = -90.f;
 	UPROPERTY(EditAnywhere, Category = "Scene6|Set")
-	FVector PostB = FVector(5120.f, 380.f, 250.f);
-	/** The projectionist at the booth door, his back to the stairs. */
+	float ScanDegrees = 35.f;
+	/** The counterweight lever (Cole's use point), the thunder sheet, the guard's lookout facing it. */
 	UPROPERTY(EditAnywhere, Category = "Scene6|Set")
-	FVector PostProjectionist = FVector(5000.f, 880.f, 250.f);
-	/** The costume trunk (where A is dragged), the lever's use point, the thunder sheet, B's lookout by it. */
+	FVector LeverPoint = FVector(4500.f, -450.f, 0.f);
 	UPROPERTY(EditAnywhere, Category = "Scene6|Set")
-	FVector TrunkPoint = FVector(4530.f, 360.f, 0.f);
+	FVector SheetPoint = FVector(5270.f, 560.f, 0.f);
 	UPROPERTY(EditAnywhere, Category = "Scene6|Set")
-	FVector LeverPoint = FVector(4520.f, -450.f, 0.f);
+	FVector LookoutPoint = FVector(5110.f, 520.f, 0.f);
+	/** The costume trunk's centre (the body goes in), and the side Cole stands on to drop him in. */
 	UPROPERTY(EditAnywhere, Category = "Scene6|Set")
-	FVector SheetPoint = FVector(4560.f, 920.f, 0.f);
+	FVector TrunkPoint = FVector(5230.f, 120.f, 0.f);
+	/** The oak door's scanner on the corridor side (its face, at chest height) and where Cole stands to work it. */
 	UPROPERTY(EditAnywhere, Category = "Scene6|Set")
-	FVector LookoutB = FVector(4700.f, 740.f, 0.f);
-	/** The mag-lock panel by the booth door (its lamp goes red to green), and the door's hinge side. */
+	FVector PanelPoint = FVector(3765.f, -2024.f, 140.f);
 	UPROPERTY(EditAnywhere, Category = "Scene6|Set")
-	FVector PanelPoint = FVector(4890.f, 990.f, 380.f);
-	/** The stair: x range, from (y0, z 0) up to (y1, StairTopZ); the landing runs on to the north wall. */
+	FVector PanelStand = FVector(3765.f, -2110.f, 0.f);
+	/** Where the scene leaves Cole (s7-route's part 0 starts with him here), facing EndYaw. */
 	UPROPERTY(EditAnywhere, Category = "Scene6|Set")
-	FVector2D StairX = FVector2D(5040.f, 5200.f);
+	FVector EndMark = FVector(3650.f, -2250.f, 0.f);
 	UPROPERTY(EditAnywhere, Category = "Scene6|Set")
-	FVector2D StairY = FVector2D(-200.f, 300.f);
+	float EndYaw = 90.f;
+	/** The prop store's door off the corridor (the escape's way out): where Cole stands, its alarm box (face). */
 	UPROPERTY(EditAnywhere, Category = "Scene6|Set")
-	FVector2D LandingX = FVector2D(4880.f, 5200.f);
+	FVector ExitStand = FVector(1700.f, -2500.f, 0.f);
 	UPROPERTY(EditAnywhere, Category = "Scene6|Set")
-	float StairTopZ = 250.f;
-
-	// ---- the film's soundtrack: loud moments are cover ----
-
-	/** One cycle of the film: quiet, a build (the warning), then loud. */
-	UPROPERTY(EditAnywhere, Category = "Scene6|Film")
-	float FilmPeriod = 9.f;
-	UPROPERTY(EditAnywhere, Category = "Scene6|Film")
-	float LoudStart = 6.f;
-	UPROPERTY(EditAnywhere, Category = "Scene6|Film")
-	float BuildSeconds = 1.5f;
-	/** The first cycle starts this far in, so the first loud moment comes ~4 s after the line. */
-	UPROPERTY(EditAnywhere, Category = "Scene6|Film")
-	float FilmOffset = 1.0f;
+	FVector ExitAlarmPoint = FVector(1800.f, -2590.f, 152.f);
+	/** The way out of the backstage room to the corridor (the HUD marker walks these, then the scanner). */
+	UPROPERTY(EditAnywhere, Category = "Scene6|Set")
+	TArray<FVector> RouteToExit = { FVector(4850.f, -1100.f, 0.f), FVector(4500.f, -2300.f, 0.f) };
+	/** The insert shot of Vance's door (Scene 5's oak door lamp): the camera's place and what it looks at. */
+	UPROPERTY(EditAnywhere, Category = "Scene6|Set")
+	FVector InsertCamAt = FVector(3560.f, -1700.f, 175.f);
+	UPROPERTY(EditAnywhere, Category = "Scene6|Set")
+	FVector InsertLookAt = FVector(3700.f, -1990.f, 130.f);
 
 	// ---- feel ----
 
 	UPROPERTY(EditAnywhere, Category = "Scene6|Feel")
-	float TakedownReach = 175.f;
+	float TakedownReach = 165.f;
 	/** Cole is "behind" when dot(guard forward, guard->Cole) is below this. */
 	UPROPERTY(EditAnywhere, Category = "Scene6|Feel")
-	float BehindDot = -0.15f;
+	float BehindDot = -0.25f;
 	UPROPERTY(EditAnywhere, Category = "Scene6|Feel")
-	float UseReach = 170.f;
-	/** Seconds in a cone until he's made (closer is faster). */
+	float UseReach = 175.f;
+	/** Seconds in his cone until Cole is made (closer is faster). */
 	UPROPERTY(EditAnywhere, Category = "Scene6|Feel")
-	float SpotSeconds = 0.7f;
+	float SpotSeconds = 0.9f;
+	/** His cone's reach is scaled by this while Cole crouches (low, in the dark). */
 	UPROPERTY(EditAnywhere, Category = "Scene6|Feel")
-	float PatrolSpeed = 140.f;
+	float CrouchSightScale = 0.6f;
+	/** Cole's footsteps carry this far while he walks upright (crouched: silent). Less while the guard is lured. */
 	UPROPERTY(EditAnywhere, Category = "Scene6|Feel")
-	float PatrolPause = 2.5f;
+	float HearRadius = 420.f;
 	UPROPERTY(EditAnywhere, Category = "Scene6|Feel")
-	float LureSpeed = 230.f;
+	float LuredHearRadius = 260.f;
 	UPROPERTY(EditAnywhere, Category = "Scene6|Feel")
-	float LureLookSeconds = 9.f;
-	/** The projectionist looks round every GlanceEvery s, for GlanceHold s. */
+	float ScanSeconds = 4.f;
 	UPROPERTY(EditAnywhere, Category = "Scene6|Feel")
-	float GlanceEvery = 6.5f;
+	float LureSpeed = 200.f;
 	UPROPERTY(EditAnywhere, Category = "Scene6|Feel")
-	float GlanceHold = 1.6f;
+	float LureLookSeconds = 15.f;
+	/** The takedown's length: grab, struggle, sag, laid down (s). */
+	UPROPERTY(EditAnywhere, Category = "Scene6|Feel")
+	float ChokeSeconds = 5.2f;
+	UPROPERTY(EditAnywhere, Category = "Scene6|Feel")
+	float DragSpeed = 150.f;
 
 	// ---- look ----
 
@@ -134,24 +150,41 @@ public:
 	/** The film's light on Cole's face: a flicker, flashes on the loud moments. */
 	UPROPERTY(VisibleAnywhere, Category = "Scene6|Look")
 	TObjectPtr<UPointLightComponent> FlickerLight;
-	/** The mag-lock's lamp (red, then green). */
+	/** The door-control box's lamp (red, then green). */
 	UPROPERTY(VisibleAnywhere, Category = "Scene6|Look")
 	TObjectPtr<UPointLightComponent> LockLamp;
+	/** The fire exit's alarm lamp (red, then off). */
+	UPROPERTY(VisibleAnywhere, Category = "Scene6|Look")
+	TObjectPtr<UPointLightComponent> AlarmLamp;
+	/** Sparks at the box while Cole bridges the wires. */
+	UPROPERTY(VisibleAnywhere, Category = "Scene6|Look")
+	TObjectPtr<UPointLightComponent> SparkLight;
+	/** The stunt rigs' hidden posed copies (Cole, the guard). */
+	UPROPERTY(VisibleAnywhere, Category = "Scene6|Look")
+	TObjectPtr<UPoseableMeshComponent> ColePose;
+	UPROPERTY(VisibleAnywhere, Category = "Scene6|Look")
+	TObjectPtr<UPoseableMeshComponent> GuardPose;
 	UPROPERTY(EditAnywhere, Category = "Scene6|Look")
 	TSoftObjectPtr<UMaterialInterface> FilmMaterial = TSoftObjectPtr<UMaterialInterface>(FSoftObjectPath(TEXT("/Game/Take/Pictures/M_OldFilm.M_OldFilm")));
 	UPROPERTY(EditAnywhere, Category = "Scene6|Look")
 	float FilmBrightness = 0.45f;
 	UPROPERTY(EditAnywhere, Category = "Scene6|Look")
 	float FlickerCandelas = 900.f;
+	/** The film's rhythm (only the look and the sound now): a cycle, its loud part from LoudStart. */
+	UPROPERTY(EditAnywhere, Category = "Scene6|Look")
+	float FilmPeriod = 9.f;
+	UPROPERTY(EditAnywhere, Category = "Scene6|Look")
+	float LoudStart = 6.f;
 
 	// ---- the moving props (engine cubes from scene6.py: they turn about an edge of the 100 cm cube) ----
 	UPROPERTY(EditAnywhere, Category = "Scene6|Props")
-	float LidOpenDegrees = -75.f;
+	float LidOpenDegrees = -80.f;
 	UPROPERTY(EditAnywhere, Category = "Scene6|Props")
 	float LeverPullDegrees = 60.f;
 	UPROPERTY(EditAnywhere, Category = "Scene6|Props")
-	float DoorOpenDegrees = -85.f;
-	/** How far the sandbag falls onto the thunder sheet, cm. */
+	float PanelOpenDegrees = -100.f;
+	UPROPERTY(EditAnywhere, Category = "Scene6|Props")
+	float ExitOpenDegrees = -88.f;
 	UPROPERTY(EditAnywhere, Category = "Scene6|Props")
 	float SandbagDrop = 170.f;
 
@@ -163,50 +196,77 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Scene6|Sound")
 	TArray<FName> TakedownCues = { TEXT("sfx_s6_choke"), TEXT("sfx_thud") };
 	UPROPERTY(EditAnywhere, Category = "Scene6|Sound")
+	TArray<FName> DragCues = { TEXT("sfx_s6_drag") };
+	UPROPERTY(EditAnywhere, Category = "Scene6|Sound")
 	TArray<FName> LeverCues = { TEXT("sfx_s6_lever"), TEXT("sfx_winch_release") };
 	UPROPERTY(EditAnywhere, Category = "Scene6|Sound")
 	TArray<FName> CrashCues = { TEXT("sfx_s6_thunder_sheet"), TEXT("sfx_banner_drop") };
 	UPROPERTY(EditAnywhere, Category = "Scene6|Sound")
+	TArray<FName> SparkCues = { TEXT("sfx_s6_spark"), TEXT("sfx_s6_maglock") };
+	UPROPERTY(EditAnywhere, Category = "Scene6|Sound")
 	TArray<FName> UnlockCues = { TEXT("sfx_s6_maglock"), TEXT("sfx_chime") };
 	UPROPERTY(EditAnywhere, Category = "Scene6|Sound")
-	TArray<FName> ColeOpenLine = { TEXT("vo_s6_cole_open") };
+	TArray<FName> AlarmOffCues = { TEXT("sfx_s6_alarm_off"), TEXT("sfx_s6_lever") };
 	UPROPERTY(EditAnywhere, Category = "Scene6|Sound")
-	TArray<FName> ColeDoorLine = { TEXT("vo_s6_cole_door") };
+	TArray<FName> WedgeCues = { TEXT("sfx_s6_wedge"), TEXT("sfx_s6_trunk") };
+	UPROPERTY(EditAnywhere, Category = "Scene6|Sound")
+	TArray<FName> ColeOpenLine = { TEXT("vo_s6_cole_one") };
+	UPROPERTY(EditAnywhere, Category = "Scene6|Sound")
+	TArray<FName> ColeSleepLine = { TEXT("vo_s6_cole_sleep"), TEXT("vo_s6_cole_onedown") };
+	UPROPERTY(EditAnywhere, Category = "Scene6|Sound")
+	TArray<FName> ColeRiggedLine = { TEXT("vo_s6_cole_rigged") };
+	UPROPERTY(EditAnywhere, Category = "Scene6|Sound")
+	TArray<FName> ColeExitLine = { TEXT("vo_s6_cole_exit") };
 	UPROPERTY(EditAnywhere, Category = "Scene6|Sound")
 	TArray<FName> EnforcerHuhLine = { TEXT("vo_s6_enforcer_what") };
 
+	// Test hooks (console commands in the .cpp).
+	void TestUse() { HandleSceneKey(EKeys::E, true); HandleSceneKey(EKeys::E, false); }
+	void TestCrouch(bool bOn);
+	void TestPlaceCole(const FVector& Feet, float Yaw);
+	FVector TestGuardFeet() const;
+	float TestGuardYaw() const;
+
 private:
-	enum class EStep : uint8 { Patrol, Dragging, Lever, Lured, Projectionist, Panel, Done, Caught };
+	enum class EStep : uint8 { Sneak, Choke, Down, Drag, ToPanel, Rigging, ToExit, Wedging, Done, Caught };
+	enum class EGuard : uint8 { Post, ToLook, Looking, Back };
 
-	EStep Step = EStep::Patrol;
+	EStep Step = EStep::Sneak;
 	float StepAge = 0.f;
+	EGuard GuardState = EGuard::Post;
+	float GuardAge = 0.f;
 
 	UPROPERTY(Transient)
-	FS6Guard A;
-	UPROPERTY(Transient)
-	FS6Guard B;
-	UPROPERTY(Transient)
-	FS6Guard P;
+	FS6Guard G;
 	bool bSpawned = false;
 
-	// A's patrol
-	int32 PatrolLeg = 1;	// walking toward PatrolA1 (1) or PatrolA0 (0)
-	float PauseLeft = 0.f;
-	// The drag into the trunk
-	FVector DragFrom = FVector::ZeroVector;
-	float DownAge = -1.f;	// A tipping over
-	// B's lure route
-	TArray<FVector> BRoute;
-	int32 BRouteIndex = 0;
-	float BLookLeft = 0.f;
-	bool bBReturning = false;
-	// The projectionist
-	float GlanceClock = 0.f;
-	bool bGlancing = false;
-	float PDownAge = -1.f;
-	// Being caught: who turned, and why
+	// The stunt rigs and the takedown's places
+	FS6Rig ColeRig;
+	FS6Rig GuardRig;
+	FVector ChokeAt = FVector::ZeroVector;	// the guard's feet when grabbed
+	FVector ChokeFwd = FVector::ForwardVector;
+	FVector ColeFrom = FVector::ZeroVector;
+	FVector ColeFromFwd = FVector::ForwardVector;
+	FS6Pose ColeStartPose;
+	FVector BodyAt = FVector::ZeroVector;	// the laid-down body's pelvis on the floor
+	FVector BodyHeadDir = FVector::ForwardVector;	// from his pelvis toward his head
+	TArray<FVector> DragPath;
+	float DragLen = 0.f;
+	float GaitPhase = 0.f;
+	int32 RouteIndex = 0;
+	FVector LastColeFeet = FVector::ZeroVector;
+	bool bColeCrouched = false;	// read from Cole every frame
+
+	// Cameras
+	UPROPERTY(Transient)
+	TObjectPtr<ACameraActor> StuntCam;
+	UPROPERTY(Transient)
+	TObjectPtr<ACameraActor> InsertCam;
+
+	// Being caught: why
 	FName CaughtReason;
 	float CaughtAge = 0.f;
+
 	// The props
 	UPROPERTY(Transient)
 	TObjectPtr<AActor> TrunkLid;
@@ -217,12 +277,17 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<AActor> Sheet;
 	UPROPERTY(Transient)
-	TObjectPtr<AActor> DoorLeaf;
-	FTransform LidHome, LeverHome, SandbagHome, SheetHome, DoorHome;
+	TObjectPtr<AActor> PanelCover;
+	UPROPERTY(Transient)
+	TObjectPtr<AActor> ExitLeaf;
+	UPROPERTY(Transient)
+	TObjectPtr<AActor> ExitWedge;
+	FTransform LidHome, LeverHome, SandbagHome, SheetHome, PanelHome, ExitHome, WedgeHome;
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> FilmMID;
-	float LeverAge = -1.f, CrashAge = -1.f, DoorAge = -1.f, LidAge = -1.f;
-	bool bLeverPulled = false, bUnlocked = false;
+	float LeverAge = -1.f, CrashAge = -1.f, LidAge = -1.f, PanelAge = -1.f, ExitAge = -1.f;
+	bool bLidOpen = false;
+	bool bLeverArmed = true;
 	float FlashLeft = 0.f;
 	FLinearColor FlashColor = FLinearColor::White;
 	int32 LastLoudCycle = -1;
@@ -232,38 +297,46 @@ private:
 	float ToastLeft = 0.f;
 
 	void SpawnCast();
-	ACastMember* SpawnOne(const FVector& At, float Yaw, uint8 Kit, const FString& Label, const FLinearColor& Tint);
 	void FindProps();
-	void PlaceGuardsHome();
-
-	// The film's clock: 0..1 loudness, the build before it, and which cue this cycle is.
-	float FilmT() const;
-	bool IsLoud() const;
-	bool IsBuilding() const;
-	bool CycleIsExplosion() const;
+	void PlaceGuardHome();
+	void SetupRigs();
+	void SetCrouch(bool bOn);
+	void FreezeCole(bool bFreeze);
+	void ViewStunt(bool bOn);
 
 	void StepFilm(float Dt);
-	void StepPatrolA(float Dt);
-	void StepDrag(float Dt);
-	void StepLure(float Dt);
-	void StepProjectionist(float Dt);
+	void StepGuard(float Dt);
+	void StepSight(float Dt);
 	void StepProps(float Dt);
-	void StepSight(FS6Guard& G, float Dt, bool bLooking);
-	void Catch(FS6Guard& G, FName Reason);
+	void StepChoke(float Dt);
+	void StepDown(float Dt);
+	void StepDrag(float Dt);
+	void StepRig(float Dt);
+	void StepWedge(float Dt);
+	void Catch(FName Reason);
 
 	bool TryUse();
-	bool IsBehind(const FS6Guard& G, const FVector& ColeAt) const;
-	bool CanSee(const FS6Guard& G, const FVector& ColeAt) const;
-	void KnockDown(FS6Guard& G);
-	float FloorZ(const FVector& At) const;
+	bool IsBehind(const FVector& ColeAt) const;
+	bool CanSee(const FVector& ColeAt) const;
+	bool ColeMovingUpright() const;
+	void StartChoke();
+	void StartDrag();
+	void Lure();
+	void SetExitOpen(float Alpha);
+
+	// Poses
+	FS6Pose GuardLying(float Lolled) const;
+	FS6Pose ColeCrouchWalk(const FVector& Feet, const FVector& Fwd, float Speed, float Drop) const;
+	void LegsWalk(FS6Pose& P, const FS6Rig& Rig, const FVector& Feet, const FVector& Fwd, float Phase, float Amp, float Spread) const;
+
 	static void TurnAboutEdge(AActor* Actor, const FTransform& Home, const FVector& HingeLocal, const FVector& AxisLocal, float Degrees);
-	class USoundBase* FindCue(const TArray<FName>& Cues);
+	USoundBase* FindCue(const TArray<FName>& Cues);
 	UPROPERTY(Transient)
 	TMap<FName, TObjectPtr<USoundBase>> CueCache;
 	TSet<FName> CueMissing;
-	FVector ColeDragFrom = FVector::ZeroVector;
 
-	FVector ColeLocation() const;
+	FVector ColeLocation() const;	// his feet
+	FVector ObjectivePoint() const;
 	void Play(const TArray<FName>& Cues, const FVector* At = nullptr, float Volume = 1.f);
 	void SayCue(const FString& Speaker, const FString& Line, const TArray<FName>& Cues);
 	void Flash(const FString& Text, float Seconds = 2.5f) { Toast = Text; ToastLeft = Seconds; }

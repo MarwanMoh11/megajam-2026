@@ -3,8 +3,10 @@
 # Re-runnable: clear(TAG) removes what the last run placed and shows what it hid.
 # The vault room behind the hall's screen (x 4420..5300, y -1000..1000, z 0..500) becomes backstage: the back of the
 # screen (AScene6Backstage's own plane, film mirrored), crates where Cole starts, a wardrobe, the costume trunk, the
-# counterweight lever and its cable to the sandbag over the thunder sheet, a stair (east) up to a landing and the booth
-# door with its mag-lock panel. The moving pieces are engine cubes tagged s6_* that the scene actor finds and turns.
+# counterweight lever and its cable to the sandbag over the thunder sheet (east wall), the door-control box (north
+# wall: dressing), and outside the room the oak door's scanner (corridor side) and the prop store's door (the escape's way out).
+# QA Nov 15 evening: one guard; the stairs, the landing and the booth door are gone.
+# The moving pieces are engine cubes tagged s6_* that the scene actor finds and turns.
 # Cover that hides Cole from the enforcers blocks the Visibility channel (their sight traces); nothing blocks the camera.
 import sys
 import importlib
@@ -130,7 +132,7 @@ def move(lead, others, x, y):
 
 move(r"Vault_Table(_\d+)?", [], 5120, -880)                     # the viewing table becomes the props table, SE corner
 move(r"Safe(_\d+)?", [r"Safe_Handle(_\d+)?"], 4930, -820)       # the safe out of the thunder sheet's corner
-move(r"Statue_Plinth(_\d+)?", [r"Statue(_\d+)?"], 5150, -650)   # the bust off the enforcer's lure route
+move(r"Statue_Plinth(_\d+)?", [r"Statue(_\d+)?"], 5200, -250)   # the bust off the fire exit and the lure route
 
 # --- 1. the back of the screen: black masking either side of the scene actor's film plane ----------------------------
 box("Mask_S", 4421, 4426, -1000, -500, 0, 500, "canvas_dk")
@@ -152,60 +154,59 @@ for i, y in enumerate((-20, 30, 80, 130)):                   # costumes on the r
 prop("Crate", (4450, 4600, 520, 680, 0, 165), 90, "Crate_North_A")
 prop("Roadcase", (4600, 4700, 560, 660, 0, 95), 0, "Roadcase_North", see=False)
 
-# --- 3. the costume trunk (the lid is the scene's: s6_trunk_lid, hinged on its west edge) ----------------------------
-prop("Roadcase", (4478, 4550, 290, 430, 0, 60), 90, "Trunk", see=False, mode="stretch")
-piece("Trunk_Lid", (4514, 360, 64), (144, 74, 8), "wood", rot=(0.0, 0.0, 90.0), tags=("s6_trunk_lid",))
+# --- 3. the costume trunk on the east wall (the lid is the scene's: s6_trunk_lid, hinged on its east edge) -------------
+prop("Roadcase", (5196, 5268, 50, 190, 0, 60), 90, "Trunk", see=False, mode="stretch")
+piece("Trunk_Lid", (5232, 120, 64), (144, 74, 8), "wood", rot=(0.0, 0.0, -90.0), tags=("s6_trunk_lid",))
 
-# --- 4. the counterweight lever on the west wall, its cable along the ceiling to the sandbag over the thunder sheet ---
+# --- 4. the counterweight lever on the west wall, its cable along the ceiling to the sandbag over the thunder sheet
+#        (east wall, north end: the guard turns his back on the room to look at it) ------------------------------------
 box("Lever_Plate", 4421, 4436, -490, -410, 70, 200, "steel")
 piece("Lever_Handle", (4456, -450, 150), (8, 8, 80), "tube", tags=("s6_lever_handle",))
 box("Lever_Knob", 4450, 4462, -456, -444, 186, 198, "black")
 box("Cable_Up", 4428, 4432, -452, -448, 200, 470, "black")
-box("Cable_Run", 4428, 4432, -450, 905, 468, 472, "black")
-box("Cable_Over", 4428, 4560, 903, 907, 468, 472, "black")
-box("Sheet_Batten", 4480, 4640, 930, 950, 475, 485, "batten")
-for x in (4500.0, 4620.0):
-    box("Sheet_Rope", x - 1, x + 1, 939, 941, 370, 475, "black")
-piece("Thunder_Sheet", (4560, 940, 260), (140, 3, 220), "steel", tags=("s6_sheet",))
-piece("Sandbag", (4560, 912, 440), (36, 30, 46), "canvas", tags=("s6_sandbag",))
-box("Sandbag_Rope", 4559, 4561, 911, 913, 463, 470, "black")
+box("Cable_Run_X", 4428, 5262, -452, -448, 468, 472, "black")
+box("Cable_Run_Y", 5258, 5262, -452, 562, 468, 472, "black")
+box("Sheet_Batten", 5250, 5270, 470, 650, 475, 485, "batten")
+for y in (490.0, 630.0):
+    box("Sheet_Rope", 5259, 5261, y - 1, y + 1, 370, 475, "black")
+piece("Thunder_Sheet", (5272, 560, 260), (3, 140, 220), "steel", tags=("s6_sheet",))
+piece("Sandbag", (5245, 560, 440), (30, 36, 46), "canvas", tags=("s6_sandbag",))
+box("Sandbag_Rope", 5244, 5246, 559, 561, 463, 470, "black")
 for i, (x, y) in enumerate(((4470, -560), (4505, -575), (4480, -600))):
     box("Floor_Sandbag_%d" % i, x - 18, x + 18, y - 14, y + 14, 0, 26, "canvas")
 
-# --- 5. the stair up (east), the landing, the booth door and its mag-lock ---------------------------------------------
-STEP_N, SX0, SX1, SY0, SY1, TOP = 10, 5040.0, 5200.0, -200.0, 300.0, 250.0
-for i in range(STEP_N):
-    y0 = SY0 + i * (SY1 - SY0) / STEP_N
-    box("Step_%02d" % i, SX0, SX1, y0, y0 + (SY1 - SY0) / STEP_N, 0, (i + 1) * TOP / STEP_N, "ply", collide=True)
-run = math.hypot(SY1 - SY0, TOP)
-pitch = math.degrees(math.atan2(TOP, SY1 - SY0))
-for x in (SX0 - 4, SX1 + 4):
-    piece("Stair_Rail", (x, (SY0 + SY1) / 2, TOP / 2 + 95), (run, 5, 5), "steel", rot=(0.0, pitch, 90.0), movable=False)
-    for y in (SY0 + 20, SY1 - 10):
-        box("Stair_Post", x - 3, x + 3, y - 3, y + 3, 0, TOP * (y - SY0) / (SY1 - SY0) + 100, "steel")
-box("Landing_Deck", 4880, 5200, 300, 990, 228, 250, "ply", collide=True, see=True)
-for (x, y) in ((4890, 310), (4890, 980), (5190, 980), (5190, 310), (5040, 645)):
-    box("Landing_Leg", x - 6, x + 6, y - 6, y + 6, 0, 228, "steel", collide=True)
-box("Landing_Rail_W", 4878, 4884, 300, 990, 340, 346, "steel")
-box("Landing_Rail_S", 4880, 5038, 297, 303, 340, 346, "steel")
-for y in (310.0, 530.0, 760.0, 980.0):
-    box("Landing_Post", 4878, 4884, y - 3, y + 3, 250, 346, "steel")
-box("Landing_Kick_W", 4878, 4884, 300, 990, 250, 262, "batten", see=True)
-box("Door_Dark", 4944, 5066, 996, 999, 250, 472, "black")
-box("Door_Post_W", 4932, 4944, 980, 1000, 250, 482, "wood")
-box("Door_Post_E", 5066, 5078, 980, 1000, 250, 482, "wood")
-box("Door_Lintel", 4932, 5078, 980, 1000, 472, 486, "wood")
-piece("Door_Leaf", (5005, 988, 361), (122, 6, 220), "wood", tags=("s6_door_leaf",))
-box("Door_Plate", 4985, 5025, 980, 984, 430, 448, "pewter")          # BOOTH - NO ADMITTANCE
-box("MagLock_Panel", 4868, 4912, 990, 998, 348, 412, "steel")
-box("MagLock_Bar", 4950, 5060, 984, 988, 466, 472, "tube")
-box("MagLock_Conduit", 4888, 4892, 994, 998, 412, 480, "black")
+# --- 5. the door-control box on the north wall (dressing: what the guard stands over) ---------------------------------
+box("Panel_Body", 4610, 4710, 975, 991, 100, 200, "steel")
+box("Panel_Face", 4612, 4708, 970, 975, 102, 198, "pewter")
+for x in (4625.0, 4660.0, 4695.0):
+    box("Panel_Conduit", x - 3, x + 3, 982, 988, 200, 480, "black")
+box("Panel_Plate", 4630, 4690, 984, 990, 210, 228, "tape")          # DOOR CONTROL - SECURITY ONLY
 
-# --- 6. light: a caged work light over the stair, a dim one at the door (the film light is the scene actor's) ---------
-light("Work_Stair", (5120, -80, 440), 55.0, 900.0, (255, 196, 140))
-light("Work_Door", (5000, 920, 470), 30.0, 500.0, (255, 180, 120))
+# --- 6. outside the room (agreed with s7-route and s8-escape, Nov 15 evening) -----------------------------------------
+# The oak door's scanner on the corridor side (Scene 5's door, hall south wall, opening x 3580..3720 at y -2020..-2000;
+# the door leaf and the wall cut are s7-route's): a box east of the opening behind s5's keypad, its cover the scene
+# swings open.
+box("Scanner_Body", 3722, 3768, -2030, -2020, 90, 160, "steel")
+piece("Scanner_Cover", (3745, -2033, 125), (46, 4, 70), "pewter", tags=("s6_panel_cover",))
+box("Scanner_Wires", 3727, 3763, -2034, -2031, 97, 153, "black")      # behind the cover
+box("Scanner_Conduit", 3742, 3748, -2028, -2022, 160, 300, "black")
+# The prop store's door off the corridor (opening x 1630..1770 in the wall y -2620..-2600; s8-escape's run goes through
+# it to the alley fire exit): a leaf hinged on its west jamb, placed shut; the scene keeps it open (88 deg into the prop
+# store, flat to the jamb) except during Scene 6. The alarm box east of the frame, the wedge at the open leaf's foot.
+leaf = piece("Exit_Leaf", (1700, -2610, 122), (138, 5, 244), "steel", tags=("s6_exit_leaf",))
+bar = piece("Exit_Bar", (1700, -2604, 100), (110, 5, 6), "tube")
+bar.attach_to_actor(leaf, "", unreal.AttachmentRule.KEEP_WORLD, unreal.AttachmentRule.KEEP_WORLD,
+                    unreal.AttachmentRule.KEEP_WORLD, False)
+box("Exit_Alarm", 1780, 1820, -2600, -2590, 128, 176, "steel")
+box("Exit_Alarm_Face", 1785, 1815, -2590, -2587, 134, 170, "tape")
+piece("Exit_Wedge", (1648, -2700, 5), (14, 24, 10), "wood", tags=("s6_exit_wedge",))
 
-# --- 7. Cole's mark and the scene actor -------------------------------------------------------------------------------
+# --- 7. light: work lights (the film light is the scene actor's) -----------------------------------------------------
+light("Work_East", (5120, -80, 440), 55.0, 900.0, (255, 196, 140))
+light("Work_Panel", (4720, 900, 450), 35.0, 600.0, (255, 180, 120))
+light("Work_Exit", (1760, -2480, 400), 30.0, 500.0, (255, 180, 120))
+
+# --- 8. Cole's mark and the scene actor -------------------------------------------------------------------------------
 start = eas.spawn_actor_from_class(unreal.TargetPoint, unreal.Vector(4680, -700, 100), unreal.Rotator(0, 0, 90))
 start.set_actor_label("Set_S6_StartSpot_Cole")
 start.set_folder_path("Sets/" + TAG)
@@ -218,8 +219,22 @@ if cls is not None:
     scene.set_folder_path("Sets/" + TAG)
     scene.set_editor_property("tags", [unreal.Name(TAG)])
     scene.set_editor_property("start_spot", start)
-    scene.set_editor_property("patrol_a0", unreal.Vector(4680, -320, 0))    # turns 1.2 m north of the crates
-    scene.set_editor_property("patrol_a1", unreal.Vector(4680, 640, 0))
+    V = unreal.Vector
+    for k, v in (("guard_post", V(4850, 800, 0)), ("lever_point", V(4500, -450, 0)), ("sheet_point", V(5270, 560, 0)),
+                 ("lookout_point", V(5110, 520, 0)), ("trunk_point", V(5232, 120, 0)),
+                 ("panel_point", V(3745, -2034, 125)), ("panel_stand", V(3745, -2115, 0)),
+                 ("end_mark", V(3650, -2250, 0)),
+                 ("exit_stand", V(1700, -2500, 0)), ("exit_alarm_point", V(1800, -2588, 152))):
+        try:
+            scene.set_editor_property(k, v)
+        except Exception as e:
+            LOG.append("no property %s (%s)" % (k, e))
+    for k, v in (("guard_yaw", -90.0), ("end_yaw", 90.0), ("exit_open_degrees", -88.0),
+                 ("route_to_exit", [V(4850, -1100, 0), V(4500, -2300, 0)])):   # the way out to the corridor
+        try:
+            scene.set_editor_property(k, v)
+        except Exception as e:
+            LOG.append("no %s (%s)" % (k, e))
 else:
     LOG.append("AScene6Backstage not compiled yet: set placed, no scene actor")
 
@@ -228,7 +243,11 @@ shots = []
 if SHOTS:
     shots.append(C.shot("s6_overview", (4460, -960, 470), (4950, 300, 120), fov=95.0, out_dir=OUT))
     shots.append(C.shot("s6_cole_start", (4600, -980, 170), (4700, 0, 150), fov=80.0, out_dir=OUT))
-    shots.append(C.shot("s6_stair_door", (4700, -150, 300), (5050, 800, 300), fov=85.0, out_dir=OUT))
+    shots.append(C.shot("s6_panel_guard", (4750, 300, 260), (4700, 950, 140), fov=80.0, out_dir=OUT))
+    shots.append(C.shot("s6_trunk_sheet", (4800, -200, 260), (5250, 350, 100), fov=85.0, out_dir=OUT))
+    shots.append(C.shot("s6_exit_propstore", (1850, -2300, 220), (1700, -2610, 100), fov=80.0, out_dir=OUT))
+    shots.append(C.shot("s6_scanner", (3820, -2250, 200), (3765, -2025, 140), fov=70.0, out_dir=OUT))
+    shots.append(C.shot("s6_plan", (4200, -1800, 2600), (4200, -1790, 0), fov=90.0, out_dir=OUT))
 
 "s6: removed %d, shown %d, hid %d (%s...), scene actor %s, shots %s, log %s" % (
     gone, shown, len(hidden), ", ".join(hidden[:4]), "placed" if scene else "MISSING", shots, LOG)

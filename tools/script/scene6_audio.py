@@ -39,6 +39,15 @@ SFX = [
     ("sfx_s6_maglock", 1.2, "A magnetic door lock releasing: an electric buzz, a heavy clunk of the bolt, a steel "
      "door unlatching", False),
     ("sfx_s6_trunk", 1.0, "A wooden costume trunk lid slammed shut on a heavy load, latches clicking", False),
+    # QA Nov 15 evening: the drag, the door-control box, the fire exit
+    ("sfx_s6_drag", 3.0, "A heavy unconscious man dragged by the shoulders across dusty wooden stage floorboards: cloth "
+     "scraping, shoe heels dragging, a man's effortful breathing, close", False),
+    ("sfx_s6_spark", 1.6, "Electrical wires bridged in an open security junction box: sharp crackling sparks, a short "
+     "buzz, a pop, close and dry", False),
+    ("sfx_s6_alarm_off", 1.0, "A fire door alarm box disarmed with a key: a click, a short descending electronic beep, "
+     "then silence", False),
+    ("sfx_s6_wedge", 1.4, "A heavy steel fire exit door pushed open a crack with a clunk of its push bar, then a "
+     "wooden wedge kicked hard under it, the door creaking to a stop", False),
 ]
 
 # id, character, voice key in tools/audio/manifest.VOICES, text, (stability, similarity, style)
@@ -48,6 +57,11 @@ VO = [
     ("vo_s6_cole_door", "COLE", "VEX", "Door's open. Make it quick.", (0.45, 0.8, 0.35)),
     ("vo_s6_enforcer_what", "ENFORCER", "SECURITY", "What the hell was that?", (0.35, 0.8, 0.5)),
     ("vo_s6_enforcer_hey", "ENFORCER", "SECURITY", "Hey! You!", (0.3, 0.8, 0.6)),
+    # QA Nov 15 evening: one guard, the door rig, the exit
+    ("vo_s6_cole_one", "COLE", "VEX", "One heavy on the door controls. Going dark.", (0.45, 0.8, 0.35)),
+    ("vo_s6_cole_sleep", "COLE", "VEX", "Sleep tight.", (0.5, 0.8, 0.3)),
+    ("vo_s6_cole_rigged", "COLE", "VEX", "Scanner's rigged. Vance, the door's yours.", (0.45, 0.8, 0.35)),
+    ("vo_s6_cole_exit", "COLE", "VEX", "Way out's wedged. Max, bring the car round back.", (0.45, 0.8, 0.35)),
 ]
 SFX_CREDITS = 200
 

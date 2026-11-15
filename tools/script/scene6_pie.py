@@ -2,7 +2,8 @@
 #   "$PY" -I tools/script/scene6_pie.py [prefix]        # default prefix "pie"
 #   "$PY" -I tools/script/scene6_pie.py --stop          # stop PIE (always before releasing the lock)
 # Starts PIE (if needed), presses through the title card, Reel.Script.Jump 6, then shoots: Cole behind the crates,
-# a loud moment through the screen, the room from the wardrobe, and walking into Enforcer B's view (a retake).
+# a loud moment through the screen, the room, and walking into the guard's view (a retake).
+# Prefix "chain...": the whole scene through the test hooks (lever, crouch, choke-hold, drag, rig, fire exit).
 import os, sys, time, json
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "sets"))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
@@ -16,27 +17,6 @@ def snap(s, name, prefix):
     res = L.tool(s, "SceneCaptureToolset.SceneCaptureToolset.CaptureGameViewport", WORLD)
     path = os.path.join(OUT, "%s_%s.png" % (prefix, name))
     print(name, L.save_image(res, path) and path, flush=True)
-
-
-P_YAW = """
-import unreal
-w = unreal.EditorLevelLibrary.get_game_world()
-y = [a.get_actor_rotation().yaw for a in unreal.GameplayStatics.get_all_actors_of_class(w, unreal.Actor)
-     if "S6_Projectionist" in [str(t) for t in a.tags]]
-str(round(y[0]) if y else 999)
-"""
-
-
-def wait_facing_door(s, tries=40):
-    """Poll the projectionist's yaw until he has faced the door (90) twice running: a glance is not starting."""
-    last = None
-    for _ in range(tries):
-        ok = '"returnValue":"90"' in L.py(s, P_YAW, 30)
-        if ok and last:
-            return True
-        last = ok
-        time.sleep(0.4)
-    return False
 
 
 def main():
@@ -54,26 +34,42 @@ def main():
         time.sleep(1.5)
     L.console(s, "Reel.Script.Jump 6")
     if prefix.startswith("chain"):                    # the whole scene through the test hooks
-        time.sleep(5.6)                               # into the first loud moment (scene t 5..8 s)
-        L.console(s, "Reel.S6.Behind A", "Reel.S6.Use")
-        time.sleep(0.5)
-        snap(s, "1_choke", prefix)
-        time.sleep(float(os.environ.get("S6_DRAG_WAIT", "9")))   # PIE in the background runs slow: the drag is ~3 s game time
-        snap(s, "2_trunk", prefix)
-        L.console(s, "TakeWarp 4525 -450 0", "TakeLook 180 0", "Reel.S6.Use")
-        time.sleep(1.2)
-        snap(s, "3_crash", prefix)
-        time.sleep(float(os.environ.get("S6_LURE_WAIT", "10")))
-        snap(s, "4_lured", prefix)
-        print("facing door:", wait_facing_door(s), flush=True)
-        L.console(s, "Reel.S6.Behind P", "Reel.S6.Use")
-        time.sleep(0.8)
-        snap(s, "5_projectionist", prefix)
-        L.console(s, "TakeWarp 4895 930 250", "TakeLook 90 5", "Reel.S6.Use")
-        time.sleep(1.5)
-        snap(s, "6_door", prefix)
-        time.sleep(8.0)
-        snap(s, "7_next", prefix)
+        k = float(os.environ.get("S6_SLOW", "1.0"))   # PIE in the background can run slow: scale the waits
+        time.sleep(3.0 * k)
+        snap(s, "01_start", prefix)
+        L.console(s, "Reel.S6.Goto lever", "Reel.S6.Use")
+        time.sleep(1.3 * k)
+        snap(s, "02_crash", prefix)
+        time.sleep(3.5 * k)
+        snap(s, "03_lured", prefix)
+        L.console(s, "Reel.S6.Crouch 1", "Reel.S6.Behind")
+        time.sleep(1.0 * k)
+        snap(s, "04_crouch_behind", prefix)
+        L.console(s, "Reel.S6.Use")
+        for i, t in enumerate((0.35, 1.0, 1.4, 1.3, 0.9, 1.2)):
+            time.sleep(t * k)
+            snap(s, "05_choke_%d" % i, prefix)
+        time.sleep(0.8 * k)
+        snap(s, "06_down", prefix)
+        L.console(s, "Reel.S6.Use")
+        for i, t in enumerate((0.8, 1.5, 1.5, 1.5)):
+            time.sleep(t * k)
+            snap(s, "07_drag_%d" % i, prefix)
+        time.sleep(1.0 * k)
+        snap(s, "08_hidden", prefix)
+        L.console(s, "Reel.S6.Goto panel", "Reel.S6.Use")
+        time.sleep(1.1 * k)
+        snap(s, "09_sparks", prefix)
+        time.sleep(1.6 * k)
+        snap(s, "10_insert", prefix)
+        time.sleep(2.2 * k)
+        L.console(s, "Reel.S6.Goto exit", "Reel.S6.Use")
+        time.sleep(1.8 * k)
+        snap(s, "11_exit", prefix)
+        time.sleep(1.2 * k)
+        snap(s, "12_wedged", prefix)
+        time.sleep(4.0 * k)
+        snap(s, "13_next", prefix)
         return
     time.sleep(3.0)
     snap(s, "1_start", prefix)
@@ -82,7 +78,7 @@ def main():
     L.console(s, "TakeWarp 4560 -60 0", "TakeLook 25 -5")
     time.sleep(1.5)
     snap(s, "3_room", prefix)
-    L.console(s, "TakeWarp 5120 -500 0", "TakeLook 90 5")
+    L.console(s, "TakeWarp 4850 200 0", "TakeLook 90 5")
     time.sleep(2.5)
     snap(s, "4_spotted", prefix)
 
