@@ -31,7 +31,7 @@ CRASH = (1960.0, -1520.0)               # the mess: at the West Pillar (the colu
 # Vance's lane: from the bar (where Max told him to hold) across the hall, between the two gap guards, through the
 # curtain, into the dark aisle. The last point is inside the auditorium.
 # It keeps west of the seated benches (x 1900-2100, y +-200..470), then takes the centre aisle to the gap.
-LANE = ((1250.0, -1330.0), (1650.0, -950.0), (1800.0, -120.0), (2300.0, -30.0), (2420.0, 0.0), (2720.0, 0.0))
+LANE = ((1450.0, -1320.0), (1700.0, -1080.0), (1540.0, -680.0), (1700.0, -150.0), (2300.0, -40.0), (2420.0, 0.0), (2720.0, 0.0))  # clears the bar column, the ice plinth (east) and the cocktail table (west); between the seat blocks
 # Nora's rigs (AScene4Catwalk builds them at play from these points). The lamp hangs under a pipe batten in front of
 # the East Door guard, lit on a harmless patch of floor until its clamp is loosened; the sandbag hangs on a batten
 # straight over the cart's latch; Nora's own catwalk runs under her camera.

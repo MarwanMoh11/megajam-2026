@@ -1654,3 +1654,11 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
 - The run hint isn't needed: Scene 8 forces Vance's run. Scene 6 shows "Crouch [C]". Scene 5 plays Pendleton's Speech act (s5).
 - `tools/chars_pie.py` gained `--lc` (Live Coding first), plus escape-run and crouch shots. Not run: a nine-deep editor
   queue after the reboot, and the code was already in the fresh DLL. Left for Marwan's QA.
+
+## Nov 15, ~22:45 Cairo: Scene 4 QA closed (s4-catwalk)
+- Marwan's three notes: the drone is gone, the catwalk devices are reworked, and Vance walks the shot without passing through props.
+  - **Drone:** the drone and its path points are removed from Lvl_Auction (`scene4.py remove_drone`). `build_auction.py` no longer spawns them. The C++ class stays and does nothing.
+  - **The devices read at a glance.** Nora's spotlight is a lamp on a clamp. Press 1 and the handle flies off, the lamp swings onto the east door's guard, and a beam and glare show what it hit. A dashed line shows beforehand where it will swing. The sandbag line works the same way. Press 2 and the bag drops onto the cart's brass latch, and the champagne rolls. The bird's-eye view draws the lane red where a guard watches it, and gold where it is clear. The devices work in either order, and the bulb's timer is the window. Cards now use hud-guidance's kit style (`TakeRigCard`).
+  - **Vance walks:** he moves on his own feet through his movement component, so his walk cycle plays (chars-locomotion's `UTakeLocoAnim`). The lane is re-laid to go around the bar column, the ice plinth and the cocktail table. A capsule sweep in `scene4.py` now reports only the electric-eye beam at the curtain. If something holds him for more than 0.5 s, he is stepped on along the lane.
+- Checked in one PIE pass: both devices fire, the cart crashes, the lane clears, and the tracking shot reaches the curtain.
+- **Not seen:** whether his feet slide or the step-on triggers at the beam, how the lamp swing feels, and how the cue sounds.

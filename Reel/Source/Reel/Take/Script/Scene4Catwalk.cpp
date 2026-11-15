@@ -10,6 +10,8 @@
 #include "TakeAudio.h"
 #include "TakeDirector.h"
 #include "TakeShapes.h"
+#include "TakeHudKit.h"
+#include "TakeRigCard.h"
 #include "TakeTypes.h"
 
 #include "Components/CapsuleComponent.h"
@@ -1553,6 +1555,8 @@ void AScene4Catwalk::DrawSceneHud(UCanvas* Canvas)
 	}
 
 	// A device's card: a leader from the rig to a box with its key, its name and what it does (or did).
+	FTakeHudKit Kit;
+	Kit.Begin(Canvas, FPlatformTime::Seconds(), 0.f);
 	auto Card = [&](const FVector& At, float DX, float DY, const FString& Key, const FString& Title, const FString& Line,
 		const FLinearColor& Col, float Bar)
 	{
@@ -1561,26 +1565,7 @@ void AScene4Catwalk::DrawSceneHud(UCanvas* Canvas)
 		{
 			return;
 		}
-		const float BW = 470.f * S;
-		const float BH = (Bar >= 0.f ? 92.f : 80.f) * S;
-		const FVector2D Box(FMath::Clamp(A.X + DX * S, 10.f * S, W - BW - 10.f * S), FMath::Clamp(A.Y + DY * S, 70.f * S, H - BH - 80.f * S));
-		HudLine(Canvas, A, FVector2D(Box.X + (DX < 0.f ? BW : 0.f), Box.Y + BH * 0.5f), FLinearColor(Col.R, Col.G, Col.B, 0.9f), 2.f * S);
-		HudRect(Canvas, A.X - 5.f * S, A.Y - 5.f * S, 10.f * S, 10.f * S, Col);
-		HudRect(Canvas, Box.X, Box.Y, BW, BH, FLinearColor(0.f, 0.f, 0.f, 0.72f));
-		HudRect(Canvas, Box.X, Box.Y, 5.f * S, BH, Col);
-		if (!Key.IsEmpty())
-		{
-			HudRect(Canvas, Box.X + 16.f * S, Box.Y + 12.f * S, 44.f * S, 34.f * S, Col);
-			HudText(Canvas, Key, Box.X + 38.f * S, Box.Y + 13.f * S, FLinearColor::Black, false, true);
-		}
-		const float TX = Box.X + (Key.IsEmpty() ? 18.f : 72.f) * S;
-		HudText(Canvas, Title, TX, Box.Y + 12.f * S, Col, false);
-		HudText(Canvas, Line, Box.X + 18.f * S, Box.Y + 50.f * S, FLinearColor(0.93f, 0.93f, 0.9f, 1.f), false);
-		if (Bar >= 0.f)
-		{
-			HudRect(Canvas, Box.X + 18.f * S, Box.Y + BH - 12.f * S, (BW - 36.f * S), 5.f * S, FLinearColor(1.f, 1.f, 1.f, 0.15f));
-			HudRect(Canvas, Box.X + 18.f * S, Box.Y + BH - 12.f * S, (BW - 36.f * S) * FMath::Clamp(Bar, 0.f, 1.f), 5.f * S, Col);
-		}
+		TakeRigCard::Draw(Kit, A, DX, DY, Key, Title, Line, Col, Bar);	// hud-guidance's kit-styled card (QA: "cards look ugly")
 	};
 
 	// [1] The spotlight.
