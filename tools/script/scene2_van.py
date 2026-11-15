@@ -157,7 +157,7 @@ FLAT = {   # linear base colour, roughness (on the hall's M_HallFlat)
     "Galv": ((0.30, 0.31, 0.32), 0.35), "Stem": ((0.04, 0.13, 0.03), 0.7), "Leaf": ((0.03, 0.09, 0.025), 0.75),
     "Petal": ((0.80, 0.78, 0.70), 0.6), "Pink": ((0.70, 0.35, 0.40), 0.6), "Stamen": ((0.60, 0.38, 0.04), 0.6),
     "CableBlk": ((0.02, 0.02, 0.02), 0.55), "CableRed": ((0.30, 0.02, 0.02), 0.5),
-    "CableYel": ((0.50, 0.38, 0.02), 0.5), "CableGry": ((0.16, 0.16, 0.16), 0.5), "Mat": ((0.035, 0.035, 0.03), 0.95),
+    "CableYel": ((0.50, 0.38, 0.02), 0.5), "CableGry": ((0.16, 0.16, 0.16), 0.5), "Mat": ((0.035, 0.035, 0.03), 0.95), "Grime": ((0.10, 0.085, 0.06), 0.9),
     "Vinyl": ((0.10, 0.045, 0.025), 0.45), "Red": ((0.45, 0.02, 0.02), 0.4), "Ink": ((0.05, 0.16, 0.12), 0.6),
 }
 GLOWS = {  # base, emissive, scale
@@ -361,6 +361,83 @@ def body():
               (x - 0.4, x + 0.4, Y1 - 330.0, Y1 - 50.0, 158.0, 159.5), M["Ink"])
 
 
+# --- the van, outside: the details that make the box read as a van (s12, Marwan's QA "make the van look better") ------
+def outside():
+    """Rounded roof and rear edges, the gutters, Max's roof antenna and dish, marker lamps, the cab step, mud flaps, a
+    road-grime band, the fuel cap and a hand-painted lily bouquet on each flank."""
+    cr, mi = M["Cream"], M["Mint"]
+    (wy0, wz0), (wy1, wz1) = WS
+    S = dict(shadow=True)
+    # the roof's long edges and the rear corners rounded: a cream roll over each sharp edge
+    for x in (X0 + 2.0, X1 - 2.0):
+        K.seg((x, wy1 + 2.0, ROOF - 5.0), (x, Y1 - 2.0, ROOF - 5.0), 14.0, cr, **S)
+    for x in (X0 + 2.0, X1 - 2.0):
+        K.seg((x, Y1 - 2.0, ZB + 2.0), (x, Y1 - 2.0, ROOF - 5.0), 12.0, cr, **S)
+    K.seg((X0 + 2.0, Y1 - 2.0, ROOF - 5.0), (X1 - 2.0, Y1 - 2.0, ROOF - 5.0), 14.0, cr, **S)
+    K.seg((X0 + 2.0, wy1 + 2.0, ROOF - 5.0), (X1 - 2.0, wy1 + 2.0, ROOF - 5.0), 14.0, cr, **S)
+    for x in (X0, X1):                                                           # a chrome bead at the roof line
+        K.seg((x, wy1 + 4.0, 214.0), (x, Y1 - 6.0, 214.0), 1.6, M["Chrome"])
+    # Max's rig on the roof: a vent, a whip antenna, a small dish aimed at the theatre, the cable down the back
+    K.box((CX - 30, CX + 30, Y1 - 160, Y1 - 110, ROOF, ROOF + 9), M["Steel"], **S)
+    K.box((CX - 32, CX + 32, Y1 - 162, Y1 - 108, ROOF + 9, ROOF + 11), M["Steel"])
+    ax, ay = X1 - 25.0, Y1 - 40.0
+    K.cyl(ax, ay, ROOF, ROOF + 6, 8.0, M["Black"])
+    K.seg((ax, ay, ROOF + 6), (ax + 6.0, ay + 4.0, ROOF + 150.0), 0.8, M["Chrome"])
+    dx, dy = X1 - 40.0, Y1 - 220.0
+    K.seg((dx, dy, ROOF), (dx, dy, ROOF + 30.0), 4.0, M["Steel"])
+    tx, ty = -3520.0 - dx, 320.0 - dy                                            # the dish looks at the scanner
+    n = math.hypot(tx, ty)
+    tx, ty = tx / n, ty / n
+    K.seg((dx - tx * 3.0, dy - ty * 3.0, ROOF + 38.0), (dx + tx * 3.0, dy + ty * 3.0, ROOF + 40.0), 46.0, M["Beige"],
+          m=SPH, **S)
+    K.seg((dx, dy, ROOF + 39.0), (dx + tx * 22.0, dy + ty * 22.0, ROOF + 41.0), 1.2, M["Steel"])
+    K.rope(sag((dx, dy, ROOF + 2.0), (X1 - 4.0, Y1 + 1.0, ROOF - 10.0), 3.0, 4), 1.2, M["CableBlk"])
+    K.rope([(X1 - 4.0, Y1 + 1.5, ROOF - 10.0), (X1 - 4.0, Y1 + 1.5, 140.0), (X1 - 10.0, Y1 + 1.5, 110.0)], 1.2,
+           M["CableBlk"])
+    for (x, s) in ((X0, -1.0), (X1, 1.0)):
+        skin = x + s * 1.2
+        # amber marker lamps fore and aft, a red one at the tail
+        K.box((skin - 0.8, skin + 0.8, Y0 + 30, Y0 + 40, 100.0, 106.0), M["Amber"])
+        K.box((skin - 0.8, skin + 0.8, Y1 - 14, Y1 - 4, 205.0, 211.0), M["Tail"])
+        K.box((skin - 0.8, skin + 0.8, Y1 - 280, Y1 - 270, 100.0, 106.0), M["Amber"])
+        # the road grime: a darker band along the sill
+        K.box((skin - 0.6, skin + 0.6, Y0 + 2, Y1 - 2, ZB, ZB + 9.0), M["Grime"])
+        # the cab's step and the sliding door's runner
+        K.box((x + s * 2.0 - 1.5, x + s * 14.0, wy1 + 15.0, wy1 + 85.0, ZB + 4.0, ZB + 6.5), M["Chrome"])
+        K.box((skin - 0.5, skin + 0.5, wy1 + 4.0, wy1 + 100.0, 199.0, 201.5), M["Chrome"])
+        # mud flaps behind the rear wheels
+        K.box((min(x - s * 10.0, x + s * 12.0), max(x - s * 10.0, x + s * 12.0), Y1 - 62.0, Y1 - 60.0, 6.0, 36.0),
+              M["Rubber"])
+        # the painted bouquet near the tail, cream-on-mint lilies on long green stems tied with a red ribbon
+        by, bz = Y1 - 48.0, 112.0
+        for k in range(7):
+            ang = math.radians(-30.0 + k * 10.0)
+            L = 70.0 + (12.0 if k % 2 else 0.0)
+            top = (by + math.sin(ang) * L, bz + math.cos(ang) * L)
+            K.seg((skin, by, bz), (skin, top[0], top[1]), 1.6, M["Stem"], w=0.5)
+            K.add(SPH, M["Petal"], (skin, top[0] + math.sin(ang) * 6.0, top[1] + math.cos(ang) * 6.0),
+                  (math.degrees(ang) * s, 0.0, 0.0), (0.008, 0.10, 0.17))
+            K.add(SPH, M["Stamen"], (skin + s * 0.3, top[0] + math.sin(ang) * 3.0, top[1] + math.cos(ang) * 3.0),
+                  (0.0, 0.0, 0.0), (0.008, 0.025, 0.025))
+            if k in (1, 4, 6):
+                K.add(SPH, M["Leaf"], (skin, by + math.sin(ang) * L * 0.45 + 6.0 * (1 if k < 4 else -1),
+                                       bz + math.cos(ang) * L * 0.45), ((40.0 if k < 4 else -40.0) * s, 0.0, 0.0),
+                      (0.008, 0.06, 0.20))
+        K.box((skin - 0.35, skin + 0.35, by - 7.0, by + 7.0, bz - 2.0, bz + 6.0), M["Red"])   # the ribbon
+        K.box((skin - 0.35, skin + 0.35, by - 2.0, by + 2.0, bz - 14.0, bz - 2.0), M["Red"])
+    # the fuel cap, driver's side
+    K.seg((X1 + 0.5, Y1 - 150.0, 70.0), (X1 + 2.0, Y1 - 150.0, 70.0), 11.0, M["Chrome"])
+    # wheel hubs: a domed chrome cap and five lug nuts on each wheel
+    for wy in (Y0 + 95.0, Y1 - 110.0):
+        for (xo, s) in ((X0 - 3.0, -1.0), (X1 + 3.0, 1.0)):
+            K.seg((xo, wy, 35.0), (xo + s * 1.5, wy, 35.0), 44.0, M["Steel"])
+            K.seg((xo + s * 1.5, wy, 35.0), (xo + s * 3.0, wy, 35.0), 16.0, M["Chrome"])
+            for k in range(5):
+                a = math.radians(k * 72.0)
+                K.seg((xo + s * 1.5, wy + math.cos(a) * 12.0, 35.0 + math.sin(a) * 12.0),
+                      (xo + s * 2.8, wy + math.cos(a) * 12.0, 35.0 + math.sin(a) * 12.0), 2.4, M["Chrome"])
+
+
 # --- the cab ---------------------------------------------------------------------------------------------------------
 def cab():
     (y0, z0), (y1, z1) = WS
@@ -505,14 +582,40 @@ def interior():
     return main_c
 
 
+def lily_head(tip, a, petal=None):
+    """A lily's flower at `tip` opening along a (any length): a short green throat, six pointed petals flared out at
+    35 degrees round the axis (flattened balls), three stamens (s12: replaces the one white cone, read as a horn)."""
+    n = math.sqrt(sum(v * v for v in a)) or 1.0
+    a = [v / n for v in a]
+    u = [a[1], -a[0], 0.0] if abs(a[2]) < 0.9 else [1.0, 0.0, 0.0]
+    un = math.sqrt(sum(v * v for v in u)) or 1.0
+    u = [v / un for v in u]
+    w = [a[1] * u[2] - a[2] * u[1], a[2] * u[0] - a[0] * u[2], a[0] * u[1] - a[1] * u[0]]
+    mt = M[petal or rnd.choice(("Petal", "Petal", "Petal", "Pink"))]
+    base = tuple(tip[i] + a[i] * 2.5 for i in range(3))
+    K.seg(tip, base, 2.2, M["Stem"], m=CONE)
+    spin = rnd.uniform(0, 60)
+    for k in range(6):
+        ph = math.radians(spin + k * 60.0)
+        flare = math.radians(rnd.uniform(32, 48))
+        d = [a[i] * math.cos(flare) + (u[i] * math.cos(ph) + w[i] * math.sin(ph)) * math.sin(flare) for i in range(3)]
+        ln = rnd.uniform(8.0, 10.0)
+        end = tuple(base[i] + d[i] * ln for i in range(3))
+        K.seg(base, end, 1.3, mt, m=SPH, w=3.6)
+    for k in range(3):
+        ph = math.radians(spin + 30 + k * 120.0)
+        d = [a[i] * 0.94 + (u[i] * math.cos(ph) + w[i] * math.sin(ph)) * 0.34 for i in range(3)]
+        end = tuple(base[i] + d[i] * 6.5 for i in range(3))
+        K.seg(base, end, 0.35, M["Stem"])
+        K.ball(end, 1.1, M["Stamen"], dz=0.7)
+
+
 def lily(x, y, z, yaw_out, tilt, length):
     """One fake lily: a stem leaning yaw_out by tilt degrees, a white trumpet (cone) at its tip and a stamen."""
     r, t = math.radians(yaw_out), math.radians(tilt)
     tip = (x + math.cos(r) * math.sin(t) * length, y + math.sin(r) * math.sin(t) * length, z + math.cos(t) * length)
     K.seg((x, y, z), tip, 0.9, M["Stem"])
-    out = (tip[0] + math.cos(r) * 10, tip[1] + math.sin(r) * 10, tip[2] + 4)
-    K.seg(out, tip, 6.5, M[rnd.choice(("Petal", "Petal", "Petal", "Pink"))], m=CONE)      # cone opens toward `out`
-    K.ball(out, 1.6, M["Stamen"])
+    lily_head(tip, (math.cos(r), math.sin(r), 0.4))
     if rnd.random() < 0.5:
         mid = ((x + tip[0]) / 2, (y + tip[1]) / 2, (z + tip[2]) / 2)
         K.add(SPH, M["Leaf"], mid, (rnd.uniform(-30, 30), 40.0, math.degrees(r) + 90), (0.03, 0.10, 0.22))
@@ -539,9 +642,7 @@ def bucket(x, y, n=7, fallen=None):
         p = (rim[0], rim[1], FLOOR + 6)
         tip = (p[0] + math.cos(ra) * L, p[1] + math.sin(ra) * L, FLOOR + 3)
         K.seg(p, tip, 0.9, M["Stem"])
-        out = (tip[0] + math.cos(ra) * 8, tip[1] + math.sin(ra) * 8, FLOOR + 6)
-        K.seg(out, tip, 6.5, M["Petal"], m=CONE)
-        K.ball(out, 1.6, M["Stamen"])
+        lily_head(tip, (math.cos(ra), math.sin(ra), 0.35), "Petal")
 
 
 def lilies():
@@ -559,8 +660,7 @@ def lilies():
         a = rnd.uniform(0, 360)
         tip = (x + math.cos(math.radians(a)) * 55, y + math.sin(math.radians(a)) * 55, FLOOR + 1.5)
         K.seg((x, y, FLOOR + 1.5), tip, 0.9, M["Stem"])
-        K.seg((tip[0] + math.cos(math.radians(a)) * 8, tip[1] + math.sin(math.radians(a)) * 8, FLOOR + 5), tip, 6.5,
-              M["Petal"], m=CONE)
+        lily_head(tip, (math.cos(math.radians(a)), math.sin(math.radians(a)), 0.3), "Petal")
 
 
 # --- Max ---------------------------------------------------------------------------------------------------------------
@@ -633,6 +733,7 @@ def security_cam():
 gone = C.clear(TAG)
 materials()
 body()
+outside()
 cab()
 main_c = interior()
 lilies()

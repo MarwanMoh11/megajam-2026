@@ -1471,3 +1471,31 @@ a reverse shot. `Reel.Script.Jump N` while scene N has only just started no long
   credits; last fixes were s7's start camera (level only) and s8's hidden bodies in the drive (ca79ca3).
 - The re-rigged Rodin cast (874ac73, another session) is in; spine's stills show no broken arms.
 - Windows Shipping package at 2ba2f82: BuildCookRun 150 s, `C:\Jam\Builds\Windows\Reel.exe`. Not zipped: a test build.
+
+## Nov 15, 19:45 Cairo: s3-foyer-hall (Marwan's QA: the reception desk, the booth's floating stairs)
+- **Reception desk.** In the script nothing answered E at the desk, and the clerk stood at the old desk 4.7 m away
+  (only the old lobby flow, `AQueueLine`, moved him). `AScene3Foyer` now finds the clerk, stands him behind the desk,
+  and while Vance walks free within 3 m shows "E  SIGN IN AT THE DESK"; E turns both to each other in the same frame,
+  the clerk speaks (a different line if the critic vouched for him) and a "PADDLE 41" tag stays up. Later presses get
+  a short line. Subtitles only until the sound session makes `S3_Desk*` voices (scene3.py hooks them).
+- **The booth over the hall doors.** Scene 7's booth shell had a landing and six steps outside its south door that
+  stopped 2.7 m above the floor, and a balcony on nothing to the north. `tools/script/scene3_arch.py` (tag
+  `script_s3_arch`) builds under them without touching scene7.py: 11 more steps to the floor, all solid, a stepped
+  parapet, newels, piers under both landings and masonry back to the west wall, clear of the doors. A cocktail table
+  and two guests standing on the new stair moved south-east.
+- Went wrong: Build.bat failed in another session's new header (GuardBrain.h, a UFUNCTION over an inherited
+  SetActive); the architecture went in on the old DLL while it was fixed.
+
+## Nov 15, 20:45 Cairo: Scenes 1-2, Marwan's QA on the street and the van (s12-exterior)
+- **Changed:** `tools/script/scene1_dress.py` gained two steps. Signs: the metre-wide QUEUE, INVITED GUESTS (two),
+  PRESS and CREW ONLY boards from `build_auction.py` are hidden (visibility only) and each lane gets a real-size brass
+  stanchion sign holder instead (a 32 x 22 cm card on a 1 m post). Cars: the kerb sedan at y 1000 sat right under
+  Scene 2's camera move from the steps to the van, so the move skimmed its roof and whitewall wheel in the bottom right
+  of the frame; it is hidden (the kerb at the entrance is the arrival zone). `tools/script/scene2_van.py`: the van's
+  outside got rounded roof and rear edges, Max's whip antenna and a small dish aimed at the scanner, marker lamps, a
+  cab step, mud flaps, a grime band, hubs with lug nuts and a painted lily bouquet on each flank; the fake lilies
+  inside are six-petal flowers with stamens instead of one white cone each (they read as horns).
+- **Checked in play:** `scene1_pie.py` and `scene2_pie.py` (prefix `s12`): the queue with the new signs, the street
+  cross with no car under it, the van outside and Max's interior.
+- **Went wrong:** Rodin and Tripo both had 0 credits, so a generated van mesh was not possible; the van stays built
+  from shapes. The editor was held closed for the packaging run and Marwan's playtest until about 20:00.

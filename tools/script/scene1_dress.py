@@ -8,6 +8,9 @@
 #      ripples, and (the level has no SSR or Lumen) the signs' reflections computed in the material: each glowing
 #      sign is a rectangle the reflected view ray is tested against. Three neon signs give the puddles colour.
 #   3. Rain: a few big unlit translucent planes with procedural falling streaks (M_S1_Rain), no collision.
+#   4. Signs (Marwan's QA, Nov 15 evening: "remove the massive unrealistic signs like invited guests and queue"): hides
+#      build_auction.py's metre-wide lane boards (QUEUE, INVITED GUESTS, PRESS, CREW ONLY) and their boards, and puts a
+#      real-size brass stanchion sign holder (a 32 x 22 cm card on a 1 m post) in each one's place.
 # Run under the editor lock:
 #     "<engine python>" -I tools/ue_mcp.py py tools/script/scene1_dress.py 110
 # Kept clear: the queue lane, the scan point (-3610,320), the gate (x -3520, y 210..430), the doorman, the podium
@@ -28,7 +31,7 @@ TAG = "script_s1_dress"
 S1 = "/Game/Take/Script/S1"
 REBUILD = True                                   # rebuild the material graphs on every run
 ON = dict(hide=True, marquee=True, blade=True, fascia=True, posters=True, news=True, neon=True, lights=True,
-          wet=True, rain=True)
+          wet=True, rain=True, signs=True, cars=True)
 mel = unreal.MaterialEditingLibrary
 eal = unreal.EditorAssetLibrary
 MP = unreal.MaterialProperty
@@ -660,6 +663,80 @@ if ON["neon"]:
     tube_rect(fx - 4.0, 1160.0, 1340.0, 600.0, 680.0, N_CYAN)
     text("HOTEL", fx - 5.0, 1250.0, 640.0, 180.0, 52.0, (0.1, 0.8, 1.0), T_NEON)
     K.seg((fx - 4.0, 1170.0, 586.0), (fx - 4.0, 1330.0, 586.0), 3.0, N_PINK, m=CYL)
+
+
+# --- 4. the lane signs at real size ------------------------------------------------------------------------------------
+LANE_WORDS = ("QUEUE", "INVITED GUESTS", "PRESS", "CREW ONLY")
+CARD = {"QUEUE": ("PLEASE QUEUE", "HERE"), "INVITED GUESTS": ("INVITED", "GUESTS"), "PRESS": ("PRESS", ""),
+        "CREW ONLY": ("CREW", "ONLY")}
+
+
+def lane_text(label, t, x, y, z):
+    return x < FRONT + 5.0 and abs(y) < 2600.0 and t.strip().upper() in LANE_WORDS
+
+
+def hide_boards(labels):
+    """Hides the dark board build_auction.py's sign() put behind each lane word: Sign_NNN's board is Sign_Board_NNN+1."""
+    want = set()
+    for lab in labels:
+        try:
+            want.add("Sign_Board_%03d" % (int(lab.rsplit("_", 1)[1]) + 1))
+        except ValueError:
+            pass
+    return C.hide([w for w in want], TAG) if want else []
+
+
+def post_sign(x, y, yaw, words):
+    """A brass stanchion sign holder: weighted base, 100 cm post, a 32 x 22 cm frame tilted back 20 degrees, a black
+    card with the words in cream. Faces yaw (read it from that side)."""
+    r = math.radians(yaw)
+    fx, fy = math.cos(r), math.sin(r)
+    K.add(CYL, GOLD, (x, y, 1.5), (0.0, 0.0, 0.0), (0.30, 0.30, 0.03))              # the base
+    K.add(CYL, GOLD, (x, y, 50.0), (0.0, 0.0, 0.0), (0.035, 0.035, 0.98))           # the post
+    cz = 104.0
+    K.add(CUBE, GOLD, (x, y, cz), (0.0, 20.0, yaw), (0.012, 0.34, 0.24))             # the frame (tilted back)
+    K.add(CUBE, LACQUER, (x + fx * 0.8, y + fy * 0.8, cz), (0.0, 20.0, yaw), (0.006, 0.31, 0.21))   # the card
+    l1, l2 = words
+    s20, c20 = math.sin(math.radians(20.0)), math.cos(math.radians(20.0))
+    for (t, dz, sz) in ((l1, 3.2 if l2 else 0.0, 4.6 if len(l1) < 10 else 3.4), (l2, -3.6, 4.6)):
+        if not t:
+            continue
+        # up the tilted card is (-s20 * facing, c20); 1.6 cm out from the frame along the card's normal
+        a = text(t, x + fx * (1.6 * c20 - dz * s20), y + fy * (1.6 * c20 - dz * s20), cz + dz * c20 + 1.6 * s20, yaw,
+                 sz, (1.0, 0.86, 0.6), T_SOFT)
+        a.set_actor_rotation(unreal.Rotator(0.0, -20.0, yaw), False)
+
+
+if ON["signs"]:
+    spots, put = [], []
+    for a in C.actors():
+        if not isinstance(a, unreal.TextRenderActor) or TAG in C.tags(a):
+            continue
+        v = a.get_actor_location()
+        t = str(a.text_render.get_editor_property("text")).strip().upper()
+        if lane_text(a.get_actor_label(), t, v.x, v.y, v.z):
+            spots.append(a.get_actor_label())
+            put.append((t, v.x, v.y, a.get_actor_rotation().yaw))
+    hid = hide_texts(lane_text)
+    boards = hide_boards(spots)
+    done = set()
+    for (t, x, y, yaw) in put:
+        key = (t, round(x / 300.0), round(y / 300.0))
+        if key in done or (t == "INVITED GUESTS" and abs(y) < 50.0):      # the one over the carpet's foot: no post
+            continue
+        done.add(key)
+        post_sign(x, y, yaw, CARD[t])
+    say("signs: hid %d words (%s), %d boards (%s); %d post signs" % (len(hid), ", ".join(hid), len(boards),
+                                                                      ", ".join(boards[:8]), len(done)))
+
+
+# --- 5. the street cars: the kerb sedan in the Scene 2 cross ------------------------------------------------------------
+# Marwan's QA: "the cars in the bottom right look ugly". Scene 2's opening crosses from the steps (-3400, 250) to the
+# van's windshield (-5380, 1080), and front.py's kerb sedan at y 1000 sits right under that line: the camera skims its
+# roof and whitewall wheel in the bottom right of the frame. The kerb at the entrance is the arrival zone, so it goes.
+CROSS_CARS = (r"Set_set_front_Front_sedan_004",)
+if ON["cars"]:
+    say("cars: hid %s" % C.hide(list(CROSS_CARS), TAG))
 
 placed = K.flush()
 say("placed %d shapes, %d texts" % (placed, NTEXT[0]))
