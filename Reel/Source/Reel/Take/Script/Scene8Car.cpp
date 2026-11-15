@@ -436,7 +436,7 @@ void AScene8Car::BuildFinale()
 	MirrorGlass = FTakeShapes::AddShapeAtRuntime(this, ETakeShape::Plane, MirrorHead, FVector(-0.1f, 0.f, 0.f),
 		FVector(0.26f, 0.078f, 1.f), FLinearColor::Black, false);
 	MirrorGlass->SetRelativeRotation(FRotationMatrix::MakeFromXY(FVector(0.f, 1.f, 0.f), FVector(0.f, 0.f, -1.f)).Rotator());
-	MirrorTarget = UKismetRenderingLibrary::CreateRenderTarget2D(this, 640, 192, RTF_RGBA16f, FLinearColor::Black);
+	MirrorTarget = UKismetRenderingLibrary::CreateRenderTarget2D(this, 640, 264, RTF_RGBA16f, FLinearColor::Black);
 	if (UMaterialInterface* P = MirrorMaterial.IsNull() ? nullptr : MirrorMaterial.LoadSynchronous())
 	{
 		UMaterialInstanceDynamic* D = UMaterialInstanceDynamic::Create(P, this);
@@ -447,7 +447,7 @@ void AScene8Car::BuildFinale()
 	MirrorCapture->SetRelativeLocation(FVector(-2.f, 0.f, 0.f));
 	MirrorCapture->TextureTarget = MirrorTarget;
 	MirrorCapture->CaptureSource = ESceneCaptureSource::SCS_FinalColorLDR;
-	MirrorCapture->FOVAngle = FMath::Max(MirrorCaptureFov, 72.f);	// the target is 640x192: at 26-34 deg it saw a 12 cm strip of cheek; 72 gives the eyes strip
+	MirrorCapture->FOVAngle = FMath::Max(MirrorCaptureFov, 90.f);	// eyes down to the reel in his hands	// the target is 640x192: at 26-34 deg it saw a 12 cm strip of cheek; 72 gives the eyes strip
 	MirrorCapture->ShowFlags.SetDepthOfField(false);	// the world's film look defocused the face into a bright blob
 	MirrorCapture->ShowFlags.SetMotionBlur(false);
 	MirrorCapture->HiddenComponents.Add(MirrorGlass);
@@ -460,7 +460,7 @@ void AScene8Car::BuildFinale()
 	if (ColeBody) { ColeBody->SetRelativeRotation(FRotator(0.f, -98.f, 0.f)); }
 	USceneComponent* Can = NewObject<USceneComponent>(this, TEXT("FinaleCanister"));
 	Can->SetupAttachment(Cabin);
-	Can->SetRelativeLocationAndRotation(PassengerSeat + FVector(16.f, -1.f, 36.f), FRotator(80.f, 0.f, 0.f));	// held upright against him, face to the dash
+	Can->SetRelativeLocationAndRotation(PassengerSeat + FVector(16.f, -1.f, 42.f), FRotator(80.f, 0.f, 0.f));	// held upright against him, face to the dash
 	Can->RegisterComponent();
 	AddInstanceComponent(Can);
 	Bit(Cyl, Can, FVector::ZeroVector, FVector(36.f, 36.f, 6.f), Silver, 0.28f, 1.f);
@@ -570,6 +570,7 @@ void AScene8Car::SetShot(bool bB)
 		Look = FVector(-34.f, 41.f, 92.f);
 		Fov = FMath::Max(Fov, 66.f);
 	}
+	if (bB) { Fov = FMath::Min(Fov, 21.f); }	// tight on the glass: the mirror fills the frame
 	GS8FinaleShotCam = Cam;
 	GS8FinaleShotLook = Look;
 	FinaleCam->SetRelativeLocationAndRotation(Cam, (Look - Cam).Rotation());
@@ -619,7 +620,7 @@ void AScene8Car::BeginFinale()
 	// is re-aimed at his eyes every tick, so the mirror shows his face whatever the glass's angle.
 	const FVector Viewer = GetActorTransform().TransformPosition(ShotBCam);
 	MirrorHead->SetWorldRotation((MirrorHead->GetComponentLocation() - Viewer).Rotation());
-	MirrorHead->SetRelativeScale3D(FVector(1.f, 1.3f, 1.3f));	// a bigger glass: more of him in the frame
+	MirrorHead->SetRelativeScale3D(FVector(1.f, 1.3f, 1.62f));	// bigger, and 2.4:1 like the frame, so shot B is all mirror
 	MirrorCapture->bCaptureEveryFrame = true;
 	MirrorCapture->SetActive(true);
 	FinaleCam->SetActive(true);
@@ -681,7 +682,7 @@ void AScene8Car::TickFinale(float T, float DeltaSeconds)
 	// The mirror keeps Vance's face in it.
 	if (VanceBody && MirrorCapture)
 	{
-		const FVector Face = S8HeadOf(VanceBody) + GetActorForwardVector() * 10.f + FVector(0.f, 0.f, 9.f);	// his eyes, not the skull base
+		const FVector Face = S8HeadOf(VanceBody) + GetActorForwardVector() * 14.f + FVector(0.f, 0.f, -6.f);	// between his eyes and the can
 		MirrorCapture->SetWorldRotation((Face - MirrorCapture->GetComponentLocation()).Rotation());
 	}
 }
