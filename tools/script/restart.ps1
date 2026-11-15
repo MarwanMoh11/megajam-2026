@@ -20,7 +20,7 @@ try { Invoke-WebRequest -UseBasicParsing -Method Post -Uri http://127.0.0.1:8000
 if ($up) {
   Say "save dirty packages"
   $save = Join-Path $env:TEMP "reel_save_all.py"
-  "import unreal`nunreal.EditorLoadingAndSavingUtils.save_dirty_packages(True, True)`nprint('SAVED')" | Set-Content -Encoding utf8 $save
+  "import unreal`nunreal.EditorLoadingAndSavingUtils.save_dirty_packages(True, True)`nprint('SAVED')" | ForEach-Object { [IO.File]::WriteAllText($save, $_ + "`n") }
   & $Py -I tools\ue_mcp.py py $save 100 2>&1 | Select-Object -Last 3 | ForEach-Object { Say $_ }
   Say "exit editor"
   & $Py -I tools\ue_mcp.py tool EditorToolset.EditorAppToolset.ExitEditor '{\"bDiscardUnsavedChanges\":true}' 30 2>&1 | Select-Object -Last 2 | ForEach-Object { Say $_ }
