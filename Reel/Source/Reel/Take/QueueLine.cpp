@@ -20,6 +20,7 @@
 #include "TakeDirector.h"
 #include "TakeGameInstance.h"
 #include "TakePlayerController.h"
+#include "Script/ScriptSequencer.h"
 
 // Unity builds merge .cpp files: file-local helpers live in a uniquely named namespace.
 namespace QueueLineLocal
@@ -96,6 +97,17 @@ void AQueueLine::Tick(float DeltaSeconds)
 
 	// The first frame: every actor has begun play (the cast stands where the map put it), so Julian goes onto his
 	// place and the line is built before the opening slate is over. Then the director steps the line (StepLine).
+	// The script (Scene 1, AScene1Marquee): the scene sets the line up itself (ScriptReset).
+	const AScriptSequencer* const Sequencer = AScriptSequencer::Get(this);
+	if (Sequencer && Sequencer->IsRunning())
+	{
+		bScript = true;
+	}
+	if (bScript)
+	{
+		SetActorTickEnabled(false);
+		return;
+	}
 	if (ATakeDirector* const Director = ATakeDirector::Get(this))
 	{
 		if (!bJulianPlaced)
@@ -171,12 +183,12 @@ void AQueueLine::PlaceJulian(ATakeDirector* Director)
 void AQueueLine::SetupLine(ATakeDirector& Director)
 {
 	bSetUp = true;
-	bOldFlow = !Director.bQueueScene1;
+	bOldFlow = !Director.bQueueScene1 && !bScript;
 	StepTimer = FirstStepSeconds;
 
 	UTakeGameInstance* const GI = Director.GetTakeGameInstance();
-	const bool bRetake = GI && (GI->IntroShownMask & BitQueueWalked) != 0;
-	const bool bPastStreet = GI && !GI->CheckpointMark.IsEmpty();
+	const bool bRetake = !bScript && GI && (GI->IntroShownMask & BitQueueWalked) != 0;
+	const bool bPastStreet = !bScript && GI && !GI->CheckpointMark.IsEmpty();
 
 	// The guests: the nearest free standing cast member to each place but Julian's (on the map's own layout).
 	TArray<ACastMember*> Candidates;
@@ -239,6 +251,13 @@ void AQueueLine::SetupLine(ATakeDirector& Director)
 	if (!Line.Contains(INDEX_NONE))
 	{
 		Line.Add(INDEX_NONE);
+	}
+	// The script's retakes put the line back to this (ScriptReset).
+	HomeLine = Line;
+	GuestHomes.Reset();
+	for (const FQueueGuest& Each : Guests)
+	{
+		GuestHomes.Add(Each.Member.IsValid() ? Each.Member->GetActorTransform() : FTransform::Identity);
 	}
 
 	// The old flow, a later take or a checkpoint past the street: the guests before Julian are already inside.
@@ -366,7 +385,8 @@ void AQueueLine::StepHold(ATakeDirector& Director)
 		const FVector Ahead = ToWorld(Places[FMath::Min(JulianAt - 1, Places.Num() - 1)]);
 		Edge = FMath::Max(static_cast<float>(Ahead.X) - HoldGap, static_cast<float>(Mine.X) + HoldMinLead);
 	}
-	const bool bOpen = JulianAt == 0 && Scanner && !Scanner->IsLive();	// his turn and the scanner blind: go
+	const bool bOpen = (JulianAt == 0 && Scanner && !Scanner->IsLive())	// his turn and the scanner blind: go
+		|| (bScript && bScriptOpenFront);	// the script: his turn at the palm scanner
 	const float Radius = Julian->GetCapsuleComponent() ? Julian->GetCapsuleComponent()->GetScaledCapsuleRadius() : 40.f;
 	const FVector Feet = Julian->GetFeetLocation();
 	bool bWant = !bOpen && Edge < HoldFarX - 10.f;
@@ -574,12 +594,12 @@ void AQueueLine::StepLamps(ATakeDirector& Director)
 
 bool AQueueLine::TakesDoorLine() const
 {
-	return bLobbyGreet && !bOldFlow && Clerk.IsValid() && Beat != EQueueBeat::Done;
+	return !bScript && bLobbyGreet && !bOldFlow && Clerk.IsValid() && Beat != EQueueBeat::Done;
 }
 
 bool AQueueLine::ClaimsSpotLine(const AFollowSpot* Spot, const AActor* Target) const
 {
-	return !bOldFlow && Doorman && Spot && Spot == Searchlight.Get() && Beat != EQueueBeat::Lobby && Beat != EQueueBeat::Done;
+	return !bScript && !bOldFlow && Doorman && Spot && Spot == Searchlight.Get() && Beat != EQueueBeat::Lobby && Beat != EQueueBeat::Done;
 }
 
 void AQueueLine::FindClerk()
@@ -855,7 +875,7 @@ void AQueueLine::StepGuests(ATakeDirector& Director, float DeltaSeconds)
 
 	// The front: the guest on place 0 steps into the scanner when the timer is up and the scanner is free.
 	StepTimer -= Dt;
-	if (StepTimer <= 0.f && Line.Num() > 0 && Line[0] != INDEX_NONE && ScanPointClear())
+	if (StepTimer <= 0.f && Line.Num() > 0 && Line[0] != INDEX_NONE && ScanPointClear() && !(bScript && bScriptHoldFront))
 	{
 		FQueueGuest& Front = Guests[Line[0]];
 		if (Front.TargetPlace == 0 && GuestArrived(Front))
@@ -918,6 +938,10 @@ void AQueueLine::StepGuests(ATakeDirector& Director, float DeltaSeconds)
 
 void AQueueLine::StepLine(ATakeDirector& Director, float DeltaSeconds)
 {
+	if (bScript)
+	{
+		return;	// the script's Scene 1 steps the line (ScriptStep)
+	}
 	if (!bJulianPlaced)
 	{
 		PlaceJulian(&Director);
@@ -1271,7 +1295,7 @@ void AQueueLine::StepBeats(ATakeDirector& Director)
 
 FString AQueueLine::GetObjective(const ATakeDirector& Director) const
 {
-	if (bOldFlow || !bSetUp || !Director.PC)
+	if (bScript || bOldFlow || !bSetUp || !Director.PC)
 	{
 		return FString();
 	}
@@ -1318,4 +1342,144 @@ FString AQueueLine::GetObjective(const ATakeDirector& Director) const
 	default:
 		return FString();
 	}
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The script (docs/SCRIPT.md Scene 1): AScene1Marquee drives the line
+// ---------------------------------------------------------------------------------------------------------------------
+
+bool AQueueLine::ScriptReset(int32 GuestsAhead)
+{
+	ATakeDirector* const Director = ATakeDirector::Get(this);
+	AJulian* const Julian = Director ? Director->Julian.Get() : nullptr;
+	if (!Director || !Julian || Places.Num() == 0)
+	{
+		return false;
+	}
+	bScript = true;
+	bScriptHoldFront = false;
+	bScriptOpenFront = false;
+	bJulianPlaced = true;
+	if (!bSetUp)
+	{
+		SetupLine(*Director);
+	}
+	else if (bOldFlow)
+	{
+		TAKE_LOG(TEXT("QUEUE script reset: the line was built in the old flow (no blockers, no doorman)"));
+	}
+	SpawnDoorman(*Director);
+
+	// Back to the map's line: every guest on its first spot, nobody going in.
+	Line = HomeLine;
+	InsideCount = 0;
+	for (int32 Index = 0; Index < Guests.Num(); ++Index)
+	{
+		FQueueGuest& Guest = Guests[Index];
+		if (GuestHomes.IsValidIndex(Index))
+		{
+			const FTransform& Home = GuestHomes[Index];
+			PutGuest(Guest, Home.GetLocation(), static_cast<float>(Home.Rotator().Yaw));
+		}
+		Guest.TargetPlace = Line.Find(Index);
+		Guest.Leg = -1;
+		Guest.ScanLeft = 0.f;
+		Guest.InsideSpot = -1;
+		Guest.bInside = false;
+		SetBlocker(Guest, true);
+		if (ACastMember* const Member = Guest.Member.Get())
+		{
+			Member->PlayGesture(TEXT("None"));
+		}
+	}
+
+	// The guests more than GuestsAhead ahead of Julian are already inside; the rest step up to their new places.
+	const int32 SendIn = FMath::Max(0, JulianIndex() - FMath::Max(0, GuestsAhead));
+	for (int32 Each = 0; Each < SendIn && Line.Num() > 0 && Line[0] != INDEX_NONE; ++Each)
+	{
+		FQueueGuest& Guest = Guests[Line[0]];
+		Line.RemoveAt(0);
+		const FVector Spot = NextInsideSpot(Guest);
+		PutGuest(Guest, Spot, QueueLineLocal::YawTo(ToWorld(ScanPoint), Spot, 0.f));
+		Guest.TargetPlace = INDEX_NONE;
+		Guest.Leg = WayIn.Num() + 1;
+		Guest.bInside = true;
+		SetBlocker(Guest, false);
+	}
+	for (int32 Index = 0; Index < Line.Num(); ++Index)
+	{
+		if (Line[Index] != INDEX_NONE && Places.IsValidIndex(Index))
+		{
+			FQueueGuest& Guest = Guests[Line[Index]];
+			const float Yaw = Index > 0 ? QueueLineLocal::YawTo(Places[Index], Places[Index - 1], 0.f) : 0.f;
+			PutGuest(Guest, ToWorld(Places[Index]), Yaw);
+			Guest.TargetPlace = Index;
+		}
+	}
+
+	// Julian on his place.
+	const int32 Place = FMath::Clamp(JulianIndex(), 0, Places.Num() - 1);
+	const FVector Feet = ToWorld(Places[Place]);
+	const FVector FeetToCentre = Julian->GetActorLocation() - Julian->GetFeetLocation();
+	Julian->SetActorLocationAndRotation(Feet + FeetToCentre, FRotator(0.f, JulianStartYaw, 0.f), false, nullptr,
+		ETeleportType::TeleportPhysics);
+	if (UCharacterMovementComponent* const Move = Julian->GetCharacterMovement())
+	{
+		Move->StopMovementImmediately();
+	}
+	Julian->SetLook(JulianStartYaw, Julian->StartLookPitch);
+	Julian->SnapFollowCamera();
+
+	// The doorman back at his post; the line's clocks and the hold from the start.
+	if (Doorman)
+	{
+		Doorman->SetActorLocationAndRotation(DoormanPoint, FRotator(0.f, DoormanYaw, 0.f), false, nullptr, ETeleportType::TeleportPhysics);
+		Doorman->WalkTo(DoormanPoint, GuestWalkSpeed);
+		Doorman->FaceYaw(DoormanYaw);
+		Doorman->PlayGesture(TEXT("None"));
+		Doorman->CustomTimeDilation = 1.f;
+	}
+	Beat = EQueueBeat::Queue;
+	StepTimer = FirstStepSeconds;
+	WavedGuest = INDEX_NONE;
+	bHoldDone = false;
+	bHoldOn = false;
+	if (HoldBox)
+	{
+		HoldBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+	ReactUntil = -1.0;
+	DoormanSpeaksUntil = 0.0;
+	TAKE_LOG(TEXT("QUEUE script reset: %d guests, Julian %d in line (place %d), %d sent in"), Guests.Num(), JulianIndex(), Place, SendIn);
+	return true;
+}
+
+void AQueueLine::ScriptStep(float DeltaSeconds)
+{
+	ATakeDirector* const Director = ATakeDirector::Get(this);
+	if (!Director || !bSetUp || !bScript)
+	{
+		return;
+	}
+	StepLamps(*Director);
+	StepGuests(*Director, DeltaSeconds);
+	StepHold(*Director);
+	StepDoorman(*Director);
+}
+
+ACastMember* AQueueLine::GetScanningGuest(int32& OutIndex, float& OutLeft) const
+{
+	OutIndex = INDEX_NONE;
+	OutLeft = 0.f;
+	for (int32 Index = 0; Index < Guests.Num(); ++Index)
+	{
+		const FQueueGuest& Guest = Guests[Index];
+		if (Guest.Leg == 0 && Guest.ScanLeft > 0.f && Guest.Member.IsValid())
+		{
+			OutIndex = Index;
+			OutLeft = Guest.ScanLeft;
+			return Guest.Member.Get();
+		}
+	}
+	return nullptr;
 }

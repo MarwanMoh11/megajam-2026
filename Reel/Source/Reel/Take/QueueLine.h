@@ -136,6 +136,44 @@ public:
 	 *  it back on the Door trigger (FireTrigger) while this is true. */
 	bool TakesDoorLine() const;
 
+	// --- The script (docs/SCRIPT.md Scene 1): AScene1Marquee drives the line through these -------------------------
+	// Script mode: the line steps, the hold and the doorman's wave run (ScriptStep, from the scene's TickScene); the
+	// old beats (the refusal, the aside, the taught switch, the searchlight, the lobby) and the goal line do not, and
+	// the director's own StepLine call does nothing.
+
+	bool IsScript() const { return bScript; }
+
+	/** Script: puts the line back to the map's layout with GuestsAhead guests left ahead of Julian (the rest already
+	 *  inside), Julian on his place facing JulianStartYaw. Any frame after BeginPlay (needs the director's Julian).
+	 *  False: not possible yet (no director or Julian): try again next frame. */
+	bool ScriptReset(int32 GuestsAhead);
+
+	/** Script: one step of the line (StepGuests, the hold, the doorman, the lamps), every frame of the scene. */
+	void ScriptStep(float DeltaSeconds);
+
+	/** Script: the front guest waits on place 0 instead of stepping up to the scan point. */
+	bool bScriptHoldFront = false;
+
+	/** Script: the hold wall stands down (Julian may walk from the front place up to the scan point). */
+	bool bScriptOpenFront = false;
+
+	/** Script: the doorman (the BOUNCER), spawned by the first ScriptReset. */
+	ACastMember* GetDoorman() const { return Doorman; }
+
+	/** Script: the guest standing at the scan point now (null: none), its index and its scan's seconds left. */
+	ACastMember* GetScanningGuest(int32& OutIndex, float& OutLeft) const;
+
+	/** Script: guests ahead of Julian in the line (-1: he is not in it). */
+	int32 GetJulianIndex() const { return JulianIndex(); }
+
+	/** Script: Julian is first in line and nobody is at the scan point or walking to it. */
+	bool IsJuliansTurn() const { return JulianIndex() == 0 && ScanPointClear(); }
+
+	FVector GetScanPointWorld() const { return ToWorld(ScanPoint); }
+
+	/** Script: the doorman's speaker lamp rises for Seconds (he is talking). */
+	void DoormanSpeaks(float Seconds) { DoormanSpeaksUntil = RealNow() + Seconds; }
+
 	// --- level data (tools/build_auction.py, Scene 1). Points are local to the actor, which stands at the origin ----
 
 	/** The places in the line, front first. Place 0 is the gold mark where the front guest waits for the scanner. */
@@ -592,6 +630,11 @@ protected:
 
 	float StepTimer = 0.f;
 	int32 InsideCount = 0;
+
+	/** Script: on (ScriptReset); the map's line (Line as first built) and where each guest stood then. */
+	bool bScript = false;
+	TArray<int32> HomeLine;
+	TArray<FTransform> GuestHomes;
 
 	/** Real time (the world's real seconds) the beat, the last line and the slow started at. */
 	double BeatStartedAt = 0.0;

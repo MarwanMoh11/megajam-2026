@@ -360,3 +360,16 @@ void AScannerWatcher::SetGateOpen(bool bOpen)
 		TAKE_LOG(TEXT("%s gate %s"), *Label, bOpen ? TEXT("OPEN") : TEXT("SHUT"));
 	}
 }
+
+bool AScannerWatcher::IsLive() const
+{
+	return !bScriptOpen && Super::IsLive();
+}
+
+void AScannerWatcher::ScriptOpen(bool bOpen)
+{
+	bScriptOpen = bOpen;
+	SetGateOpen(!IsLive() || TakeScannerLocal::AnyCharacterInGate(this));
+	SyncState();
+	UpdateWorldCues(-1.f);
+}

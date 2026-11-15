@@ -54,6 +54,12 @@ public:
 	/** The gate is open right now (not live). */
 	bool IsGateOpen() const { return bGateOpen; }
 
+	/** The script (Scene 2's end, AScene1Marquee::PalmAccepted): on, it is not live (the gate opens and the lamps go green
+	 *  this frame) until it is turned off (a retake). */
+	void ScriptOpen(bool bOpen);
+
+	virtual bool IsLive() const override;
+
 	/** Julian's feet are past the gate plane (local X > PassedDepth): he is through. */
 	bool HasPassed(const AJulian* Julian) const;	// BODY: W
 
@@ -158,6 +164,8 @@ public:
 protected:
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Take|State")
 	bool bGateOpen = false;
+
+	bool bScriptOpen = false;
 
 	/** QA sight: the base (planning lift), then the lamps, the eye and the scan light, this frame. */
 	virtual void UpdateWorldCues(float DeltaSeconds) override;
