@@ -1683,3 +1683,8 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
 ## Nov 15, ~22:55 Cairo: Scene 8 escape plays end to end
 - **Checked in play (autopilot, one run, on the 22:32 build with the guards' pace fix and the new pistol grip):** beats Escape → Alley (27 s) → Dive → Drive → Mirror → Done with no catch and no retake. Shots: Cole's "Max is out back! Move!" in the security room, the corridor, the lobby with tracers, the backstage corridor, Vance at the car door in the rainy alley, then the finale and the credits (`C:\Jam\Builds\script\s8\look_*.png`).
 - **Went wrong / open:** the first frame of the escape has the camera tight on Vance's back; the in-car finale's first shot (look_13) frames Vance's bow tie from inside his body (s8-car-mirror's shot).
+
+### Nov 15, 23:00 Cairo: s3-foyer-hall (level pass)
+- After the reboot: the C++ from 3ccb6bb is compiled (it's in the 22:32 editor DLL). Imported the clerk's three voice lines (S3_Desk, S3_DeskAlibi, S3_DeskAgain) and reran scene3.py, so the desk speaks; 12 S3 voices are hooked up.
+- Reran scene3_arch.py with the south part off: my old stepped stair is out of s7-route's enclosed stairwell, and the north pier, parapet, mass and fascia are rebuilt. Level saved. arch_from_hall.png shows the booth over the doors as a solid wall with its port, with no floating stairs.
+- Went wrong: a wrapper that exec'd scene3_arch.py cleared its actors without rebuilding them (the module's names aren't visible inside exec); I ran the script directly instead. A framed picture on the hall's west wall at y 900 is now buried in Mass_North (invisible, harmless).
