@@ -30,17 +30,41 @@ TOOLS = unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir() + 
 ACTING = True                               # False: step 5's still cast (also: console Reel.Cast.Acting 0)
 VARY = True                                 # False: step 5's grey costumes, no variety
 # A muted 1940s palette (linear): jackets and gowns. Saturation modest; nothing near Julian's white.
-MEN = [(0.03, 0.03, 0.035), (0.09, 0.09, 0.10), (0.04, 0.06, 0.15), (0.13, 0.08, 0.05),
-       (0.04, 0.12, 0.07), (0.18, 0.03, 0.045), (0.34, 0.31, 0.24), (0.11, 0.14, 0.20)]
+MEN = [(0.025, 0.025, 0.03), (0.07, 0.07, 0.075), (0.04, 0.06, 0.15), (0.13, 0.08, 0.05), (0.04, 0.12, 0.07),
+       (0.18, 0.03, 0.045), (0.34, 0.31, 0.24), (0.11, 0.14, 0.20), (0.02, 0.03, 0.08), (0.16, 0.16, 0.16),
+       (0.30, 0.21, 0.11), (0.10, 0.04, 0.09), (0.12, 0.12, 0.05)]
 WOMEN = [(0.22, 0.03, 0.05), (0.04, 0.15, 0.08), (0.05, 0.07, 0.18), (0.36, 0.28, 0.16), (0.32, 0.16, 0.16),
-         (0.03, 0.03, 0.035), (0.14, 0.05, 0.13), (0.12, 0.15, 0.22), (0.36, 0.33, 0.26)]
+         (0.03, 0.03, 0.035), (0.14, 0.05, 0.13), (0.12, 0.15, 0.22), (0.36, 0.33, 0.26), (0.03, 0.14, 0.15),
+         (0.30, 0.10, 0.03), (0.22, 0.22, 0.24), (0.20, 0.15, 0.26), (0.36, 0.13, 0.10), (0.02, 0.03, 0.09)]
 MEN_KITS = ("GUEST_TUX", "GUEST_TAILS")
 WOMEN_KITS = ("GUEST_GOWN", "GUEST_GOWN_HAT")
 STAFF_TINT = (0.035, 0.035, 0.04)
-NEIGHBOUR_RADIUS = 260.0                    # no two guests this close share a kit and colour, cm
-MEN_SCALE = (0.95, 1.06)                    # body scale ranges (Quinn is already smaller)
-WOMEN_SCALE = (0.94, 1.03)
+NEIGHBOUR_RADIUS = 260.0                    # no two guests this close share a kit and colour, cm (and they differ in at
+                                            # least NEIGHBOUR_DIFFER of the far-reading traits: colour, skin, hair colour,
+                                            # the head's outline, the face or wrap)
+NEIGHBOUR_DIFFER = 3
+MEN_SCALE = (0.93, 1.08)                    # body scale ranges (Quinn is already smaller)
+WOMEN_SCALE = (0.92, 1.05)
+MEN_WIDTH = (0.88, 1.18)                    # the build: breadth against height (older men run heavier)
+WOMEN_WIDTH = (0.88, 1.10)
 GLASS_SHARE = 0.4                           # standing guests holding a coupe (they sip from it)
+# --- crowd pass (Nov 15): every guest a different person (FCastLook; the body painted by M_CrowdBody) ---
+CROWD_LOOKS = True                          # False: the old seed-drawn variety (skin shell, tinted mannequin)
+CROWD_MAT = "/Game/Take/Cast/Crowd/M_CrowdBody"   # tools/crowd_material.py makes it
+SKINS = [(0.62, 0.42, 0.32), (0.55, 0.36, 0.27), (0.52, 0.34, 0.22), (0.47, 0.30, 0.20), (0.42, 0.27, 0.16),
+         (0.34, 0.20, 0.12), (0.27, 0.15, 0.09), (0.19, 0.10, 0.06), (0.13, 0.07, 0.04), (0.08, 0.045, 0.03)]
+HAIRS = [(0.012, 0.010, 0.009), (0.04, 0.025, 0.015), (0.08, 0.045, 0.025), (0.14, 0.05, 0.02), (0.30, 0.10, 0.03),
+         (0.22, 0.15, 0.07), (0.38, 0.28, 0.13), (0.50, 0.45, 0.35)]
+OLD_HAIRS = [(0.20, 0.19, 0.18), (0.42, 0.41, 0.39), (0.10, 0.10, 0.10)]   # grey, silver, salt and pepper
+OLD_SHARE = 0.3                             # older guests: grey or silver hair, more balding, glasses and breadth
+ACCENTS = [(0.010, 0.010, 0.012), (0.14, 0.018, 0.025), (0.015, 0.07, 0.035), (0.012, 0.018, 0.06),
+           (0.38, 0.34, 0.25), (0.30, 0.20, 0.06), (0.09, 0.025, 0.07), (0.32, 0.16, 0.16), (0.03, 0.12, 0.13)]
+SHIRTS = [(0.40, 0.39, 0.36), (0.37, 0.34, 0.27), (0.30, 0.33, 0.38)]
+GLOVES = [(0.40, 0.39, 0.36), (0.015, 0.015, 0.018), (0.36, 0.32, 0.24), (0.18, 0.17, 0.16)]
+FURS = [(0.40, 0.39, 0.37), (0.11, 0.06, 0.035), (0.22, 0.22, 0.23), (0.02, 0.02, 0.02)]
+LIPS = [(0.22, 0.02, 0.03), (0.10, 0.01, 0.02), (0.30, 0.10, 0.10), (0.32, 0.09, 0.05)]
+MEN_HATS = [(0.012, 0.012, 0.012), (0.05, 0.04, 0.03), (0.10, 0.10, 0.10), (0.02, 0.03, 0.06)]
+MEN_HAT_SHARE = 0.22                        # men in a hat; women: GUEST_GOWN_HAT always, GUEST_GOWN never
 SEAT_FILL = 0.6                             # share of the hall's chairs taken (frame time: each guest is a skeletal mesh)
 STAFF_AT = ((1200.0, -1700.0), (-2050.0, 1100.0), (-2650.0, 1640.0))   # the bartender, receptionist, cloakroom
 IDLE_RATE_SPREAD = 0.1                      # idles at rates 0.9 to 1.1
@@ -181,6 +205,132 @@ def colour(c):
     return unreal.LinearColor(c[0], c[1], c[2], 1.0)
 
 
+def pick(seq, *parts):
+    return seq[min(int(h01(*parts) * len(seq)), len(seq) - 1)]
+
+
+def weighted(pairs, *parts):
+    """pairs: (value, weight); a stable weighted choice."""
+    r = h01(*parts) * sum(w for _, w in pairs)
+    for v, w in pairs:
+        r -= w
+        if r < 0.0:
+            return v
+    return pairs[-1][0]
+
+
+def draw_look(i, salt, k, ci, seated):
+    """One guest's whole look as plain values (indices into the palettes): build_cast's uniqueness and neighbour
+    checks run on these; cast_look() turns them into an unreal.CastLook."""
+    woman = k in WOMEN_KITS
+    r = lambda tag: h01("look", tag, i, salt)
+    old = r("old") < OLD_SHARE
+    L = {"kit": k, "ci": ci, "woman": woman, "old": old,
+         "skin": int(r("skin") * len(SKINS)) % len(SKINS),
+         "accent": int(r("accent") * len(ACCENTS)) % len(ACCENTS),
+         "width": round(r("width"), 3)}
+    if old:
+        L["hairc"] = len(HAIRS) + int(r("hairc") * len(OLD_HAIRS)) % len(OLD_HAIRS)
+    else:
+        L["hairc"] = weighted([(0, 4), (1, 4), (2, 3), (3, 2), (4, 1), (5, 1.5), (6, 1), (7, 0.5)], "hairc", i, salt)   # mostly dark: light hair read as bald
+    if woman:
+        L["style"] = 10 + int(r("style") * 7) % 7
+        L["hat"] = (11 + int(r("hat") * 4) % 4) if k == "GUEST_GOWN_HAT" else 0
+        L["hatc"] = int(r("hatc") * len(ACCENTS)) % len(ACCENTS)
+        L["face"] = 0
+        L["glasses"] = weighted([(0, 92), (1, 4), (2, 4)], "glasses", i, salt)
+        L["neck"] = weighted([(10, 3), (11, 3), (12, 2), (13, 2)], "neck", i, salt)
+        L["neckline"] = int(r("neckline") * 3) % 3
+        L["bare"] = r("bare") < ((0.5 if L["neckline"] == 2 else 0.3) if seated else (0.8 if L["neckline"] == 2 else 0.45))   # seated: no skirt shape, so mostly sleeved
+        L["gloves"] = weighted([(0, 45), (1, 20), (2, 35)], "gloves", i, salt)
+        L["glovec"] = int(r("glovec") * (len(GLOVES) + 1)) % (len(GLOVES) + 1)   # the last: the gown's colour
+        L["wrap"] = weighted([(0, 70), (1, 30), (2, 0)], "wrap", i, salt)              # 2, the fur collar, read as a ring
+        L["wrapc"] = int(r("wrapc") * (len(FURS) + 1)) % (len(FURS) + 1)        # the last: the accent
+        L["earrings"] = r("earrings") < 0.55
+        L["chest"] = 4 if r("brooch") < 0.15 else 0
+        L["flower"] = L["hat"] == 0 and r("flower") < 0.2
+        L["sash"] = r("sash") < 0.25
+        L["lower"] = -1 if r("skirt") < 0.85 else 0                              # -1: the gown's colour, 0: black
+        L["lips"] = int(r("lips") * len(LIPS)) % len(LIPS)
+        L["shirt"] = 0
+        L["cummer"] = False
+    else:
+        styles = [(0, 4), (1, 3), (2, 1), (3, 0.5), (4, 1.5), (5, 2)] if not old else [(0, 2), (1, 2), (2, 4), (3, 2), (4, 3)]
+        L["style"] = weighted(styles, "style", i, salt)
+        hat = r("hatshare") < MEN_HAT_SHARE
+        L["hat"] = 0 if not hat else (weighted([(2, 3), (1, 1), (3, 1)], "hatk", i, salt) if k == "GUEST_TAILS"
+                                      else weighted([(1, 3), (3, 2), (4, 2)], "hatk", i, salt))
+        L["hatc"] = int(r("hatc") * len(MEN_HATS)) % len(MEN_HATS)
+        L["face"] = weighted([(0, 55), (1, 10), (2, 12), (3, 8), (4, 7), (5, 8)], "face", i, salt)
+        L["glasses"] = weighted([(0, 60 if old else 80), (1, 10), (2, 8), (3, 2)], "glasses", i, salt)
+        L["neck"] = weighted([(0, 5), (1, 3 if k == "GUEST_TAILS" else 1), (2, 1.5), (3, 1)], "neck", i, salt)
+        L["neckline"] = 0
+        L["bare"] = False
+        L["gloves"] = 1 if r("gloves") < 0.08 else 0
+        L["glovec"] = 0
+        L["wrap"] = 0
+        L["wrapc"] = 0
+        L["earrings"] = False
+        L["chest"] = weighted([(0, 4), (1, 2.5), (2, 1.5), (3, 2)], "chest", i, salt)
+        L["flower"] = False
+        L["sash"] = False
+        L["lower"] = 0 if (k == "GUEST_TAILS" or r("suit") < 0.7) else -1          # black trousers, or the suit's
+        L["lips"] = 0
+        L["shirt"] = weighted([(0, 6), (1, 3), (2, 1)], "shirt", i, salt)
+        L["cummer"] = r("cummer") < 0.25
+    if old:
+        L["width"] = round(0.35 + 0.65 * L["width"], 3)
+    return L
+
+
+def far_traits(L):
+    """What tells two guests apart at 3-10 m: the colour, the skin, the hair's colour, the head's outline, the face or
+    wrap, the arms (bare, gloved)."""
+    head = ("hat", L["hat"]) if L["hat"] else ("hair", L["style"])
+    face = ("fur", L["wrap"]) if L["woman"] else ("face", L["face"], L["glasses"] > 0)
+    return ((L["kit"], L["ci"]), L["skin"], L["hairc"], head, face, (L["bare"], L["gloves"]))
+
+
+def look_key(L):
+    """The full look: every discrete choice (two guests with the same key would be twins)."""
+    return tuple(sorted((key, v) for key, v in L.items() if key not in ("width", "old")))
+
+
+def cast_look(L, pal):
+    c = colour
+    look = unreal.CastLook()
+    hairs = HAIRS + OLD_HAIRS
+    tint = pal[L["ci"]]
+    look.set_editor_property("explicit", True)
+    look.set_editor_property("skin", c(SKINS[L["skin"]]))
+    look.set_editor_property("hair", c(hairs[L["hairc"]]))
+    look.set_editor_property("hair_style", L["style"])
+    look.set_editor_property("facial_hair", L["face"])
+    look.set_editor_property("hat", L["hat"])
+    look.set_editor_property("hat_colour", c(ACCENTS[L["hatc"]] if L["woman"] else MEN_HATS[L["hatc"]]))
+    look.set_editor_property("glasses", L["glasses"])
+    look.set_editor_property("neck", L["neck"])
+    look.set_editor_property("wrap", L["wrap"])
+    look.set_editor_property("wrap_colour", c(FURS[L["wrapc"]] if L["wrapc"] < len(FURS) else ACCENTS[L["accent"]]))
+    look.set_editor_property("gloves", L["gloves"])
+    look.set_editor_property("glove_colour", c(GLOVES[L["glovec"]] if L["glovec"] < len(GLOVES) else tint))
+    look.set_editor_property("chest", L["chest"])
+    look.set_editor_property("accent", c(ACCENTS[L["accent"]]))
+    look.set_editor_property("shirt", c(SHIRTS[L["shirt"]]))
+    look.set_editor_property("lower", c(tint if L["lower"] < 0 else (0.015, 0.015, 0.018)))
+    look.set_editor_property("shoes", c((0.012, 0.012, 0.012)))
+    look.set_editor_property("lips", c(LIPS[L["lips"]]))
+    look.set_editor_property("neckline", L["neckline"])
+    look.set_editor_property("bare_arms", L["bare"])
+    look.set_editor_property("cummerbund", L["cummer"])
+    look.set_editor_property("earrings", L["earrings"])
+    look.set_editor_property("hair_flower", L["flower"])
+    look.set_editor_property("sash", L["sash"])
+    lo, hi = WOMEN_WIDTH if L["woman"] else MEN_WIDTH
+    look.set_editor_property("width", lo + (hi - lo) * L["width"])
+    return look
+
+
 def spawn_member(k, x, y, z, yaw, tint, seated=False, name=None, **props):
     m = EAS.spawn_actor_from_class(unreal.CastMember, unreal.Vector(x, y, z), unreal.Rotator(0.0, 0.0, yaw))
     m.set_actor_label(name or ("Cast_" + k.title().replace("_", "")))
@@ -236,6 +386,10 @@ if seats:
 # Kits and colours: a woman or a man by turns of a stable draw; the first combination no neighbour already wears.
 assigned = []                                # (x, y, kit, colour index)
 n_seated = n_glass = 0
+crowd_mat = unreal.load_asset(CROWD_MAT) if CROWD_LOOKS and EAL.does_asset_exist(CROWD_MAT) else None
+looks = []                                   # (x, y, look) of the guests with an explicit look
+taken = set()                                # every full look so far
+retries = 0
 for i, (x, y, z, yaw, seated, staff) in enumerate(places):
     if staff:
         k, tint, ci = "STAFF", STAFF_TINT, -1
@@ -256,12 +410,48 @@ for i, (x, y, z, yaw, seated, staff) in enumerate(places):
     lo, hi = WOMEN_SCALE if k in WOMEN_KITS else MEN_SCALE
     glass = not seated and not staff and h01("glass", i) < GLASS_SHARE
     extra = {"seat_hip_forward": SEAT_HIP_FORWARD} if seated and seats else {}
+    if crowd_mat and not staff:
+        # The first draw that is nobody's twin and differs from every neighbour in NEIGHBOUR_DIFFER far traits.
+        near = [lk for (lx, ly, lk) in looks if math.hypot(lx - x, ly - y) < NEIGHBOUR_RADIUS]
+        best, best_score = None, -1
+        for salt in range(60):
+            cand = draw_look(i, salt, k, ci, seated)
+            if look_key(cand) in taken:
+                continue
+            ft = far_traits(cand)
+            score = min([sum(a != b for a, b in zip(ft, far_traits(o))) for o in near] or [99])
+            if score > best_score:
+                best, best_score = cand, score
+            if score >= NEIGHBOUR_DIFFER:
+                break
+            retries += 1
+        taken.add(look_key(best))
+        looks.append((x, y, best))
+        extra["look"] = cast_look(best, WOMEN if k in WOMEN_KITS else MEN)
+        extra["look"].set_editor_property("for_seed", i * 7919 + 13)    # re-seeded later (a featured person): dropped
+        extra["crowd_body_material"] = crowd_mat
     spawn_member(k, x, y, z, yaw, tint, seated=seated, name="Cast_Guest_%03d" % i,
                  pose_time=(i * 1.37) % 7.0, body_shadow=False, draw_distance=GUEST_DRAW,
                  look_seed=i * 7919 + 13, body_scale=lo + (hi - lo) * h01("scale", i), holds_glass=glass, **extra)
     n_seated += seated
     n_glass += glass
 REPORT.append("guests %d (%d seated%s, %d with a glass)" % (len(places), n_seated, " on the hall's chairs" if seats else "", n_glass))
+if looks:
+    # The guarantee, checked on what was placed: no two guests share a full look; neighbours differ visibly.
+    keys = [look_key(lk) for (_, _, lk) in looks]
+    assert len(set(keys)) == len(keys), "two guests share a look"
+    close = weak = 0
+    for a in range(len(looks)):
+        for b in range(a + 1, len(looks)):
+            (ax, ay, la), (bx, by, lb) = looks[a], looks[b]
+            if math.hypot(ax - bx, ay - by) < NEIGHBOUR_RADIUS:
+                close += 1
+                weak += sum(p != q for p, q in zip(far_traits(la), far_traits(lb))) < NEIGHBOUR_DIFFER
+    REPORT.append("guest looks: %d guests, %d distinct full looks (all unique: %s); %d neighbour pairs, %d differ in "
+                  "fewer than %d far traits; %d redraws" % (len(looks), len(set(keys)), len(set(keys)) == len(keys),
+                                                           close, weak, NEIGHBOUR_DIFFER, retries))
+elif CROWD_LOOKS:
+    REPORT.append("guest looks: %s missing (run tools/crowd_material.py): the old seed-drawn variety" % CROWD_MAT)
 
 # --- 2. the band -------------------------------------------------------------------------------------------------------
 def npc_mesh(name):

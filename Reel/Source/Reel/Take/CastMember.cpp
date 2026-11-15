@@ -408,6 +408,143 @@ namespace CastKits
 		}
 	}
 
+	// --- crowd pass (Nov 15): a guest with an explicit look (FCastLook, from build_cast.py) --------------------------------
+	// The body is painted (M_CrowdBody: skin, hands, sleeves, gloves, shirt front, trousers, shoes, hair, face), so no skin
+	// shell and no shirt-front piece; the pieces only add what stands proud of the body. Offsets on "head" are from the
+	// head bone (the mannequin's face is about CrowdFaceX forward of it, the eyes CrowdEyeZ up).
+	const float CrowdFaceX = 10.5f;
+	const float CrowdEyeZ = 7.f;
+
+	bool IsGuestKit(ECastKit Kit)
+	{
+		return Kit == ECastKit::GuestTux || Kit == ECastKit::GuestTails || Kit == ECastKit::GuestGown || Kit == ECastKit::GuestGownHat;
+	}
+
+	void CrowdHair(TArray<FPiece>& Out, int32 Style, const FLinearColor& C, bool bHat)
+	{
+		const FRotator Z = FRotator::ZeroRotator;
+		auto Cap = [&]() { Out.Add({ETakeShape::Sphere, TEXT("head"), FVector(-3.5f, 0.f, 9.5f), Z, FVector(21.f, 18.8f, 18.5f), C}); };
+		switch (Style)
+		{
+		case 5: if (!bHat) Out.Add({ETakeShape::Sphere, TEXT("head"), FVector(2.f, 0.f, 16.5f), Z, FVector(15.f, 14.f, 7.f), C}); break;
+		case 10: Cap(); if (!bHat) Out.Add({ETakeShape::Sphere, TEXT("head"), FVector(-12.5f, 0.f, 12.f), Z, FVector(10.f, 10.f, 10.f), C}); break;
+		case 11: Cap(); Out.Add({ETakeShape::Sphere, TEXT("head"), FVector(-7.f, 0.f, 2.f), Z, FVector(14.f, 21.f, 13.f), C}); break;
+		case 12:
+			Cap();
+			if (!bHat)
+			{
+				Out.Add({ETakeShape::Sphere, TEXT("head"), FVector(3.f, 5.f, 18.f), Z, FVector(10.f, 7.f, 7.f), C});
+				Out.Add({ETakeShape::Sphere, TEXT("head"), FVector(3.f, -5.f, 18.f), Z, FVector(10.f, 7.f, 7.f), C});
+			}
+			break;
+		case 13: Out.Add({ETakeShape::Sphere, TEXT("head"), FVector(-3.f, 0.f, 7.f), Z, FVector(22.f, 21.f, 21.f), C}); break;
+		case 14: Cap(); if (!bHat) Out.Add({ETakeShape::Sphere, TEXT("head"), FVector(-4.f, 0.f, 21.f), Z, FVector(13.f, 12.f, 14.f), C}); break;
+		case 15: Cap(); Out.Add({ETakeShape::Cube, TEXT("head"), FVector(-8.5f, 0.f, -5.f), FRotator(-6.f, 0.f, 0.f), FVector(6.f, 17.f, 22.f), C}); break;
+		case 16: Cap(); Out.Add({ETakeShape::Sphere, TEXT("head"), FVector(-11.f, 0.f, 0.f), Z, FVector(9.f, 13.f, 8.f), C}); break;
+		default: break;		// the men's short styles are painted on the head
+		}
+	}
+
+	void CrowdHat(TArray<FPiece>& Out, const FCastLook& K)
+	{
+		const FLinearColor C = K.HatColour;
+		const FLinearColor Band = Scaled(C, 0.35f, 0.004f, 0.2f);
+		switch (K.Hat)
+		{
+		case 1: Fedora(Out, C); Out.Add({ETakeShape::Cylinder, TEXT("head"), FVector(-0.5f, 0.f, 21.3f), FRotator::ZeroRotator, FVector(22.6f, 21.6f, 2.2f), Band}); break;
+		case 2: TopHat(Out, C, 20.f); break;
+		case 3:
+			Out.Add({ETakeShape::Cylinder, TEXT("head"), FVector(0.f, 0.f, 19.5f), FRotator::ZeroRotator, FVector(31.f, 29.f, 1.8f), C});
+			Out.Add({ETakeShape::Cylinder, TEXT("head"), FVector(-0.5f, 0.f, 24.5f), FRotator::ZeroRotator, FVector(21.f, 20.f, 10.f), C});
+			Out.Add({ETakeShape::Cylinder, TEXT("head"), FVector(-0.5f, 0.f, 21.f), FRotator::ZeroRotator, FVector(21.6f, 20.6f, 2.2f), K.Accent});
+			break;
+		case 4:
+			Out.Add({ETakeShape::Cylinder, TEXT("head"), FVector(0.f, 0.f, 18.5f), FRotator::ZeroRotator, FVector(29.f, 27.f, 1.2f), C});
+			Out.Add({ETakeShape::Sphere, TEXT("head"), FVector(0.f, 0.f, 21.f), FRotator::ZeroRotator, FVector(21.f, 20.f, 16.f), C});
+			break;
+		case 11: Out.Add({ETakeShape::Cylinder, TEXT("head"), FVector(2.f, 3.f, 20.5f), FRotator(-8.f, 0.f, 12.f), FVector(12.f, 12.f, 5.5f), C}); break;
+		case 12:
+			Out.Add({ETakeShape::Cylinder, TEXT("head"), FVector(1.f, 0.f, 18.5f), FRotator(-6.f, 0.f, 0.f), FVector(42.f, 40.f, 0.8f), C});
+			Out.Add({ETakeShape::Cylinder, TEXT("head"), FVector(0.f, 0.f, 21.5f), FRotator(-6.f, 0.f, 0.f), FVector(19.f, 18.f, 6.f), C});
+			Out.Add({ETakeShape::Cylinder, TEXT("head"), FVector(0.f, 0.f, 19.4f), FRotator(-6.f, 0.f, 0.f), FVector(19.6f, 18.6f, 1.6f), K.Accent});
+			break;
+		case 13: LadyHat(Out, C, K.Accent); break;
+		case 14:
+			Out.Add({ETakeShape::Sphere, TEXT("head"), FVector(-1.f, 0.f, 15.5f), FRotator::ZeroRotator, FVector(23.f, 21.f, 17.f), C});
+			Out.Add({ETakeShape::Sphere, TEXT("head"), FVector(9.5f, 0.f, 17.f), FRotator::ZeroRotator, FVector(2.6f, 2.6f, 2.6f), Metal});
+			break;
+		default: break;
+		}
+	}
+
+	void BuildGuest(ECastKit Kit, const FLinearColor& Tint, const FCastLook& K, bool bSeated, bool bGlass, TArray<FPiece>& Out)
+	{
+		const bool bWoman = IsQuinnKit(Kit);
+		const FRotator Z = FRotator::ZeroRotator;
+		const float FX = CrowdFaceX + 0.6f, EZ = CrowdEyeZ;
+		CrowdHair(Out, K.HairStyle, K.Hair, K.Hat != 0);
+		const int32 HatFrom = Out.Num();
+		CrowdHat(Out, K);
+		for (int32 i = HatFrom; i < Out.Num(); ++i)
+		{
+			Out[i].Loc.Z -= 4.5f;	// the hats were placed on the skin shell; the painted head is lower
+		}
+		const FLinearColor Rim = K.Glasses == 2 ? Lin(0.035f, 0.018f, 0.008f) : Grey(0.02f);
+		if (K.Glasses == 1)
+		{
+			Out.Add({ETakeShape::Cylinder, TEXT("head"), FVector(FX, 3.3f, EZ), FRotator(90.f, 0.f, 0.f), FVector(3.4f, 3.4f, 0.5f), Rim});
+			Out.Add({ETakeShape::Cylinder, TEXT("head"), FVector(FX, -3.3f, EZ), FRotator(90.f, 0.f, 0.f), FVector(3.4f, 3.4f, 0.5f), Rim});
+		}
+		else if (K.Glasses == 2)
+		{
+			Out.Add({ETakeShape::Cube, TEXT("head"), FVector(FX, 3.4f, EZ + 0.3f), Z, FVector(0.8f, 4.6f, 3.4f), Rim});
+			Out.Add({ETakeShape::Cube, TEXT("head"), FVector(FX, -3.4f, EZ + 0.3f), Z, FVector(0.8f, 4.6f, 3.4f), Rim});
+		}
+		else if (K.Glasses == 3)
+		{
+			Out.Add({ETakeShape::Cylinder, TEXT("head"), FVector(FX, 3.3f, EZ), FRotator(90.f, 0.f, 0.f), FVector(3.6f, 3.6f, 0.5f), Metal});
+		}
+		switch (K.Neck)
+		{
+		case 0: BowTie(Out, Grey(0.01f)); break;
+		case 1: BowTie(Out, K.Shirt); break;
+		case 2: BowTie(Out, K.Accent); break;
+		case 3:
+			Out.Add({ETakeShape::Cube, TEXT("neck_01"), FVector(8.5f, 0.f, -4.5f), Z, FVector(2.5f, 4.f, 3.5f), K.Accent});
+			Out.Add({ETakeShape::Cube, TEXT("spine_05"), FVector(11.8f, 0.f, -9.f), FRotator(-8.f, 0.f, 0.f), FVector(1.2f, 5.f, 24.f), K.Accent});
+			break;
+		case 11: Out.Add({ETakeShape::Cylinder, TEXT("neck_01"), FVector(2.f, 0.f, -1.5f), Z, FVector(14.f, 15.f, 1.4f), Pearl}); break;
+		case 12: Out.Add({ETakeShape::Cylinder, TEXT("neck_01"), FVector(1.f, 0.f, 3.f), Z, FVector(11.5f, 12.f, 1.8f), K.Accent}); break;
+		case 13: Out.Add({ETakeShape::Cylinder, TEXT("neck_01"), FVector(2.5f, 0.f, -2.5f), FRotator(-10.f, 0.f, 0.f), FVector(15.f, 16.f, 0.8f), Metal}); break;
+		default: break;
+		}
+		if (K.bEarrings)
+		{
+			const FLinearColor E = K.Neck == 11 ? Pearl : Metal;
+			Out.Add({ETakeShape::Sphere, TEXT("head"), FVector(1.5f, 8.2f, 1.5f), Z, FVector(1.9f, 1.9f, 2.4f), E});
+			Out.Add({ETakeShape::Sphere, TEXT("head"), FVector(1.5f, -8.2f, 1.5f), Z, FVector(1.9f, 1.9f, 2.4f), E});
+		}
+		if (K.Wrap == 1) Out.Add({ETakeShape::Sphere, TEXT("spine_05"), FVector(-7.f, 0.f, 3.f), FRotator(-15.f, 0.f, 0.f), FVector(13.f, 44.f, 20.f), K.WrapColour});	// over the back and shoulders (a disc read as a neck ring)
+		else if (K.Wrap == 2) Out.Add({ETakeShape::Sphere, TEXT("spine_05"), FVector(-2.f, 0.f, 9.f), Z, FVector(25.f, 39.f, 10.f), K.WrapColour});
+		if (K.Chest == 1 || K.Chest == 3) Out.Add({ETakeShape::Cube, TEXT("spine_05"), FVector(11.5f, -9.5f, -2.f), Z, FVector(1.2f, 4.f, 2.5f), K.Shirt.R > 0.3f && K.Chest == 3 ? K.Accent : K.Shirt});
+		if (K.Chest == 2 || K.Chest == 3) Out.Add({ETakeShape::Sphere, TEXT("spine_05"), FVector(11.5f, -10.5f, 5.f), Z, FVector(2.8f, 2.8f, 2.8f), K.Accent});
+		if (K.Chest == 4) Out.Add({ETakeShape::Sphere, TEXT("spine_05"), FVector(10.5f, -6.f, 3.f), Z, FVector(2.6f, 1.2f, 2.6f), Metal});
+		if (K.bHairFlower) Out.Add({ETakeShape::Sphere, TEXT("head"), FVector(-1.f, 8.f, 14.f), Z, FVector(4.f, 3.f, 4.f), K.Accent});
+		if (K.bCummerbund && !bWoman) Out.Add({ETakeShape::Cylinder, TEXT("pelvis"), FVector(1.f, 0.f, 13.f), Z, FVector(27.f, 36.f, 9.f), K.Accent});
+		if (Kit == ECastKit::GuestTails) Tails(Out, Scaled(Tint, 0.8f));
+		if (bWoman && !bSeated)
+		{
+			FLook G;
+			G.bSeated = false;
+			G.SkirtLength = 1.f;
+			Gown(Out, K.Lower, G);
+		}
+		if (bGlass)
+		{
+			Glass(Out);
+		}
+	}
+
 	/** Shared colour instances of BasicShapeMaterial, so equal pieces draw together. */
 	UMaterialInstanceDynamic* SharedColour(const FLinearColor& Colour)
 	{
@@ -655,6 +792,75 @@ void ACastMember::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	Super::EndPlay(EndPlayReason);
 }
 
+bool ACastMember::UsesCrowdLook() const
+{
+	return Look.bExplicit && (Look.ForSeed < 0 || Look.ForSeed == LookSeed) && bVary && HeroMesh.IsNull() && !bDressParent && !bWalker && CastKits::IsGuestKit(Kit);
+}
+
+bool ACastMember::PaintCrowdBody()
+{
+	USkeletalMesh* Mesh = Body ? Body->GetSkeletalMeshAsset() : nullptr;
+	if (!CrowdBodyMaterial || !Mesh)
+	{
+		return false;
+	}
+	UMaterialInstanceDynamic* MID = Cast<UMaterialInstanceDynamic>(Body->GetMaterial(0));
+	if (!MID || MID->Parent != CrowdBodyMaterial)
+	{
+		MID = UMaterialInstanceDynamic::Create(CrowdBodyMaterial, Body);
+	}
+	if (!MID)
+	{
+		return false;
+	}
+	for (int32 Slot = 0; Slot < Body->GetNumMaterials(); ++Slot)
+	{
+		Body->SetMaterial(Slot, MID);
+	}
+	// The joints at the reference pose, in the mesh's space (the material's pre-skinned position is in the same space).
+	const FReferenceSkeleton& Ref = Mesh->GetRefSkeleton();
+	auto Joint = [&](const TCHAR* Name, const TCHAR* Param) {
+		const int32 Index = Ref.FindBoneIndex(FName(Name));
+		if (Index != INDEX_NONE)
+		{
+			const FVector P = FAnimationRuntime::GetComponentSpaceTransformRefPose(Ref, Index).GetLocation();
+			MID->SetVectorParameterValue(Param, FLinearColor(float(P.X), float(P.Y), float(P.Z)));
+		}
+	};
+	Joint(TEXT("head"), TEXT("HeadPos"));
+	Joint(TEXT("neck_01"), TEXT("NeckPos"));
+	Joint(TEXT("spine_05"), TEXT("ChestPos"));
+	Joint(TEXT("pelvis"), TEXT("PelvisPos"));
+	Joint(TEXT("upperarm_r"), TEXT("ShoulderPos"));
+	Joint(TEXT("lowerarm_r"), TEXT("ElbowPos"));
+	Joint(TEXT("hand_r"), TEXT("WristPos"));
+	Joint(TEXT("foot_r"), TEXT("FootPos"));
+
+	const bool bWoman = CastKits::IsQuinnKit(Kit);
+	int32 Cover = 1;		// 0 bald, 1 full, 2 balding, 3 receding, 4 a woman's, 5 full with a parting
+	switch (Look.HairStyle)
+	{
+	case 1: Cover = 5; break;
+	case 2: Cover = 2; break;
+	case 3: Cover = 0; break;
+	case 4: Cover = 3; break;
+	default: Cover = Look.HairStyle >= 10 ? 4 : 1; break;
+	}
+	MID->SetVectorParameterValue(TEXT("Skin"), Look.Skin);
+	MID->SetVectorParameterValue(TEXT("Upper"), Tint);
+	MID->SetVectorParameterValue(TEXT("Lower"), Look.Lower);
+	MID->SetVectorParameterValue(TEXT("Shirt"), Look.Shirt);
+	MID->SetVectorParameterValue(TEXT("Glove"), Look.GloveColour);
+	MID->SetVectorParameterValue(TEXT("Shoe"), Look.Shoes);
+	MID->SetVectorParameterValue(TEXT("HairColour"), Look.Hair);
+	MID->SetVectorParameterValue(TEXT("Lips"), bWoman ? Look.Lips : CastKits::Scaled(Look.Skin, 0.6f, 0.004f, 0.4f));
+	MID->SetVectorParameterValue(TEXT("Accent"), Look.Accent);
+	MID->SetVectorParameterValue(TEXT("Style1"), FLinearColor(float(Look.Gloves), Look.bBareArms ? 1.f : 0.f, float(Look.Neckline)));
+	MID->SetVectorParameterValue(TEXT("Style2"), FLinearColor(float(Cover), float(Look.FacialHair), bWoman ? 0.f : 1.f));
+	MID->SetVectorParameterValue(TEXT("Style3"), FLinearColor(Look.bSash ? 1.f : 0.f, bWoman ? 1.f : 0.f, 0.f));
+	return true;
+}
+
 void ACastMember::SetupBody()
 {
 	Seed = LookSeed >= 0 ? uint32(LookSeed) * 2654435761u + 17u : FCrc::StrCrc32(*GetFName().ToString());
@@ -686,7 +892,8 @@ void ACastMember::SetupBody()
 		Body->SetSkeletalMeshAsset(Mesh);
 	}
 	Body->SetVisibility(true);
-	Body->SetRelativeScale3D(FVector(BodyScale));
+	const float Breadth = UsesCrowdLook() ? FMath::Clamp(Look.Width, 0.8f, 1.3f) : 1.f;
+	Body->SetRelativeScale3D(FVector(BodyScale * Breadth, BodyScale * Breadth, BodyScale));
 	Body->SetCastShadow(bBodyShadow);
 	if (Body->LDMaxDrawDistance > 0.f)
 	{
@@ -696,7 +903,7 @@ void ACastMember::SetupBody()
 	{
 		Body->EmptyOverrideMaterials();	// --- W3 cast2 --- a hero wears its own material, not the mannequin's tint MIDs
 	}
-	if (HeroMesh.IsNull())
+	if (HeroMesh.IsNull() && !(UsesCrowdLook() && PaintCrowdBody()))
 	{
 		// The tint, as the characters do it (M_Mannequin's "Paint Tint"); no glowing logo on the chest.
 		for (int32 Slot = 0; Slot < Body->GetNumMaterials(); ++Slot)
@@ -1000,12 +1207,19 @@ void ACastMember::BuildPieces(bool bTransient)
 	const ATakeCharacter* Character = bDressParent ? Cast<ATakeCharacter>(GetAttachParentActor()) : nullptr;
 	const bool bHero = !HeroMesh.IsNull() || (Character && !Character->HeroMesh.IsNull());
 
-	CastKits::FLook Look = CastKits::MakeLook(Seed, Kit, bVary && !bDressParent, bSkinShell);
-	Look.bSeated = bSeated;
-	Look.bInstrumentProps = bInstrumentProps;
-	Look.bGlass = bHoldsGlass && !bSeated && !bDressParent && !bWalker;
+	CastKits::FLook Drawn = CastKits::MakeLook(Seed, Kit, bVary && !bDressParent, bSkinShell);
+	Drawn.bSeated = bSeated;
+	Drawn.bInstrumentProps = bInstrumentProps;
+	Drawn.bGlass = bHoldsGlass && !bSeated && !bDressParent && !bWalker;
 	TArray<CastKits::FPiece> Defs;
-	CastKits::Build(Kit, Tint, Look, Defs);
+	if (UsesCrowdLook())
+	{
+		CastKits::BuildGuest(Kit, Tint, Look, bSeated, Drawn.bGlass, Defs);
+	}
+	else
+	{
+		CastKits::Build(Kit, Tint, Drawn, Defs);
+	}
 
 	const FQuat MeshFromBody(FRotator(0.f, 90.f, 0.f));		// body X (forward) -> mesh +Y, body Y (right) -> mesh -X
 	FTransform BodyRest = Wearer->GetRelativeTransform();

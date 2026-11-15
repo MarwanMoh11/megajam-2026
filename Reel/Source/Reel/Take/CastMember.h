@@ -30,6 +30,116 @@ class UStaticMeshComponent;
 class UAnimationAsset;
 class UAnimSequenceBase;
 class UCastAnimInstance;
+class UMaterialInterface;
+
+/** A guest's whole look, decided by tools/build_cast.py so that no two guests share one (crowd pass, Nov 15). With
+ *  bExplicit off the look is drawn from LookSeed as before. The body wears CrowdBodyMaterial, painted per person from
+ *  the reference pose (skin, hands, sleeves, gloves, shirt front, trousers, shoes, hair, brows, eyes, lips, beards);
+ *  the pieces add hats, hair volume, glasses, jewellery, wraps and buttonholes. In Python: unreal.CastLook. */
+USTRUCT(BlueprintType)
+struct FCastLook
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Look")
+	bool bExplicit = false;
+
+	/** The LookSeed this look was made for (-1: any). A member re-seeded afterwards (a hand-kitted featured person)
+	 *  drops the explicit look and goes back to the seed-drawn one. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Look")
+	int32 ForSeed = -1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Look")
+	FLinearColor Skin = FLinearColor(0.45f, 0.30f, 0.20f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Look")
+	FLinearColor Hair = FLinearColor(0.03f, 0.02f, 0.015f);
+
+	/** Men: 0 short, 1 slicked, 2 balding, 3 bald, 4 receding, 5 wavy top. Women: 10 bun, 11 waves, 12 victory rolls,
+	 *  13 bob, 14 high updo, 15 long, 16 chignon. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Look")
+	int32 HairStyle = 0;
+
+	/** 0 none, 1 pencil moustache, 2 full moustache, 3 beard, 4 goatee, 5 sideburns. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Look")
+	int32 FacialHair = 0;
+
+	/** 0 none. Men: 1 fedora, 2 top hat, 3 homburg, 4 bowler. Women: 11 pillbox, 12 wide brim, 13 cocktail hat with a
+	 *  feather, 14 turban. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Look")
+	int32 Hat = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Look")
+	FLinearColor HatColour = FLinearColor(0.02f, 0.02f, 0.02f);
+
+	/** 0 none, 1 round, 2 horn-rimmed, 3 a monocle. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Look")
+	int32 Glasses = 0;
+
+	/** Men: 0 black bow tie, 1 white bow tie, 2 coloured bow tie, 3 long tie. Women: 10 nothing, 11 pearls, 12 a choker,
+	 *  13 a gold chain. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Look")
+	int32 Neck = 0;
+
+	/** 0 none, 1 a stole, 2 a fur collar. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Look")
+	int32 Wrap = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Look")
+	FLinearColor WrapColour = FLinearColor(0.3f, 0.3f, 0.3f);
+
+	/** 0 none, 1 short, 2 opera (above the elbow). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Look")
+	int32 Gloves = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Look")
+	FLinearColor GloveColour = FLinearColor(0.38f, 0.37f, 0.34f);
+
+	/** 0 none, 1 pocket square, 2 buttonhole flower, 3 both, 4 a brooch. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Look")
+	int32 Chest = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Look")
+	FLinearColor Accent = FLinearColor(0.14f, 0.02f, 0.03f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Look")
+	FLinearColor Shirt = FLinearColor(0.40f, 0.39f, 0.36f);
+
+	/** The trousers, or the skirt. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Look")
+	FLinearColor Lower = FLinearColor(0.02f, 0.02f, 0.02f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Look")
+	FLinearColor Shoes = FLinearColor(0.01f, 0.01f, 0.01f);
+
+	/** Lipstick (women); men's lips are a darker skin. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Look")
+	FLinearColor Lips = FLinearColor(0.20f, 0.02f, 0.03f);
+
+	/** Women: 0 high, 1 a V, 2 off the shoulder. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Look")
+	int32 Neckline = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Look")
+	bool bBareArms = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Look")
+	bool bCummerbund = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Look")
+	bool bEarrings = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Look")
+	bool bHairFlower = false;
+
+	/** A sash at the waist in the accent colour (gowns). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Look")
+	bool bSash = false;
+
+	/** The build: the body's breadth against its height (1 as modelled). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Look")
+	float Width = 1.f;
+};
 
 /** The costume (and instrument) a cast member wears. In Python: unreal.CastKit. */
 UENUM(BlueprintType)
@@ -151,6 +261,14 @@ public:
 	/** Holds a champagne coupe in the right hand (and sips from it). */
 	UPROPERTY(EditAnywhere, Category = "Take|Cast|Variety")
 	bool bHoldsGlass = false;
+
+	/** A guest's explicit look (build_cast.py, crowd pass). Only the guest kits read it; never a hero mesh. */
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Variety")
+	FCastLook Look;
+
+	/** The painted body for an explicit look (/Game/Take/Cast/Crowd/M_CrowdBody). None: the mannequin in its tint. */
+	UPROPERTY(EditAnywhere, Category = "Take|Cast|Variety")
+	TObjectPtr<UMaterialInterface> CrowdBodyMaterial;
 
 	/** Real instrument props stand where this player plays (tools/sets/hall_band.json): no shape instrument, stand or
 	 *  stool (the trumpet in the hands stays). */
@@ -371,6 +489,10 @@ private:
 	UCastAnimInstance* GetAnim() const;
 
 	void SetupBody();
+	/** A guest kit with an explicit look, on the mannequin (never a hero mesh, a watcher or the crew). */
+	bool UsesCrowdLook() const;
+	/** The body in CrowdBodyMaterial, painted from Look (true), or false when there is no material. */
+	bool PaintCrowdBody();
 	void BuildPieces(bool bTransient);
 	void HideParentStandIn();
 	void ReattachPieces(USceneComponent* Target);
