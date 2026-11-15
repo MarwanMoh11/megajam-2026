@@ -1389,3 +1389,19 @@ and 8 were not in the saved level yet ("no scene 7/8"). Two bugs found and fixed
 
 s8's credits are now in the sequencer, and `build_auction.py`'s cue lines say NORA and COLE. The unused
 `MI_Puzzle_EyeLens` material is deleted.
+
+### Nov 15, 18:05 Cairo: Scene 8, the alley, plays end to end
+The 17:20 build was the first with `AScene8Alley` and `AScene8Car` live. With the lock, s8-alley imported the 15
+ElevenLabs sounds and voices and the Hyper3D Rodin GT. It also ran `tools/script/scene8.py` (the alley strip south of the
+service wing: a far brick wall with a gap, Scene 1's wet cobbles and rain, three lamps) and saved the level.
+`Reel.Script.Jump 8` plays every beat in order: the fire door bangs open, the GT drifts in, Max says "Get in! Get in!",
+the run under fire, the dive and "Go, go, go!", the drive out through the gap, and "Cut. Print it." in the rear-view
+mirror. It then reaches spine's PRINT IT end card. Standing still lets the fire close in and gives a retake. Shots are in
+`C:\Jam\Builds\script\s8\`. These shots turned up four problems:
+- The drive camera was blocked by a bin and the far wall: the camera moved east of the turn.
+- The goal line sat on top of the subtitles: it moved to the top of the picture.
+- A muzzle flash whited out the frame: it is now dimmer.
+- The mirror shot was a flat cream panel. Rodin cars are closed shells whose windows are only texture, so the camera was
+  inside the body. The body is now hidden for that shot.
+
+Max in the car is s2's seated clerk. The C++ fixes go in at 18:10.
