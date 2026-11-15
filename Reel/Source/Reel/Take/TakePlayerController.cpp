@@ -125,7 +125,9 @@ void ATakePlayerController::PlayerTick(float DeltaTime)
 			EKeys::GetAllKeys(All);
 			for (const FKey& K : All)
 			{
-				if (!K.IsAxis1D() && !K.IsAxis2D() && !K.IsAxis3D() && !K.IsTouch() && !K.IsGesture() && K.IsValid())
+				// Not AnyKey: it is "just pressed" with every key and would reach the scene first as a wrong key.
+				if (!K.IsAxis1D() && !K.IsAxis2D() && !K.IsAxis3D() && !K.IsTouch() && !K.IsGesture() && K.IsValid()
+					&& K != EKeys::AnyKey)
 				{
 					ScriptKeys.Add(K);
 				}
