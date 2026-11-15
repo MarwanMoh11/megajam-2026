@@ -1,8 +1,8 @@
 # Scene 5's play-in-editor shots into C:\Jam\Builds\script\s5\. Engine Python, repo root, under the editor lock:
 #   "$PY" -I tools/script/scene5_pie.py [prefix]        # default prefix "pie"
 #   "$PY" -I tools/script/scene5_pie.py --stop          # stop PIE (always before releasing the lock)
-# Starts PIE (if needed), presses through the title card, Reel.Script.Jump 5, then shoots: the speech, the blackout,
-# Vance on the south wall in the dark, Vance at the door, and what comes after the finish.
+# Starts PIE (if needed), presses through the title card, Reel.Script.Jump 5, then shoots: the speech (two frames for
+# the mouth), the seat cutaway, the dark seat shot, the exit shot, the sneak, the film, the door, and what follows.
 import os, sys, time
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "sets"))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
@@ -33,16 +33,29 @@ def main():
         L.console(s, "TakeConfirm")
         time.sleep(1.5)
     L.console(s, "Reel.Script.Jump 5")
-    time.sleep(4.5)
-    snap(s, "1_speech", prefix)
-    time.sleep(9.0)                                  # the speech runs out, the house cuts
-    snap(s, "2_blackout", prefix)
-    L.console(s, "TakeWarp 3150 -1830 0", "TakeLook 0 -8")
-    time.sleep(2.5)
-    snap(s, "3_wall", prefix)
-    L.console(s, "TakeLook -100 -10")
+    # QA Nov 15 evening: the mouth (two frames apart), the seat cutaway, the blackout's seat shot, the rise, the
+    # sneak HUD with the watchers' looks, the film on the screen.
+    time.sleep(2.0)
+    snap(s, "1a_speech", prefix)
+    time.sleep(0.25)
+    snap(s, "1b_speech", prefix)
+    time.sleep(3.0)                                  # the cutaway lands at 42% of the speech (~5 s)
+    snap(s, "1c_cutaway", prefix)
+    time.sleep(3.0)
+    snap(s, "1d_angle2", prefix)
+    time.sleep(4.6)                                  # the speech runs out, the house cuts, the seat shot
+    snap(s, "2_seat_dark", prefix)
+    time.sleep(2.2)                                  # he stands: the exit shot
+    snap(s, "2b_exit", prefix)
+    time.sleep(2.0)
+    snap(s, "2c_exit_walk", prefix)
+    time.sleep(3.0)                                  # the follow camera, the sneak HUD
+    snap(s, "3_sneak", prefix)
+    L.console(s, "TakeLook 45 -4")
     time.sleep(0.6)
-    snap(s, "3b_wall_back", prefix)
+    snap(s, "3b_screen", prefix)
+    time.sleep(6.0)
+    snap(s, "3c_screen_later", prefix)
     L.console(s, "TakeWarp 3650 -1880 0", "TakeLook -80 -5")
     time.sleep(2.0)
     snap(s, "4_door", prefix)

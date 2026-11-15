@@ -29,11 +29,18 @@ VO = [
      "private vault, never to be seen by common eyes again.", (0.6, 0.8, 0.3)),
     ("vo_s5_vance_cuff", "N2lVS1w4EtoT3dr4eOWO", "Booth door is mag-locked from the inside. Cole, you're up.",
      (0.4, 0.8, 0.45)),
+    # QA Nov 15 evening: the blackout to the wall is a scene of its own now. Vance rises out of the row and says where
+    # he is going; Cole (Vex's voice, behind the screen, on the earpiece) answers with the way and the danger.
+    ("vo_s5_vance_go", "N2lVS1w4EtoT3dr4eOWO", "Lights are down. I'm moving. Heading for the stage door.",
+     (0.4, 0.8, 0.45)),
+    ("vo_s5_cole_reply", "IKne3meq5aSn9XLyUdCD", "Copy. Oak door, south wall, right by the stage. It's the only "
+     "way up to the booth. Ushers have torches: move while they watch the picture.", (0.4, 0.8, 0.4)),
     ("vo_s5_usher_who", "iP95p4xoKVk53GoZ742B", "Hey. Who's moving back there?", (0.5, 0.8, 0.3)),
     ("vo_s5_usher_alibi", "iP95p4xoKVk53GoZ742B", "Oh. Pardon me, sir. Enjoy the picture.", (0.5, 0.8, 0.3)),
     ("vo_s5_guard_seen", "SOYHLrjzK2X1ezoPC6cr", "You! Stop right there!", (0.3, 0.8, 0.6)),
 ]
 REVERB = {"vo_s5_pendleton"}
+EARPIECE = {"vo_s5_cole_reply"}                     # band-passed like the crew's radio (tools/audio/process.earpiece)
 
 # id, seconds, prompt
 SFX = [
@@ -136,6 +143,8 @@ def process_all(ids):
         if iid.startswith("vo_"):
             x = P.mono(x)
             x = P.fade(P.cap_pauses(P.trim(x, -45, 0.02, 0.15)), 0.005, 0.04)
+            if iid in EARPIECE:
+                x = P.earpiece(x)
             if iid in REVERB:
                 x = P.fade(hall_reverb(x, R), 0.0, 0.3)
                 x = P.trim(x, -60, 0.0, 0.05)

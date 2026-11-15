@@ -1,18 +1,27 @@
 // Scene 5. INT. PRIVATE AUDITORIUM - NIGHT (Vance, 35mm). Owner: s5-auditorium. docs/SCRIPT.md, docs/script/s5.md.
 //
-// The beats, in order:
+// The beats, in order (QA Nov 15 evening: the mouth, the walk out of the row, the long film, no beat timing):
 //  1. SPEECH  the house is low; PENDLETON (the level's old auctioneer "Vance" PatrolGuard: top hat, tails, cane) at the
-//             brass podium in one hard spotlight says his line. Vance stands at his aisle seat and cannot walk yet.
-//             [Space]/[Enter] skips. A retake skips straight to the blackout.
+//             brass podium in one hard spotlight says his line, his arms in the Speech act and his mouth opening and
+//             closing on the words (Scene5Lipsync.inl, baked from the voice by tools/script/scene5_lipsync.py). Part
+//             way through, a cutaway: Vance in his aisle seat in the row, listening; then Pendleton again from a
+//             second angle. [Space]/[Enter] skips. A retake skips straight to the sneak.
 //  2. CUT     a second before the line ends Pendleton points at the booth; on its end the house lights CUT to pitch
-//             black (AHouseDimmer::BeginScreening(0)), the breaker's chunk, the projector's beam from the booth, the
-//             film and the title LE SOLEIL NOIR on the screen, the score and the first timpani hit.
-//  3. SNEAK   Vance walks (slow, low) along the shadowy south wall to the heavy oak door. The timpani hits every
-//             BeatSeconds; each hit flares the screen and the HUD's drum mark. Torches (an usher at the front, a guard
-//             at the rope) sweep the floor: inside a torch beam, moving outside the boom's window fills SEEN; full =
-//             FailScene. VipAlibi (Scene 3) spends itself on the first full SEEN instead ("Pardon me, sir").
-//  4. DOOR    at the door: he stops, the deadbolt buzzes red; VANCE (into cuff): "Booth door is mag-locked from the
-//             inside. Cole, you're up." -> FinishScene (the sequencer cuts to Cole). The film keeps running.
+//             black (AHouseDimmer::BeginScreening(0)), the breaker's chunk and one timpani hit, the projector's beam
+//             from the booth, the long looping film (M_S5_Film, tools/script/scene5_film*.: LE SOLEIL NOIR's titles,
+//             scenes and a few Easter eggs) and the score.
+//  3. RISE    the seat shot in the dark: VANCE (into cuff) "Lights are down. I'm moving." He stands (cut on the
+//             action to the exit shot from the side aisle), slips out of the row into the aisle, walked by the scene.
+//             COLE (earpiece) answers with the way: the oak door by the stage, the torches. [Space] skips to the
+//             aisle. Then the follow camera and the player's walk.
+//  4. SNEAK   Vance walks (slow, low) along the shadowy south wall to the heavy oak door. An usher and a guard watch
+//             the film most of the time (torch lowered: blind); every so often each turns and sweeps the aisle with
+//             a raised torch for a few seconds, warned by the HUD ("turning"). Moving inside a raised torch fills
+//             SEEN; full = FailScene. VipAlibi (Scene 3) spends itself on the first full SEEN instead ("Pardon me,
+//             sir"). Standing still in a beam is safe.
+//  5. DOOR    at the door: he stops, the deadbolt buzzes red; VANCE (into cuff): "Booth door is mag-locked from the
+//             inside. Cole, you're up." -> FinishScene (the sequencer cuts to Cole). The film keeps running until
+//             StopFilm or AHouseDimmer::EndScreening (Scene 7's alarm).
 // Placed by tools/script/scene5.py (tag script_s5).
 
 #pragma once
@@ -30,8 +39,10 @@ class UStaticMeshComponent;
 class UTextRenderComponent;
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
+class UAnimSequenceBase;
 
-/** One watcher with a torch that sweeps between two yaws. */
+/** One watcher with a torch. Most of the time it faces the screen (AwayYaw, torch lowered: blind); every cycle it
+ *  turns and sweeps the aisle from YawA to YawB and back (torch raised: it sees) for CheckSeconds, then turns back. */
 USTRUCT(BlueprintType)
 struct FScene5Watch
 {
@@ -41,29 +52,55 @@ struct FScene5Watch
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Script")
 	TObjectPtr<AActor> Who;
 
-	/** The sweep's two ends, world yaw, degrees. */
+	/** The check's sweep, world yaw, degrees: from YawA to YawB and back. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Script")
 	float YawA = 0.f;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Script")
 	float YawB = 90.f;
 
-	/** One full sweep there and back, s. */
+	/** Where it looks while it watches the film, world yaw (toward the screen). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Script")
+	float AwayYaw = 0.f;
+
+	/** Watching the film (blind), s. Long and readable: the player's window. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Script", meta = (ClampMin = "1"))
+	float AwaySeconds = 8.f;
+
+	/** Sweeping the aisle with the torch raised, s. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Script", meta = (ClampMin = "0.5"))
+	float CheckSeconds = 3.5f;
+
+	/** Each turn (to the aisle, back to the film), s. The torch comes up during the turn to the aisle. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Script", meta = (ClampMin = "0.2"))
+	float TurnSeconds = 0.9f;
+
+	/** Unused since QA Nov 15 evening (the old sine sweep's period); kept so placed data loads. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Script", meta = (ClampMin = "0.5"))
 	float SweepSeconds = 6.f;
 
-	/** 0..1: where in the sweep it starts. */
+	/** 0..1: where in its cycle it starts when the sneak begins (0: at the start of watching the film). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Script")
 	float Phase = 0.f;
 
-	/** The subtitle's speaker when this one sees him. */
+	/** The subtitle's speaker when this one sees him, and the HUD's name for it. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Script")
 	FString Speaker = TEXT("USHER");
+};
+
+/** Where a watcher is in its cycle. */
+enum class EScene5Look : uint8
+{
+	Film,		// facing the screen, torch down: blind
+	TurnIn,		// turning to the aisle, the torch coming up: sees in the second half
+	Check,		// sweeping the aisle: sees
+	TurnOut		// turning back to the film: blind
 };
 
 UENUM()
 enum class EScene5Beat : uint8
 {
 	Speech,
+	Rise,
 	Sneak,
 	Caught,
 	Door,
@@ -89,6 +126,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Script")
 	void SetDoorUnlocked(bool bUnlocked);
 
+	/** The hook for Scene 7's alarm (s7-route): the film and the beam off and Scene 5's score out, at once. bHouseUp:
+	 *  the house lights come back up (true), or the hall stays as dark as it is (false). Safe to call any time. */
+	UFUNCTION(BlueprintCallable, Category = "Script")
+	void StopFilm(bool bHouseUp = true);
+
 	// ---- the set (scene5.py) -------------------------------------------------------------------------------------
 
 	/** Pendleton: the old auctioneer's PatrolGuard (or its CastMember). He points at the booth before the cut. */
@@ -101,6 +143,40 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "Script|S5")
 	TArray<FScene5Watch> Watches;
+
+	/** The cutaway during the speech, and the dark seat shot after the blackout: Vance in his seat in the row. */
+	UPROPERTY(EditAnywhere, Category = "Script|S5")
+	TObjectPtr<AActor> SeatCamera;
+
+	/** Pendleton again after the cutaway, from a second angle (never SceneCamera: a cut back to the scene's own camera
+	 *  puts Vance back on the StartSpot). Null: the cutaway is skipped. */
+	UPROPERTY(EditAnywhere, Category = "Script|S5")
+	TObjectPtr<AActor> PendletonCamera2;
+
+	/** The exit shot from the side aisle: Vance stands, slips out of the row and turns to the wall. */
+	UPROPERTY(EditAnywhere, Category = "Script|S5")
+	TObjectPtr<AActor> ExitCamera;
+
+	/** Vance's seat: the chair's floor point (world) and the way it faces. He sits there through the speech. */
+	UPROPERTY(EditAnywhere, Category = "Script|S5")
+	FVector SeatAt = FVector(2550.f, -583.f, 0.f);
+	UPROPERTY(EditAnywhere, Category = "Script|S5")
+	float SeatYaw = 0.f;
+	/** The seated body's offset from SeatAt (world cm; z lifts the capsule). Tuned by eye in the seat shot. */
+	UPROPERTY(EditAnywhere, Category = "Script|S5")
+	FVector SitOffset = FVector(-8.f, 0.f, 0.f);
+	/** The seated clip (a mocap idle on the mannequin skeleton). */
+	UPROPERTY(EditAnywhere, Category = "Script|S5")
+	TSoftObjectPtr<UAnimSequenceBase> SitClip = TSoftObjectPtr<UAnimSequenceBase>(FSoftObjectPath(TEXT("/Game/Take/Anim/Mocap/SitIdle_A.SitIdle_A")));
+
+	/** The walk out: he stands at StandAt (in the leg room in front of his chair), walks to RowExit (the row's end
+	 *  in the side aisle), then to AisleAt, where the player takes him. World, floor. */
+	UPROPERTY(EditAnywhere, Category = "Script|S5")
+	FVector StandAt = FVector(2600.f, -583.f, 0.f);
+	UPROPERTY(EditAnywhere, Category = "Script|S5")
+	FVector RowExit = FVector(2600.f, -800.f, 0.f);
+	UPROPERTY(EditAnywhere, Category = "Script|S5")
+	FVector AisleAt = FVector(2700.f, -1150.f, 0.f);
 
 	/** Where Pendleton points: the projection booth, world. */
 	UPROPERTY(EditAnywhere, Category = "Script|S5")
@@ -134,6 +210,13 @@ public:
 	FString PendletonLine = TEXT("Tonight, you witness history. Le Soleil Noir. The only surviving print in existence. Tomorrow, it enters my private vault, never to be seen by common eyes again.");
 	UPROPERTY(EditAnywhere, Category = "Script|S5")
 	FString VanceLine = TEXT("Booth door is mag-locked from the inside. Cole, you're up.");
+	/** Rising out of the row (into his cuff), and the crew's answer on the earpiece. */
+	UPROPERTY(EditAnywhere, Category = "Script|S5")
+	FString GoLine = TEXT("Lights are down. I'm moving. Heading for the stage door.");
+	UPROPERTY(EditAnywhere, Category = "Script|S5")
+	FString ReplySpeaker = TEXT("COLE");
+	UPROPERTY(EditAnywhere, Category = "Script|S5")
+	FString ReplyLine = TEXT("Copy. Oak door, south wall, right by the stage. It's the only way up to the booth. Ushers have torches: move while they watch the picture.");
 	UPROPERTY(EditAnywhere, Category = "Script|S5")
 	FString WhoLine = TEXT("Hey. Who's moving back there?");
 	UPROPERTY(EditAnywhere, Category = "Script|S5")
@@ -161,26 +244,67 @@ public:
 	float PendletonSpotCandelas = 60000.f;
 	UPROPERTY(EditAnywhere, Category = "Script|S5")
 	float PendletonSpotDegrees = 9.f;
-	/** The title holds on the screen this long after the cut, s. */
+	/** The old LE SOLEIL NOIR text over the screen after the cut, s (0: none; the film has its own title card). */
 	UPROPERTY(EditAnywhere, Category = "Script|S5")
-	float TitleSeconds = 9.f;
+	float TitleSeconds = 0.f;
 
-	/** The timpani: one hit every BeatSeconds; moving is safe from MoveBefore s before a hit to MoveAfter s after. */
-	UPROPERTY(EditAnywhere, Category = "Script|S5", meta = (ClampMin = "0.4"))
-	float BeatSeconds = 1.6f;
+	/** The cutaway to Vance in his seat: starts at this share of the speech, lasts CutawaySeconds. */
+	UPROPERTY(EditAnywhere, Category = "Script|S5", meta = (ClampMin = "0", ClampMax = "1"))
+	float CutawayAt = 0.42f;
+	UPROPERTY(EditAnywhere, Category = "Script|S5", meta = (ClampMin = "0"))
+	float CutawaySeconds = 2.4f;
+
+	/** The rise: Vance's line this long after the blackout; he stands (the cut to ExitCamera) at StandUpAt; the walk
+	 *  to the aisle gives up after RiseMaxSeconds (he is put at AisleAt). */
 	UPROPERTY(EditAnywhere, Category = "Script|S5")
-	float MoveBefore = 0.15f;
+	float GoLineAt = 0.9f;
 	UPROPERTY(EditAnywhere, Category = "Script|S5")
-	float MoveAfter = 0.6f;
-	/** Vance's walk while sneaking (low), cm/s. */
+	float StandUpAt = 2.4f;
+	UPROPERTY(EditAnywhere, Category = "Script|S5")
+	float RiseMaxSeconds = 9.f;
+	/** The walk out of the row, cm/s. */
+	UPROPERTY(EditAnywhere, Category = "Script|S5")
+	float RiseSpeed = 200.f;
+	/** The screen's cool bounce on Vance's face through the rise (the hall is black), candelas (0: none). */
+	UPROPERTY(EditAnywhere, Category = "Script|S5")
+	float VanceFillCandelas = 40.f;
+
+	/** Pendleton's mouth: a dark lip-shaped piece on his head bone that opens on the words. Offset from the head
+	 *  bone at the reference pose: X forward, Y left, Z up, cm. */
+	UPROPERTY(EditAnywhere, Category = "Script|S5|Mouth")
+	bool bLipSync = true;
+	UPROPERTY(EditAnywhere, Category = "Script|S5|Mouth")
+	FVector MouthOffset = FVector(10.6f, 0.f, -1.6f);
+	/** Closed: width, depth, height, cm. */
+	UPROPERTY(EditAnywhere, Category = "Script|S5|Mouth")
+	FVector MouthSize = FVector(4.6f, 1.2f, 0.45f);
+	/** Fully open adds this much height (cm), and the piece drops by half of it (the jaw). */
+	UPROPERTY(EditAnywhere, Category = "Script|S5|Mouth")
+	float MouthOpenCm = 2.4f;
+	/** Lips spread (ee, s) add this much width, rounded (oo, o) take it away, cm. */
+	UPROPERTY(EditAnywhere, Category = "Script|S5|Mouth")
+	float MouthWideCm = 1.2f;
+	UPROPERTY(EditAnywhere, Category = "Script|S5|Mouth")
+	FLinearColor MouthColour = FLinearColor(0.05f, 0.008f, 0.008f);
+	/** The mouth runs this far ahead of the sound (the eye reads the jaw a frame early), s. */
+	UPROPERTY(EditAnywhere, Category = "Script|S5|Mouth")
+	float MouthLead = 0.05f;
+	/** Pendleton's arms during the speech: ACastMember::PlayGesture with this act (None: no act). */
+	UPROPERTY(EditAnywhere, Category = "Script|S5")
+	FName SpeechGesture = TEXT("Speech");
+
+	/** The sneak is crouched (ATakeCharacter::SetCrouching: CrouchSpeed, about 150 cm/s); off: SneakSpeed upright. */
+	UPROPERTY(EditAnywhere, Category = "Script|S5")
+	bool bCrouchSneak = true;
+	/** Vance's walk while sneaking upright, cm/s. */
 	UPROPERTY(EditAnywhere, Category = "Script|S5")
 	float SneakSpeed = 260.f;
 	/** Faster than this counts as moving, cm/s. */
 	UPROPERTY(EditAnywhere, Category = "Script|S5")
 	float MovingSpeed = 40.f;
-	/** Moving off the boom in a torch fills SEEN in this long, s (it drains at half speed). */
+	/** Moving in a raised torch fills SEEN in this long, s (it drains at half speed). */
 	UPROPERTY(EditAnywhere, Category = "Script|S5", meta = (ClampMin = "0.05"))
-	float SeenSeconds = 0.45f;
+	float SeenSeconds = 0.8f;
 	UPROPERTY(EditAnywhere, Category = "Script|S5")
 	float TorchRange = 1700.f;
 	UPROPERTY(EditAnywhere, Category = "Script|S5")
@@ -189,11 +313,18 @@ public:
 	float TorchCandelas = 9000.f;
 	UPROPERTY(EditAnywhere, Category = "Script|S5")
 	float TorchHeight = 130.f;
+	/** A lowered torch (the watcher on the film): this share of TorchCandelas, pitched down at its feet. */
+	UPROPERTY(EditAnywhere, Category = "Script|S5", meta = (ClampMin = "0", ClampMax = "1"))
+	float LoweredTorchShare = 0.15f;
+	/** The HUD warns this long before a watcher turns to the aisle, s. */
+	UPROPERTY(EditAnywhere, Category = "Script|S5")
+	float TurnWarnSeconds = 1.5f;
 	/** After the alibi saves him, no torch sees him for this long, s. */
 	UPROPERTY(EditAnywhere, Category = "Script|S5")
 	float AlibiGraceSeconds = 3.f;
 	UPROPERTY(EditAnywhere, Category = "Script|S5")
 	float ScoreVolume = 0.8f;
+	/** One timpani hit lands with the blackout (no beat timing since QA Nov 15 evening). */
 	UPROPERTY(EditAnywhere, Category = "Script|S5")
 	float TimpaniVolume = 1.f;
 
@@ -202,6 +333,10 @@ public:
 	TSoftObjectPtr<USoundBase> PendletonSound = TSoftObjectPtr<USoundBase>(FSoftObjectPath(TEXT("/Game/Take/Audio/Script/S5/vo_s5_pendleton.vo_s5_pendleton")));
 	UPROPERTY(EditAnywhere, Category = "Script|S5|Sound")
 	TSoftObjectPtr<USoundBase> VanceSound = TSoftObjectPtr<USoundBase>(FSoftObjectPath(TEXT("/Game/Take/Audio/Script/S5/vo_s5_vance_cuff.vo_s5_vance_cuff")));
+	UPROPERTY(EditAnywhere, Category = "Script|S5|Sound")
+	TSoftObjectPtr<USoundBase> GoSound = TSoftObjectPtr<USoundBase>(FSoftObjectPath(TEXT("/Game/Take/Audio/Script/S5/vo_s5_vance_go.vo_s5_vance_go")));
+	UPROPERTY(EditAnywhere, Category = "Script|S5|Sound")
+	TSoftObjectPtr<USoundBase> ReplySound = TSoftObjectPtr<USoundBase>(FSoftObjectPath(TEXT("/Game/Take/Audio/Script/S5/vo_s5_cole_reply.vo_s5_cole_reply")));
 	UPROPERTY(EditAnywhere, Category = "Script|S5|Sound")
 	TSoftObjectPtr<USoundBase> WhoSound = TSoftObjectPtr<USoundBase>(FSoftObjectPath(TEXT("/Game/Take/Audio/Script/S5/vo_s5_usher_who.vo_s5_usher_who")));
 	UPROPERTY(EditAnywhere, Category = "Script|S5|Sound")
@@ -246,11 +381,18 @@ protected:
 	void UpdateLamp();
 
 	void Blackout();
-	void OnBeat();
+	void StepRise();
+	void BeginSneak();
 	void ArriveAtDoor();
 	void StepTorches(float DeltaSeconds);
 	bool IsLit(const FVector& At, int32& OutWho) const;
-	bool InBoomWindow() const;
+	/** Watcher I's look now: its state, its yaw, and the seconds until the next state. */
+	EScene5Look WatchLook(int32 I, float& OutYaw, float& OutLeft) const;
+	/** The mouth: made and attached on the speech's first frame, then opened from the baked envelope. */
+	void EnsureMouth();
+	void StepMouth();
+	/** Vance into his seat (the sit clip on his mesh, his capsule off) or back on his feet at StandAt. */
+	void SitVance(bool bSit);
 	void SetPhase(EScene5Beat NewPhase);
 	void SetWalkSpeed(float Speed);
 	void RestoreWalkSpeed();
@@ -270,13 +412,29 @@ protected:
 	TObjectPtr<UAudioComponent> SpeechComp;
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> BulbMID;
+	UPROPERTY(Transient)
+	TObjectPtr<UStaticMeshComponent> PendletonMouth;
+	/** The screen's bounce on Vance's face in the dark seat and exit shots (made at run time, HouseKeep). */
+	UPROPERTY(Transient)
+	TObjectPtr<UPointLightComponent> VanceFill;
 
 	EScene5Beat Phase = EScene5Beat::Speech;
 	float PhaseTime = 0.f;
 	float SpeechEnd = 11.f;
+	float SpeechPlayStart = 0.f;	// PhaseTime when the voice started (the mouth's clock); <0: no voice
 	bool bPointed = false;
-	float BeatT = 0.f;			// seconds since the last hit
-	double LastBeatReal = -100.0;	// real time of the last hit (the HUD's flash)
+	bool bCutaway = false;		// the speech's cutaway to Vance has been
+	bool bCutBack = false;		// and back to Pendleton
+	bool bSeated = false;		// Vance in his seat
+	bool bStood = false;
+	bool bGoSaid = false;
+	bool bReplySaid = false;
+	float ReplyAt = 0.f;
+	int32 RiseLeg = 0;			// 0 to RowExit, 1 to AisleAt, 2 there
+	float RiseStuck = 0.f;
+	FVector RiseLastAt = FVector::ZeroVector;
+	FTransform MouthHeadRef;	// the head bone at the reference pose, component space
+	bool bMouthPlaced = false;
 	float SneakTime = 0.f;
 	float Seen = 0.f;
 	int32 SeenBy = -1;
