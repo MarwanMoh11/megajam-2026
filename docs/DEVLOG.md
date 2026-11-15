@@ -1804,3 +1804,4 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
   the retake, the brain reset.
 - Not wired elsewhere: Scenes 3, 4, 5 and 8 build their puzzles on exact guard timing (bar clock, sight lanes,
   the film cycle, a chase that never catches), and a free-thinking guard would break those beats.
+- **Nov 16, after midnight, the final shot fixed in play:** shot A was taking his head position before the sit clip posed him (the standing pose), which put the camera in the roof and then in his chest. It's now fixed in car space: his face, bow tie, Cole behind, and the can held upright in front of him. The mirror capture's 640x192 target at 26 degrees saw a 12 cm strip of cheek; it's now 72 degrees without depth of field, aimed at his eyes. The glass faces shot B's camera square on (Marwan spotted it tilted away) and is 30% larger.
