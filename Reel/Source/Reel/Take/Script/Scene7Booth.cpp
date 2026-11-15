@@ -722,8 +722,10 @@ bool AScene7Booth::HandleSceneKey(const FKey& Key, bool bPressed)
 	if (Stage == EScene7Stage::Prompt)
 	{
 		if (!bPressed) { return true; }
-		// Movement and camera keys don't count as an answer.
-		if (Key == EKeys::W || Key == EKeys::A || Key == EKeys::S || Key == EKeys::D || (Key.IsMouseButton() && Key != EKeys::LeftMouseButton) || Key == EKeys::Escape)
+		// Movement and camera keys don't count as an answer. Nor does AnyKey: the controller polls every key in
+		// EKeys::GetAllKeys, AnyKey first, and WasInputKeyJustPressed(AnyKey) is true on any press, so without this the
+		// real Q arrived second and every prompt had already been missed.
+		if (Key == EKeys::AnyKey || Key == EKeys::W || Key == EKeys::A || Key == EKeys::S || Key == EKeys::D || (Key.IsMouseButton() && Key != EKeys::LeftMouseButton) || Key == EKeys::Escape)
 		{
 			return false;
 		}
