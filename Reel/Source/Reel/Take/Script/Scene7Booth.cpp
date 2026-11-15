@@ -1087,8 +1087,10 @@ void AScene7Booth::TickScene(float DeltaSeconds)
 			if (V && V->GetCharacterMovement()) { V->GetCharacterMovement()->StopMovementImmediately(); }
 			if (V) { V->SetActorRotation(FRotator(0.f, VanceFightYaw, 0.f)); }
 			SetStage(EScene7Stage::Done);
-			// s7-fight's placed actor takes it from here on the same marks, with its own Pendleton and bodyguard.
-			if (AScene7Fight* Fight = AScene7Fight::Find(this))
+			// s7-fight takes it from here on the same marks, with its own Pendleton and bodyguard: as Scene 7 part 3
+			// (a scene of its own, Part=3) the sequencer starts it after us; as a plain placed actor we start it.
+			AScene7Fight* Fight = AScene7Fight::Find(this);
+			if (Fight && !Cast<AScriptScene>(Fight))
 			{
 				Pendleton->SetHiddenInGame(true);
 				Bodyguard->SetHiddenInGame(true);
