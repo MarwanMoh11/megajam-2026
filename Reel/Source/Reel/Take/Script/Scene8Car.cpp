@@ -447,7 +447,9 @@ void AScene8Car::BuildFinale()
 	MirrorCapture->SetRelativeLocation(FVector(-2.f, 0.f, 0.f));
 	MirrorCapture->TextureTarget = MirrorTarget;
 	MirrorCapture->CaptureSource = ESceneCaptureSource::SCS_FinalColorLDR;
-	MirrorCapture->FOVAngle = MirrorCaptureFov;
+	MirrorCapture->FOVAngle = FMath::Max(MirrorCaptureFov, 72.f);	// the target is 640x192: at 26-34 deg it saw a 12 cm strip of cheek; 72 gives the eyes strip
+	MirrorCapture->ShowFlags.SetDepthOfField(false);	// the world's film look defocused the face into a bright blob
+	MirrorCapture->ShowFlags.SetMotionBlur(false);
 	MirrorCapture->HiddenComponents.Add(MirrorGlass);
 	MirrorCapture->HiddenComponents.Add(MirrorBody);
 	MirrorCapture->HiddenComponents.Add(MirrorRim);
@@ -458,7 +460,7 @@ void AScene8Car::BuildFinale()
 	if (ColeBody) { ColeBody->SetRelativeRotation(FRotator(0.f, -98.f, 0.f)); }
 	USceneComponent* Can = NewObject<USceneComponent>(this, TEXT("FinaleCanister"));
 	Can->SetupAttachment(Cabin);
-	Can->SetRelativeLocationAndRotation(PassengerSeat + FVector(24.f, 0.f, 16.f), FRotator(8.f, 0.f, 0.f));
+	Can->SetRelativeLocationAndRotation(PassengerSeat + FVector(16.f, -1.f, 36.f), FRotator(80.f, 0.f, 0.f));	// held upright against him, face to the dash
 	Can->RegisterComponent();
 	AddInstanceComponent(Can);
 	Bit(Cyl, Can, FVector::ZeroVector, FVector(36.f, 36.f, 6.f), Silver, 0.28f, 1.f);
@@ -559,14 +561,14 @@ void AScene8Car::SetShot(bool bB)
 	FVector Cam = bB ? ShotBCam : ShotACam;
 	FVector Look = bB ? MirrorPoint : ShotALook;
 	float Fov = bB ? ShotBFov : ShotAFov;
-	if (!bB && VanceBody)
+	if (!bB)
 	{
-		// First look: ShotACam sat against his chest. Frame shot A off his head instead: a three-quarter from the
-		// driver's side of the dash, head and shoulders with Cole behind.
-		const FVector Head = GetActorTransform().InverseTransformPosition(S8HeadOf(VanceBody));
-		Look = Head + FVector(0.f, 0.f, -8.f);
-		Cam = FVector(FMath::Min(Head.X + 50.f, 14.f), Head.Y - 62.f, Head.Z - 2.f);
-		Fov = FMath::Max(Fov, 58.f);
+		// Shot A, from the dash on the driver's side of centre: his head and chest, the can held upright in front of
+		// him. Fixed in car space (measured in play: his seated head bone is at about (-46, 41, 102)); reading the bone
+		// here gave the standing reference pose, before the sit clip had posed him, and put the camera in the roof.
+		Cam = FVector(14.f, -6.f, 98.f);
+		Look = FVector(-34.f, 41.f, 92.f);
+		Fov = FMath::Max(Fov, 66.f);
 	}
 	GS8FinaleShotCam = Cam;
 	GS8FinaleShotLook = Look;
@@ -676,7 +678,7 @@ void AScene8Car::TickFinale(float T, float DeltaSeconds)
 	// The mirror keeps Vance's face in it.
 	if (VanceBody && MirrorCapture)
 	{
-		const FVector Face = S8HeadOf(VanceBody) + GetActorForwardVector() * 4.f + FVector(0.f, 0.f, 3.f);
+		const FVector Face = S8HeadOf(VanceBody) + GetActorForwardVector() * 10.f + FVector(0.f, 0.f, 9.f);	// his eyes, not the skull base
 		MirrorCapture->SetWorldRotation((Face - MirrorCapture->GetComponentLocation()).Rotation());
 	}
 }
