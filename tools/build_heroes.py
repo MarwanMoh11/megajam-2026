@@ -8,6 +8,10 @@ Per hero (skipped when its skeletal mesh was already built from the same .glb by
   3. measure both meshes' arm angle (A against T pose); pose the mannequin's arms to the generated pose with its own
      skin weights, transfer the bone weights (closest point on surface), then pose the generated arms back to the
      mannequin's reference pose with the weights they just got
+  3b. (Nov 15, hands) each forearm turned about the elbow onto the mannequin's (its bind pose bends the elbow forward)
+     and its wrist set on the mannequin's (FOREARM_ALIGN); the sleeves weighted again along the arm bones
+     (ARM_REBONE); the generated hands (stiff splayed slabs) cut off at the wrist and the mannequin's own rigged hands
+     put in, coloured from the generated wrist skin (REAL_HANDS), so every clip's finger curls play
   4. create /Game/Take/Cast/Heroes/<Name>/SKM_Hero_<Name> on SK_Mannequin, with the source mannequin's bone
      proportions (Quinn's for Maya) and an instance of M_Hero carrying the Rodin colour
 Then the hook-up: sets ATakeCharacter.HeroMesh (package cast's property) on the level's A, B and C characters when the
@@ -26,7 +30,7 @@ import traceback
 
 import unreal
 
-VERSION = "4"                 # bump to rebuild every hero on the next run
+VERSION = "5"                 # bump to rebuild every hero on the next run
 SRC = r"C:\Jam\Art\Rodin"
 DEST = "/Game/Take/Cast/Heroes"
 SKELETON = "/Game/Characters/Mannequins/Meshes/SK_Mannequin"
@@ -63,7 +67,27 @@ SMOOTH_STRENGTH = 0.5
 MAX_INFLUENCES = 6
 RIGID_FINGERS = True                # finger weights folded into the hand: the generated hands' fingers do not lie
                                     # along the mannequin's, and a curling finger bone tore them (Vex, jump)
-
+REAL_HANDS = True                   # the generated hands (stiff, splayed slabs) cut off at the wrist and the source
+                                    # mannequin's own hands put in their place, with their finger weights, so every
+                                    # clip's finger curls play; they take the skin colour from the generated hand
+HAND_CUT = 0.5                      # a generated vertex with at least this weight on hand_l/hand_r is hand
+HAND_PLANE = 1.5                    # ...and so is an arm vertex past a plane this many cm short of the wrist joint,
+HAND_SKIN_BACK = 0.0                # ...and the bare wrist skin up to this many cm short of the joint,
+HAND_SKIN_RADIUS = 4.3              # within this many cm of the forearm's axis (the cuff stands wider)
+HAND_RADIUS = 22.0                  # within this many cm of it (the generated hand's skin that the forearm carried)
+HAND_KEEP = 0.5                     # a mannequin vertex with at least this weight on the hand and fingers is hand
+FOREARM_ALIGN = True                # the generated forearms turned about the elbow onto the mannequin's forearm (its
+                                    # reference pose bends the elbow forward; the generated arm hangs straight), so a
+                                    # bent elbow carries the sleeve along the bone and the hand meets its cuff
+ARM_REBONE = True                   # the sleeves weighted again along the shoulder-elbow-wrist bones: the transfer
+                                    # smeared forearm weight onto the upper arm, so a bent elbow left the sleeve
+                                    # halfway and the hand out of its cuff (Use, Clap)
+ARM_ELBOW_BLEND = 6.0               # cm either side of the elbow's bisecting plane over which upper arm hands over
+ARM_SHOULDER_KEEP = (0.25, 0.5)     # along the upper arm: the transferred weights kept before the first, the new ones
+                                    # from the second, a blend between (no seam at the shoulder)
+ARM_RADIUS = 20.0                   # cm from the arm's bones within which a vertex counts as sleeve
+HAND_WRIST_BACK = 2.0               # cm of the mannequin's forearm kept above its wrist joint, inside the sleeve
+HAND_UV_SPREAD = 0.004              # the mannequin hand's UVs squeezed to this patch around the skin point
 
 EAL = unreal.EditorAssetLibrary
 AT = unreal.AssetToolsHelpers.get_asset_tools()
@@ -516,6 +540,12 @@ def build(hero):
             set_positions(T, p2)
         recompute_normals(T)
 
+    if FOREARM_ALIGN:
+        align_forearms(name, T, src_sk)
+    if ARM_REBONE:
+        rebone_arms(name, T)
+    if REAL_HANDS:
+        swap_hands(name, T, src_sk, fwd)
 
     # the skeletal mesh
     mi = instance(hero, folder)
@@ -539,6 +569,292 @@ def build(hero):
     log("%s: %s, %d verts, yaw %.0f, scale %.3f, arms %+.1f / %+.1f deg, %.0f cm tall" % (
         name, path, len(tp), yaw, s, ang["l"], ang["r"], b.box_extent.z * 2))
     return skm
+
+
+# --- real hands ------------------------------------------------------------------------------------------------------------
+def tri_ids(dm):
+    r = Q.get_all_triangle_i_ds(dm)
+    il = first(r, unreal.GeometryScriptIndexList)
+    return list(LS.convert_index_list_to_array(il)) if il is not None else []
+
+
+def tri(dm, t):
+    v = first(Q.get_triangle_indices(dm, t), unreal.IntVector)
+    return v.x, v.y, v.z
+
+
+def delete_tris(dm, tids):
+    if not tids:
+        return
+    il = first(LS.convert_array_to_index_list(list(tids), unreal.GeometryScriptIndexType.TRIANGLE),
+               unreal.GeometryScriptIndexList)
+    ED.delete_triangles_from_mesh(dm, il)
+    unreal.GeometryScript_MeshRepair.compact_mesh(dm)           # vertex ids dense again (positions() indexes by id)
+
+
+def _seg(p, a, b):
+    """(t along a->b clamped to [0, 1], squared distance to the segment)."""
+    ab = (b[0] - a[0], b[1] - a[1], b[2] - a[2])
+    ap = (p[0] - a[0], p[1] - a[1], p[2] - a[2])
+    ll = ab[0] ** 2 + ab[1] ** 2 + ab[2] ** 2
+    t = max(0.0, min(1.0, (ap[0] * ab[0] + ap[1] * ab[1] + ap[2] * ab[2]) / ll))
+    c = (a[0] + ab[0] * t - p[0], a[1] + ab[1] * t - p[1], a[2] + ab[2] * t - p[2])
+    return t, c[0] ** 2 + c[1] ** 2 + c[2] ** 2
+
+
+def _ends(pts, W, sub, hand, elbow, near):
+    """Centroids of a forearm: its elbow end (forearm-weighted points within near cm of the elbow) and its hand."""
+    a, b = [], []
+    for p, w in zip(pts, W):
+        if sum(x for k, x in w.items() if k in hand) >= 0.5:
+            b.append(p)
+        elif sum(x for k, x in w.items() if k in sub) >= 0.5 and sum((p[i] - elbow[i]) ** 2 for i in range(3)) < near * near:
+            a.append(p)
+    if not a or not b:
+        return None
+    return tuple(mean([p[i] for p in a]) for i in range(3)), tuple(mean([p[i] for p in b]) for i in range(3))
+
+
+def _slice(pts, W, sub, hand, wrist, ax, a=-11.0, b=-3.0, r=12.0):
+    """Centroid of the forearm points (not the hand's) between a and b cm along ax from the wrist joint."""
+    out = []
+    for p, w in zip(pts, W):
+        if sum(x for k, x in w.items() if k in sub and k not in hand) < 0.5:
+            continue
+        d = [p[i] - wrist[i] for i in range(3)]
+        t = sum(d[i] * ax[i] for i in range(3))
+        if a <= t <= b and sum(c * c for c in d) - t * t < r * r:
+            out.append(p)
+    return tuple(mean([p[i] for p in out]) for i in range(3)) if out else None
+
+
+def _rot(p, o, k, ang):
+    """p turned about the axis k (unit) through o by ang radians (Rodrigues)."""
+    v = (p[0] - o[0], p[1] - o[1], p[2] - o[2])
+    c, s_ = math.cos(ang), math.sin(ang)
+    kv = (k[1] * v[2] - k[2] * v[1], k[2] * v[0] - k[0] * v[2], k[0] * v[1] - k[1] * v[0])
+    kd = k[0] * v[0] + k[1] * v[1] + k[2] * v[2]
+    return tuple(o[i] + v[i] * c + kv[i] * s_ + k[i] * kd * (1 - c) for i in range(3))
+
+
+def align_forearms(name, T, src_sk):
+    """Per side: the generated forearm's direction (elbow-end centroid to hand centroid) against the mannequin's, the
+    generated forearm and hand turned about the mannequin's elbow joint by the angle between, per vertex times its
+    forearm-subtree weight (a smooth elbow)."""
+    by_name, infos = bones(T)
+    S = unreal.DynamicMesh()
+    GA.copy_mesh_from_skeletal_mesh(src_sk, S, unreal.GeometryScriptCopyMeshFromAssetOptions(),
+                                    unreal.GeometryScriptMeshReadLOD())
+    sp = positions(S)
+    SW = read_weights(S, len(sp))
+    tp = positions(T)
+    W = read_weights(T, len(tp))
+    for side in ("l", "r"):
+        e = by_name["lowerarm_" + side].world_transform.translation
+        el = (e.x, e.y, e.z)
+        sub = subtree(infos, by_name["lowerarm_" + side].index)
+        hand = subtree(infos, by_name["hand_" + side].index)
+        m = _ends(sp, SW, sub, hand, el, 12.0)
+        g = _ends(tp, W, sub, hand, el, 12.0)
+        if not m or not g:
+            log("%s forearm %s: no ends found: left alone" % (name, side))
+            continue
+        dm = [m[1][i] - m[0][i] for i in range(3)]
+        dg = [g[1][i] - g[0][i] for i in range(3)]
+        lm, lg = math.sqrt(sum(c * c for c in dm)), math.sqrt(sum(c * c for c in dg))
+        dm, dg = [c / lm for c in dm], [c / lg for c in dg]
+        k = (dg[1] * dm[2] - dg[2] * dm[1], dg[2] * dm[0] - dg[0] * dm[2], dg[0] * dm[1] - dg[1] * dm[0])
+        kl = math.sqrt(sum(c * c for c in k))
+        ang = math.atan2(kl, sum(dg[i] * dm[i] for i in range(3)))
+        log("%s forearm %s: %.1f deg off the mannequin's (length %.1f against %.1f cm)" % (
+            name, side, math.degrees(ang), lg, lm))
+        if math.degrees(ang) >= 1.0:
+            k = tuple(c / kl for c in k)
+            tp = [_rot(p, el, k, ang * min(1.0, sum(x for b, x in w.items() if b in sub)))
+                  if any(b in sub for b in w) else p for p, w in zip(tp, W)]
+        # then the hand onto the mannequin's hand: a shift, per vertex times its forearm weight (the elbow stretches)
+        g2 = _ends(tp, W, sub, hand, el, 12.0)
+        sh = [m[1][i] - g2[1][i] for i in range(3)]
+        # across the arm, the sleeve's centre a little above the wrist onto the mannequin forearm's (the old hand's
+        # centroid sits wherever its splayed fingers were); along the arm, the hand's
+        h = by_name["hand_" + side].world_transform.translation
+        hw = (h.x, h.y, h.z)
+        ax = [m[1][i] - m[0][i] for i in range(3)]
+        al = math.sqrt(sum(c * c for c in ax))
+        ax = [c / al for c in ax]
+        cs, cm = _slice(tp, W, sub, hand, hw, ax), _slice(sp, SW, sub, hand, hw, ax)
+        if cs and cm:
+            along = sum(sh[i] * ax[i] for i in range(3))
+            lat = [cm[i] - cs[i] for i in range(3)]
+            la = sum(lat[i] * ax[i] for i in range(3))
+            sh = [lat[i] - la * ax[i] + along * ax[i] for i in range(3)]
+            log("%s forearm %s: sleeve centre %.1f cm across off the mannequin forearm's (%s / %s)" % (
+                name, side, math.sqrt(max(0.0, sum(c * c for c in lat) - la * la)),
+                ",".join("%.1f" % c for c in cs), ",".join("%.1f" % c for c in cm)))
+        else:
+            log("%s forearm %s: no sleeve slice (%s, %s)" % (name, side, bool(cs), bool(cm)))
+        log("%s forearm %s: hand moved %.1f cm onto the mannequin's" % (name, side, math.sqrt(sum(c * c for c in sh))))
+        tp = [tuple(p[i] + sh[i] * min(1.0, sum(x for b, x in w.items() if b in sub)) for i in range(3))
+              if any(b in sub for b in w) else p for p, w in zip(tp, W)]
+    set_positions(T, tp)
+    recompute_normals(T)
+
+
+def rebone_arms(name, T):
+    """Each arm vertex (mostly weighted to that upperarm's subtree, near the bones) weighted again by where it lies:
+    upper arm before the elbow's bisecting plane, forearm after it, a smooth hand-over across ARM_ELBOW_BLEND; near the
+    shoulder the transferred weights stay (ARM_SHOULDER_KEEP). Hands are left to swap_hands. T in the reference pose."""
+    by_name, infos = bones(T)
+    tp = positions(T)
+    n = len(tp)
+    W = read_weights(T, n)
+    prof = unreal.GeometryScriptBoneWeightProfile()
+    changed = 0
+    for side in ("l", "r"):
+        P = lambda b: (lambda v: (v.x, v.y, v.z))(by_name[b + "_" + side].world_transform.translation)  # noqa: E731
+        sh, el, wr = P("upperarm"), P("lowerarm"), P("hand")
+        ui, li = by_name["upperarm_" + side].index, by_name["lowerarm_" + side].index
+        arm = subtree(infos, ui)
+        da = [el[k] - sh[k] for k in range(3)]
+        db = [wr[k] - el[k] for k in range(3)]
+        la, lb = math.sqrt(sum(c * c for c in da)), math.sqrt(sum(c * c for c in db))
+        nb = [da[k] / la + db[k] / lb for k in range(3)]
+        ln = math.sqrt(sum(c * c for c in nb))
+        nb = [c / ln for c in nb]
+        r2 = ARM_RADIUS ** 2
+        for v in range(n):
+            if sum(w for b, w in W[v].items() if b in arm) < 0.5:
+                continue
+            p = tp[v]
+            ta, d2a = _seg(p, sh, el)
+            tb, d2b = _seg(p, el, wr)
+            if min(d2a, d2b) > r2 or (tb >= 1.0 and d2b < d2a):
+                continue                                        # off the arm, or past the wrist (the hand's)
+            d = sum((p[k] - el[k]) * nb[k] for k in range(3))
+            x = max(0.0, min(1.0, (d + ARM_ELBOW_BLEND) / (2 * ARM_ELBOW_BLEND)))
+            lo = x * x * (3 - 2 * x)
+            new = {ui: 1.0 - lo, li: lo}
+            k0, k1 = ARM_SHOULDER_KEEP
+            if lo < 0.5 and ta < k1:
+                y = max(0.0, min(1.0, (ta - k0) / (k1 - k0)))
+                keep = 1.0 - y * y * (3 - 2 * y)
+                mix = {}
+                for b, w in W[v].items():
+                    mix[b] = mix.get(b, 0.0) + w * keep
+                for b, w in new.items():
+                    mix[b] = mix.get(b, 0.0) + w * (1.0 - keep)
+                new = mix
+            new = {b: w for b, w in new.items() if w > 0.002}
+            tot = sum(new.values())
+            BW.set_vertex_bone_weights(T, v, [unreal.GeometryScriptBoneWeight(bone_index=b, weight=w / tot)
+                                              for b, w in new.items()], prof)
+            changed += 1
+    log("%s arms: %d sleeve vertices weighted again along the arm bones" % (name, changed))
+
+
+def swap_hands(name, T, src_sk, fwd=(0.0, 1.0)):
+    """The generated hands cut off where their weight is mostly hand_l/hand_r (T is in the mannequin's reference pose by
+    now), the source mannequin's hands (reference pose, own finger weights) appended in their place, their UVs squeezed
+    onto a skin texel of the generated hand so they take its colour, their material slot the generated mesh's."""
+    by_name, _infos = bones(T)
+    hand = {by_name[b].index for b in ("hand_l", "hand_r")}
+    fingers = {b.index for n, b in by_name.items() if any(k in n for k in ("thumb_", "index_", "middle_", "ring_",
+                                                                           "pinky_"))}
+    # the generated hand: the cut (hand-weighted; past a plane just short of the wrist; and the bare wrist skin, close
+    # to the forearm's axis, back to HAND_SKIN_BACK, which the cuff stands clear of), and the skin point (the generated
+    # skin nearest the wrist joint: the colour the cuff meets)
+    tp = positions(T)
+    n = len(tp)
+    W = read_weights(T, n)
+    is_hand = [sum(w for b, w in W[v].items() if b in hand) >= HAND_CUT for v in range(n)]
+    wrists = []
+    for side in ("l", "r"):
+        arm = subtree(_infos, by_name["lowerarm_" + side].index)
+        h = by_name["hand_" + side].world_transform.translation
+        e = by_name["lowerarm_" + side].world_transform.translation
+        wrists.append((h.x, h.y, h.z))
+        d = (h.x - e.x, h.y - e.y, h.z - e.z)
+        dl = math.sqrt(sum(c * c for c in d))
+        d = tuple(c / dl for c in d)
+        for v in range(n):
+            if is_hand[v] or sum(w for b, w in W[v].items() if b in arm) < 0.5:
+                continue
+            p = tp[v]
+            r = (p[0] - h.x, p[1] - h.y, p[2] - h.z)
+            along = r[0] * d[0] + r[1] * d[1] + r[2] * d[2]
+            r2 = r[0] * r[0] + r[1] * r[1] + r[2] * r[2]
+            radial = math.sqrt(max(0.0, r2 - along * along))
+            if (along > -HAND_PLANE and r2 < HAND_RADIUS * HAND_RADIUS) or                     (-HAND_SKIN_BACK < along <= -HAND_PLANE and radial < HAND_SKIN_RADIUS):
+                is_hand[v] = True
+    cut, skin_t, best = [], None, None
+    for t in tri_ids(T):
+        vs = tri(T, t)
+        if any(is_hand[v] for v in vs):
+            cut.append(t)
+            c = [sum(tp[v][k] for v in vs) / 3 for k in range(3)]
+            dd = min(sum((c[k] - wj[k]) ** 2 for k in range(3)) for wj in wrists)
+            if best is None or dd < best:
+                best, skin_t = dd, t
+    skin_uv = (0.5, 0.5)
+    if skin_t is not None:
+        u = [x for x in Q.get_triangle_u_vs(T, 0, skin_t) if isinstance(x, unreal.Vector2D)]
+        if len(u) == 3:
+            skin_uv = (sum(x.x for x in u) / 3, sum(x.y for x in u) / 3)
+    mat_id = 0                                                  # the generated mesh has one material
+    delete_tris(T, cut)
+
+    # the mannequin's hands, in its reference pose, with its weights
+    H = unreal.DynamicMesh()
+    GA.copy_mesh_from_skeletal_mesh(src_sk, H, unreal.GeometryScriptCopyMeshFromAssetOptions(),
+                                    unreal.GeometryScriptMeshReadLOD())
+    hn = len(positions(H))
+    HW = read_weights(H, hn)
+    keep = [sum(w for b, w in HW[v].items() if b in hand or b in fingers) >= HAND_KEEP for v in range(hn)]
+    hpos = positions(H)
+    for side in ("l", "r"):                                     # and the wrist, up into the sleeve (no gap at the cuff)
+        arm = subtree(_infos, by_name["lowerarm_" + side].index)
+        h = by_name["hand_" + side].world_transform.translation
+        e = by_name["lowerarm_" + side].world_transform.translation
+        d = (h.x - e.x, h.y - e.y, h.z - e.z)
+        dl = math.sqrt(sum(c * c for c in d))
+        for v in range(hn):
+            if keep[v] or sum(w for b, w in HW[v].items() if b in arm) < 0.5:
+                continue
+            p = hpos[v]
+            if ((p[0] - h.x) * d[0] + (p[1] - h.y) * d[1] + (p[2] - h.z) * d[2]) / dl > -HAND_WRIST_BACK:
+                keep[v] = True
+    drop = []
+    for t in tri_ids(H):
+        a, b, c = tri(H, t)
+        if not (keep[a] or keep[b] or keep[c]):
+            drop.append(t)
+    delete_tris(H, drop)
+    # skin colour: every UV onto a small patch around the skin point; one material slot
+    U = unreal.GeometryScript_UVs
+    U.scale_mesh_u_vs(H, 0, unreal.Vector2D(HAND_UV_SPREAD, HAND_UV_SPREAD), unreal.Vector2D(0, 0),
+                      unreal.GeometryScriptMeshSelection())
+    U.translate_mesh_u_vs(H, 0, unreal.Vector2D(*skin_uv), unreal.GeometryScriptMeshSelection())
+    for m in range(0, 8):
+        if m != mat_id:
+            unreal.GeometryScript_Materials.remap_material_i_ds(H, m, mat_id)
+    before = len(positions(T))
+    ED.append_mesh(T, H, unreal.Transform(), False, unreal.GeometryScriptAppendMeshOptions())
+    # the appended vertices' weights, set again from the mannequin by position (append may not carry them)
+    prof = unreal.GeometryScriptBoneWeightProfile()
+    hp = {tuple(round(c, 3) for c in p): v for v, p in enumerate(positions(H))}
+    tp = positions(T)
+    HW2 = read_weights(H, len(positions(H)))
+    fixed = 0
+    for v in range(before, len(tp)):
+        src = hp.get(tuple(round(c, 3) for c in tp[v]))
+        if src is None or not HW2[src]:
+            continue
+        BW.set_vertex_bone_weights(T, v, [unreal.GeometryScriptBoneWeight(bone_index=b, weight=w)
+                                          for b, w in HW2[src].items()], prof)
+        fixed += 1
+    recompute_normals(T)
+    log("%s hands: cut %d generated triangles, put in %d mannequin hand vertices (%d weights set), skin uv %.3f,%.3f"
+        % (name, len(cut), len(tp) - before, fixed, skin_uv[0], skin_uv[1]))
 
 
 # --- hook-up --------------------------------------------------------------------------------------------------------------
