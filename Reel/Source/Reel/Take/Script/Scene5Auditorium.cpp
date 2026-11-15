@@ -613,6 +613,18 @@ void AScene5Auditorium::SitVance(bool bSit)
 			return;
 		}
 		Vance->SetActorEnableCollision(false);
+		// The hall's crowd fills every aisle seat: the guest on Vance's seat leaves for the scene (hidden, no collision).
+		for (TActorIterator<ACastMember> It(GetWorld()); It; ++It)
+		{
+			ACastMember* const Guest = *It;
+			if (Guest && Guest->GetAttachParentActor() != Vance && !Guest->IsHidden()
+				&& FVector::Dist2D(Guest->GetActorLocation(), SeatAt) < 60.f)
+			{
+				Guest->SetActorHiddenInGame(true);
+				Guest->SetActorEnableCollision(false);
+				UE_LOG(LogScene5, Log, TEXT("S5: %s gave up Vance's seat"), *Guest->GetName());
+			}
+		}
 		if (Move) { Move->StopMovementImmediately(); Move->DisableMovement(); }
 		const FVector At = SeatAt + SitOffset + FVector(0.f, 0.f, Half);
 		Vance->TeleportTo(At, FRotator(0.f, SeatYaw, 0.f), false, true);

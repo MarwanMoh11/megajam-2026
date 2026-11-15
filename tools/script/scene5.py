@@ -101,7 +101,7 @@ def build():
     cc.set_editor_property("field_of_view", 38.0)
     cc.set_editor_property("constrain_aspect_ratio", False)
 
-    seat_cam = look_cam("Script_S5_SeatCam", (sx + 230.0, sy - 260.0, 150.0), (sx, sy, 105.0), 40.0)
+    seat_cam = look_cam("Script_S5_SeatCam", (sx + 95.0, sy - 70.0, 235.0), (sx, sy, 110.0), 38.0)
     exit_cam = look_cam("Script_S5_ExitCam", (sx + 560.0, -1350.0, 175.0), (sx + 60.0, sy - 170.0, 110.0), 50.0)
     pend_cam2 = look_cam("Script_S5_PendletonCam2", (3020.0, -760.0, 235.0), (PENDLETON_AT[0], PENDLETON_AT[1], 175.0), 28.0)
 
