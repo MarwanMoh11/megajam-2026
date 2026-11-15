@@ -6,6 +6,8 @@
 #include "PatrolGuard.h"
 #include "TakeCharacter.h"
 #include "TakePlayerController.h"
+#include "TakeAudio.h"
+#include "TakeChoiceCards.h"
 #include "TakeHudKit.h"
 #include "TakeShapes.h"
 #include "TakeStyle.h"
@@ -299,6 +301,10 @@ void AScene3Foyer::StartStumble()
 {
 	SetBeat(EBeat::Stumble);
 	RetargetT = 0.f;
+	if (UTakeAudioComponent* A = UTakeAudioComponent::Get(this))
+	{
+		A->PlayCue(TEXT("Hall/sfx_hall_stumble"));
+	}
 	if (Critic)
 	{
 		Critic->PlayGesture(TEXT("Laugh"));
@@ -368,16 +374,6 @@ void AScene3Foyer::DoSpill()
 	}
 	DropT = 0.f;
 
-	// The wet mark on his white jacket (left lapel), carried by him until the scene ends.
-	if (Vance && !Stain)
-	{
-		Stain = FTakeShapes::AddShapeAtRuntime(Vance, ETakeShape::Sphere, Vance->GetRootComponent(),
-			FVector(24.f, -12.f, 42.f), FVector(0.03f, 0.16f, 0.22f), Scene3Local::Wet, false);
-		if (Stain)
-		{
-			Stain->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		}
-	}
 	if (SplashSound)
 	{
 		UGameplayStatics::PlaySoundAtLocation(this, SplashSound, Lapel);
@@ -418,6 +414,11 @@ void AScene3Foyer::StopAtRope()
 {
 	SetBeat(EBeat::Stopped);
 	const FVector Feet = VanceFeet();
+	UTakeAudioComponent* Audio = UTakeAudioComponent::Get(this);
+	if (Audio)
+	{
+		Audio->PlayCue(TEXT("Hall/sfx_hall_rope"));
+	}
 	APatrolGuard* Guard = NearestGuard(Feet);
 	if (ACastMember* Body = GuardBody(Guard))
 	{
@@ -438,6 +439,11 @@ void AScene3Foyer::StopAtRope()
 	else
 	{
 		Say(TEXT("GUARD"), GuardTackleLine, GuardTackleSound);
+		if (Audio)
+		{
+			Audio->PlayCue(TEXT("Hall/sfx_hall_tackle"));
+			Audio->PlayCue(TEXT("Hall/sfx_hall_gasp"), 0.8f);
+		}
 		bPushing = false;
 		TAKE_LOG(TEXT("SCENE3 rope: tackled"));
 	}
@@ -760,28 +766,10 @@ void AScene3Foyer::DrawSceneHud(UCanvas* Canvas)
 	const float Out = (Beat == EBeat::Reply) ? 1.f - FMath::Clamp(static_cast<float>(Now - PickedAt) / 0.45f, 0.f, 1.f) : 1.f;
 	Kit.Fade = In * Out;
 
-	const FString Lines[2] = { PlayAlongLine, BrushOffLine };
-	const FString Keys[2] = { TEXT("1"), TEXT("2") };
-	const float CardW = Kit.Px(560.f);
-	const float CardH = Kit.Px(118.f);
-	const float Gap = Kit.Px(28.f);
-	// High enough to clear a three-line subtitle (the critic's line is still up when the choice opens).
-	const float Y0 = Kit.PicBottom() - Kit.Px(400.f);
-	Kit.Text(EType::Label, TEXT("THE CRITIC  -  your answer"), Kit.CX(), Y0 - Kit.Px(26.f), Bone, ETakeAlign::Centre);
-	for (int32 i = 0; i < 2; ++i)
-	{
-		const bool bOn = (Picked == EChoice::None) ? (Hover == i) : ((Picked == EChoice::PlayAlong) == (i == 0));
-		const float X = Kit.CX() + (i == 0 ? -(CardW + Gap * 0.5f) : Gap * 0.5f);
-		Kit.Rect(X, Y0, CardW, CardH, FLinearColor(0.f, 0.f, 0.f, bOn ? 0.78f : 0.55f));
-		Kit.Frame(X, Y0, CardW, CardH, Kit.Ln(bOn ? 2.f : 1.f), bOn ? TakeStyle::Julian : Silver);
-		const FTakeInk KeyInk = FTakeInk::Of(bOn ? TakeStyle::Julian : Bone, bOn ? TakeStyle::Julian : Bone);
-		const float KX = X + Kit.Px(18.f);
-		const float KW = Kit.Key(Keys[i], KX, Y0 + Kit.Px(30.f), KeyInk);
-		Kit.Text(EType::Label, Scene3Local::OptionHead[i], KX + KW + Kit.Px(12.f), Y0 + Kit.Px(30.f),
-			bOn ? TakeStyle::Julian : Bone);
-		Kit.Text(EType::Line, FString::Printf(TEXT("\"%s\""), *Lines[i]), X + Kit.Px(18.f), Y0 + Kit.Px(76.f),
-			bOn ? Paper : Ash);
-	}
-	Kit.Text(EType::Tag, TEXT("1 / 2   or   arrows + E"), Kit.CX(), Y0 + CardH + Kit.Px(22.f), Silver, ETakeAlign::Centre);
+	TArray<FTakeChoiceCard> Cards;
+	Cards.Add({ TEXT("1"), Scene3Local::OptionHead[0], PlayAlongLine });
+	Cards.Add({ TEXT("2"), Scene3Local::OptionHead[1], BrushOffLine });
+	const int32 Lit = (Picked == EChoice::None) ? Hover : (Picked == EChoice::PlayAlong ? 0 : 1);
+	TakeChoice::Draw(Kit, Cards, Lit, Kit.PicBottom() - Kit.Px(282.f), TEXT("THE CRITIC  -  your answer"), TEXT("1 / 2   or   arrows + E"));
 	Kit.Fade = 1.f;
 }

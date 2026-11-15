@@ -9,7 +9,9 @@
 #   shots   PNGs into C:\Jam\Builds\script\s3 (arch_*.png)
 # Tag script_s3_arch (re-runnable: clears its tag first). Run under the editor lock:
 #     "<engine python>" -I tools/ue_mcp.py py tools/script/scene3_arch.py 110
-# Switches: S3A_OFF = True only clears. S3A_SHOTS = False skips the shots.
+# Switches: S3A_OFF = True only clears. S3A_SHOTS = False skips the shots. S3A_SOUTH = True builds the south part.
+# Since Nov 15 evening scene7.py (s7-route) builds the projectionist's stair itself, enclosed, x -780..-580,
+# y -1160..-200, so the south part is off by default: it would sit inside their stairwell.
 import sys, importlib, os
 sys.path.insert(0, r"C:\Jam\megajam\tools\sets")
 import common as C
@@ -19,6 +21,7 @@ import unreal
 TAG = "script_s3_arch"
 OFF = bool(globals().get("S3A_OFF"))
 SHOTS = globals().get("S3A_SHOTS", True)
+SOUTH = bool(globals().get("S3A_SOUTH", False))
 OUT = r"C:\Jam\Builds\script\s3"
 eal = unreal.EditorAssetLibrary
 CUBE = "/Engine/BasicShapes/Cube"
@@ -103,9 +106,9 @@ def north():
 
 def clashes():
     """Cast, watchers and props standing inside the new solids (to move or report)."""
-    vols = [(SX0, SX1 + PAR, step_y(STEPS - 1)[0] - 40.0, LAND_S[1] + 20.0),
-            (HALL_X0, SX0, step_y(STEPS - 1)[0] - 40.0, -DOOR_HALF - 20.0),
-            (HALL_X0, SX1 + PAR, LAND_N[0], LAND_N[1])]
+    vols = [] if not SOUTH else [(SX0, SX1 + PAR, step_y(STEPS - 1)[0] - 40.0, LAND_S[1] + 20.0),
+            (HALL_X0, SX0, step_y(STEPS - 1)[0] - 40.0, -DOOR_HALF - 20.0)]
+    vols += [(HALL_X0, SX1 + PAR, LAND_N[0], LAND_N[1])]
     hits = []
     for a in C.actors():
         if TAG in C.tags(a) or a.get_actor_label().startswith(("S7_", "Booth_", "Wall", "Column", "Hall")):
@@ -131,7 +134,8 @@ def shots():
 gone, shown = C.clear(TAG)
 REPORT.append("cleared %d" % gone)
 if not OFF:
-    REPORT.append(south())
+    if SOUTH:
+        REPORT.append(south())
     REPORT.append(north())
     REPORT.append(clashes())
     if SHOTS:
