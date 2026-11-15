@@ -100,7 +100,6 @@ def material(name, build):
 
 def instance(name, parent, scalars=None, vectors=None):
     f = unreal.MaterialInstanceConstantFactoryNew()
-    f.set_editor_property("initial_parent", parent)
     mi, made = _new(name, unreal.MaterialInstanceConstant, f)
     mel.set_material_instance_parent(mi, parent)
     for k, v in (scalars or {}).items():
