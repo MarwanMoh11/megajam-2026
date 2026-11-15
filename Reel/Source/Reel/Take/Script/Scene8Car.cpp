@@ -222,6 +222,20 @@ namespace
 	const FLinearColor Carpet(0.03f, 0.025f, 0.02f);
 	const FLinearColor Silver(0.55f, 0.56f, 0.58f);
 	const FLinearColor Asphalt(0.012f, 0.012f, 0.013f);
+	FVector GS8FinaleShotCam = FVector::ZeroVector;	// the current shot's base camera and look point (SetShot)
+	FVector GS8FinaleShotLook = FVector::ForwardVector;
+
+	// The head bone's name differs between rigs ("head", "Head", "mixamorig:Head"): find it rather than guess.
+	FVector S8HeadOf(const USkeletalMeshComponent* M)
+	{
+		if (!M) { return FVector::ZeroVector; }
+		for (int32 i = 0; i < M->GetNumBones(); ++i)
+		{
+			const FString B = M->GetBoneName(i).ToString();
+			if (B.EndsWith(TEXT("head"), ESearchCase::IgnoreCase)) { return M->GetBoneLocation(M->GetBoneName(i)); }
+		}
+		return M->GetComponentLocation() + FVector(0.f, 0.f, 75.f);
+	}
 	const TCHAR* InsideBodyPath = TEXT("/Game/Take/Script/S8/MI_S8_GTCar_Inside.MI_S8_GTCar_Inside");
 
 	float WrapX(float V, float Span)
@@ -274,8 +288,10 @@ UStaticMeshComponent* AScene8Car::Pane(USceneComponent* Parent, const FVector& L
 	if (!M) { return nullptr; }
 	M->SetRelativeRotation(Rot);
 	UMaterialInstanceDynamic* D = UMaterialInstanceDynamic::Create(P, this);
-	D->SetVectorParameterValue(TEXT("Tiling"), FLinearColor(SizeCm.X / Tiling, SizeCm.Y / Tiling, 0.f));
+	D->SetVectorParameterValue(TEXT("Tiling"), FLinearColor(SizeCm.X / (0.5f * Tiling), SizeCm.Y / (0.5f * Tiling), 0.f));
 	D->SetVectorParameterValue(TEXT("PanSpeed"), FLinearColor(Pan.X, Pan.Y, 0.f));
+	D->SetScalarParameterValue(TEXT("DropOpacity"), 0.22f);	// first look: the drops read as opaque wallpaper
+	D->SetScalarParameterValue(TEXT("BaseOpacity"), 0.03f);
 	M->SetMaterial(0, D);
 	M->SetTranslucentSortPriority(1);
 	GlassMids.Add(D);
@@ -430,7 +446,7 @@ void AScene8Car::BuildFinale()
 	MirrorCapture->AttachToComponent(MirrorHead, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
 	MirrorCapture->SetRelativeLocation(FVector(-2.f, 0.f, 0.f));
 	MirrorCapture->TextureTarget = MirrorTarget;
-	MirrorCapture->CaptureSource = ESceneCaptureSource::SCS_FinalColorHDR;
+	MirrorCapture->CaptureSource = ESceneCaptureSource::SCS_FinalColorLDR;
 	MirrorCapture->FOVAngle = MirrorCaptureFov;
 	MirrorCapture->HiddenComponents.Add(MirrorGlass);
 	MirrorCapture->HiddenComponents.Add(MirrorBody);
@@ -540,10 +556,22 @@ void AScene8Car::BuildFinale()
 void AScene8Car::SetShot(bool bB)
 {
 	bShotB = bB;
-	const FVector Cam = bB ? ShotBCam : ShotACam;
-	const FVector Look = bB ? MirrorPoint : ShotALook;
+	FVector Cam = bB ? ShotBCam : ShotACam;
+	FVector Look = bB ? MirrorPoint : ShotALook;
+	float Fov = bB ? ShotBFov : ShotAFov;
+	if (!bB && VanceBody)
+	{
+		// First look: ShotACam sat against his chest. Frame shot A off his head instead: a three-quarter from the
+		// driver's side of the dash, head and shoulders with Cole behind.
+		const FVector Head = GetActorTransform().InverseTransformPosition(S8HeadOf(VanceBody));
+		Look = Head + FVector(0.f, 0.f, -8.f);
+		Cam = FVector(FMath::Min(Head.X + 50.f, 14.f), Head.Y - 62.f, Head.Z - 2.f);
+		Fov = FMath::Max(Fov, 58.f);
+	}
+	GS8FinaleShotCam = Cam;
+	GS8FinaleShotLook = Look;
 	FinaleCam->SetRelativeLocationAndRotation(Cam, (Look - Cam).Rotation());
-	FinaleCam->SetFieldOfView(bB ? ShotBFov : ShotAFov);
+	FinaleCam->SetFieldOfView(Fov);
 	FPostProcessSettings& PP = FinaleCam->PostProcessSettings;
 	PP.bOverride_DepthOfFieldFstop = true;
 	PP.DepthOfFieldFstop = Fstop;
@@ -584,7 +612,7 @@ void AScene8Car::BeginFinale()
 		if (UAnimationAsset* A = SitAnim.IsNull() ? nullptr : SitAnim.LoadSynchronous()) { VanceBody->PlayAnimation(A, true); }
 	}
 	// The mirror turned to Vance's face (he set it so he could see himself).
-	const FVector Face = VanceBody ? VanceBody->GetSocketLocation(TEXT("head")) + FVector(0.f, 0.f, 4.f)
+	const FVector Face = VanceBody ? S8HeadOf(VanceBody) + FVector(0.f, 0.f, 4.f)
 		: GetActorTransform().TransformPosition(PassengerSeat + FVector(0.f, 0.f, 72.f));
 	MirrorHead->SetWorldRotation((MirrorHead->GetComponentLocation() - Face).Rotation());
 	MirrorCapture->bCaptureEveryFrame = true;
@@ -613,8 +641,8 @@ void AScene8Car::TickFinale(float T, float DeltaSeconds)
 		FVector(0.f, 0.f, 0.6f * FMath::Sin(T * 7.3f) + 0.25f * FMath::Sin(T * 17.9f)),
 		FRotator(0.15f * FMath::Sin(T * 5.1f), 0.f, 0.35f * FMath::Sin(T * 1.3f) + 0.1f * FMath::Sin(T * 11.f)));
 	// The camera rides the car, with a hand's drift; each shot creeps in.
-	const FVector Cam = bShotB ? ShotBCam : ShotACam;
-	const FVector Look = bShotB ? MirrorPoint : ShotALook;
+	const FVector Cam = GS8FinaleShotCam;
+	const FVector Look = GS8FinaleShotLook;
 	const float Push = bShotB ? FMath::Clamp((T - ShotASeconds) / FMath::Max(0.1f, FinaleSeconds - ShotASeconds), 0.f, 1.f) * 5.f
 		: FMath::Clamp(T / FMath::Max(0.1f, ShotASeconds), 0.f, 1.f) * 9.f;
 	const FVector At = Cam + (Look - Cam).GetSafeNormal() * Push;
@@ -648,7 +676,7 @@ void AScene8Car::TickFinale(float T, float DeltaSeconds)
 	// The mirror keeps Vance's face in it.
 	if (VanceBody && MirrorCapture)
 	{
-		const FVector Face = VanceBody->GetSocketLocation(TEXT("head")) + GetActorForwardVector() * 4.f + FVector(0.f, 0.f, 3.f);
+		const FVector Face = S8HeadOf(VanceBody) + GetActorForwardVector() * 4.f + FVector(0.f, 0.f, 3.f);
 		MirrorCapture->SetWorldRotation((Face - MirrorCapture->GetComponentLocation()).Rotation());
 	}
 }
