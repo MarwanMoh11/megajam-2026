@@ -1220,3 +1220,17 @@ animation, you can't move it or change it." He was looking at the searchlight on
   after), then the overlay. The build also put another session's Live-Coding-only `CastMember.cpp` fixes into the DLL.
 - **What went wrong:** the first walnut read as black in the shots and was lightened. Seen open and shut in editor
   shots (`gate_open_dais.png`, `gate_shut.png`, the shut one by setting the swing to 0), not swinging in play.
+
+## Nov 15, 14:20 Cairo: s6-backstage, Scene 6 playable (grey box)
+- **What changed:** Scene 6 (Cole, backstage) is `AScene6Backstage` (`Take/Script/Scene6Backstage.*`), set by
+  `tools/script/scene6.py` in the vault room behind the screen. There, the film plays mirrored on the screen's back,
+  and its light flickers and flashes on the soundtrack's loud moments (gunfight, explosion). The enforcers and the
+  projectionist are cast members the scene spawns and walks itself: a patrol, a stair guard, and a projectionist
+  who glances round. The scene runs a takedown masked by the film's sound, a drag into a costume trunk, a
+  counterweight lever that drops a sandbag on a thunder sheet to lure the stair guard, a knockout and the mag-lock
+  door. 7 SFX and 5 voice lines come from ElevenLabs (`tools/script/scene6_audio.py`).
+- **Agents:** one session (s6-backstage); compile-checked in its own snapshot tree (`C:\Jam\Builds\s6snap`)
+  before the shared restart.
+- **What went wrong:** my lock acquire took spine's stale lock while spine's Build.bat was still running; I released
+  it at once. A Live Coding compile after the restart hung ("CompileStillActive"), so the HUD font fix and the stair
+  guard's downward sight wait for the next Build.bat. The large engine font draws boxes in this build: medium font only.
