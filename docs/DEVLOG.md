@@ -1463,3 +1463,11 @@ a reverse shot. `Reel.Script.Jump N` while scene N has only just started no long
   the arm vertices showed Rodin's pose has the forearms bent out level, and a slice-by-slice centre line fixed it.
   Scene captures in play-in-editor needed the probe actors placed in the editor level first (Python can't spawn into
   the play world) and the game's grade ignores exposure overrides, so the probe dims its own lights instead.
+
+## Nov 15, 18:59 Cairo: coordinator, the script take packaged for Marwan's test
+- All sessions had stalled 14:50-17:15 on usage limits; the coordinator took restarts back at 17:20 (build ok), then
+  restarted at 18:10, 18:46 and 18:55, each only when nobody was blocked rather than on the clock (Marwan's call).
+- Freeze at 18:46: each scene reported done from `Reel.Script.Jump N`; spine played title, 1-8, retake, Print it and
+  credits; last fixes were s7's start camera (level only) and s8's hidden bodies in the drive (ca79ca3).
+- The re-rigged Rodin cast (874ac73, another session) is in; spine's stills show no broken arms.
+- Windows Shipping package at 2ba2f82: BuildCookRun 150 s, `C:\Jam\Builds\Windows\Reel.exe`. Not zipped: a test build.
