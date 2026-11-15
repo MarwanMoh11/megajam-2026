@@ -129,6 +129,7 @@ DOOR_RANGE, DOOR_HALF_ANGLE = 800.0, 22.0
 FLANK_RANGE, FLANK_HALF_ANGLE = 900.0, 30.0
 CURTAIN_H = 600.0                 # the curtain: across the front of the dais and down both its sides
 AISLE_SHUTTER_X = AISLE_X1 + 15.0 # a shutter closes the aisle at the dais end: no way back
+AISLE_SHUTTER_OPEN = 820.0         # W3 stage: where it hangs while open, out of the room's sight line (was 330)
 
 # --- the crew --------------------------------------------------------------------------------------------------------
 # Nobody teleports (Marwan, Nov 14): each of the crew starts where the job would be and walks to the next place.
@@ -745,7 +746,6 @@ for y in (PLAT[2] - 8, PLAT[3] + 8):                      # the platform's beams
 for x in (-500.0, 400.0, 1300.0, 2200.0, 3100.0, 4000.0):  # the walkway's open edge, at every truss
     hanger(x, WALK_Y0 - 8)
 for x in (BRIDGE_X0 - 8, BRIDGE_X1 + 8):                  # the bridge: rods each side, beams from the north wall
-    header(x - 8, x + 8, BRIDGE_Y0 - 10, HY1)
     for y in (BRIDGE_Y0, 500.0, 1200.0):
         hanger(x, y)
 # --- end W3 stage
@@ -770,9 +770,8 @@ box("Screen", HX1 - 10, HX1, -500, 500, 235, 965, m_floor)   # W3 stage: 10 x 7.
 box("Lots_Table", LOTS[0], LOTS[1], LOTS[2], LOTS[3], DAIS_H, DAIS_H + 95, m_trim)
 box("PA_Stack", PA[0], PA[1], PA[2], PA[3], 0, 250, m_floor)
 box("Band_Riser", BAND[0], BAND[1], BAND[2], BAND[3], 0, 30, m_dais)
-for sy in (-GAP - 30.0, GAP + 30.0):
-    box("Shutter_Post", AISLE_SHUTTER_X - 8, AISLE_SHUTTER_X + 8, sy - 8, sy + 8, 110, 330, m_trim)
-box("Shutter_Housing", AISLE_SHUTTER_X - 14, AISLE_SHUTTER_X + 14, -GAP - 40, GAP + 40, 330, 372, m_trim)
+# W3 stage: no grey gantry over the aisle's front mouth (it stood in the room's sight line to the dais): the aisle's
+# shutter hangs open up in the dark under the catwalk level and drops from there (Scene 3 block, AISLE_SHUTTER_OPEN).
 signal(box("Side_Exit", HX1 - 8, HX1, SIDE_DOOR_Y - 65, SIDE_DOOR_Y + 65, 0, 235, m_gold), m_sig_gold, 2)
 box("Security_Door", HX1 - 8, HX1, SEC_DOOR_Y - 65, SEC_DOOR_Y + 65, 0, 235, m_door)
 
@@ -1704,7 +1703,8 @@ def shutter(label, x, y, yaw, width, height, walkers=False):
 
 
 # The shutters: the aisle at the dais end (no way back), and the hall's side doors.
-shutter("Shutter_Aisle", AISLE_SHUTTER_X, 0.0, 0.0, 2 * GAP + 40.0, 330.0, walkers=True)
+setp(shutter("Shutter_Aisle", AISLE_SHUTTER_X, 0.0, 0.0, 2 * GAP + 40.0, 330.0, walkers=True),   # --- W3 stage ---
+     open_height=AISLE_SHUTTER_OPEN, colour=unreal.LinearColor(0.035, 0.012, 0.016, 1.0))   # high and dark while open
 shutter("Shutter_North_1", 150.0, HY1 + 10.0, 90.0, 200.0, D_H)
 shutter("Shutter_North_2", 1900.0, HY1 + 10.0, 90.0, 200.0, D_H)
 shutter("Shutter_Staff", -300.0, HY0 - 10.0, 90.0, 2 * D_HALF, D_H)
