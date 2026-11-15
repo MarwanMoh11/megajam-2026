@@ -1,6 +1,8 @@
 # Scene 8's play-in-editor shots into C:\Jam\Builds\script\s8\. Engine Python, repo root, under the editor lock:
-#   "$PY" -I tools/script/scene8_pie.py [prefix]        # the scene through: burst, run, dive (warped to the car), drive, mirror, end
-#   "$PY" -I tools/script/scene8_pie.py fail            # stand still: the guards' fire closes in, the retake card
+#   "$PY" -I tools/script/scene8_pie.py [prefix]        # the escape on autopilot (Reel.S8.Autopilot 1): Cole's entrance,
+#                                                       # the stairs, the lobby, the hall, the corridor chase, the prop
+#                                                       # store, the alley, the dive, the drive, the mirror; a shot every
+#                                                       # STEP seconds and the beat log
 #   "$PY" -I tools/script/scene8_pie.py --stop          # stop PIE (always before releasing the lock)
 import json
 import os
@@ -13,7 +15,8 @@ import lights_pie as L   # noqa: E402
 
 OUT = r"C:\Jam\Builds\script\s8"
 WORLD = {"world": {"refPath": "/Game/Take/UEDPIE_0_Lvl_Auction.Lvl_Auction"}, "maxResolution": 1280}
-CAR_DOOR = (2150.0, -3560.0, -21.0)        # beside the stopped car's passenger door (AScene8Alley defaults)
+STEP = 2.2
+SHOTS = 16
 
 
 def snap(s, name, prefix):
@@ -22,15 +25,16 @@ def snap(s, name, prefix):
     print(name, L.save_image(res, path) and path, flush=True)
 
 
-def log(s, pat, n=12):
+def log(s, pat, n=30):
     r = L.tool(s, "ConsoleToolset.LogsToolset.GetLogEntries", {"pattern": pat, "maxEntries": n})
-    print(json.dumps(r)[:1500], flush=True)
+    print(json.dumps(r)[:3000], flush=True)
 
 
 def main():
     a = sys.argv[1:]
     s = L.sid()
     if a and a[0] == "--stop":
+        L.console(s, "Reel.S8.Autopilot 0")
         print(L.tool(s, "EditorToolset.EditorAppToolset.StopPIE", {}))
         return
     prefix = a[0] if a else "pie"
@@ -40,32 +44,12 @@ def main():
         time.sleep(4.0)
         L.console(s, "TakeConfirm")
         time.sleep(1.5)
+    L.console(s, "Reel.S8.Autopilot 1")
     L.console(s, "Reel.Script.Jump 8")
-    if prefix == "fail":
-        time.sleep(6.5)
-        snap(s, "1_closing", prefix)
-        time.sleep(4.5)
-        snap(s, "2_retake", prefix)
-        log(s, "S8 beat|SCRIPT blooper")
-        return
-    time.sleep(0.5)
-    snap(s, "1_burst", prefix)
-    time.sleep(1.4)
-    snap(s, "2_car", prefix)
-    time.sleep(1.6)                                   # the run: Vance's camera, the guards out, shots
-    time.sleep(0.8)
-    snap(s, "3_run", prefix)
-    L.console(s, "TakeWarp %.0f %.0f %.0f" % CAR_DOOR)
-    time.sleep(0.4)
-    snap(s, "4_dive", prefix)
-    time.sleep(1.6)
-    snap(s, "5_drive", prefix)
-    time.sleep(1.9)
-    snap(s, "6_mirror", prefix)
-    time.sleep(1.6)
-    snap(s, "7_print", prefix)
-    time.sleep(3.0)
-    snap(s, "8_end", prefix)
+    time.sleep(0.6)
+    for i in range(SHOTS):
+        snap(s, "%02d" % i, prefix)
+        time.sleep(STEP)
     log(s, "S8 beat|SCRIPT")
 
 

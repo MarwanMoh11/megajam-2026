@@ -1,9 +1,13 @@
-# Scene 8. EXT. REAR ALLEYWAY - NIGHT (Vance). Owner: s8-alley. Re-runnable overlay (tag script_s8), run inside the editor
+# Scene 8, the escape and the alley (Vance). Owner: s8-escape (was s8-alley). Re-runnable overlay (tag script_s8), run inside the editor
 # after the existing pipeline:  "<engine python>" -I tools/ue_mcp.py py tools/script/scene8.py
 # The alley is the strip south of the service wing (the building's south wall, y -3320, is its north side): a brick wall
 # along y -4100 makes its far side, with a gap at x 2300..2900 (the side street the car leaves by); the alley's west end
 # opens onto the street round the lobby (the car comes in round that corner); the crew's lorry closes its east end.
 # AScene8Alley stands on the outside face of a steel fire exit at x 1300 (its door, guards, car, cameras are its own).
+# The escape (Nov 15 evening): the scene opens in the security room where Scene 7's fight ends and Vance runs the real
+# building to this door, Cole leading, guards chasing (ROUTE below; AScene8Alley.RouteWorld). This overlay cuts a real
+# opening for the door in the prop store's south wall (Service_South), places the scene's StartSpot on the fight mark,
+# and checks the route for blockers (printed as 'blocked').
 import importlib
 import re
 import sys
@@ -60,6 +64,31 @@ def light(label, loc, cd, radius, rgb, cls=unreal.PointLight, rot=(0.0, 0.0, 0.0
 
 C.clear(TAG)
 
+# The prop store's south wall (build_auction.py Service_South): put back what the last run cut, then cut the door's
+# opening (x CUT, z 0..CUT_TOP) by hiding it (and its collision) and rebuilding the wall round the opening.
+CUT = (DOOR[0] - 62.0, DOOR[0] + 62.0)
+CUT_TOP = 235.0
+CUT_TAG = TAG + ":wallcut"
+for w in C.actors():
+    if CUT_TAG in C.tags(w):
+        for c in w.get_components_by_class(unreal.PrimitiveComponent):
+            c.set_visibility(True, False)
+            c.set_collision_enabled(unreal.CollisionEnabled.QUERY_AND_PHYSICS)
+        C._set_tags(w, [t for t in C.tags(w) if t != CUT_TAG])
+walls = [w for w in C.find("Service_South.*") if isinstance(w, unreal.StaticMeshActor)]
+if walls:
+    w = walls[0]
+    b = C.bounds(w)
+    wm = w.static_mesh_component.get_material(0)
+    for c in w.get_components_by_class(unreal.PrimitiveComponent):
+        c.set_visibility(False, False)
+        c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
+    C._set_tags(w, C.tags(w) + [CUT_TAG])
+    out.append("cut %s %s" % (w.get_actor_label(), [round(v) for v in b]))
+else:
+    b, wm = None, None
+    out.append("NO Service_South wall found: the fire exit has no opening")
+
 # --- what stood in the alley: the south row of street trees inside it -------------------------------------------------
 culprits = set()
 for (x, y) in ((-1100.0, -4000.0), (400.0, -4000.0), (1900.0, -4000.0)):
@@ -76,7 +105,15 @@ block("FarWall_E", GAP[1], EAST, FAR_Y - 30.0, FAR_Y, GROUND, 650.0, brick)
 block("FarWall_Cap_W", WEST, GAP[0], FAR_Y - 40.0, FAR_Y + 10.0, 650.0, 670.0, M_TRIM, collide=False)
 block("FarWall_Cap_E", GAP[1], EAST, FAR_Y - 40.0, FAR_Y + 10.0, 650.0, 670.0, M_TRIM, collide=False)
 # brick facing over the building's own south wall along the alley, so both sides read as old brick
-block("NearFacing", WEST, EAST, DOOR[1] - 4.0, DOOR[1], GROUND, 520.0, brick, collide=False)
+block("NearFacing_W", WEST, CUT[0], DOOR[1] - 4.0, DOOR[1], GROUND, 520.0, brick, collide=False)
+block("NearFacing_E", CUT[1], EAST, DOOR[1] - 4.0, DOOR[1], GROUND, 520.0, brick, collide=False)
+block("NearFacing_Top", CUT[0], CUT[1], DOOR[1] - 4.0, DOOR[1], CUT_TOP, 520.0, brick, collide=False)
+if b:
+    block("Wall_W", b[0], CUT[0], b[2], b[3], b[4], b[5], wm)
+    block("Wall_E", CUT[1], b[1], b[2], b[3], b[4], b[5], wm)
+    block("Wall_Top", CUT[0], CUT[1], b[2], b[3], CUT_TOP, b[5], wm)
+    # Inside, over the door: a green EXIT sign and its glow (the way out reads from the prop store's door).
+    block("ExitSign_In", DOOR[0] - 30.0, DOOR[0] + 30.0, b[3], b[3] + 6.0, 252.0, 272.0, M_TRIM, collide=False, shadow=False)
 # bins and crates along the far wall (clear of the car's lane, y -3660..-3840), a drainpipe, a step at the door
 for i, bx in enumerate((-300.0, 160.0, 1150.0)):                      # none between the drive camera and the gap
     block("Bin_%d" % i, bx, bx + 120.0, FAR_Y + 10.0, FAR_Y + 95.0, GROUND, GROUND + 115.0, M_DOOR)
@@ -118,6 +155,73 @@ light("Lamp_West", (WEST + 300.0, DOOR[1] - 60.0, 420.0), 250.0, 1200.0, (1.0, 0
 light("Lamp_SideStreet", (2600.0, FAR_Y - 300.0, 450.0), 300.0, 1400.0, (0.6, 0.75, 1.0))
 
 # --- the scene actor ------------------------------------------------------------------------------------------------
+light("ExitGlow_In", (DOOR[0], -3255.0, 262.0), 40.0, 380.0, (0.25, 1.0, 0.45))
+
+# --- the escape route ------------------------------------------------------------------------------------------------
+# Feet points, world cm, from the security room (Scene 7's fight; s7-route-layout) to the prop store; AScene8Alley
+# appends the fire exit's inside and outside. Rooms: tools/build_auction.py (security room x -3200..-2100,
+# y -2000..-1400, z 450; the south fire stair x -2100..-1000; lobby; hall; staff door x -300; backstage corridor
+# y -2600..-2020; prop store x 800..2600, y -3300..-2600, its door x 1700).
+F2 = 450.0
+START = (-2650.0, -1680.0, F2 + 95.0)
+START_YAW = 90.0
+COLE_START = (-1960.0, -1700.0, F2)            # on the fire stair's landing, outside the east door
+COLE_MARK = (-2330.0, -1690.0, F2)             # just in through the east door
+SMOKE = (-2650.0, -1260.0, F2)                 # out of the north door, on the lobby balcony (where the guards come)
+ROUTE = [
+    (-2060.0, -1700.0, F2),     # 0 the east door
+    (-1880.0, -1850.0, F2),     # 1 the top of the upper flight (outer lane)
+    (-1250.0, -1820.0, 225.0),  # 2 the half landing
+    (-1250.0, -1560.0, 225.0),  # 3 across it to the inner lane
+    (-1900.0, -1555.0, 0.0),    # 4 the foot of the lower flight
+    (-1975.0, -1470.0, 0.0),    # 5 the door into the lobby
+    (-1975.0, -1300.0, 0.0),    # 6 the lobby
+    (-1300.0, -1000.0, 0.0),    # 7 past the south pillars
+    (-1100.0, -650.0, 0.0),     # 8 east of the bench
+    (-1060.0, -270.0, 0.0),     # 9 the opening into the hall
+    (-860.0, -270.0, 0.0),      # 10 in the hall, west of the projectionist's stair
+    (-900.0, -1300.0, 0.0),     # 11 down the hall's west end
+    (-300.0, -1880.0, 0.0),     # 12 the staff door
+    (-300.0, -2200.0, 0.0),     # 13 through it, into the backstage corridor
+    (1700.0, -2300.0, 0.0),     # 14 east down the corridor: the chase
+    (1700.0, -2750.0, 0.0),     # 15 through the prop store door
+    (1325.0, -2900.0, 0.0),     # 16 between the crates, to the fire exit
+]
+GUARDS_ENTER = (-1975.0, -1470.0, 0.0)         # they come down the fire stair after them
+STUMBLE_X = 500.0                              # the stumble lands in the corridor about here
+
+
+def route_len(pts, upto=None):
+    n = 0.0
+    for i in range(1, len(pts) if upto is None else upto + 1):
+        p, q = pts[i - 1], pts[i]
+        n += ((p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 + (p[2] - q[2]) ** 2) ** 0.5
+    return n
+
+
+# The trail distance from the stair foot to the stumble, less the guards' starting gap (AScene8Alley.GapStart).
+_corr = route_len(ROUTE, 13) + (STUMBLE_X - ROUTE[13][0])
+STUMBLE_AFTER = max(300.0, _corr - route_len(ROUTE, 5) - 1000.0)
+
+# Blockers along the flat legs: a 32 cm sphere swept 60 cm over the floor (the stair legs are not checked).
+blocked = []
+for i in range(1, len(ROUTE)):
+    p, q = ROUTE[i - 1], ROUTE[i]
+    if abs(p[2] - q[2]) > 1.0:
+        continue
+    r = unreal.SystemLibrary.sphere_trace_single(C.world(), unreal.Vector(p[0], p[1], p[2] + 60.0),
+                                                 unreal.Vector(q[0], q[1], q[2] + 60.0), 32.0,
+                                                 unreal.TraceTypeQuery.TRACE_TYPE_QUERY1, False, [],
+                                                 unreal.DrawDebugTrace.NONE, True)
+    hit = r[0] if isinstance(r, tuple) else r
+    if hit:
+        parts = unreal.GameplayStatics.break_hit_result(hit)
+        who = [x for x in parts if isinstance(x, unreal.Actor)]
+        loc = [x for x in parts if isinstance(x, unreal.Vector)]
+        blocked.append("%d->%d %s at %s" % (i - 1, i, who[0].get_actor_label() if who else "?",
+                                            [round(v) for v in (loc[0].x, loc[0].y, loc[0].z)] if loc else "?"))
+out.append("blocked: %s" % (blocked or "none"))
+
 cls = unreal.load_class(None, "/Script/Reel.Scene8Alley")
 if cls is None:
     out.append("AScene8Alley not compiled yet: set placed, no scene actor")
@@ -131,6 +235,20 @@ else:
     # swing into the side street and fishtail away (from the west end the far wall hid the turn)
     a.set_editor_property("DriveCamAt", unreal.Vector(1850.0, -330.0, 180.0))
     a.set_editor_property("MirrorFov", 50.0)                              # the eyes and a little of the night
+    # The escape (world cm). Where Scene 7's fight leaves Vance (s7-route's fight mark), Cole outside the east door.
+    sp = eas.spawn_actor_from_class(unreal.TargetPoint, unreal.Vector(*START), unreal.Rotator(0.0, 0.0, START_YAW))
+    sp.set_actor_label("S8_StartSpot")
+    sp.set_folder_path("Script/S8")
+    sp.set_editor_property("tags", [unreal.Name(TAG)])
+    a.set_editor_property("StartSpot", sp)
+    a.set_editor_property("RouteWorld", [unreal.Vector(*p) for p in ROUTE])
+    for k, v in (("ColeStartWorld", COLE_START), ("ColeMarkWorld", COLE_MARK), ("SmokeWorld", SMOKE),
+                 ("GuardsEnterWorld", GUARDS_ENTER)):
+        a.set_editor_property(k, unreal.Vector(*v))
+    a.set_editor_property("StumbleAfter", STUMBLE_AFTER)
+    a.set_editor_property("CarCueDistance", 1300.0)
+    out.append("route %d points, %.0f m; guards from the stair foot, stumble %.0f cm after they appear"
+               % (len(ROUTE), route_len(ROUTE) / 100.0, STUMBLE_AFTER))
     out.append("placed %s at %s" % (a.get_actor_label(), DOOR))
 
 print("SCENE8 " + "; ".join(out))

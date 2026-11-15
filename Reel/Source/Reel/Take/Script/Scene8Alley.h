@@ -1,14 +1,17 @@
-// Scene 8, EXT. REAR ALLEYWAY - NIGHT (Vance, 35mm): the getaway and the last shot. Owner: s8-alley.
-// docs/SCRIPT.md Scene 8, docs/script/s8.md. Placed by tools/script/scene8.py (tag script_s8) on the outside face of
-// the steel fire exit in the service wing's south wall, yaw 0: everything below is in the actor's space (+X east
-// along the alley, -Y out of the door across it). The alley set itself (brick wall, lamp, bins, puddles, rain) is the
-// overlay's; this actor owns the door, the guards, the car, the cameras and the beats:
-//   Burst  (wide shot) the door bangs open, Vance and Cole stumble out, headlights flare round the corner, the GT drifts
-//          in and stops, passenger door open; MAX: "Get in! Get in!"
-//   Run    (Vance's follow camera, the player walks) reach the passenger door before the guards' fire closes in
-//          (RunSeconds, else FailScene "PinnedDown"); guards burst from the exit, muzzle flashes, sparks off the brick,
-//          nobody is hit. Cole runs for the back seat on his own.
-//   Dive   Vance dives in, the door slams; COLE: "Go, go, go!"
+// Scene 8, the escape and the getaway (Vance, 35mm). Owner: s8-escape (was s8-alley). docs/SCRIPT.md Scene 8,
+// docs/script/s8.md. Placed by tools/script/scene8.py (tag script_s8) on the outside face of the steel fire exit in the
+// prop store's south wall, yaw 0: actor-space values are +X east along the alley, -Y out of the door across it;
+// world-space values (the route, the room) end in "World". The alley set is scene8.py's; this actor owns the door, the
+// chasing guards (AScene8Chaser), the car's run in, the cameras and the beats:
+//   Escape (Vance's follow camera, the player RUNS) from the fight room where Scene 7 left him, through the real
+//          corridors and rooms to the fire exit Cole rigged in Scene 6. Cole leads (and waits when Vance lags): he is
+//          the guidance. Armed guards burst out behind them and chase down Vance's own trail, firing: muzzle flashes,
+//          tracers, sparks on the walls beside him, a stumble that lets the gap close. Never a hit. Stand still too
+//          long and they close in: FailScene "Caught" (StallSeconds, with a warning first).
+//   Alley  the fire exit bangs open as the first of them reaches it, out into the rain; the GT drifts in round the
+//          corner, MAX "Get in! Get in!"; the guards spill out of the exit and fire. Reach the passenger door
+//          (AlleySeconds, else FailScene "PinnedDown"). Cole makes for the back seat on his own.
+//   Dive   Vance dives in, the door slams; COLE: "Go, go, go!" (the car-door hand-off: s8-car-mirror)
 //   Drive  (a camera at the alley's mouth) Max dumps the clutch, the V8 roars, the car fishtails out of the alley.
 //   Mirror the final shot inside the car, framed in the rear-view mirror: Vance straightens his tie and smiles;
 //          VANCE: "Cut. Print it." -> FinishScene: the sequencer's EndOfFilm smashes to black and rolls the credits.
@@ -20,6 +23,7 @@
 #include "Scene8Alley.generated.h"
 
 class AScene8Car;
+class AScene8Chaser;
 class ACameraActor;
 class UAudioComponent;
 class UNiagaraSystem;
@@ -30,12 +34,13 @@ class USkeletalMesh;
 class USkeletalMeshComponent;
 class UAnimationAsset;
 class UStaticMeshComponent;
+class UMaterialInterface;
 
 UENUM()
 enum class EScene8Beat : uint8
 {
-	Burst,
-	Run,
+	Escape,
+	Alley,
 	Dive,
 	Drive,
 	Mirror,
@@ -61,24 +66,13 @@ public:
 
 	// ---- Tuning (seconds and cm; actor space) ----
 
-	/** The opening wide shot, from the door bang to the cut to Vance's camera. */
-	UPROPERTY(EditAnywhere, Category = "Scene8|Timing")
-	float BurstSeconds = 3.0f;
-
-	UPROPERTY(EditAnywhere, Category = "Scene8|Timing")
-	float ArriveDelay = 0.25f;
-
-	/** The car's run in along ArrivePath (ease out). */
+	/** The car's run in along ArrivePath (ease out), cued when Vance is CarCueDistance from the fire exit. */
 	UPROPERTY(EditAnywhere, Category = "Scene8|Timing")
 	float ArriveSeconds = 2.4f;
 
-	/** Time the player has to reach the passenger door. */
+	/** Time the player has in the alley to reach the passenger door once he is out of the exit. */
 	UPROPERTY(EditAnywhere, Category = "Scene8|Timing")
-	float RunSeconds = 7.f;
-
-	/** Seconds into the run the guards burst out of the exit. */
-	UPROPERTY(EditAnywhere, Category = "Scene8|Timing")
-	float GuardsAt = 0.6f;
+	float AlleySeconds = 9.f;
 
 	UPROPERTY(EditAnywhere, Category = "Scene8|Timing")
 	float ShotGapMin = 0.28f;
@@ -107,9 +101,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Scene8|Run")
 	float ReachRadius = 200.f;
 
-	/** How far from Vance the bullets spark at the start of the run and at its end (the fire closes in). */
+	/** How far beside Vance the rounds pass at the start of the chase and at its tightest (cm). */
 	UPROPERTY(EditAnywhere, Category = "Scene8|Run")
-	float MissStart = 320.f;
+	float MissStart = 220.f;
 
 	UPROPERTY(EditAnywhere, Category = "Scene8|Run")
 	float MissEnd = 70.f;
@@ -121,25 +115,107 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Scene8|Run")
 	float FarWallY = -768.f;
 
-	UPROPERTY(EditAnywhere, Category = "Scene8|Run")
-	FVector VanceStart = FVector(40.f, -110.f, 100.f);
+	/** Vance runs the whole escape (chars-locomotion's ATakeCharacter::SetRunning, his RunSpeed); Cole runs ahead at
+	 *  this (cm/s) through ScriptWalkTo. Walking comes back when the scene ends. */
+	UPROPERTY(EditAnywhere, Category = "Scene8|Escape")
+	float ColeRunSpeed = 560.f;
 
-	UPROPERTY(EditAnywhere, Category = "Scene8|Run")
-	FVector ColeStart = FVector(-30.f, -45.f, 100.f);
+	/** Cole's way out, world space: from the fight room's door, through the corridors and rooms, to the inside of the
+	 *  fire exit. Empty: he runs straight for the exit. Vance follows him (the player steers). */
+	UPROPERTY(EditAnywhere, Category = "Scene8|Escape")
+	TArray<FVector> RouteWorld;
 
-	/** Where the two burst out to in the wide shot (they stumble forward this far on their own). */
-	UPROPERTY(EditAnywhere, Category = "Scene8|Run")
-	FVector VanceStumble = FVector(80.f, -260.f, 0.f);
+	/** Where Cole is when the scene opens (world): outside the fight room's door, out of sight; zero: a step behind
+	 *  Vance (and no entrance). */
+	UPROPERTY(EditAnywhere, Category = "Scene8|Escape")
+	FVector ColeStartWorld = FVector::ZeroVector;
 
-	UPROPERTY(EditAnywhere, Category = "Scene8|Run")
-	FVector ColeStumble = FVector(-20.f, -230.f, 0.f);
+	/** Cole's entrance: he bursts in to ColeMarkWorld, lobs the smoke grenade to SmokeWorld (the door the guards
+	 *  will come through), "Max is out back! Move!", and leads off along RouteWorld. Zero: no entrance. */
+	UPROPERTY(EditAnywhere, Category = "Scene8|Escape")
+	FVector ColeMarkWorld = FVector::ZeroVector;
 
-	/** The guards' marks out of the door. */
+	UPROPERTY(EditAnywhere, Category = "Scene8|Escape")
+	FVector SmokeWorld = FVector::ZeroVector;
+
+	/** The grenade's flight (s) and how far the smoke billows (cm radius) and for how long it grows (s). */
+	UPROPERTY(EditAnywhere, Category = "Scene8|Escape")
+	float GrenadeSeconds = 0.5f;
+
+	UPROPERTY(EditAnywhere, Category = "Scene8|Escape")
+	float SmokeRadius = 260.f;
+
+	UPROPERTY(EditAnywhere, Category = "Scene8|Escape")
+	float SmokeGrowSeconds = 2.5f;
+
+	/** Cole never gets further ahead of Vance than this (cm, straight line): he stops and turns to wave him on. */
+	UPROPERTY(EditAnywhere, Category = "Scene8|Escape")
+	float ColeLeadMax = 650.f;
+
+	/** The door the guards burst out of behind them (world); zero: Vance's start. They appear once Vance's trail
+	 *  is GapStart past it. */
+	UPROPERTY(EditAnywhere, Category = "Scene8|Escape")
+	FVector GuardsEnterWorld = FVector::ZeroVector;
+
+	UPROPERTY(EditAnywhere, Category = "Scene8|Escape")
+	int32 ChaserCount = 3;
+
+	/** Trail spacing between the chasers (cm). */
+	UPROPERTY(EditAnywhere, Category = "Scene8|Escape")
+	float ChaserSpacing = 170.f;
+
+	/** The gap the lead guard keeps behind Vance along his trail: GapStart when they appear, closing to GapEnd over
+	 *  GapCloseSeconds. Stand still and it closes to MinGap; StallSeconds there and they have him. */
+	UPROPERTY(EditAnywhere, Category = "Scene8|Escape")
+	float GapStart = 1000.f;
+
+	UPROPERTY(EditAnywhere, Category = "Scene8|Escape")
+	float GapEnd = 600.f;
+
+	UPROPERTY(EditAnywhere, Category = "Scene8|Escape")
+	float GapCloseSeconds = 10.f;
+
+	UPROPERTY(EditAnywhere, Category = "Scene8|Escape")
+	float MinGap = 320.f;
+
+	UPROPERTY(EditAnywhere, Category = "Scene8|Escape")
+	float StallSeconds = 5.f;
+
+	/** The guards' running pace (cm/s), a touch under Vance's run; they speed up to GuardRunMax to hold the gap. */
+	UPROPERTY(EditAnywhere, Category = "Scene8|Escape")
+	float GuardRunSpeed = 500.f;
+
+	UPROPERTY(EditAnywhere, Category = "Scene8|Escape")
+	float GuardRunMax = 900.f;
+
+	/** The stumble: this far down his trail after the guards appear, a round sparks off the wall at his shoulder and
+	 *  he staggers to StumbleSpeed of his run for StumbleSeconds (the gap closes, then he finds his feet). */
+	UPROPERTY(EditAnywhere, Category = "Scene8|Escape")
+	float StumbleAfter = 900.f;
+
+	UPROPERTY(EditAnywhere, Category = "Scene8|Escape")
+	float StumbleSeconds = 0.7f;
+
+	UPROPERTY(EditAnywhere, Category = "Scene8|Escape")
+	float StumbleSpeed = 0.35f;
+
+	/** Vance within this (straight line) of the fire exit: the car starts its run in round the corner. */
+	UPROPERTY(EditAnywhere, Category = "Scene8|Escape")
+	float CarCueDistance = 1100.f;
+
+	/** Vance or Cole within this of the fire exit's inside face: the door bangs open. */
+	UPROPERTY(EditAnywhere, Category = "Scene8|Escape")
+	float DoorReach = 170.f;
+
+	/** Where the guards stop outside the exit to fire at the car (actor space). */
 	UPROPERTY(EditAnywhere, Category = "Scene8|Run")
 	FVector GuardMark0 = FVector(-130.f, -140.f, 0.f);
 
 	UPROPERTY(EditAnywhere, Category = "Scene8|Run")
 	FVector GuardMark1 = FVector(70.f, -180.f, 0.f);
+
+	UPROPERTY(EditAnywhere, Category = "Scene8|Run")
+	FVector GuardMark2 = FVector(-20.f, -90.f, 0.f);
 
 	/** The car's drift angle while it settles (deg), and its fishtail on the way out. */
 	UPROPERTY(EditAnywhere, Category = "Scene8|Car")
@@ -173,12 +249,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Scene8|Assets")
 	TSoftObjectPtr<UNiagaraSystem> SparkSystem;
 
-	/** The guards' rigged model and their aiming pose; unset or missing: grey-box guards. */
+	/** The chasing guards (model, run and aim animations, pistol: the class's defaults). */
 	UPROPERTY(EditAnywhere, Category = "Scene8|Assets")
-	TSoftObjectPtr<USkeletalMesh> GuardMesh;
-
-	UPROPERTY(EditAnywhere, Category = "Scene8|Assets")
-	TSoftObjectPtr<UAnimationAsset> GuardPose;
+	TSubclassOf<AScene8Chaser> ChaserClass;
 
 	UPROPERTY(EditAnywhere, Category = "Scene8|Assets")
 	TSoftObjectPtr<USoundBase> DoorKickSound;
@@ -210,6 +283,23 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Scene8|Assets")
 	TSoftObjectPtr<USoundBase> GuardLine;
 
+	/** Vance's grunt as the near miss makes him stumble. */
+	UPROPERTY(EditAnywhere, Category = "Scene8|Assets")
+	TSoftObjectPtr<USoundBase> StumbleSound;
+
+	/** Cole's entrance: the door kicked in, the grenade's hiss, his line. */
+	UPROPERTY(EditAnywhere, Category = "Scene8|Assets")
+	TSoftObjectPtr<USoundBase> ColeDoorSound;
+
+	UPROPERTY(EditAnywhere, Category = "Scene8|Assets")
+	TSoftObjectPtr<USoundBase> SmokeSound;
+
+	UPROPERTY(EditAnywhere, Category = "Scene8|Assets")
+	TSoftObjectPtr<USoundBase> ColeMoveLine;
+
+	UPROPERTY(EditAnywhere, Category = "Scene8|Assets")
+	TSoftObjectPtr<UMaterialInterface> SmokeMaterial;
+
 	UPROPERTY(EditAnywhere, Category = "Scene8|Assets")
 	TSoftObjectPtr<USoundBase> VanceLine;
 
@@ -238,25 +328,6 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Scene8")
 	TObjectPtr<USplineComponent> DepartPath;
 
-	/** Two grey-box guards (body, head, pistol), hidden in the doorway until they burst out. */
-	UPROPERTY(VisibleAnywhere, Category = "Scene8")
-	TObjectPtr<USceneComponent> Guard0;
-
-	UPROPERTY(VisibleAnywhere, Category = "Scene8")
-	TObjectPtr<USceneComponent> Guard1;
-
-	UPROPERTY(VisibleAnywhere, Category = "Scene8")
-	TObjectPtr<USkeletalMeshComponent> Guard0Mesh;
-
-	UPROPERTY(VisibleAnywhere, Category = "Scene8")
-	TObjectPtr<USkeletalMeshComponent> Guard1Mesh;
-
-	UPROPERTY(VisibleAnywhere, Category = "Scene8")
-	TObjectPtr<UPointLightComponent> MuzzleLight;
-
-	UPROPERTY(VisibleAnywhere, Category = "Scene8")
-	TObjectPtr<UStaticMeshComponent> MuzzleFlash;
-
 	UPROPERTY(VisibleAnywhere, Category = "Scene8")
 	TObjectPtr<UPointLightComponent> SparkLight;
 
@@ -280,13 +351,43 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<UAudioComponent> Interior;
 
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<AScene8Chaser>> Chasers;
+
+	/** The smoke grenade and its puffs (made at BeginPlay, hidden until thrown). */
+	UPROPERTY(Transient)
+	TObjectPtr<UStaticMeshComponent> Grenade;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UStaticMeshComponent>> SmokePuffs;
+
+	float ThrowT = -1.f;		// seconds since Cole let the grenade go; < 0 not yet
+	bool bColeIntro = false;	// Cole's entrance is playing (he leads once it is over)
+	bool bColeSaid = false;
 	EScene8Beat Beat = EScene8Beat::Done;
 	float BeatT = 0.f;		// seconds in the current beat
-	float NextShot = 0.f;	// BeatT of the next shot (Run, Dive, Drive)
+	float NextShot = 0.f;	// BeatT of the next shot (Escape, Alley, Dive, Drive)
 	int32 ShotCount = 0;
-	float MuzzleAge = 1.f;
 	float SparkAge = 1.f;
 	bool bMaxSaid = false, bColeIn = false, bTie = false, bPrint = false, bArrived = false;
+
+	// The escape: Vance's trail (feet points ~30 cm apart, and the distance along it); the guards' lead distance on it.
+	TArray<FVector> Trail;
+	TArray<float> TrailDist;
+	int32 ColeIdx = 0;			// the route point Cole runs for next
+	int32 ColeGoing = -1;		// the point his ScriptWalkTo is heading for; -1 standing
+	float OutDist = -1.f;		// the trail distance where Vance came out of the exit; < 0 inside
+	float CarT = -1.f;			// seconds since the car's run in was cued; < 0 not yet
+	float DoorT = -1.f;			// seconds since the fire exit banged open; < 0 shut
+	float GuardsT = -1.f;		// seconds since the guards appeared; < 0 not yet
+	float GuardsFrom = 0.f;		// the trail distance they appeared at
+	float LeadDist = 0.f;		// the lead guard's distance along Trail
+	float StumbleT = -1.f;		// seconds into the stumble; < 0 none
+	bool bStumbled = false;
+	float StallT = 0.f;			// seconds the guards have been on top of him
+	bool bOutside = false;		// Vance is out of the exit
+	bool bColeOut = false;		// Cole is out of the exit
+	bool bWarned = false;
 
 	void Enter(EScene8Beat NewBeat);
 	FVector W(const FVector& Local) const { return GetActorTransform().TransformPosition(Local); }
@@ -294,8 +395,19 @@ protected:
 
 	/** The car at Alpha (0..1) along a path, with a yaw offset (drift, fishtail) and a lean on the chassis. */
 	void PoseCar(USplineComponent* Path, float Alpha, float YawOffset);
-	/** One guard's shot: muzzle flash, the bang, a spark and a whine on the brick Miss cm from Target. */
+	/** A guard's shot past Target (Miss cm to its side): the flash and the bang at his muzzle, the round traced into the
+	 *  set, a spark and a whine where it lands. It never stops on Vance, Cole or the car. */
 	void Shoot(const FVector& Target, float Miss);
+	/** The escape, every frame: the trail, Cole, the guards on the trail, the gap, the shots, the door, the car. */
+	void TickEscape(float DeltaSeconds, class ATakeCharacter* Vance, class ATakeCharacter* Cole);
+	void TickCarArrival(float DeltaSeconds);
+	void TickDoor(float DeltaSeconds);
+	/** Cole bursts in, lobs the smoke, says the line; true while it plays. */
+	bool TickColeEntrance(float DeltaSeconds, class ATakeCharacter* Cole);
+	FVector TrailAt(float Dist, FVector* OutDir = nullptr) const;
+	FVector ExitInside() const { return W(FVector(0.f, 90.f, 0.f)); }
+	FVector ExitOutside() const { return W(FVector(0.f, -140.f, 0.f)); }
+	void SetSpeeds(bool bRun);
 	void PlayAt(const TSoftObjectPtr<USoundBase>& Sound, const FVector& Where, float Volume = 1.f);
 	USoundBase* Load(const TSoftObjectPtr<USoundBase>& Sound) const;
 	/** Put Vance and Cole back on their feet, visible, walking, colliding. */
