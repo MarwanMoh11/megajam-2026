@@ -86,16 +86,16 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Scene7|Cole") FVector ColeMark = FVector(3650.f, -2290.f, 0.f);
 	UPROPERTY(EditAnywhere, Category = "Scene7|Cole") float ColeYaw = 90.f;
 	/** He walks here after his line (the dock door: the exit). */
-	UPROPERTY(EditAnywhere, Category = "Scene7|Cole") FVector ColeExit = FVector(3000.f, -2480.f, 0.f);
-	UPROPERTY(EditAnywhere, Category = "Scene7|Cole") FString ColeLine = TEXT("After you, Your Grace. Projectionist's stair, west end, through the staff door. I'll get the dock open.");
+	UPROPERTY(EditAnywhere, Category = "Scene7|Cole") FVector ColeExit = FVector(1700.f, -2480.f, 0.f);
+	UPROPERTY(EditAnywhere, Category = "Scene7|Cole") FString ColeLine = TEXT("Door's yours, Your Grace. Projectionist's stair, west end, through the staff door. Way out's through the prop store.");
 
 	// ---- the walk ----
 	UPROPERTY(EditAnywhere, Category = "Scene7|Walk") TArray<FScene7RouteStep> Steps;
 	/** Vance's walk speed on the route (cm/s; his own is 250: he's in a hurry, he doesn't run). */
 	UPROPERTY(EditAnywhere, Category = "Scene7|Walk") float RouteWalkSpeed = 330.f;
 	/** The projector mark (where the booth part takes him), and the yaw he faces there. */
-	UPROPERTY(EditAnywhere, Category = "Scene7|Walk") FVector ProjectorMark = FVector(-860.f, 150.f, 450.f);
-	UPROPERTY(EditAnywhere, Category = "Scene7|Walk") float ProjectorYaw = 0.f;
+	UPROPERTY(EditAnywhere, Category = "Scene7|Walk") FVector ProjectorMark = FVector(-745.f, 166.f, 450.f);
+	UPROPERTY(EditAnywhere, Category = "Scene7|Walk") float ProjectorYaw = 52.f;
 	/** Within this (flat cm, and above ArriveMinZ) the scene takes him the last steps onto the mark. */
 	UPROPERTY(EditAnywhere, Category = "Scene7|Walk") float ArriveRadius = 130.f;
 	UPROPERTY(EditAnywhere, Category = "Scene7|Walk") float ArriveMinZ = 330.f;

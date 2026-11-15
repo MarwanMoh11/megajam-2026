@@ -258,9 +258,10 @@ def scene():
     if not hasattr(unreal, "Scene7Booth"):
         return "scene: AScene7Booth not in this editor build yet (skipped)"
     ox, oy, oz = ORIGIN
-    # The projector mark (UseSpot), facing the projector (+X): part 0 walks him onto it; a cold Jump 702 lands there.
-    sp = eas.spawn_actor_from_class(unreal.TargetPoint, unreal.Vector(ox - 60.0, oy - 150.0, oz + 95.0),
-                                    unreal.Rotator(0.0, 0.0, 0.0))
+    # The projector mark = s7-reelswap's use spot at its projector (-745, 166), facing it: part 0 walks him onto it;
+    # a cold Jump 702 lands there.
+    sp = eas.spawn_actor_from_class(unreal.TargetPoint, unreal.Vector(ox + 55.0, oy - 134.0, oz + 95.0),
+                                    unreal.Rotator(0.0, 0.0, 52.0))
     sp.set_actor_label("S7_StartSpot")
     sp.set_folder_path("Script/S7")
     C._set_tags(sp, [TAG])

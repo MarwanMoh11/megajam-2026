@@ -246,7 +246,7 @@ void AScene7Route::TickScene(float DeltaSeconds)
 	ATakeCharacter* V = GetPovCharacter();
 	ATakeCharacter* Cole = GetCole();
 
-	// Cole's walk to the dock: the test auto-walk, one frame at a time, until he's there.
+	// Cole's walk to the prop store (s6 wedged its door open): the test auto-walk, one frame at a time, until he's there.
 	if (bColeWalking && Cole)
 	{
 		if (FVector::Dist2D(Cole->GetActorLocation(), ColeExit) > 40.f) { Cole->MoveToward(ColeExit); }

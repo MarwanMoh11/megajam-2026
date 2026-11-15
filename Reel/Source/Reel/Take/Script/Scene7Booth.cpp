@@ -1,6 +1,8 @@
 // See Scene7Booth.h. Owner: s7-route (was s7-booth).
 #include "Script/Scene7Booth.h"
 #include "Script/ScriptSequencer.h"
+#include "Script/Scene7Swap.h"
+#include "Script/Scene7Fight.h"
 #include "TakeCharacter.h"
 #include "TakeDirector.h"
 #include "TakeAudio.h"
@@ -678,12 +680,23 @@ void AScene7Booth::BeginScene()
 	// The film still runs from Scene 5 (a cold jump: start it, the house dark), until the reel comes off.
 	for (TActorIterator<AHouseDimmer> It(GetWorld()); It; ++It) { if (!It->IsScreening()) { It->BeginScreening(0.f); } }
 
-	// s7-reelswap's part 1 played the swap (it sets Canister): skip ours, the canister goes under his arm.
-	bSwapActor = HasFlag(TEXT("Canister"));
+	// s7-reelswap's placed swap actor plays the swap when it is in the level: the booth's own projector props hide.
+	bSwapActor = AScene7Swap::Find(this) != nullptr;
+	bFightActor = false;
+	if (bSwapActor)
+	{
+		for (UStaticMeshComponent* C : { Projector.Get(), Magazine.Get(), MagazineLid.Get(), MasterReel.Get(), DummyReel.Get(),
+			LowerReel.Get(), Canister.Get(), CanisterLid.Get() })
+		{
+			if (C) { C->SetHiddenInGame(true, true); }
+		}
+		HumAudio->Stop();
+		LampSpill->SetIntensity(0.f);
+	}
 	bPlayerWalks = false;
 	FreezeVance(V, true);
 	SetStage(EScene7Stage::Approach);
-	UE_LOG(LogScene7, Log, TEXT("S7 booth: begin (swap already played %d)"), bSwapActor ? 1 : 0);
+	UE_LOG(LogScene7, Log, TEXT("S7 booth: begin (swap actor %d)"), bSwapActor ? 1 : 0);
 }
 
 void AScene7Booth::StartAtCheckpoint()
@@ -692,6 +705,9 @@ void AScene7Booth::StartAtCheckpoint()
 
 void AScene7Booth::EndScene()
 {
+	// A jump away mid-swap or mid-fight stops them; a finished fight stays as it ended (Scene 8 opens on it).
+	if (AScene7Swap* Swap = AScene7Swap::Find(this)) { if (Swap->IsRunning()) { Swap->ResetSwap(); } }
+	if (AScene7Fight* Fight = AScene7Fight::Find(this)) { if (Fight->IsRunning()) { Fight->ResetFight(); } }
 	for (AActor* A : Hidden)
 	{
 		if (A) { A->SetActorHiddenInGame(false); A->SetActorEnableCollision(true); }
@@ -729,6 +745,18 @@ void AScene7Booth::ResetScene()
 	}
 	DoorSouth->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	MasterReel->SetHiddenInGame(false);
+	if (AScene7Swap* Swap = AScene7Swap::Find(this))
+	{
+		Swap->ResetSwap();
+		if (Swap->GetCanister()) { Swap->GetCanister()->SetHiddenInGame(false, true); }
+	}
+	if (AScene7Fight* Fight = AScene7Fight::Find(this)) { Fight->ResetFight(); }
+	for (UStaticMeshComponent* C : { Projector.Get(), Magazine.Get(), MagazineLid.Get(), DummyReel.Get(), LowerReel.Get(),
+		Canister.Get(), CanisterLid.Get() })
+	{
+		if (C) { C->SetHiddenInGame(false, true); }
+	}
+	bFightActor = false;
 	for (USkeletalMeshComponent* P : { Pendleton.Get(), Bodyguard.Get(), Cole.Get() })
 	{
 		P->SetHiddenInGame(true);
@@ -766,6 +794,19 @@ void AScene7Booth::PromptMissed() {}
 
 bool AScene7Booth::HandleSceneKey(const FKey& Key, bool bPressed)
 {
+	if (Stage == EScene7Stage::Swap && bSwapActor)
+	{
+		if (AScene7Swap* Swap = AScene7Swap::Find(this))
+		{
+			if (!Swap->IsDone() && Swap->HandleSwapKey(Key, bPressed)) { return true; }
+		}
+		return Key == EKeys::E || Key == EKeys::LeftMouseButton;
+	}
+	if (bFightActor)
+	{
+		AScene7Fight* Fight = AScene7Fight::Find(this);
+		if (Fight && Fight->IsRunning() && Fight->HandleFightKey(Key, bPressed)) { return true; }
+	}
 	if (Stage == EScene7Stage::Swap)
 	{
 		if (Key == EKeys::E || Key == EKeys::LeftMouseButton)
@@ -816,27 +857,60 @@ void AScene7Booth::TickScene(float DeltaSeconds)
 	{
 	case EScene7Stage::Approach:
 	{
-		// Part 0 walked him onto the mark (a cold jump: StartSpot). Square him up to the magazine.
-		PlaceVance(UseSpot, UseYaw);
+		// Part 0 walked him onto the mark (a cold jump: StartSpot).
 		if (bSwapActor)
 		{
-			// The swap played in part 1: the booth's props show it done, the canister under his arm.
-			ApplySwap(1.f);
-			LastSwapA = 1.f;
-			bSwapDone = true;
-			MasterReel->SetHiddenInGame(true);
-			PutCanisterOnVance(false);
-			HumAudio->Stop();
-			LampSpill->SetIntensity(0.f);
-			SetStage(EScene7Stage::Swapped);
-			StageT = PrevT = SwappedSeconds;	// straight to the cut
+			// s7-reelswap's actor: its double stands in for him at the magazine (he is hidden on this frame, the
+			// view is the swap's camera), and the first [E] starts beat 1.
+			if (AScene7Swap* Swap = AScene7Swap::Find(this))
+			{
+				if (V)
+				{
+					const float Half = V->GetCapsuleComponent() ? V->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() : 90.f;
+					V->SetActorLocationAndRotation(Swap->GetUseSpot() + FVector(0.f, 0.f, Half + 2.f),
+						FRotator(0.f, Swap->GetUseYaw(), 0.f), false, nullptr, ETeleportType::TeleportPhysics);
+				}
+				Swap->SetProjectorRunning(true);
+				Swap->StartSwap(this, false);
+			}
+			SetStage(EScene7Stage::Swap);
 			break;
 		}
+		// Square him up to the magazine.
+		PlaceVance(UseSpot, UseYaw);
 		SetStage(EScene7Stage::Swap);
 		break;
 	}
 	case EScene7Stage::Swap:
 	{
+		if (bSwapActor)
+		{
+			AScene7Swap* Swap = AScene7Swap::Find(this);
+			// Reel.S7.Auto: a press every 1.6 s.
+			if (Swap && GS7Auto && !Swap->IsDone() && FMath::Fmod(StageT, 1.6f) < FMath::Fmod(PrevT, 1.6f))
+			{
+				Swap->HandleSwapKey(EKeys::E, true);
+				Swap->HandleSwapKey(EKeys::E, false);
+			}
+			if (!Swap || Swap->IsDone())
+			{
+				// The hand-back: Vance stands with the can under his arm. The booth's canister (the one the fight
+				// blocks with) takes the swap's place under the arm.
+				if (Swap)
+				{
+					Swap->SetProjectorRunning(false);
+					if (Swap->GetCanister()) { Swap->GetCanister()->SetHiddenInGame(true, true); }
+				}
+				Canister->SetHiddenInGame(false, true);
+				PutCanisterOnVance(false);
+				bSwapDone = true;
+				SetFlag(TEXT("Canister"));
+				FreezeVance(V, true);
+				Say(TEXT("VANCE"), SwappedLine);
+				SetStage(EScene7Stage::Swapped);
+			}
+			break;
+		}
 		if (GS7Auto && StageT > 0.8f) { bUseDown = true; }
 		if (bUseDown) { SwapHeld += DeltaSeconds; }
 		else if (SwapHeld > 0.f && SwapHeld < SwapHoldSeconds)
@@ -1012,9 +1086,29 @@ void AScene7Booth::TickScene(float DeltaSeconds)
 		{
 			if (V && V->GetCharacterMovement()) { V->GetCharacterMovement()->StopMovementImmediately(); }
 			if (V) { V->SetActorRotation(FRotator(0.f, VanceFightYaw, 0.f)); }
-			// s7-fight's part 3 takes it from here, on the same marks (our puppets hide at EndScene).
 			SetStage(EScene7Stage::Done);
-			FinishScene();
+			// s7-fight's placed actor takes it from here on the same marks, with its own Pendleton and bodyguard.
+			if (AScene7Fight* Fight = AScene7Fight::Find(this))
+			{
+				Pendleton->SetHiddenInGame(true);
+				Bodyguard->SetHiddenInGame(true);
+				bFightActor = true;
+				Fight->StartFight(this);
+			}
+			else { FinishScene(); }
+		}
+		break;
+	}
+	case EScene7Stage::Done:
+	{
+		if (bFightActor)
+		{
+			AScene7Fight* Fight = AScene7Fight::Find(this);
+			if (!Fight || Fight->IsDone())
+			{
+				bFightActor = false;
+				FinishScene();
+			}
 		}
 		break;
 	}
@@ -1026,7 +1120,7 @@ void AScene7Booth::TickScene(float DeltaSeconds)
 void AScene7Booth::StepFX(float Dt, float RealDt)
 {
 	// The reels turn while the projector runs (until the master print comes off).
-	if (!bSwapDone)
+	if (!bSwapDone && !bSwapActor)
 	{
 		LowerReel->AddLocalRotation(ReelSpin * Dt);
 		if (SwapHeld <= 0.f) { MasterReel->AddLocalRotation(ReelSpin * Dt); }
@@ -1044,7 +1138,12 @@ void AScene7Booth::StepFX(float Dt, float RealDt)
 
 void AScene7Booth::DrawSceneHud(UCanvas* Canvas)
 {
-	if (!Canvas || Stage != EScene7Stage::Swap || bSwapActor) { return; }
+	if (!Canvas || Stage != EScene7Stage::Swap) { return; }
+	if (bSwapActor)
+	{
+		if (AScene7Swap* Swap = AScene7Swap::Find(this)) { if (!Swap->IsDone()) { Swap->DrawSwapHud(Canvas); } }
+		return;
+	}
 	FTakeHudKit Kit;
 	Kit.Begin(Canvas, FPlatformTime::Seconds(), 0.f);
 	const float CX = Kit.CX();
