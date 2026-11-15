@@ -136,6 +136,7 @@ void UTakeGuideSubsystem::ClearGoal()
 void UTakeGuideSubsystem::ForceLost()
 {
 	Lost = 1000.f;
+	Best = 0.f;	// a warp or step closer must not count as "on his way" and clear it
 	bCrewDue = false;
 	bCrewSaidForGoal = true;
 	UE_LOG(LogReelGuide, Log, TEXT("GUIDE forced lost (goal %s)"), bHaveGoal ? *GoalAt.ToCompactString() : TEXT("none"));

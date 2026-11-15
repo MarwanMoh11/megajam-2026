@@ -34,8 +34,8 @@ namespace TakeChoice
 		}
 		const float Pad = Kit.Px(18.f);
 		const float Gap = Kit.Px(28.f);
-		const float Margin = Kit.Px(48.f);
-		const float Avail = FMath::Max(Kit.W - 2.f * Margin, Kit.Px(200.f));
+		const float CardMargin = Kit.Px(48.f);
+		const float Avail = FMath::Max(Kit.W - 2.f * CardMargin, Kit.Px(200.f));
 		const float MinCardW = Kit.Px(320.f);
 		const float MaxCardW = Kit.Px(620.f);
 		const float Pitch = Kit.Em(EType::Line) * 1.32f;

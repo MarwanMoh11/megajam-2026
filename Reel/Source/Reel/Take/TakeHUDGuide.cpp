@@ -12,13 +12,14 @@
 #include "HAL/IConsoleManager.h"
 #include "TakeChoiceCards.h"
 #include "TakeTicketCard.h"
+#include "TakeRigCard.h"
 
 namespace TakeHudGuideLocal
 {
 	// Shots of the shared HUD pieces without their scene: 1 the choice cards (Scene 3's lines plus a long one),
-	// 2 the VIP ticket, 3 the ticket voided. 0 off.
+	// 2 the VIP ticket, 3 the ticket voided, 4 Scene 4's rig cards. 0 off.
 	TAutoConsoleVariable<int32> CVarHudTest(TEXT("Reel.Hud.Test"), 0,
-		TEXT("HUD test draw: 1 choice cards, 2 VIP ticket, 3 VIP ticket voided, 0 off."));
+		TEXT("HUD test draw: 1 choice cards, 2 VIP ticket, 3 VIP ticket voided, 4 rig cards, 0 off."));
 }
 
 void ATakeHUD::DrawGuide()
@@ -33,6 +34,14 @@ void ATakeHUD::DrawGuide()
 			Cards.Add({ TEXT("2"), TEXT("BRUSH OFF"), TEXT("You have the wrong man. I have never been to Zurich, and I do not read Cahiers.") });
 			TakeChoice::Draw(Kit, Cards, 0, Kit.PicBottom() - Kit.Px(282.f), TEXT("THE CRITIC  -  your answer"),
 				TEXT("1 / 2   or   arrows + E"));
+		}
+		else if (Test == 4)
+		{
+			const float Bar = 1.f - static_cast<float>(FMath::Fmod(Kit.Now, 6.0)) / 6.f;
+			TakeRigCard::Draw(Kit, FVector2D(Kit.W * 0.62f, Kit.H * 0.55f), 60.f, -150.f, TEXT("1"), TEXT("THE SPOTLIGHT CLAMP"),
+				TEXT("Loosen it: the lamp swings into the EAST DOOR guard's eyes."), Julian, -1.f);
+			TakeRigCard::Draw(Kit, FVector2D(Kit.W * 0.40f, Kit.H * 0.72f), -530.f, -40.f, FString(),
+				TEXT("THE SPOTLIGHT  -  EAST DOOR BLINDED"), TEXT("Guard 1 is yelling up at it. The bulb won't last."), Danger, Bar);
 		}
 		else
 		{
