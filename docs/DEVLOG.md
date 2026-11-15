@@ -1119,3 +1119,25 @@ went wrong. Each evening these become one short itch.io devlog post with a GIF. 
   null class in NewObject); it was rebuilt and restarted in 3 min. Two late CastMember fixes went in by Live Coding
   only: run `Build.bat ReelEditor` before the next editor restart. Faces on the crowd are painted on the mannequin head and read
   as stylised up close.
+
+## Nov 15, about 11:00-13:00 Cairo: real hands for the heroes and the featured NPCs
+- **What changed:** Marwan's screenshot showed Julian's hands as stiff, splayed slabs. The Rodin models' fingers had
+  been folded into the hand bone, so no clip could curl them. `tools/build_heroes.py` (VERSION 5) now cuts each Rodin
+  hand off at the wrist and puts in the mannequin's own rigged hand. Its colour comes from the Rodin wrist skin, so
+  gloved models keep their gloves: white for Vance, Doorman and Singer, black for Bodyguard, brown work gloves for Maya.
+  Two arm fixes came with it. The mannequin's bind pose bends the elbow forward while the Rodin arms hang straight,
+  so every bent elbow left the sleeve behind and the hand out of its cuff. Each forearm is now turned onto the
+  mannequin's and its wrist set on the mannequin's (`FOREARM_ALIGN`), and the sleeves are weighted again along
+  shoulder-elbow-wrist (`ARM_REBONE`). Rebuilt: Julian, Maya, Vex and the nine featured NPCs.
+- **What the agents did:** one Claude Opus 5.5 session wrote the passes. It checked each step with a probe that skins
+  every pose in Python (bone matrices times weights) into a row of meshes at z -60000 and shoots close-ups. Shots are
+  in `C:\Jam\Builds\qa\hands` (j14 Julian, maya1, vex1, npcidle/npcuse).
+- **What went wrong:** the editor doesn't tick animation on placed meshes, even with "update in editor" set and the
+  pose forced to always tick, so neither a single-node player nor a poseable mesh posed. The Python skinner was the
+  way round it. The first skin colour came from a shaded patch of the old hand (too orange), the second from the
+  face (hit the brows). The wrist skin matches. Cutting the bare wrist skin by distance from the arm took the cuff too,
+  since the sleeves are about as thin as the wrist. A left-running play-in-editor session blocked asset loading for a
+  while.
+- **Unverified (Marwan):** hands in play. The rest-arms layer (`HeroPalmTurn` 30 deg) was tuned to turn the old slab
+  palms inward and may now over-turn real hands. The Bodyguard's hands-in-front pose. A small jagged seam at some
+  wrists. The `Wave` clip is only 0.53 s long.
