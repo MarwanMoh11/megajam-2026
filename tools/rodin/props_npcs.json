@@ -1,0 +1,25 @@
+{
+  "_comment": "Featured NPCs (Nov 15): the people Julian meets, as full-body characters skinned onto the UE5 mannequin skeleton by tools/build_heroes.py (its NPCS list). Same style and params as props_heroes.json (0.5 credits each there). Run with RODIN_PROPS_FILE pointing here.",
+  "style": "1940s Hollywood film noir, one single adult person, full body from head to toe, standing upright in a symmetrical A-pose with both arms straight and held out from the body at about 45 degrees, palms facing the thighs, fingers together, legs straight and slightly apart, feet flat, realistic adult human proportions, game-ready character, matte cloth, neutral flat lighting, no baked shadows, holding nothing, no base, no ground, no text, no logos, plain background",
+  "params": {
+    "tier": "Gen-2.5-Low",
+    "TAPose": "true",
+    "texture_mode": "high",
+    "mesh_mode": "Quad",
+    "quality_override": "15000",
+    "geometry_file_format": "glb",
+    "material": "PBR",
+    "preview_render": "true"
+  },
+  "props": {
+    "npc_vance": "a tall lean distinguished auctioneer in his early sixties, silver-grey hair swept straight back, a thin silver pencil moustache, sharp hawkish face with high cheekbones, wearing a black evening tailcoat with long tails and satin lapels, a white pique waistcoat, a stiff white wing-collar shirt, a white bow tie, a red carnation in his buttonhole, a gold watch chain across the waistcoat, black trousers with a satin stripe and black patent leather shoes",
+    "npc_doorman": "a burly hotel doorman in his fifties, broad red-cheeked face, a thick grey walrus moustache, wearing a long double-breasted burgundy livery greatcoat reaching below the knees with two rows of brass buttons, gold braid on the cuffs and gold epaulettes on the shoulders, a matching burgundy peaked cap with a gold band and a black visor, white cotton gloves, black trousers and black polished boots",
+    "npc_clerk": "a slim young hotel reception clerk in his mid twenties, neat pomaded blond hair parted in the centre, round wire-rimmed spectacles, a thin eager face, wearing a crisp white shirt with black sleeve garters on the upper arms, a grey and black pinstriped waistcoat buttoned up, a small black bow tie, a brass name badge, charcoal grey trousers and black shoes",
+    "npc_bodyguard": "a huge broad-shouldered bodyguard in his forties, shaved bald head, a heavy brow and a flattened boxer's nose, a thick neck, dark round sunglasses, wearing a tight black double-breasted suit stretched across his chest, a black shirt, a dark charcoal tie, black leather gloves, black trousers and heavy black shoes",
+    "npc_chief": "a stocky hotel security chief in his fifties, a grey crew cut, a square jaw and thick dark eyebrows, a stern face, wearing a navy blue military-style uniform tunic with a silver star badge on the chest and silver buttons, a brown leather Sam Browne belt with a diagonal shoulder strap, a navy officer's peaked cap with a silver badge, navy trousers and black boots",
+    "npc_guard": "a lanky young hotel security guard in his early twenties, short ginger hair and freckles, a long thin face, wearing a khaki-grey uniform jacket with brass buttons and shoulder straps, a black leather belt with a flashlight holster, a khaki-grey garrison side cap, grey trousers with a black side stripe and brown boots",
+    "npc_queue": "a portly loud businessman in his late forties, round red face, bald on top with dark hair at the sides, a bushy black moustache, a double chin, wearing a long camel-hair overcoat hanging open over a black tuxedo with a white shirt and a black bow tie, a white silk scarf around his neck, a grey homburg hat and two-tone brown and white shoes",
+    "npc_singer": "a glamorous nightclub jazz singer woman in her late twenties, platinum blonde hair in 1940s victory rolls with a white gardenia over one ear, red lipstick, wearing a sleeveless floor-length emerald green sequined evening gown, long white satin opera gloves above the elbows and silver evening shoes",
+    "npc_bartender": "a heavyset hotel bartender in his late forties, a bald head with grey hair at the sides, a big bushy grey handlebar moustache, a ruddy friendly face, wearing a short white mess jacket with brass buttons over a white shirt, a black bow tie, a long black waist apron tied at the front, black trousers and black shoes"
+  }
+}

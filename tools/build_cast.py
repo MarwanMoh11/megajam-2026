@@ -71,6 +71,63 @@ BAND = {                                    # the old riser layout (no hall_band
 BAND_LIGHT_UP, BAND_LIGHT_CD = 590.0, 300.0         # the key: this far over the band's centre, candelas
 BAND_RIM = (170.0, 100.0, 430.0, -140.0, -32.0, 250.0)  # dx, dy from the band's centre, z, yaw, pitch, candelas
 BODYGUARD_SCALE = 1.1
+# --- featured NPCs (Nov 15): everyone Julian meets looks like nobody else. The Rodin people (tools/build_heroes.py NPCS:
+# /Game/Take/Cast/NPCs/<Name>/SKM_NPC_<Name>, HeroMesh) go on the watchers by label, the singer, the receptionist and the
+# guest ahead of Julian; the rest are hand-kitted below (kit, tint, LookSeed, body scale; seeds picked for hair,
+# glasses, moustache, hat and skin). A Rodin mesh missing on disk leaves that person on the mannequin.
+NPC_DIR = "/Game/Take/Cast/NPCs"
+NPC_BODYGUARD_SCALE = 1.04                  # the Rodin bodyguard is already broad
+WATCHER_NPC = {"vance": "Vance", "doorman": "Doorman", "bodyguard": "Bodyguard", "chief": "Chief", "guard": "Guard"}
+WATCHER_LOOK = {                            # the alarm's security men by label: tint, LookSeed, body scale
+    "security_n_door": ((0.030, 0.040, 0.095), 1039, 1.07),   # navy, tan, bald under the cap, wide moustache
+    "security_n_flank": ((0.060, 0.065, 0.070), 1000, 0.96),  # slate, pale, glasses
+    "security_s_door": ((0.055, 0.060, 0.030), 1004, 1.02),   # olive drab, brown, clean-shaven
+    "security_s_flank": ((0.020, 0.020, 0.025), 1059, 0.99),  # near black, light, thin moustache
+}
+BAND_LOOK = {                               # the band: tint, LookSeed, body scale (the singer is Rodin's)
+    "BAND_PIANO": ((0.020, 0.028, 0.085), 8632, 0.97),        # midnight navy; silver slicked hair, glasses, moustache
+    "BAND_DRUMS": ((0.200, 0.120, 0.030), 1038, 1.03),        # mustard; dark skin, a fedora
+    "BAND_BASS": ((0.020, 0.075, 0.040), 18149, 1.08),        # bottle green; bald, wide moustache, tall
+    "BAND_TRUMPET": ((0.100, 0.025, 0.085), 1040, 0.95),      # plum; olive skin, short auburn hair, slight
+}
+NPC_BAND = {"BAND_SINGER": "Singer"}
+# STAFF_AT order: the bartender, the receptionist (the clerk AQueueLine moves to the desk), the cloakroom attendant
+STAFF_LOOK = [
+    dict(kit="STAFF", tint=(0.30, 0.27, 0.20), seed=8761, scale=1.04, npc="Bartender"),  # Rodin; else cream, bald, walrus
+    dict(kit="STAFF", tint=(0.05, 0.05, 0.06), seed=1508, scale=0.97, npc="Clerk"),
+    dict(kit="STAFF", tint=(0.14, 0.02, 0.03), seed=8397, scale=0.95),                 # burgundy; brown skin, grey slicked hair, glasses, thin moustache
+]
+QUEUE_RADIUS = 60.0                         # a queue guest stands within this of its QueueLine place, cm
+QUEUE_LOOK = {                              # by QueueLine place (Julian's is 3): kit, tint, LookSeed, body scale, Rodin,
+    # and an explicit CastLook (the crowd pass's painted body; field names as in unreal.CastLook) when it is compiled
+    0: dict(kit="GUEST_GOWN_HAT", tint=(0.10, 0.02, 0.12), seed=2195, scale=0.94,       # the dowager in purple
+            look=dict(skin=(0.55, 0.36, 0.27), hair=(0.40, 0.39, 0.37), hair_style=16, hat=13, hat_colour=(0.06, 0.01, 0.07),
+                      glasses=1, neck=11, wrap=2, wrap_colour=(0.36, 0.33, 0.26), gloves=2, chest=4, accent=(0.30, 0.20, 0.06),
+                      lips=(0.12, 0.02, 0.04), earrings=True, width=1.12)),
+    1: dict(kit="GUEST_TAILS", tint=(0.02, 0.03, 0.10), seed=2495, scale=1.07,          # the old admiral: top hat, monocle
+            look=dict(skin=(0.50, 0.30, 0.24), hair=(0.40, 0.39, 0.37), hair_style=1, facial_hair=2, hat=2,
+                      hat_colour=(0.012, 0.012, 0.012), glasses=3, neck=1, gloves=1, chest=1, width=0.94)),
+    2: dict(kit="GUEST_TUX", tint=(0.13, 0.08, 0.05), seed=1, scale=1.0, npc="Queue"),  # "Wait your turn, pal" (Rodin)
+    4: dict(kit="GUEST_GOWN", tint=(0.30, 0.02, 0.03), seed=4346, scale=0.98,           # scarlet, blonde victory rolls
+            look=dict(skin=(0.45, 0.30, 0.20), hair=(0.33, 0.24, 0.11), hair_style=12, hair_flower=True, neck=13,
+                      gloves=2, glove_colour=(0.012, 0.012, 0.012), lips=(0.25, 0.01, 0.02), neckline=2, earrings=True,
+                      accent=(0.38, 0.34, 0.25), width=0.95)),
+    5: dict(kit="GUEST_TUX", tint=(0.13, 0.07, 0.03), seed=4444, scale=0.93,            # short and stout: bald, beard, bowler
+            look=dict(skin=(0.55, 0.36, 0.27), hair=(0.08, 0.045, 0.025), hair_style=3, facial_hair=3, glasses=2, hat=4,
+                      hat_colour=(0.05, 0.03, 0.015), neck=2, accent=(0.14, 0.018, 0.025), cummerbund=True, chest=2,
+                      width=1.25)),
+    6: dict(kit="GUEST_GOWN_HAT", tint=(0.02, 0.10, 0.10), seed=2103, scale=1.0,        # teal, a gold turban and a stole
+            look=dict(skin=(0.18, 0.10, 0.06), hair=(0.012, 0.010, 0.009), hair_style=14, hat=14,
+                      hat_colour=(0.30, 0.20, 0.06), neck=12, wrap=1, wrap_colour=(0.37, 0.34, 0.27), gloves=1,
+                      lips=(0.09, 0.025, 0.07), earrings=True, sash=True, accent=(0.30, 0.20, 0.06), width=1.0)),
+    7: dict(kit="GUEST_TUX", tint=(0.03, 0.10, 0.05), seed=3090, scale=1.02,            # green, pencil moustache, fedora
+            look=dict(skin=(0.28, 0.16, 0.09), hair=(0.012, 0.010, 0.009), hair_style=1, facial_hair=1, hat=1,
+                      hat_colour=(0.10, 0.09, 0.08), neck=3, accent=(0.14, 0.018, 0.025), chest=3, width=0.9)),
+    8: dict(kit="GUEST_GOWN", tint=(0.36, 0.26, 0.08), seed=2384, scale=0.96,           # gold, a black bob, a wide brim
+            look=dict(skin=(0.10, 0.055, 0.035), hair=(0.012, 0.010, 0.009), hair_style=13, hat=12,
+                      hat_colour=(0.012, 0.012, 0.012), neck=11, gloves=2, lips=(0.14, 0.018, 0.025), neckline=1,
+                      sash=True, accent=(0.012, 0.012, 0.012), width=1.05)),
+}
 FX_DIR = "/Game/Take/FX"
 FX = {
     "NS_Take_Pyro": "/Niagara/DefaultAssets/Templates/Systems/SimpleExplosion",
@@ -207,6 +264,41 @@ for i, (x, y, z, yaw, seated, staff) in enumerate(places):
 REPORT.append("guests %d (%d seated%s, %d with a glass)" % (len(places), n_seated, " on the hall's chairs" if seats else "", n_glass))
 
 # --- 2. the band -------------------------------------------------------------------------------------------------------
+def npc_mesh(name):
+    """The featured NPC's Rodin skeletal mesh (tools/build_heroes.py NPCS), or None while it is not built."""
+    p = "%s/%s/SKM_NPC_%s" % (NPC_DIR, name, name)
+    return EAL.load_asset(p) if name and EAL.does_asset_exist(p) else None
+
+
+def restyle(m, kit_name=None, tint=None, seed=None, scale=None, npc=None, quinn=None, look=None):
+    """Re-dresses a placed CastMember as one featured person; returns what it now wears, for the report. look: an
+    explicit CastLook (guest kits, when the crowd pass's C++ is compiled); without one a re-seeded guest drops its old
+    explicit look and is drawn from the seed."""
+    if look and hasattr(unreal, "CastLook"):
+        cl = unreal.CastLook()
+        cl.set_editor_property("explicit", True)
+        cl.set_editor_property("for_seed", seed if seed is not None else -1)
+        for key, val in look.items():
+            cl.set_editor_property(key, colour(val) if isinstance(val, tuple) else val)
+        m.set_editor_property("look", cl)
+    if kit_name:
+        m.set_editor_property("kit", kit(kit_name))
+    if tint is not None:
+        m.set_editor_property("tint", colour(tint))
+    if seed is not None:
+        m.set_editor_property("look_seed", seed)
+    if scale is not None:
+        m.set_editor_property("body_scale", scale)
+    if quinn is not None:
+        m.set_editor_property("quinn", quinn)
+    skm = npc_mesh(npc)
+    if skm:
+        m.set_editor_property("hero_mesh", skm)
+    if hasattr(m, "rerun_construction_scripts"):     # set_editor_property already re-runs OnConstruction
+        m.rerun_construction_scripts()
+    return skm.get_name() if skm else (kit_name or "kit")
+
+
 hall_band = load_json("sets/hall_band.json")
 hidden_band = 0
 for a in all_actors():
@@ -236,9 +328,12 @@ for k, (x, y, z, yaw, seated) in BAND.items():
             reach = max(0.0, min(40.0, edge + PIANO_KEYS_IN - PIANO_BUILT_REACH))
             extra["band_reach"] = unreal.Vector(reach, 0.0, 0.0)
             REPORT.append("piano: keys %.0f cm ahead of the pianist, hands moved %.0f cm" % (edge, reach))
-    spawn_member(k, x, y, z, yaw, tint, seated=seated, name="Cast_" + k.title().replace("_", ""),
-                 body_shadow=False, draw_distance=BAND_DRAW, instrument_props=props_there and not held,
-                 look_seed=int(h01("band", k) * 100000), **extra)
+    bm = spawn_member(k, x, y, z, yaw, tint, seated=seated, name="Cast_" + k.title().replace("_", ""),
+                      body_shadow=False, draw_distance=BAND_DRAW, instrument_props=props_there and not held,
+                      look_seed=int(h01("band", k) * 100000), **extra)
+    if k in BAND_LOOK or k in NPC_BAND:          # --- featured NPCs: each player his own jacket, face and build
+        bt, bs, bsc = BAND_LOOK.get(k, (None, None, None))
+        REPORT.append("band %s: %s" % (k, restyle(bm, tint=bt, seed=bs, scale=bsc, npc=NPC_BAND.get(k))))
     band_at.append((x, y, z))
 cx = sum(p[0] for p in band_at) / len(band_at)
 cy = sum(p[1] for p in band_at) / len(band_at)
@@ -286,8 +381,33 @@ for g in all_actors():
     m.set_editor_property("tint", t)
     m.attach_to_actor(g, "", unreal.AttachmentRule.KEEP_WORLD, unreal.AttachmentRule.KEEP_WORLD,
                       unreal.AttachmentRule.KEEP_WORLD, False)
+    if lb in WATCHER_NPC or lb in WATCHER_LOOK:  # --- featured NPCs
+        wt, ws, wsc = WATCHER_LOOK.get(lb, (None, None, NPC_BODYGUARD_SCALE if k == "BODYGUARD" else None))
+        REPORT.append("watcher %s: %s" % (label(g), restyle(m, tint=wt, seed=ws, scale=wsc, npc=WATCHER_NPC.get(lb))))
     n_w += 1
 REPORT.append("watchers %d" % n_w)
+
+# --- featured NPCs: the staff and the queue (placed by section 1 as guests; re-dressed here, after it) ------------------
+for m in [a for a in all_actors() if isinstance(a, unreal.CastMember) and not a.get_attach_parent_actor()]:
+    ml = m.get_actor_location()
+    for si, (sx, sy) in enumerate(STAFF_AT):
+        if si < len(STAFF_LOOK) and math.hypot(ml.x - sx, ml.y - sy) < 30.0:
+            d = STAFF_LOOK[si]
+            REPORT.append("staff %d %s: %s" % (si, label(m), restyle(m, d["kit"], d["tint"], d["seed"], d["scale"],
+                                                                      d.get("npc"), d.get("quinn", False))))
+queue = [a for a in all_actors() if isinstance(a, unreal.QueueLine)]
+if queue:
+    free = [a for a in all_actors() if isinstance(a, unreal.CastMember) and not a.get_attach_parent_actor()
+            and not a.get_editor_property("seated")]
+    for qi, p in enumerate(queue[0].get_editor_property("places")):
+        d = QUEUE_LOOK.get(qi)
+        near = sorted(free, key=lambda a: math.hypot(a.get_actor_location().x - p.x, a.get_actor_location().y - p.y))
+        if not d or not near or math.hypot(near[0].get_actor_location().x - p.x,
+                                           near[0].get_actor_location().y - p.y) > QUEUE_RADIUS:
+            continue
+        REPORT.append("queue %d %s: %s" % (qi, label(near[0]), restyle(near[0], d["kit"], d["tint"], d["seed"],
+                                                                         d["scale"], d.get("npc"), False,
+                                                                         d.get("look"))))
 
 # --- 4. the crew -------------------------------------------------------------------------------------------------------
 for c in all_actors():

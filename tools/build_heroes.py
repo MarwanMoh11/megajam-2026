@@ -15,6 +15,8 @@ property exists, and skips quietly when it does not.
 
 Run inside the editor, under the editor lock:
   "<engine python>" -I tools/ue_mcp.py py tools/build_heroes.py 110
+NPCS (Nov 15) are built the same way into /Game/Take/Cast/NPCs/<Name>/SKM_NPC_<Name> from C:\\Jam\\Art\\Rodin\\npc_<name>;
+they get no hook-up here (tools/build_cast.py sets their HeroMesh), and one without a .glb yet is skipped.
 A wrapper may set HEROES_ONLY = ["Julian"] (build only those) or HEROES_FORCE = True (rebuild) and exec() this file.
 tools/sets/run_all.py runs it after the set overlays (it saves the level itself).
 """
@@ -38,6 +40,13 @@ HEROES = [
     dict(name="Maya", rodin="heroes_maya", source=QUINN, cam="B", height=1.0, yaw=0.0),
     dict(name="Vex", rodin="heroes_vex", source=MANNY, cam="C", height=0.98, yaw=0.0),
 ]
+# Featured NPCs (Nov 15, prompts in tools/rodin/props_npcs.json): the same build into /Game/Take/Cast/NPCs/<Name>/
+# SKM_NPC_<Name>, no hook-up here (cam None): tools/build_cast.py sets their CastMembers' HeroMesh (NPC_MESH there).
+NPC_DEST = "/Game/Take/Cast/NPCs"
+NPCS = [dict(name=n, rodin="npc_" + n.lower(), source=src, cam=None, height=h, yaw=0.0, dest=NPC_DEST, prefix="NPC")
+        for n, src, h in (("Vance", MANNY, 1.04), ("Doorman", MANNY, 1.0), ("Clerk", MANNY, 0.97),
+                          ("Bodyguard", MANNY, 1.0), ("Chief", MANNY, 0.98), ("Guard", MANNY, 1.03),
+                          ("Queue", MANNY, 0.97), ("Singer", QUINN, 1.0), ("Bartender", MANNY, 1.0))]
 ARM_MIN_DEG = 2.0                   # arm-angle differences below this are left alone
 ARM_PASSES = 4                      # --- W3 cast2 --- residual passes after the swing back (0: off)
 ARM_REACH = 12.0                    # cm outward of the shoulder joint where the arm sample starts
@@ -55,6 +64,7 @@ MAX_INFLUENCES = 6
 RIGID_FINGERS = True                # finger weights folded into the hand: the generated hands' fingers do not lie
                                     # along the mannequin's, and a curling finger bone tore them (Vex, jump)
 
+
 EAL = unreal.EditorAssetLibrary
 AT = unreal.AssetToolsHelpers.get_asset_tools()
 MEL = unreal.MaterialEditingLibrary
@@ -70,6 +80,10 @@ REPORT = []
 _G = globals()
 ONLY = _G.get("HEROES_ONLY")
 FORCE = bool(_G.get("HEROES_FORCE", False))
+
+
+def where(hero):
+    return hero.get("dest", DEST)
 
 
 def log(s):
@@ -277,7 +291,7 @@ def swing(pts, weights, pivot, out, deg):
 # --- assets ---------------------------------------------------------------------------------------------------------------
 def import_glb(hero):
     name, src = hero["name"], os.path.join(SRC, hero["rodin"], "base_basic_pbr.glb")
-    folder = "%s/%s/Src" % (DEST, name)
+    folder = "%s/%s/Src" % (where(hero), name)
     target = "%s/SM_HeroSrc_%s" % (folder, name)
     before = set(EAL.list_assets(folder, recursive=True)) if EAL.does_directory_exist(folder) else set()
     t = unreal.AssetImportTask()
@@ -351,9 +365,9 @@ def master():
 
 def instance(hero, folder):
     name = hero["name"]
-    path = "%s/%s/MI_Hero_%s" % (DEST, name, name)
+    path = "%s/%s/MI_%s_%s" % (where(hero), name, hero.get("prefix", "Hero"), name)
     mi = EAL.load_asset(path) if EAL.does_asset_exist(path) else AT.create_asset(
-        "MI_Hero_" + name, "%s/%s" % (DEST, name), unreal.MaterialInstanceConstant,
+        path.split("/")[-1], "%s/%s" % (where(hero), name), unreal.MaterialInstanceConstant,
         unreal.MaterialInstanceConstantFactoryNew())
     MEL.set_material_instance_parent(mi, master())
     base, normal = textures(folder)
@@ -375,7 +389,7 @@ def build(hero):
     if not os.path.exists(glb):
         log("%s: no %s yet: skipped" % (name, glb))
         return None
-    path = "%s/%s/SKM_Hero_%s" % (DEST, name, name)
+    path = "%s/%s/SKM_%s_%s" % (where(hero), name, hero.get("prefix", "Hero"), name)
     stamp = "%d|%s" % (int(os.path.getmtime(glb)), VERSION)
     if not FORCE and EAL.does_asset_exist(path):
         skm = EAL.load_asset(path)
@@ -502,6 +516,7 @@ def build(hero):
             set_positions(T, p2)
         recompute_normals(T)
 
+
     # the skeletal mesh
     mi = instance(hero, folder)
     if EAL.does_asset_exist(path):
@@ -554,12 +569,12 @@ def hook_up(built):
 
 def main():
     built = {}
-    for hero in HEROES:
+    for hero in HEROES + NPCS:
         if ONLY and hero["name"] not in ONLY:
             continue
         try:
             skm = build(hero)
-            if skm:
+            if skm and hero["cam"]:
                 built[hero["cam"]] = skm
         except Exception:                                       # noqa: BLE001 (one hero must not stop the others)
             log("%s FAILED: %s" % (hero["name"], traceback.format_exc().strip().splitlines()[-1][:300]))
