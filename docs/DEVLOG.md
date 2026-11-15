@@ -1438,3 +1438,9 @@ Max in the car is s2's seated clerk. The C++ fixes go in at 18:10.
 the level now), the retake restarts Scene 3 with no stale subtitle, and s8's credits roll. One more bug, fixed for 18:50:
 every credit line was drawn as a gold heading. In Unreal, `FString ==` ignores case, so the "is it in capitals" test was
 always true.
+
+### Nov 15, 18:25 Cairo: Spine, voices stop at the cut
+A scene's last voice line used to play on into the next scene: the sequencer cleared the subtitle but not the sound.
+`Say` now plays its line through a tracked audio component. The line stops when the scene changes, burns for a retake,
+or the film ends (Scene 8's own "Print it." plays out). A cut inside a scene leaves it playing, so dialogue can run over
+a reverse shot. `Reel.Script.Jump N` while scene N has only just started no longer begins it twice.

@@ -6,6 +6,7 @@
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundBase.h"
+#include "Components/AudioComponent.h"
 #include "TakeDirector.h"
 #include "TakePlayerController.h"
 #include "TakeCharacter.h"
@@ -90,7 +91,13 @@ static FAutoConsoleCommandWithWorldAndArgs GScriptJumpCmd(
 	{
 		const int32 N = Args.Num() > 0 ? FCString::Atoi(*Args[0]) : 1;
 		// Typed before play: remembered for the next BeginPlay only (it used to outlive every PIE session after it).
-		if (AScriptSequencer* S = AScriptSequencer::Get(World)) { S->JumpTo(N); }
+		if (AScriptSequencer* S = AScriptSequencer::Get(World))
+		{
+			// Scene N has only just begun (the auto-start a moment ago): don't begin it a second time.
+			const AScriptScene* A = S->GetActiveScene();
+			if (A && A->SceneNumber == N && A->GetSceneSeconds() < 0.5f) { return; }
+			S->JumpTo(N);
+		}
 		else { GScriptJump = N; }
 	}));
 
@@ -250,7 +257,8 @@ void AScriptSequencer::JumpTo(int32 SceneNumber)
 	Pov = Active->Pov;
 	SlugText = Active->Slug;
 	SlugAt = SlugText.IsEmpty() ? -1.0 : ScriptNow();
-	// The last scene's subtitle doesn't carry over the cut.
+	// The last scene's line (subtitle and voice) doesn't carry over the cut.
+	StopVoice();
 	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
 	{
 		if (ATakeHUD* Hud = Cast<ATakeHUD>(PC->GetHUD())) { Hud->Subtitles.Reset(); }
@@ -275,6 +283,7 @@ void AScriptSequencer::OnSceneFailed(AScriptScene* Scene, FName Reason)
 	RetakeReason = Reason;
 	RetakeScene = Scene->SceneNumber;
 	++Scene->Retakes;
+	StopVoice();
 	if (ATakeDirector* Dir = ATakeDirector::Get(this))
 	{
 		if (Dir->Audio) { Dir->Audio->OnBlooper(); }
@@ -312,7 +321,14 @@ void AScriptSequencer::OnSay(const FString& Speaker, const FString& Line, USound
 			if (Sub.Hold > 60.f) { Sub.Hold = 6.f; }
 		}
 	}
-	if (Sound) { UGameplayStatics::PlaySound2D(this, Sound); }
+	StopVoice();	// a new line replaces the old one in the ear too
+	if (Sound) { Voice = UGameplayStatics::SpawnSound2D(this, Sound); }
+}
+
+void AScriptSequencer::StopVoice()
+{
+	if (Voice) { Voice->Stop(); }
+	Voice = nullptr;
 }
 
 ATakeCharacter* AScriptSequencer::GetPovCharacter(EScriptPov ForPov) const
@@ -369,6 +385,7 @@ void AScriptSequencer::EndOfFilm()
 {
 	UE_LOG(LogReelScript, Log, TEXT("SCRIPT end of film: PRINT IT"));
 	EndSeconds = 0.f;
+	if (!Flags.Contains(TEXT("PrintItSaid"))) { StopVoice(); }	// Scene 8's own "Print it." plays out over the black
 	if (ATakeDirector* Dir = ATakeDirector::Get(this))
 	{
 		if (Dir->Audio && !Flags.Contains(TEXT("PrintItSaid"))) { Dir->Audio->OnPrintIt(); }	// Scene 8's Vance said it

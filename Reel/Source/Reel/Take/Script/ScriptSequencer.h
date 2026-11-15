@@ -112,6 +112,11 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<AActor> ViewCamera;
 
+	/** The line Say is playing: stopped when the scene changes, burns or the film ends (not on a cut inside a scene). */
+	UPROPERTY(Transient)
+	TObjectPtr<class UAudioComponent> Voice;
+	void StopVoice();
+
 	double SpliceAt = -1.0;		// real time of the last splice
 	double SlugAt = -1.0;		// real time the slug line went up
 	FText SlugText;
