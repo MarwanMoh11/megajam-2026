@@ -9,10 +9,37 @@
 #include "Camera/PlayerCameraManager.h"
 #include "GameFramework/PlayerController.h"
 #include "Engine/Canvas.h"
+#include "HAL/IConsoleManager.h"
+#include "TakeChoiceCards.h"
+#include "TakeTicketCard.h"
+
+namespace TakeHudGuideLocal
+{
+	// Shots of the shared HUD pieces without their scene: 1 the choice cards (Scene 3's lines plus a long one),
+	// 2 the VIP ticket, 3 the ticket voided. 0 off.
+	TAutoConsoleVariable<int32> CVarHudTest(TEXT("Reel.Hud.Test"), 0,
+		TEXT("HUD test draw: 1 choice cards, 2 VIP ticket, 3 VIP ticket voided, 0 off."));
+}
 
 void ATakeHUD::DrawGuide()
 {
 	using namespace TakeStyle;
+	if (const int32 Test = TakeHudGuideLocal::CVarHudTest.GetValueOnGameThread(); Test > 0 && Canvas)
+	{
+		if (Test == 1)
+		{
+			TArray<FTakeChoiceCard> Cards;
+			Cards.Add({ TEXT("1"), TEXT("PLAY ALONG"), TEXT("Keep your voice down, darling. I'm incognito.") });
+			Cards.Add({ TEXT("2"), TEXT("BRUSH OFF"), TEXT("You have the wrong man. I have never been to Zurich, and I do not read Cahiers.") });
+			TakeChoice::Draw(Kit, Cards, 0, Kit.PicBottom() - Kit.Px(282.f), TEXT("THE CRITIC  -  your answer"),
+				TEXT("1 / 2   or   arrows + E"));
+		}
+		else
+		{
+			const float Age = static_cast<float>(FMath::Fmod(Kit.Now, 3.0));
+			TakeTicket::Draw(Kit, 1.f, 0.f, 0.f, Test == 3 ? Age : -1.f);
+		}
+	}
 	UTakeGuideSubsystem* Guide = UTakeGuideSubsystem::Get(this);
 	AScriptSequencer* Seq = AScriptSequencer::Get(this);
 	if (!Guide || !Seq || !Seq->IsRunning() || !Canvas)

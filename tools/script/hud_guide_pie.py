@@ -42,6 +42,20 @@ for a in unreal.GameplayStatics.get_all_actors_of_class(w, unreal.Actor):
 '''
 
 
+SPAWN = r'''
+import unreal
+w = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_game_world()
+t = unreal.Transform(unreal.Vector(%f, %f, %f), unreal.Rotator(0, 0, %f), unreal.Vector(1, 1, 1))
+a = unreal.GameplayStatics.begin_deferred_actor_spawn_from_class(w, unreal.StageGuide, t)
+a.set_editor_property("scene_number", %d)
+a.set_editor_property("objective", %r)
+a.set_editor_property("crew_line", %r)
+a.set_editor_property("door_glow", True)
+unreal.GameplayStatics.finish_spawning_actor(a, t)
+a.get_name()
+'''
+
+
 def snap(s, name):
     res = L.tool(s, "SceneCaptureToolset.SceneCaptureToolset.CaptureGameViewport", WORLD)
     path = os.path.join(OUT, "%s.png" % name)
@@ -78,6 +92,26 @@ def main():
             L.console(s, "Reel.Guide.Lost")
             time.sleep(2.5)
             snap(s, "lost_s%d" % n)
+    elif mode == "guide":
+        # A post spawned in PIE only (not saved): Scene 5's oak door, lit, with a crew line; then lost, then looking away.
+        L.py(s, SPAWN % (3650.0, -1950.0, 0.0, 90.0, 5, "The oak door", "South wall, Vance. The oak door."))
+        L.console(s, "Reel.Script.Jump 5")
+        time.sleep(15.0)
+        L.console(s, "TakeWarp 2900 -1500 0", "TakeLook -60 -8")
+        time.sleep(2.0)
+        snap(s, "guide_s5_lit")
+        L.console(s, "Reel.Guide.Lost")
+        time.sleep(3.0)
+        snap(s, "guide_s5_marker")
+        L.console(s, "TakeLook 120 -8")
+        time.sleep(1.0)
+        snap(s, "guide_s5_chevron")
+    elif mode == "test":
+        for v, name in ((1, "test_choice"), (2, "test_ticket"), (3, "test_void")):
+            L.console(s, "Reel.Hud.Test %d" % v)
+            time.sleep(1.2 if v == 3 else 0.5)
+            snap(s, name)
+        L.console(s, "Reel.Hud.Test 0")
     elif mode == "choice":
         L.console(s, "Reel.Script.Jump 3")
         time.sleep(float(a[1]) if len(a) > 1 else 9.0)
