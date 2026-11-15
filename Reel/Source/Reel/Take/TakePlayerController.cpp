@@ -22,6 +22,7 @@
 #include "TakeGameInstance.h"
 #include "UnrealClient.h"
 #include "Watcher.h"
+#include "Script/ScriptSequencer.h"
 
 // Unity builds merge .cpp files: file-local helpers live in a uniquely named namespace.
 namespace TakePlayerControllerLocal
@@ -112,6 +113,43 @@ void ATakePlayerController::PlayerTick(float DeltaTime)
 {
 	// Input bindings fire inside Super::PlayerTick (they only queue presses).
 	Super::PlayerTick(DeltaTime);
+
+	// The script: every key edge goes to the sequencer (the active scene first). A consumed key's bound press,
+	// queued this frame inside Super, is taken back out so the director never sees it.
+	if (AScriptSequencer* Seq = AScriptSequencer::Get(this); Seq && Seq->IsRunning() && PlayerInput)
+	{
+		static TArray<FKey> ScriptKeys;
+		if (ScriptKeys.Num() == 0)
+		{
+			TArray<FKey> All;
+			EKeys::GetAllKeys(All);
+			for (const FKey& K : All)
+			{
+				if (!K.IsAxis1D() && !K.IsAxis2D() && !K.IsAxis3D() && !K.IsTouch() && !K.IsGesture() && K.IsValid())
+				{
+					ScriptKeys.Add(K);
+				}
+			}
+		}
+		const uint64 Frame = GFrameCounter;
+		for (const FKey& K : ScriptKeys)
+		{
+			const bool bDown = WasInputKeyJustPressed(K);
+			const bool bUp = !bDown && WasInputKeyJustReleased(K);
+			if ((bDown || bUp) && Seq->HandleKey(K, bDown) && bDown)
+			{
+				const bool bCut = K == EKeys::One || K == EKeys::Two || K == EKeys::Three;
+				const bool bUse = K == EKeys::E || K == EKeys::LeftMouseButton;
+				const bool bNew = K == EKeys::R;
+				const bool bConfirm = K == EKeys::Enter || K == EKeys::SpaceBar;
+				PendingPresses.RemoveAll([&](const FTakePress& P)
+				{
+					return P.Frame == Frame && ((bCut && P.Type == ETakePressType::Cut) || (bUse && P.Type == ETakePressType::Use)
+						|| (bNew && P.Type == ETakePressType::NewTake) || (bConfirm && P.Type == ETakePressType::Confirm));
+				});
+			}
+		}
+	}
 
 	if (!Current || IsInFlight())
 	{

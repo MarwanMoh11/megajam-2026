@@ -128,8 +128,15 @@ UCLASS()
 class REEL_API ATakeDirector : public AActor
 {
 	GENERATED_BODY()
+	friend class AScriptSequencer;
+
+
 
 public:
+	/** The script runs the take (AScriptSequencer set it): the old flow's title-to-PRINT-IT steps that fight the
+	 *  script (cut keys, scene triggers, composure bloopers, the alarm, the checkpoint) stand down. Body: Spine. */
+	bool bScriptDriven = false;
+
 	ATakeDirector();
 
 	// ---------------------------------------------------------------------------------------------------------------

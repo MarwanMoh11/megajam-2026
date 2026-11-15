@@ -421,8 +421,11 @@ void ATakeDirector::Tick(float DeltaSeconds)
 			else
 			{
 				// A fresh take (the first, or R): the opening slate.
-				ShowTitle(VenueLine, 4.f);
-				bTitleIsSlate = true;	// the opening slate shows the scene and the take
+				if (!bScriptDriven)	// the script's scenes open on their own slug lines
+				{
+					ShowTitle(VenueLine, 4.f);
+					bTitleIsSlate = true;	// the opening slate shows the scene and the take
+				}
 			}
 		}
 		if (GI && !GI->CheckpointMark.IsEmpty())
@@ -507,8 +510,13 @@ void ATakeDirector::Tick(float DeltaSeconds)
 	{
 		Clock->Advance(DeltaSeconds);
 	}
-	StepWarnings();
-	StepAlarm();
+	// The script runs the take (bScriptDriven): the old flow's alarm, intro lines, composure bloopers and scene
+	// triggers stand down; devices, watchers, sight and the look keep stepping for the scenes to use.
+	if (!bScriptDriven)
+	{
+		StepWarnings();
+		StepAlarm();
+	}
 
 	// 2. The flight, the use target, then presses: cuts first, then uses.
 	if (PC)
@@ -519,7 +527,10 @@ void ATakeDirector::Tick(float DeltaSeconds)
 			CurrentCamera = OnCharacter->Id;
 		}
 	}
-	StepIntroLines();
+	if (!bScriptDriven)
+	{
+		StepIntroLines();
+	}
 	StepUse();
 	StepPresses();
 	if (Phase == ETakePhase::BlooperFreeze || bReloadRequested)
@@ -555,14 +566,20 @@ void ATakeDirector::Tick(float DeltaSeconds)
 	StepSight(DeltaSeconds);
 
 	// 5. Composure.
-	StepComposure(DeltaSeconds);
+	if (!bScriptDriven)
+	{
+		StepComposure(DeltaSeconds);
+	}
 
-	// 6. The scene: triggers, action marks, the goal mark, the objective line.
-	StepTriggers();
-	StepMarkActions(DeltaSeconds);
-	StepScene(DeltaSeconds);
-	UpdateObjective();
-	StepHeist(DeltaSeconds);	// --- QA heist: the swap in the dark, and its goal line over UpdateObjective's
+	// 6. The scene: triggers, action marks, the goal mark, the objective line (the old flow only).
+	if (!bScriptDriven)
+	{
+		StepTriggers();
+		StepMarkActions(DeltaSeconds);
+		StepScene(DeltaSeconds);
+		UpdateObjective();
+		StepHeist(DeltaSeconds);	// --- QA heist: the swap in the dark, and its goal line over UpdateObjective's
+	}
 	StepLook(DeltaSeconds);
 
 	// For next frame's swept beam test.
@@ -575,9 +592,9 @@ void ATakeDirector::Tick(float DeltaSeconds)
 void ATakeDirector::LateTick(float DeltaSeconds)
 {
 	// 7. End of frame: the blooper check.
-	if (Phase == ETakePhase::BlooperFreeze || bReloadRequested)
+	if (Phase == ETakePhase::BlooperFreeze || bReloadRequested || bScriptDriven)
 	{
-		return;
+		return;	// the script's scenes fail into their own retakes (AScriptSequencer)
 	}
 	StepBlooperCheck(DeltaSeconds);
 }

@@ -286,7 +286,7 @@ void FTakeFilmOverlay::DrawUnder(AHUD& Hud, UCanvas& Canvas, const FTakeFilmFram
 		DrawFilm(Hud, Canvas, F, PX, PY, PW, PH, bCutBurst && bCutToFilm ? FMath::Max(GrainCutOpacity, CalmGrain) : CalmGrain,
 			Flicker);
 	}
-	else if (bViewfinder)
+	else if (bViewfinder && !F.bScriptRaw)
 	{
 		const float ScanAlpha = bCutBurst ? ScanLineCutAlpha : ScanLineAlpha;
 		PaintTile(Canvas, ScanTex, PX, PY, PW, PH, FVector2D(0.f, 0.f), FVector2D(1.f, PH / 4.f),

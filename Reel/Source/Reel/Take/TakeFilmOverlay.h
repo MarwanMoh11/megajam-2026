@@ -22,6 +22,7 @@ struct FTakeFilmFrame
 	double RealTime = 0.0;
 	bool bFilmLook = true;			// the director's master switch
 	bool bFilmPicture = true;		// the film (A, or every camera with the split off); else the making-of
+	bool bScriptRaw = false;		// the script's crew POV (Nora, Cole, Max): no bars, no grain, crisp and raw
 	ETakeCamera LookCamera = ETakeCamera::A;
 	bool bInFlight = false;			// a cut's flight is running (a new LookCamera with this set is a cut press)
 	ETakePhase Phase = ETakePhase::Rolling;
@@ -215,7 +216,7 @@ struct FTakeFilmOverlay
 	void DrawOver(AHUD& Hud, UCanvas& Canvas, const FTakeFilmFrame& F);
 
 	/** The bars are drawn (the HUD's old camera-A bars are not needed). */
-	bool DrawsLetterbox(const FTakeFilmFrame& F) const { return F.bFilmLook && bLetterbox; }
+	bool DrawsLetterbox(const FTakeFilmFrame& F) const { return F.bFilmLook && bLetterbox && !F.bScriptRaw; }
 
 	/** The blooper slate may show: 12 film frames after the blooper (§15.4), or at once without the blooper burn. */
 	bool IsBlooperSlateDue(const FTakeFilmFrame& F) const;

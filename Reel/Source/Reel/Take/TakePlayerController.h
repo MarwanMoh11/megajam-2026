@@ -30,6 +30,7 @@ UCLASS()
 class REEL_API ATakePlayerController : public APlayerController
 {
 	GENERATED_BODY()
+	friend class AScriptSequencer;
 
 public:
 	ATakePlayerController();

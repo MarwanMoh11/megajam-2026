@@ -46,7 +46,8 @@ void ATakeDirector::StepPresses()
 	{
 		if (QueuedPress.Type == ETakePressType::Confirm)
 		{
-			Flash(TEXT("[WASD] Walk   [MOUSE] Look   [E] Use   [1] [2] [3] Cut   [R] New take"), ETakeFlashKind::Refusal, 2.f);
+			Flash(bScriptDriven ? FString(TEXT("[WASD] Walk   [MOUSE] Look   [E] Use   [R] Retake the scene"))
+				: FString(TEXT("[WASD] Walk   [MOUSE] Look   [E] Use   [1] [2] [3] Cut   [R] New take")), ETakeFlashKind::Refusal, 2.f);
 			TAKE_LOG(TEXT("CONFIRM (%s): the controls line"), *QueuedPress.Source);
 		}
 	}

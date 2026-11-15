@@ -17,6 +17,7 @@
 #include "TakeGameInstance.h"
 #include "TakePlayerController.h"
 #include "Watcher.h"
+#include "Script/ScriptSequencer.h"
 
 namespace TakeFinaleLocal
 {
@@ -437,8 +438,11 @@ void ATakeDirector::StepTitleCard(float DeltaSeconds)
 
 			// The opening slate, as a fresh take's first tick shows it.
 			const UTakeGameInstance* GI = GetTakeGameInstance();
-			ShowTitle(VenueLine, 4.f);
-			bTitleIsSlate = true;	// the opening slate shows the scene and the take
+			if (!bScriptDriven)	// the script's scenes open on their own slug lines
+			{
+				ShowTitle(VenueLine, 4.f);
+				bTitleIsSlate = true;	// the opening slate shows the scene and the take
+			}
 			Flash(TEXT("DIRECTOR: \"Action!\""), ETakeFlashKind::Line, 1.5f);
 			if (Clock)
 			{
@@ -460,6 +464,19 @@ void ATakeDirector::StepTitleCard(float DeltaSeconds)
 
 ETakeCamera ATakeDirector::GetLookCamera() const
 {
+	// The script: the look is the POV's (Max, the van, reads as a crew camera).
+	if (bScriptDriven)
+	{
+		if (const AScriptSequencer* Seq = AScriptSequencer::Get(this))
+		{
+			switch (Seq->GetPov())
+			{
+			case EScriptPov::Vance: return ETakeCamera::A;
+			case EScriptPov::Cole: return ETakeCamera::C;
+			default: return ETakeCamera::B;
+			}
+		}
+	}
 	if (PC)
 	{
 		if (const ATakeCharacter* To = PC->GetFlightTarget())

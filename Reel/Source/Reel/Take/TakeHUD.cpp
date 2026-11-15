@@ -15,28 +15,33 @@
 #include "TakeDirector.h"
 #include "TakeGameInstance.h"
 #include "TakePlayerController.h"
+#include "Script/ScriptSequencer.h"
 
 
 ATakeHUD::ATakeHUD()
 {
 	using namespace TakeStyle;
-	SceneNames = { TEXT("THE DOOR"), TEXT("THE FLOOR"), TEXT("THE GETAWAY") };
+	// The script (docs/SCRIPT.md): the title card is THE DIRECTOR'S CUT, the crew are Vance, Max, Nora and Cole.
+	GameTitle = TEXT("THE DIRECTOR'S CUT");
+	ControlsHint = TEXT("[WASD] Walk   [MOUSE] Look   [E] Use   [R] Retake the scene");
+	TitleTagline = TEXT("A 1970s heist thriller. Only one of them thinks it's a movie.");
+	SceneNames = { TEXT("THE MARQUEE"), TEXT("THE VAN"), TEXT("THE FOYER"), TEXT("THE CATWALK"), TEXT("THE AUDITORIUM"),
+		TEXT("BACKSTAGE"), TEXT("THE BOOTH"), TEXT("THE ALLEY") };
 	TitlePitch = {
-		TEXT("Tonight the Aurelia Auction House sells the only print of a lost film: the Director's Cut."),
-		TEXT("You direct the crew that steals it, live, in one take.") };
+		TEXT("Arthur Pendleton bought the stolen master print of Le Soleil Noir to lock it away forever."),
+		TEXT("Tonight, at the Grand Lumiere, the crew steals it back. You cut between them.") };
 	TitleCast = {
-		TEXT("1|JULIAN|the actor, on the floor"),
-		TEXT("2|MAYA|lights, up above"),
-		TEXT("3|VEX|props and sound, backstage") };
+		TEXT("A|VANCE|the star, in his own movie"),
+		TEXT("B|NORA|the eye, up in the rafters"),
+		TEXT("C|COLE|the muscle, backstage") };
 	TitleRules = {
-		TEXT("Get JULIAN in, lift the keycard, take the reel and get him out."),
-		// --- W3 opening: the old legend (red square, gold T) named cues the QA pass removed; the light tells it now.
-		TEXT("In warm light he is one of the guests. Cool light is off-limits. A guard's torch on him: he is seen.") };
-	TitleControls = TEXT("[WASD] Walk   [MOUSE] Look   [1] [2] [3] Cut   [E] Use   [R] Retake");
+		TEXT("Vance sees a 35mm thriller. The crew see the raw feed."),
+		TEXT("Blow a scene and the film burns: the scene goes again from the top.") };
+	TitleControls = TEXT("[WASD] Walk   [MOUSE] Look   [E] Use   [R] Retake the scene   [ESC] Quit");
 	// --- end W3 opening
 	CreditLines = {
-		TEXT("PRINT IT"),
-		TEXT("A heist shot in one take."),
+		TEXT("THE DIRECTOR'S CUT"),
+		TEXT("A 1970s heist thriller."),
 		TEXT("Directed by you."),
 		TEXT("Made in Unreal Engine 5.9 for the Epic AI MegaJam 2026. Theme: Director's Cut."),
 		TEXT("By Marwan, solo, with Claude agents."),
@@ -62,14 +67,14 @@ void ATakeHUD::DrawHUD()
 	FTakeFilmFrame FilmFrame = MakeFilmFrame(*Dir, Canvas->ClipX, Canvas->ClipY);
 	UpdateStress(*Dir, FilmFrame);	// QA hud: composure as the picture (and the grade's Stress scalar)
 	const float BarH = Film.DrawsLetterbox(FilmFrame) ? Film.BarHeight(FilmFrame)
-		: TakeStyle::LetterboxBar(Canvas->ClipX, Canvas->ClipY, Film.LetterboxAspect);
+		: (FilmFrame.bScriptRaw ? 0.f : TakeStyle::LetterboxBar(Canvas->ClipX, Canvas->ClipY, Film.LetterboxAspect));
 	Kit.Begin(Canvas, FilmFrame.RealTime, BarH);
 	TrackState(*Dir);
 	ReadFlashes(*Dir);
 
 	// Under everything: the picture's film or viewfinder, the burn, the splice, the bars in ink.
 	Film.DrawUnder(*this, *Canvas, FilmFrame);
-	if (!Film.DrawsLetterbox(FilmFrame) || Kit.Bar > BarH + 0.5f)
+	if (!FilmFrame.bScriptRaw && (!Film.DrawsLetterbox(FilmFrame) || Kit.Bar > BarH + 0.5f))
 	{
 		using namespace TakeStyle;
 		// The look is off, or the screen is wider than 2.39:1: the bars are still the HUD's lanes (MinBar tall).
@@ -108,6 +113,8 @@ void ATakeHUD::DrawHUD()
 		DrawBlooperSlate(*Dir);
 		DrawB1(*Dir, true);
 	}
+	// The script's layer: the scene's own HUD, the slug, the splice, the retake, the end of the film.
+	DrawScript(*Dir, FilmFrame);
 }
 
 // --- state the HUD keeps on its own clock -----------------------------------------------------------------------------------
@@ -878,6 +885,13 @@ FTakeFilmFrame ATakeHUD::MakeFilmFrame(const ATakeDirector& Dir, float ScreenW, 
 	F.bFilmLook = Dir.bFilmLook;
 	F.bFilmPicture = Dir.IsFilmPicture();
 	F.LookCamera = Dir.GetLookCamera();
+	// The script: Vance is the Final Cut (bars, grain, the film); the crew are the Uncut Feed (crisp, raw, no bars).
+	if (Dir.bScriptDriven)
+	{
+		const AScriptSequencer* Seq = AScriptSequencer::Get(this);
+		F.bScriptRaw = Seq && Seq->IsRunning() && Seq->GetPov() != EScriptPov::Vance;
+		F.bFilmPicture = Dir.bFilmLook && !F.bScriptRaw;
+	}
 	const ATakePlayerController* TakePC = Cast<ATakePlayerController>(PlayerOwner);
 	F.bInFlight = TakePC && TakePC->IsInFlight();
 	F.Phase = Dir.Phase;

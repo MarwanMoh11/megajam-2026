@@ -39,6 +39,7 @@ UCLASS()
 class REEL_API ATakeHUD : public AHUD
 {
 	GENERATED_BODY()
+	friend class AScriptSequencer;
 
 public:
 	ATakeHUD();
@@ -356,6 +357,9 @@ protected:
 	void DrawReticle(const ATakeDirector& Dir);
 	void DrawLabels(const ATakeDirector& Dir);
 	void DrawSubtitles(const FTakeFilmFrame& F);
+	/** The script's layer (TakeHUDScript.cpp, Spine): the scene's own HUD, the slug line, the splice, the retake
+	 *  card and the end of the film. */
+	void DrawScript(const ATakeDirector& Dir, const FTakeFilmFrame& F);
 	void DrawStamps(const ATakeDirector& Dir);
 	void DrawOpeningSlate(const ATakeDirector& Dir, float SlateAge, float Alpha);
 	void DrawSubtitleNow(const FString& Speaker, const FString& Line, bool bFilm);

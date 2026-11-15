@@ -106,8 +106,19 @@ public:
 	bool IsActive() const { return bActive; }
 	AScriptSequencer* GetSequencer() const;
 
+	/** The character the player is on for this POV (Vance, Nora, Cole); null for Max (the van is a camera). */
+	class ATakeCharacter* GetPovCharacter() const;
+
+	/** Seconds since this scene's BeginScene (game time; restarts on a retake). */
+	float GetSceneSeconds() const { return SceneSeconds; }
+
+	/** Retakes of this scene so far this session (0 on the first go): for hints after a couple of bloopers. */
+	int32 GetRetakes() const { return Retakes; }
+
 protected:
 	/** Set by the sequencer around BeginScene/EndScene. */
 	bool bActive = false;
+	float SceneSeconds = 0.f;
+	int32 Retakes = 0;
 	friend class AScriptSequencer;
 };
