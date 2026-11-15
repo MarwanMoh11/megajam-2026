@@ -266,12 +266,12 @@ AScene7Booth::AScene7Booth()
 	Shots.Add(TEXT("Alarm"), MakeShot(FVector(40.f, 330.f, 150.f), FVector(-110.f, 470.f, 140.f), 45.f));
 	Shots.Add(TEXT("Screen"), MakeShot(FVector(700.f, 100.f, 120.f), FVector(5188.f, -300.f, 150.f), 30.f));
 	Shots.Add(TEXT("Parry"), MakeShot(FVector(150.f, -200.f, 90.f), FVector(-20.f, 150.f, 140.f), 50.f));
-	Shots.Add(TEXT("ParryHit"), MakeShot(FVector(-110.f, 60.f, 110.f), FVector(30.f, -130.f, 140.f), 40.f));
+	Shots.Add(TEXT("ParryHit"), MakeShot(FVector(160.f, 60.f, 140.f), FVector(10.f, -60.f, 140.f), 50.f));
 	Shots.Add(TEXT("Block"), MakeShot(FVector(60.f, -40.f, 100.f), FVector(0.f, 170.f, 160.f), 40.f));
 	Shots.Add(TEXT("BlockHit"), MakeShot(FVector(60.f, 120.f, 165.f), FVector(-30.f, 60.f, 160.f), 30.f));
 	Shots.Add(TEXT("Throw"), MakeShot(FVector(-150.f, 280.f, 120.f), FVector(60.f, 160.f, 100.f), 45.f));
 	Shots.Add(TEXT("Fall"), MakeShot(FVector(700.f, 350.f, -400.f), FVector(250.f, 150.f, 0.f), 50.f));
-	Shots.Add(TEXT("Cole"), MakeShot(FVector(-120.f, -150.f, 170.f), FVector(110.f, -480.f, 130.f), 45.f));
+	Shots.Add(TEXT("Cole"), MakeShot(FVector(170.f, -90.f, 175.f), FVector(110.f, -450.f, 120.f), 55.f));
 	Shots.Add(TEXT("Miss"), MakeShot(FVector(60.f, 150.f, 170.f), FVector(-30.f, 40.f, 160.f), 35.f));
 }
 
