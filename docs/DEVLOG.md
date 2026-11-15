@@ -1369,3 +1369,7 @@ animation, you can't move it or change it." He was looking at the searchlight on
 - Bug seen in the shots: the choice cards sat on top of the critic's two-line subtitle (his line is still up when
   the choice opens). The cards move up; and if Vance hurries into the hall mid-reply, the critic now still wanders
   off. Both in for the 18:10 restart.
+
+### Nov 15, 17:45 Cairo: s6-backstage, the chain in play
+- First play test of Scene 6's whole chain on the 17:20 restart's build, through the scene's own console test hooks (`Reel.S6.Behind A|B|P`, `Reel.S6.Use`; `tools/script/scene6_pie.py chain`). The choke-hold during the film's gunfight, the drag into the costume trunk ("One down."), the counterweight lever, the sandbag on the thunder sheet and Enforcer B walking down to look all work.
+- Went wrong: the editor's play window ticks at about a third of real time while it's in the background, so the test's fixed waits pressed E mid-drag. Then two runs failed at the projectionist, correctly as retakes: he was glancing round, and B came back up the stair. The fix: the projectionist's check now uses his real facing (a press from behind while he's still facing the door counts, even as a glance starts), and the test waits for him to face the door. In for the 18:10 restart.
