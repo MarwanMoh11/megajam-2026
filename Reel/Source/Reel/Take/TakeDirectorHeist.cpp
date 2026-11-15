@@ -226,6 +226,11 @@ void ATakeDirector::StepHeist(float DeltaSeconds)
 	{
 		Flash(Dimmer->PreviewLine, ETakeFlashKind::Line, 4.f);
 	}
+	// W3 heist2: the first dark fires "Dark": the dais's gold marks (appear_on="Dark" in the map) show only now.
+	if (bDark && !HasFired(FName(TEXT("Dark"))))
+	{
+		FireTrigger(FName(TEXT("Dark")));
+	}
 
 	// 2b. The room watches the front (W3 heist2): a glance, a murmur, then the blooper. Not in the dark.
 	if (bRoomOn && Julian)

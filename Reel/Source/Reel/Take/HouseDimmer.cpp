@@ -115,15 +115,18 @@ void AHouseDimmer::BeginPlay()
 	ScreenPanel = nullptr;
 	// W3 heist2: a plane on the screen's face (its +Z towards the hall, its X up), the old film on it when it exists.
 	const FVector Facing = GetScreenFacing();
-	const FVector PanelScale(FMath::Max(ScreenSize.Y, 1.f) / 100.f,
-		FMath::Max(ScreenSize.X, 1.f) / 100.f * (bScreenMirror ? -1.f : 1.f), 1.f);
+	// The plane's U (its X) runs across the screen, left to right as the room sees it; its Y runs up (round D: U ran
+	// up, the film lay on its side and its frame repeated).
+	const FVector PanelScale(FMath::Max(ScreenSize.X, 1.f) / 100.f * (bScreenMirror ? -1.f : 1.f),
+		FMath::Max(ScreenSize.Y, 1.f) / 100.f, 1.f);
 	ScreenPanel = FTakeShapes::AddShapeAtRuntime(this, ETakeShape::Plane, Root, ScreenOffset, PanelScale, ScreenColour, false);
 	FilmMID = nullptr;
 	bHasFilm = false;
 	if (ScreenPanel)
 	{
 		ScreenPanel->SetMobility(EComponentMobility::Movable);
-		const FQuat Face = FRotationMatrix::MakeFromZX(Facing, FVector::UpVector).ToQuat();
+		const FVector Across = FVector::CrossProduct(FVector::UpVector, Facing).GetSafeNormal();	// the room's right
+		const FQuat Face = FRotationMatrix::MakeFromZX(Facing, Across.IsNearlyZero() ? FVector::RightVector : Across).ToQuat();
 		const FQuat Roll(Facing, FMath::DegreesToRadians(ScreenPictureRoll));
 		ScreenPanel->SetWorldLocationAndRotation(GetScreenCentre() + Facing * 2.f, Roll * Face);
 		if (UMaterialInterface* const Film = FilmMaterial.LoadSynchronous())

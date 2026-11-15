@@ -1681,6 +1681,10 @@ else:
 # room's view; a mark, so the drone's off-mark rule never catches him while he waits as long as he likes.
 FRONT_ROW = (_hz_front["min"][0] - 85.0, -60.0)
 mark("Mark_FrontRow", "THE FRONT ROW", FRONT_ROW)
+# --- W3 heist2 --- the dais's gold marks show only once the house has gone dark (the C++ fires "Dark"): in house
+# light nothing on the dais calls Julian up in front of the room.
+setp(m_dais_mark, appear_on="Dark")
+setp(m_lift, appear_on="Dark")
 # --- end QA heist ---
 
 # Vex's counterweight winch, in the wings at the east end of the corridor. The curtain: across the front of the
