@@ -343,7 +343,7 @@ void AScene2Van::TickScene(float DeltaSeconds)
 		if (Hesitation >= 1.f)
 		{
 			SetPhase(EScene2Phase::Done);
-			FailScene(TEXT("Hesitated"));
+			FailScene(TEXT("Vance_hesitated_at_the_glass"));
 		}
 		break;
 	}
