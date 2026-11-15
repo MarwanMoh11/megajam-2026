@@ -609,6 +609,20 @@ if ON["desk"]:
         K.box((rx0, rx0 + 28.0, 1020.0 + DESK_DY, 1180.0 + DESK_DY, 0.0, 205.0), PANEL, collide=True, shadow=True)
         K.box((rx0 - 2.0, rx0, 1020.0 + DESK_DY, 1180.0 + DESK_DY, 196.0, 205.0), TRIM)
         text("BIDDERS", rx0 - 2.5, 1100.0 + DESK_DY, 188.0, 180.0, 9.0, (0.80, 0.72, 0.52))
+        # its back faces the way to the hall: it read as a bare black slab (Nov 15). A pewter cap and plinth, a
+        # velvet inset and a house notice make it a piece of lobby furniture from that side too.
+        y0, y1 = 1020.0 + DESK_DY, 1180.0 + DESK_DY
+        K.box((rx0 + 28.0, rx0 + 30.0, y0, y1, 196.0, 205.0), TRIM)
+        K.box((rx0 - 3.0, rx0 + 31.0, y0 - 2.0, y1 + 2.0, 0.0, 9.0), TRIM)
+        K.box((rx0 + 28.0, rx0 + 29.0, y0 + 12.0, y1 - 12.0, 20.0, 186.0), VELVET)
+        K.box((rx0 + 29.0, rx0 + 30.0, y0 + 32.0, y1 - 32.0, 118.0, 172.0), LINEN)
+        for (t, s, z) in (("THE AURELIA", 6.0, 160.0), ("BIDDERS KINDLY", 4.0, 146.0),
+                          ("COLLECT A PADDLE", 4.0, 138.0), ("AT THE DESK", 4.0, 130.0)):
+            text(t, rx0 + 30.5, 1100.0 + DESK_DY, z, 0.0, s, (0.15, 0.10, 0.08))
+        # a brass picture lamp over the notice (its light is lights.py's lobby "Board_Notice")
+        K.box((rx0 + 30.0, rx0 + 50.0, 1098.0 + DESK_DY, 1102.0 + DESK_DY, 198.0, 202.0), TRIM)
+        K.box((rx0 + 44.0, rx0 + 56.0, 1085.0 + DESK_DY, 1115.0 + DESK_DY, 194.0, 199.0), TRIM)
+        K.box((rx0 + 45.0, rx0 + 55.0, 1087.0 + DESK_DY, 1113.0 + DESK_DY, 193.5, 194.0), GLOW)
         for row, z in enumerate((160.0, 128.0, 96.0)):
             for k in range(6):
                 py = 1035.0 + DESK_DY + k * 26.0

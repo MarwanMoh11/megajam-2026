@@ -39,7 +39,7 @@ M = {"wood": D + "MI_Front_Panel", "parquet": D + "MI_Front_Parquet", "pewter": 
      "linen": D + "MI_Front_Linen", "stone": D + "MI_Front_Plinth", "velvet": D + "MI_Front_Velvet",
      "ply": D + "MI_Back_Ply", "batten": D + "MI_Back_Batten", "steel": D + "MI_Back_Steel", "tape": D + "MI_Back_Tape",
      "black": D + "MI_Back_Cable", "canvas": D + "MI_Canvas_Light", "canvas_dk": D + "MI_Canvas_Dark",
-     "glass": D + "MI_Front_Glass", "glow": D + "MI_Front_Sconce", "screen": D + "MI_Front_Screen",
+     "glass": D + "MI_Front_Glass", "mirror": D + "M_Front_Mirror", "glow": D + "MI_Front_Sconce", "screen": D + "MI_Front_Screen",
      "cloth_a": D + "MI_Person_A", "cloth_b": D + "MI_Person_B", "cloth_c": D + "MI_Person_C", "grey": D + "MI_Car_Grey"}
 for _k in list(M):
     if not eal.does_asset_exist(M[_k]):
@@ -363,7 +363,9 @@ def kitchen():
     W.box(-500, 300, -2998, -2902, 18, 21, "pewter")
     for (i, d) in enumerate((32, 27, 22)):
         W.cyl(-400 + i * 3, -2950 + i * 2, 21 + i * 17, d, 17, "steel")
-    W.sph(150, -2950, 36, 52, 36, 30, "batten")
+    W.sph(150, -2950, 36, 52, 36, 30, "linen")                  # a flour sack, tied (was a brown ball, Nov 15)
+    W.cyl(150, -2950, 48, 7, 9, "linen")
+    W.cyl(150, -2950, 51, 8, 2, "batten")
     W.box(-470, -400, -2985, -2945, 94, 96.5, "wood")
     for (d, h, z) in ((42, 14, 94), (31, 12, 108), (20, 10, 120)):   # tonight's cake
         W.cyl(-200, -2950, z, d, h, "linen")
@@ -446,7 +448,7 @@ def propstore():
     W.box(1051, 1053, -2990, -2950, 205, 238, "velvet")
     cv = At(1110, -2770, 0, 300)                                # a cheval glass
     cv.box(-3, 3, -34, 34, 26, 172, "pewter")
-    cv.box(-2, 4, -30, 30, 30, 168, "glass")
+    cv.box(-2, 4, -30, 30, 30, 168, "mirror")
     cv.box(-20, 20, -34, -30, 0, 4, "wood")
     cv.box(-20, 20, 30, 34, 0, 4, "wood")
 
@@ -579,7 +581,7 @@ def restrooms():
     for y in (-1830.0, -1690.0, -1550.0):                       # basins and mirrors
         prop("rooms_sink", -3170, y, 0, 58, 62, 92, face=0)
         W.box(-3200, -3197, y - 34, y + 34, 120, 205, "pewter")
-        W.box(-3197, -3196, y - 30, y + 30, 124, 201, "glass")
+        W.box(-3197, -3196, y - 30, y + 30, 124, 201, "mirror")   # front.py's silvered glass (was black, Nov 15)
         W.box(-3200, -3186, y - 28, y + 28, 112, 114, "pewter")
         if y < -1600:
             W.box(-3198, -3193, y + 53, y + 87, 121, 123, "pewter")

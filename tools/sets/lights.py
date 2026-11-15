@@ -45,6 +45,8 @@ LIGHTS = [
     # W3 lights: the newel lamps at the stair's foot (front.py's globes), lit from the doors' side so they shade round
     ("lobby", "Newel_S", (-2650.0, -193.0, 160.0), 12.0, 140.0, BULB, None),
     ("lobby", "Newel_N", (-2650.0, 193.0, 160.0), 12.0, 140.0, BULB, None),
+    # Nov 15: the paddle board's back (the hall side: a notice under front.py's brass picture lamp) was a black slab
+    ("lobby", "Board_Notice", (-1935.0, 630.0, 193.0), 5.0, 200.0, TUNG, (-70.0, 180.0, 50.0)),
     # the hall: placed at run time from hall_zones.json and the placed props (hall_lights below; W3 lights)
     # backstage corridor: the ghost light at the far end
     ("rooms", "Corridor_Ghost", (-950.0, -2560.0, 175.0), 80.0, 280.0, BULB, None),
