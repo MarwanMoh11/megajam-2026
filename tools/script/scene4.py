@@ -36,7 +36,8 @@ GUARDS = (
     ("S3_Guard_NorthArch", "GUARD2", "GUARD 2", (2260.0, 1230.0), (0.0, 250.0), 4.5),
 )
 VOICES = {"nora_open_voice": "s4_nora_open", "guard1_spot_voice": "s4_guard1_spot", "nora_go_voice": "s4_nora_go",
-          "guard1_hold_voice": "s4_guard1_hold", "guard_spotted_voice": "s4_guard_spotted"}
+          "guard1_hold_voice": "s4_guard1_hold", "guard_spotted_voice": "s4_guard_spotted",
+          "nora_retake_voice": "s4_nora_retake"}
 
 
 def tag(a, extra=()):
@@ -158,7 +159,10 @@ def scene():
     for prop, name in VOICES.items():
         snd = unreal.load_asset("%s/%s" % (ADIR, name)) if unreal.EditorAssetLibrary.does_asset_exist("%s/%s" % (ADIR, name)) else None
         if snd:
-            s.set_editor_property(prop, snd)
+            try:
+                s.set_editor_property(prop, snd)
+            except Exception as e:      # a property newer than this editor build
+                REPORT.append("voice %s not set (%s)" % (prop, e))
     tag(s)
     REPORT.append("scene actor placed: spot=%s (%d follow spots), voices=%d" % (
         spots[0].get_actor_label() if spots else None, len(spots),

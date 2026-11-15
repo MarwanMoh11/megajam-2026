@@ -204,6 +204,8 @@ public:
 	TObjectPtr<USoundBase> Guard1HoldVoice;
 	UPROPERTY(EditAnywhere, Category = "Scene4|Voice")
 	TObjectPtr<USoundBase> GuardSpottedVoice;
+	UPROPERTY(EditAnywhere, Category = "Scene4|Voice")
+	TObjectPtr<USoundBase> NoraRetakeVoice;
 
 	// ---- the threshold at the rope gap (components of this actor, which stands in the gap facing +X) ----
 	UPROPERTY(VisibleAnywhere, Category = "Scene4")
@@ -299,5 +301,7 @@ private:
 	bool ConeCoversLane(const FScene4Guard& G) const;
 	void MoveGuardActor(FScene4Guard& G);
 	class ATakeCharacter* GetVance() const;
+	/** The director skips held watchers (their patrol step and sight test): this scene moves its guards itself. */
+	void HoldGuards(bool bHold);
 	void ScheduleFail(FName Reason, float After);
 };

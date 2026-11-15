@@ -270,11 +270,12 @@ void AScene4Catwalk::BeginScene()
 	{
 		Cart->RollSeconds = CartRollSeconds;
 	}
+	HoldGuards(true);
 	StepGuards(0.f);
 
 	if (GetRetakes() > 0)
 	{
-		Say(TEXT("NORA"), TEXT("Hold, hold... they saw you. Again."), nullptr);
+		Say(TEXT("NORA"), TEXT("Hold, hold... they saw you. Again."), NoraRetakeVoice);
 	}
 	else
 	{
@@ -289,7 +290,8 @@ void AScene4Catwalk::EndScene()
 	{
 		V->GetCharacterMovement()->MaxWalkSpeed = V->WalkSpeed;
 	}
-	// The guards go back to their own posts (the other scenes own them).
+	// The guards go back to their own posts (the other scenes own them), and to the director.
+	HoldGuards(false);
 	for (FScene4Guard& G : Guards)
 	{
 		if (G.Actor)
@@ -532,6 +534,17 @@ void AScene4Catwalk::PressCue()
 	StepTrack(0.f);
 	CutTo(EScriptPov::Vance, TrackCamera);
 	TAKE_LOG(TEXT("S4 CUE clear: tracking shot"));
+}
+
+void AScene4Catwalk::HoldGuards(bool bHold)
+{
+	for (FScene4Guard& G : Guards)
+	{
+		if (AWatcher* W = Cast<AWatcher>(G.Actor))
+		{
+			W->bScriptHeld = bHold;
+		}
+	}
 }
 
 void AScene4Catwalk::ScheduleFail(FName Reason, float After)
