@@ -1484,6 +1484,13 @@ void ACastMember::TickOwnWalk(float DeltaSeconds)
 			Inst->SetBlendSpacePosition(FVector(0.f, Shown < 5.f ? 0.f : Shown, 0.f));	// X is Direction, Y is Speed
 		}
 	}
+	// A gesture begun just before the walk (Scene 3's critic laughs, then stumbles down the stair) was full-body and
+	// held the legs still: once the body moves, the act stays on the upper body and the legs walk.
+	if ((bWalkingTo || ExternalUntil > 0.f) && Acting.Act != ECastAct::None && !Acting.bActUpperBody)
+	{
+		Acting.bActUpperBody = true;
+		PushActing();
+	}
 	// Turning: eased toward the way it goes (or FaceYaw), never faster than TurnRate.
 	const float Yaw = static_cast<float>(GetActorRotation().Yaw);
 	const float Delta = FMath::FindDeltaAngleDegrees(Yaw, DesiredYaw);

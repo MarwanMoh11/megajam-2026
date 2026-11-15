@@ -1818,3 +1818,23 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
 - **Went wrong / not seen:** the one PIE look asked for Scene 8 but the shots show Scene 1's queue, so moving legs have
   not been seen in play. Live Coding only: the editor DLL on disk is stale until the next Build.bat (a package builds
   from source and gets the fix).
+
+## Nov 16, 01:26 Cairo: every line voiced, and the stair critic walks (voice-fill)
+- **What changed:** Marwan's QA found the security room (Scene 7) silent and asked for every line to be voiced. The
+  logs and a code sweep found 39 script lines that only ever showed a subtitle (all of Scene 7's route, booth and fight
+  lines, two guide lines, Scene 2's bouncer, two of Scene 4's Nora lines, a guard line, Scene 8's Cole, and the 22 guard
+  barks Scene 6 sends through Say), plus all 67 of the hall's side lines (SetLife: none had ever been generated) and
+  one missing sound effect (`sfx_beep`, Scene 7's door panel). `tools/script/voice_fill.py` generated all 106 with
+  ElevenLabs in the voices the scenes already use (Nora and Max on the earpiece band-pass) and they were imported.
+  `AScriptSequencer::OnSay` now finds a voice for any line said without one, by a hash of "SPEAKER|Line"
+  (`vo_fill_<hash>`), so no scene code changed. The sounds were all in the 00:33 cook: the gaps were in the game, not
+  the editor.
+- **The stair critic (Scene 3):** he started his Laugh gesture one frame before his first WalkTo, so the gesture was
+  full-body and held his legs still all the way down the stair. A cast member's act now goes upper-body once it moves.
+- **What the agents did:** one Claude Fable 5.2 session traced it from the editor log and a sweep of the Say calls,
+  wrote the generator and import, the OnSay lookup and the act fix; one PIE look confirmed Scene 1's floor manager is
+  on the walk blend space while he moves.
+- **Went wrong / not seen:** the voice lookup is Live Coded; the critic fix is not, because another session's
+  in-progress Scene 4 HUD edit fails to compile (C4456, `Kit`), and Live Coding builds every changed file. Neither
+  the new voices nor the critic's walk have been heard or seen in play. `Reel.Script.Jump` from the MCP console hits
+  the editor world's sequencer, not PIE's, so scene jumps from tools don't work.

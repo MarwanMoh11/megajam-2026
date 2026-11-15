@@ -20,6 +20,35 @@ DEFINE_LOG_CATEGORY_STATIC(LogReelScript, Log, All);
 
 static double ScriptNow() { return FPlatformTime::Seconds(); }
 
+// The voice fill (Nov 16): a line said without a sound finds its voice by name, vo_fill_<FNV-1a 32 of the UTF-8
+// "SPEAKER|Line">, made by tools/script/voice_fill.py. A line with no file stays a subtitle.
+namespace ReelVoiceFill
+{
+	USoundBase* Find(const FString& Speaker, const FString& Line)
+	{
+		const FString Key = Speaker.ToUpper() + TEXT("|") + Line;
+		const FTCHARToUTF8 Utf8(*Key);
+		uint32 H = 2166136261u;
+		for (int32 i = 0; i < Utf8.Length(); ++i)
+		{
+			H = (H ^ static_cast<uint8>(Utf8.Get()[i])) * 16777619u;
+		}
+		static TMap<uint32, TWeakObjectPtr<USoundBase>> Found;
+		static TSet<uint32> Missing;
+		if (Missing.Contains(H)) { return nullptr; }
+		if (const TWeakObjectPtr<USoundBase>* F = Found.Find(H))
+		{
+			if (F->IsValid()) { return F->Get(); }
+		}
+		const FString Name = FString::Printf(TEXT("vo_fill_%08x"), H);
+		USoundBase* S = LoadObject<USoundBase>(nullptr, *FString::Printf(TEXT("/Game/Take/Audio/Script/Fill/%s.%s"), *Name, *Name),
+			nullptr, LOAD_NoWarn | LOAD_Quiet);
+		if (S) { Found.Add(H, S); }
+		else { Missing.Add(H); }
+		return S;
+	}
+}
+
 // Scene order (s7-route): several scene actors may share a SceneNumber; an actor tag "Part=N" orders them (no tag =
 // part 0). A scene's key is SceneNumber * 100 + Part. JumpTo(N) with N < 100 starts the first part of scene N; with
 // N >= 100 it starts exactly that key (Reel.Script.Jump 702 = scene 7, part 2; -Scene=702 too).
@@ -326,6 +355,7 @@ void AScriptSequencer::OnCutTo(AScriptScene* Scene, EScriptPov NewPov, AActor* C
 void AScriptSequencer::OnSay(const FString& Speaker, const FString& Line, USoundBase* Sound)
 {
 	UE_LOG(LogReelScript, Log, TEXT("SCRIPT say %s: %s"), *Speaker, *Line);
+	if (!Sound && !Line.IsEmpty()) { Sound = ReelVoiceFill::Find(Speaker, Line); }
 	// A new line replaces the one showing (no queue); Say("", "") clears the lane. Hold = sound length + 0.5 s.
 	APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
 	ATakeHUD* Hud = PC ? Cast<ATakeHUD>(PC->GetHUD()) : nullptr;
