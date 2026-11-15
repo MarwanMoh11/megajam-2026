@@ -29,6 +29,9 @@ public class Reel : ModuleRules
 		// Step 5: the devices' particle effects (TakeFX).
 		PrivateDependencyModuleNames.Add("Niagara");
 
+		// Scene 7 reel swap (s7-reelswap): procedural props, two-bone IK, the cine camera.
+		PrivateDependencyModuleNames.AddRange(new string[] { "ProceduralMeshComponent", "AnimationCore", "CinematicCamera" });
+
 		PublicIncludePaths.AddRange(new string[] {
 			"Reel",
 			"Reel/Take",
