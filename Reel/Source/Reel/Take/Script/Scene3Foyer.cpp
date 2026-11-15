@@ -497,6 +497,11 @@ void AScene3Foyer::TickScene(float DeltaSeconds)
 		// He can walk on while they talk; the hall's checks apply at once.
 		if (Feet.X > RopeWarnX)
 		{
+			// Max cuts the critic short; he still wanders off rather than freezing mid-foyer.
+			if (Critic)
+			{
+				Critic->WalkTo(CriticWanderTo, 95.f);
+			}
 			Say(TEXT("MAX (V.O.)"), MaxVoLine, MaxVoSound);
 			SetBeat(EBeat::Vo);
 		}
