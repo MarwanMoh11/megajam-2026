@@ -154,3 +154,17 @@ void ACartDevice::RestOnFloor(USceneComponent* C, float RestBottomZ, float RiseZ
 	const double Bottom = Prim->Bounds.Origin.Z - Prim->Bounds.BoxExtent.Z;
 	C->AddWorldOffset(FVector(0.0, 0.0, static_cast<double>(RestBottomZ) + RiseZ - Bottom));
 }
+
+// Scene 4 (s4-catwalk): back at its door, upright, its use restored.
+void ACartDevice::ResetCart()
+{
+	bRunning = false;
+	bCrashed = false;
+	RunSeconds = 0.f;
+	PlaceCart(0.f, false);
+	if (Body)
+	{
+		Body->SetRelativeLocationAndRotation(BodyHome, FRotator(0.0, Body->GetRelativeRotation().Yaw, 0.0));
+	}
+	RestoreUses(Uses);
+}

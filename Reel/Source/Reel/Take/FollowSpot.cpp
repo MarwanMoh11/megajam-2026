@@ -678,3 +678,18 @@ FVector AFollowSpot::GetLensPoint() const
 	const FVector Lens = Pivot + GetSwingTurn().RotateVector(ModelOffset + LensOffset - Pivot);
 	return GetActorTransform().TransformPosition(Lens);
 }
+
+// Scene 4 (s4-catwalk): dark, idle, the head home, its use restored.
+void AFollowSpot::ResetSpot()
+{
+	Target = nullptr;
+	AimHint = nullptr;
+	BusySecondsLeft = 0.f;
+	bRunning = false;
+	RunSeconds = 0.f;
+	SwingYaw = SwingAimYaw = SwingPitch = SwingAimPitch = 0.f;
+	SwingYawSpeed = SwingPitchSpeed = 0.f;
+	RestoreUses(Uses);
+	UpdateBeam();
+	StepSwing(0.f);
+}

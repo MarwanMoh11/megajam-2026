@@ -30,6 +30,9 @@ public:
 	/** The crash point in world space (actor transform of CrashOffset). */
 	virtual FVector GetEffectPoint() const override;	// BODY: (u)
 
+	/** Scene 4 (s4-catwalk): back at its door, upright, its use restored: for a retake or a jump. */
+	void ResetCart();
+
 	/** Crash point relative to the door (the actor), cm. A widget in the editor. */
 	UPROPERTY(EditAnywhere, Category = "Take|Cart", meta = (MakeEditWidget = true))
 	FVector CrashOffset = FVector(400.f, 0.f, 0.f);

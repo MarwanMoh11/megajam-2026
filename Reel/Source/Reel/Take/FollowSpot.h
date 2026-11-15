@@ -244,6 +244,12 @@ public:
 	/** The director, every frame its user is in reach: the watcher the aim assist picks now (null: none). */
 	void SetAimHint(AWatcher* Watcher);
 
+	/** Scene 4 (s4-catwalk): dark, idle, the head home, its use restored: for a retake or a jump. */
+	void ResetSpot();
+
+	/** Scene 4: keep the beam burning on its target this many more seconds (the tracking shot). */
+	void HoldBeam(float Seconds) { if (bRunning) { BusySecondsLeft = FMath::Max(BusySecondsLeft, Seconds); } }
+
 	/** Is the head split from the stand (PanMesh and TiltMesh loaded, the model showing)? */
 	bool HasHead() const { return bHasHead; }
 
