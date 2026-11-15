@@ -25,6 +25,60 @@ namespace
 		return Q;
 	}
 
+	// The visible layers riding on a rig's follower (costume shells following it, a cast member's copied hero body):
+	// a follower of a follower does not get the pose (Unreal does not chain leader poses), so while the rig is on they
+	// follow the poseable directly, and each goes back to the leader it had when the rig comes off. Kept here, per
+	// rig, so FS6Rig's layout (a member of a UCLASS) stays as it was.
+	TMap<const void*, TMap<TWeakObjectPtr<USkeletalMeshComponent>, TWeakObjectPtr<USkinnedMeshComponent>>>& S6Riders()
+	{
+		static TMap<const void*, TMap<TWeakObjectPtr<USkeletalMeshComponent>, TWeakObjectPtr<USkinnedMeshComponent>>> M;
+		return M;
+	}
+
+	/** Puts every body layer on Follower's actor (and the actors riding on it) onto Pose, remembering its leader. */
+	void S6TakeRiders(const void* Key, UPoseableMeshComponent* Pose, USkeletalMeshComponent* Follower)
+	{
+		AActor* Owner = Follower ? Follower->GetOwner() : nullptr;
+		if (!Owner || !Pose)
+		{
+			return;
+		}
+		TArray<AActor*> Actors;
+		Actors.Add(Owner);
+		Owner->GetAttachedActors(Actors, false, true);
+		auto& Mine = S6Riders().FindOrAdd(Key);
+		for (AActor* A : Actors)
+		{
+			if (!A) { continue; }
+			TArray<USkeletalMeshComponent*> Comps;
+			A->GetComponents<USkeletalMeshComponent>(Comps);
+			for (USkeletalMeshComponent* C : Comps)
+			{
+				if (!C || C == Follower || !C->GetSkinnedAsset()) { continue; }
+				USkinnedMeshComponent* Leader = C->LeaderPoseComponent.Get();
+				const bool bBody = C->GetBoneIndex(TEXT("pelvis")) != INDEX_NONE || C->GetBoneIndex(TEXT("head")) != INDEX_NONE;
+				if (Leader == Pose || (!Leader && !bBody)) { continue; }
+				Mine.Add(C, Leader);	// a leader changed mid-stunt (a crew act starting or ending) is the one to restore
+				C->SetLeaderPoseComponent(Pose);
+			}
+		}
+	}
+
+	void S6DropRiders(const void* Key)
+	{
+		if (auto* Mine = S6Riders().Find(Key))
+		{
+			for (auto& Pair : *Mine)
+			{
+				if (USkeletalMeshComponent* C = Pair.Key.Get())
+				{
+					C->SetLeaderPoseComponent(Pair.Value.Get());
+				}
+			}
+		}
+		S6Riders().Remove(Key);
+	}
+
 	void S6AllBones(TArray<FName>& Out)
 	{
 		Out.Add(S6NPelvis);
@@ -165,6 +219,7 @@ void FS6Rig::Attach()
 	Pose->RefreshBoneTransforms();
 	Measure();
 	Follower->SetLeaderPoseComponent(Pose.Get());
+	S6TakeRiders(this, Pose.Get(), Follower.Get());
 	bAttached = true;
 }
 
@@ -173,6 +228,10 @@ void FS6Rig::Detach()
 	if (Follower.IsValid() && bAttached)
 	{
 		Follower->SetLeaderPoseComponent(nullptr);
+	}
+	if (bAttached)
+	{
+		S6DropRiders(this);
 	}
 	bAttached = false;
 }
@@ -242,6 +301,22 @@ void FS6Rig::Chain(FName A, FName B, FName C, const FVector& Target, const FVect
 	const float Out = FMath::Sqrt(FMath::Max(0.f, L1 * L1 - Along * Along));
 	const FVector Mid = S + Dir * Along + Pole * Out;
 	Aim(A, B, Mid);
+	// Twist the upper bone about its own axis so the joint's own bend (the reference pose's slight elbow or knee bend,
+	// reset every frame) lies in the solved plane: the lower bone then swings as a hinge instead of bending sideways
+	// through the mesh. A near-straight reference bend has no direction to trust: left as the plain aim.
+	{
+		const FTransform TA = Get(A);
+		const FVector U = (Mid - TA.GetLocation()).GetSafeNormal();
+		const FVector CurL = Get(C).GetLocation() - Get(B).GetLocation();
+		FVector Have = CurL - U * FVector::DotProduct(CurL, U);
+		FVector Want = -(Pole - U * FVector::DotProduct(Pole, U));
+		if (!U.IsNearlyZero() && Have.Size() > 0.12f * CurL.Size() && Want.Normalize() && Have.Normalize())
+		{
+			FTransform T = TA;
+			T.SetRotation((FQuat::FindBetweenNormals(Have, Want) * T.GetRotation()).GetNormalized());
+			Pose->SetBoneTransformByName(A, T, EBoneSpaces::WorldSpace);
+		}
+	}
 	Aim(B, C, End);
 }
 
@@ -252,6 +327,9 @@ void FS6Rig::Apply(const FS6Pose& P)
 		return;
 	}
 	SyncTransform();
+	// Every frame from the reference pose: the limbs' aims start from the same place each time, so their twist cannot
+	// creep from frame to frame (the arms and legs used to wind up slowly over a long stunt).
+	ResetAll();
 	{
 		const FQuat* Ref = RefCS.Find(S6NPelvis);
 		FTransform T = Get(S6NPelvis);
@@ -277,6 +355,11 @@ void FS6Rig::Apply(const FS6Pose& P)
 	if (Follower.IsValid())
 	{
 		Follower->SetComponentTickEnabled(true);
+		if (bAttached)
+		{
+			// Again every frame: a crew act starting or ending re-points the costume to another body.
+			S6TakeRiders(this, Pose.Get(), Follower.Get());
+		}
 	}
 }
 

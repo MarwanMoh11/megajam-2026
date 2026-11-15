@@ -58,6 +58,68 @@ namespace
 		const FVector Fw = F.Fwd.GetSafeNormal();
 		return FS6Frame(Fw, FQuat(Fw, FMath::DegreesToRadians(Deg)).RotateVector(F.Up));
 	}
+	/** Smooth 0..1 across [A, B]. The stunts chain their key poses with overlapping windows, so a move starts before
+	 *  the last one has settled (no stop at every key). */
+	float S6Win(float T, float A, float B) { return S6Ease((T - A) / FMath::Max(B - A, 0.001f)); }
+	/** A soft bump: 1 at C, falling off over about W either side. */
+	float S6Bump(float T, float C, float W) { const float X = (T - C) / FMath::Max(W, 0.001f); return FMath::Exp(-X * X); }
+	/** Turns a heading about the vertical by Deg. */
+	FVector S6Yawed(const FVector& Fwd, float Deg) { return FQuat(S6Z, FMath::DegreesToRadians(Deg)).RotateVector(Fwd); }
+	/** One planted foot of a stunt: where it lands and the window it travels in. */
+	struct FS6Plant { float T0, T1; FVector At; };
+	/** A foot that steps between plants (lifted mid-step, by less for a short shuffle) instead of skating. */
+	FVector S6Foot(const FVector& Start, const FS6Plant* Plants, int32 Num, float T, float Lift)
+	{
+		FVector P = Start;
+		for (int32 I = 0; I < Num; ++I)
+		{
+			const FS6Plant& S = Plants[I];
+			if (T <= S.T0) { return P; }
+			if (T < S.T1)
+			{
+				const float U = (T - S.T0) / FMath::Max(S.T1 - S.T0, 0.001f);
+				const float L = Lift * FMath::Min(1.f, static_cast<float>(FVector::Dist2D(P, S.At)) / 30.f);
+				return FMath::Lerp(P, S.At, S6Ease(U)) + S6Z * (L * FMath::Sin(UE_PI * U));
+			}
+			P = S.At;
+		}
+		return P;
+	}
+	/** A point on the cubic Bezier P[0..3] at U. */
+	FVector S6Bez(const TArray<FVector>& P, float U)
+	{
+		const float V = 1.f - U;
+		return P[0] * (V * V * V) + P[1] * (3.f * V * V * U) + P[2] * (3.f * V * U * U) + P[3] * (U * U * U);
+	}
+	/** The point Dist along the Bezier P[0..3] (flat distance, sampled); with OutLen, its whole length instead. */
+	FVector S6BezAlong(const TArray<FVector>& P, float Dist, float* OutLen = nullptr)
+	{
+		const int32 N = 48;
+		FVector Prev = P[0];
+		float Acc = 0.f;
+		for (int32 I = 1; I <= N; ++I)
+		{
+			const FVector Cur = S6Bez(P, I / static_cast<float>(N));
+			const float Seg = static_cast<float>(FVector::Dist2D(Prev, Cur));
+			if (!OutLen && Acc + Seg >= Dist && Seg > KINDA_SMALL_NUMBER)
+			{
+				return FMath::Lerp(Prev, Cur, (Dist - Acc) / Seg);
+			}
+			Acc += Seg;
+			Prev = Cur;
+		}
+		if (OutLen) { *OutLen = Acc; }
+		return Prev;
+	}
+	/** The costume trunk stands square against a wall: Out is its way out to the room, Along its long axis, pointing
+	 *  to From's side. */
+	void S6TrunkAxes(const FVector& Trunk, const FVector& From, FVector& Out, FVector& Along)
+	{
+		const FVector ToRoom = S6Flat(FVector(4860.f, 0.f, 0.f) - Trunk);
+		Out = FMath::Abs(ToRoom.X) >= FMath::Abs(ToRoom.Y) ? FVector(FMath::Sign(ToRoom.X), 0.f, 0.f) : FVector(0.f, FMath::Sign(ToRoom.Y), 0.f);
+		Along = S6RightOf(Out);
+		if (FVector::DotProduct(Along, S6Flat(From - Trunk)) < 0.f) { Along = -Along; }
+	}
 
 	AScene6Backstage* ActiveS6(UWorld* World)
 	{
@@ -831,12 +893,17 @@ void AScene6Backstage::StartChoke()
 	}
 	ViewStunt(true);
 	UE_LOG(LogScene6, Log, TEXT("S6 choke at %s"), *ChokeAt.ToString());
+	StepChoke(0.f);	// the first frame posed now: no flash of the reference pose
 }
 
 void AScene6Backstage::StepChoke(float Dt)
 {
 	ATakeCharacter* Cole = GetPovCharacter();
-	const float T = StepAge;
+	// The beats are written for 5.2 s; another ChokeSeconds stretches them. Key poses chain through overlapping
+	// windows (S6Win), so each move starts before the last has settled, and the feet step between plants.
+	const float Scale = 5.2f / FMath::Max(ChokeSeconds, 1.f);
+	const float T = StepAge * Scale;
+	const float Tp = (StepAge - Dt) * Scale;
 	const FVector F = ChokeFwd;
 	const FVector R = S6RightOf(F);
 	const FVector G0 = ChokeAt;
@@ -845,35 +912,66 @@ void AScene6Backstage::StepChoke(float Dt)
 	BodyHeadDir = -F;
 	BodyAt = G0 - F * 40.f + S6Z * 13.f;
 
-	// The struggle's strength: full at the grab, fading to nothing as he goes under.
-	const float A = T < 0.45f ? 1.f : FMath::Clamp(1.f - (T - 0.45f) / 2.8f, 0.f, 1.f);
-	const float W1 = FMath::Sin(T * 9.f), W2 = FMath::Sin(T * 13.f + 1.1f), W3 = FMath::Sin(T * 7.f + 2.3f);
+	// The fight in him: up as he's grabbed, in bursts (he fights, tires, fights again), gone by 3 s.
+	const float A = S6Win(T, 0.1f, 0.45f) * (1.f - S6Win(T, 1.7f, 3.0f));
+	const float Burst = FMath::Min(1.3f, 0.5f + 0.5f * (S6Bump(T, 0.7f, 0.22f) + S6Bump(T, 1.45f, 0.2f) + S6Bump(T, 2.15f, 0.25f)));
+	const float AB = A * Burst;
+	// Noise from unrelated frequencies: it never settles into a wobble.
+	const float N1 = 0.6f * FMath::Sin(T * 9.1f) + 0.4f * FMath::Sin(T * 15.7f + 0.4f);
+	const float N2 = 0.6f * FMath::Sin(T * 7.3f + 1.1f) + 0.4f * FMath::Sin(T * 12.9f + 2.0f);
+	const float N3 = 0.6f * FMath::Sin(T * 5.9f + 2.3f) + 0.4f * FMath::Sin(T * 17.3f + 0.7f);
+	const float Pull = S6Win(T, 0.5f, 0.9f);	// Cole's step back, taking him off his balance
 
 	// ---- the guard ----
-	FS6Pose GStand = GR.Stand(G0, F);
-	FS6Pose GChoke = GStand;
-	GChoke.Pelvis = G0 + S6Z * (GR.PelvisH - 5.f) - F * (8.f + 5.f * A * W3);
-	GChoke.Hips = FS6Frame::Lean(F, -8.f + 4.f * A * W1, 5.f * A * W2);
-	GChoke.Chest = FS6Frame::Lean(F, -20.f + 6.f * A * W2, 9.f * A * W3);
-	GChoke.Head = FS6Frame::Lean(F, -32.f + 8.f * A * W1, 12.f * A * W2);
-	const FVector ColeWrist = CR.IsAttached() ? CR.Bone(TEXT("hand_r")) : G0 + S6Z * 140.f;
-	const FVector ColeForearm = CR.IsAttached() ? CR.Bone(TEXT("lowerarm_r")) : G0 + S6Z * 140.f;
-	for (int32 S = 0; S < 2; ++S)
+	const FS6Pose GStand = GR.Stand(G0, F);
+	// Grabbed and fighting it: dragged back onto his heels, both hands clawing at the arm round his throat, twisting,
+	// kicking.
+	FS6Pose GFight = GStand;
 	{
-		const float Side = S == 0 ? -1.f : 1.f;
-		const FVector Grip = S == 0 ? FMath::Lerp(ColeWrist, ColeForearm, 0.25f) : FMath::Lerp(ColeWrist, ColeForearm, 0.75f);
-		GChoke.Hand[S] = Grip + F * 4.f + S6Z * (3.f * A * (S == 0 ? W1 : W2));
-		GChoke.Elbow[S] = G0 + S6Z * 80.f + R * (Side * 60.f) + F * 30.f;
-		const float Kick = A * FMath::Max(0.f, FMath::Sin(T * 8.f + Side * 1.7f));
-		GChoke.Ankle[S] = G0 + R * (Side * (GR.HipHalf + 4.f)) + F * (12.f * A * FMath::Sin(T * 11.f + Side)) + S6Z * (GR.AnkleH + 16.f * Kick);
-		GChoke.Knee[S] = GChoke.Ankle[S] + F * 100.f + S6Z * 40.f;
+		const FVector Twist = S6Yawed(F, 10.f * AB * N3);
+		GFight.Pelvis = G0 + S6Z * (GR.PelvisH - 4.f + 3.f * AB * N2) - F * (10.f + 12.f * Pull + 6.f * AB * N1) + R * (5.f * AB * N2);
+		GFight.Hips = FS6Frame::Lean(Twist, -9.f + 4.f * AB * N1, 6.f * AB * N2);
+		GFight.Chest = FS6Frame::Lean(S6Yawed(Twist, 8.f * AB * N1), -22.f - 4.f * Pull + 7.f * AB * N2, 10.f * AB * N3);
+		GFight.Head = FS6Frame::Lean(F, -30.f + 8.f * AB * N1, 12.f * AB * N2);
+		const FVector ColeWrist = CR.IsAttached() ? CR.Bone(TEXT("hand_r")) : G0 + S6Z * 140.f;
+		const FVector ColeForearm = CR.IsAttached() ? CR.Bone(TEXT("lowerarm_r")) : G0 + S6Z * 140.f;
+		for (int32 S = 0; S < 2; ++S)
+		{
+			const float Side = S == 0 ? -1.f : 1.f;
+			const FVector Grip = FMath::Lerp(ColeWrist, ColeForearm, S == 0 ? 0.3f : 0.75f);
+			GFight.Hand[S] = Grip + F * 4.f - S6Z * (2.f + 4.f * AB * FMath::Max(0.f, S == 0 ? N1 : N2));
+			GFight.Elbow[S] = G0 + S6Z * 80.f + R * (Side * 60.f) + F * 30.f;
+			const float Kick = AB * FMath::Square(FMath::Max(0.f, FMath::Sin(T * 7.7f + Side * 1.9f)));
+			GFight.Ankle[S] = G0 + R * (Side * (GR.HipHalf + 4.f)) - F * (6.f * Pull) + F * (16.f * Kick) + S6Z * (GR.AnkleH + 14.f * Kick);
+			GFight.Knee[S] = GFight.Ankle[S] + F * 100.f + S6Z * 40.f;
+			GFight.Foot[S] = FS6Frame::Lean(F, -12.f * Pull - 25.f * Kick);	// up on his heels, toes kicking
+		}
 	}
-	// Sitting slumped on the floor against Cole's legs, arms limp, head down.
-	FS6Pose GSit = GChoke;
+	// Going under: the knees give, the head drops onto Cole's arm, the arms hang.
+	FS6Pose GLimp = GFight;
+	{
+		GLimp.Pelvis = G0 - F * 26.f + S6Z * (GR.PelvisH - 30.f);
+		GLimp.Hips = FS6Frame::Lean(F, -4.f);
+		GLimp.Chest = FS6Frame::Lean(F, -24.f, 5.f);
+		GLimp.Head = S6Roll(FS6Frame::Lean(F, 22.f), 20.f);
+		const FVector ChestTop = GLimp.Pelvis + GLimp.Chest.Up.GetSafeNormal() * (GR.ShoulderH - GR.PelvisH);
+		for (int32 S = 0; S < 2; ++S)
+		{
+			const float Side = S == 0 ? -1.f : 1.f;
+			const FVector Shoulder = ChestTop + R * (Side * GR.ShoulderHalf);
+			GLimp.Hand[S] = Shoulder - S6Z * (GR.Arm1 + GR.Arm2 - 8.f) + F * 8.f + R * (Side * 6.f);
+			GLimp.Elbow[S] = Shoulder - F * 30.f + R * (Side * 15.f) - S6Z * 20.f;
+			GLimp.Ankle[S] = G0 + R * (Side * (GR.HipHalf + 6.f)) - F * 4.f + S6Z * GR.AnkleH;
+			GLimp.Knee[S] = GLimp.Ankle[S] + F * 100.f + S6Z * 20.f + R * (Side * 10.f);
+			GLimp.Foot[S] = FS6Frame::Lean(F, 0.f);
+		}
+	}
+	// Down on the floor, slumped back against Cole, legs out.
+	FS6Pose GSit = GLimp;
 	GSit.Pelvis = G0 - F * 38.f + S6Z * 16.f;
 	GSit.Hips = FS6Frame::Lean(F, -30.f);
-	GSit.Chest = FS6Frame::Lean(F, -38.f, 6.f);
-	GSit.Head = S6Roll(FS6Frame::Lean(F, -10.f), 25.f);
+	GSit.Chest = FS6Frame::Lean(F, -40.f, 6.f);
+	GSit.Head = S6Roll(FS6Frame::Lean(F, 5.f), 28.f);
 	for (int32 S = 0; S < 2; ++S)
 	{
 		const float Side = S == 0 ? -1.f : 1.f;
@@ -885,80 +983,118 @@ void AScene6Backstage::StepChoke(float Dt)
 	}
 	const FS6Pose GLie = GuardLying(0.8f);
 
-	FS6Pose GP;
-	if (T < 0.45f) { GP = FS6Pose::Lerp(GStand, GChoke, S6Ease((T - 0.08f) / 0.37f)); }
-	else if (T < 3.0f) { GP = GChoke; }
-	else if (T < 4.0f) { GP = FS6Pose::Lerp(GChoke, GSit, S6Ease((T - 3.f) / 1.f)); }
-	else { GP = FS6Pose::Lerp(GSit, GLie, S6Ease((T - 4.f) / (FMath::Max(ChokeSeconds, 4.5f) - 4.f))); }
+	FS6Pose GP = FS6Pose::Lerp(GStand, GFight, S6Win(T, 0.12f, 0.45f));
+	{
+		// The grip slips first, then the knees go.
+		const FS6Pose Before = GP;
+		GP = FS6Pose::Lerp(GP, GLimp, S6Win(T, 2.6f, 3.4f));
+		const float WHands = S6Win(T, 2.3f, 3.0f);
+		for (int32 S = 0; S < 2; ++S)
+		{
+			GP.Hand[S] = FMath::Lerp(Before.Hand[S], GLimp.Hand[S], WHands);
+			GP.Elbow[S] = FMath::Lerp(Before.Elbow[S], GLimp.Elbow[S], WHands);
+		}
+	}
+	GP = FS6Pose::Lerp(GP, GSit, S6Win(T, 3.2f, 4.1f));
+	GP = FS6Pose::Lerp(GP, GLie, S6Win(T, 3.95f, 4.85f));
 	GuardRig.Apply(GP);
 
 	// ---- Cole ----
 	const FVector Neck = GR.Bone(TEXT("neck_02"));
 	const FVector Head = GR.Bone(TEXT("head"));
-	const FVector C0 = G0 - F * 30.f;
-	FS6Pose CChoke = CR.Stand(C0, F);
-	CChoke.Pelvis = C0 + S6Z * (CR.PelvisH - 10.f) - F * (6.f + 3.f * A * W3);
-	CChoke.Hips = FS6Frame::Lean(F, -6.f + 2.f * A * W1);
-	CChoke.Chest = FS6Frame::Lean(F, -4.f + 3.f * A * W2, -4.f);
-	CChoke.Head = S6Roll(FS6Frame::Lean(F, 18.f), -14.f);
-	CChoke.Hand[1] = Neck - R * 12.f + F * 3.f - S6Z * 5.f;		// his right arm round the throat, hand at the far side
-	CChoke.Elbow[1] = Neck + F * 60.f - S6Z * 10.f;				// the elbow under the chin
-	CChoke.Hand[0] = Head - F * 13.f - R * 2.f + S6Z * 2.f;		// the left hand behind the head
-	CChoke.Elbow[0] = C0 + S6Z * 140.f - R * 70.f - F * 10.f;
-	for (int32 S = 0; S < 2; ++S)
+	const FVector Chest = GR.Bone(TEXT("spine_04"));
+	// His places: behind him for the hold, a step back as he pulls him over, down behind him, round to his right
+	// side to lay him back (his head on Cole's left), up beside him.
+	const FVector C0 = G0 - F * 30.f, C1 = G0 - F * 44.f, C2 = G0 - F * 74.f;
+	const FVector Fl = (-R + F * 0.3f).GetSafeNormal();
+	const FVector Rl = S6RightOf(Fl);
+	const FVector C3 = G0 - F * 76.f + R * 52.f;
+	const FVector CEndFeet = G0 - F * 92.f + R * 82.f;
+	const FVector CEndFwd = (S6Flat(BodyAt - F * 30.f) - S6Flat(CEndFeet)).GetSafeNormal();
+	auto Holding = [&](FS6Pose& P)
 	{
-		const float Side = S == 0 ? -1.f : 1.f;
-		CChoke.Ankle[S] = C0 + R * (Side * (CR.HipHalf + 12.f)) - F * (S == 1 ? 22.f : -4.f) + S6Z * CR.AnkleH;
-		CChoke.Knee[S] = CChoke.Ankle[S] + F * 100.f + S6Z * 40.f + R * (Side * 15.f);
-	}
-	// Going down with him: a deep squat, still holding.
-	FS6Pose CSquat = CChoke;
-	CSquat.Pelvis = G0 - F * 78.f + S6Z * (CR.PelvisH * 0.55f);
-	CSquat.Hips = FS6Frame::Lean(F, 25.f);
-	CSquat.Chest = FS6Frame::Lean(F, 38.f);
-	CSquat.Head = FS6Frame::Lean(F, 28.f);
-	for (int32 S = 0; S < 2; ++S)
-	{
-		const float Side = S == 0 ? -1.f : 1.f;
-		CSquat.Ankle[S] = G0 - F * 70.f + R * (Side * (CR.HipHalf + 18.f)) + S6Z * CR.AnkleH;
-		CSquat.Knee[S] = CSquat.Ankle[S] + F * 100.f + S6Z * 30.f + R * (Side * 30.f);
-	}
-	// Up again beside him, looking down at the body.
-	const FVector CEndFeet = G0 - F * 95.f + R * 62.f;
-	const FVector CEndFwd = (S6Flat(BodyAt) - S6Flat(CEndFeet)).GetSafeNormal();
-	FS6Pose CEnd = CR.Stand(CEndFeet + S6Z * (G0.Z - CEndFeet.Z), CEndFwd);
+		P.Hand[1] = Neck - R * 12.f + F * 3.f - S6Z * 5.f;		// his right arm round the throat, hand at the far side
+		P.Elbow[1] = Neck + F * 60.f - S6Z * 10.f;				// the elbow under the chin
+		P.Hand[0] = Head - F * 13.f - R * 2.f + S6Z * 2.f;		// the left hand behind the head
+		P.Elbow[0] = Head - R * 70.f - F * 10.f - S6Z * 10.f;
+	};
+	const FVector CMid = FMath::Lerp(C0, C1, Pull);
+	FS6Pose CHold = CR.Stand(CMid, F);
+	CHold.Pelvis = CMid + S6Z * (CR.PelvisH - 10.f + 2.f * AB * N3) - F * (6.f + 3.f * AB * N1) + R * (3.f * AB * N2);
+	CHold.Hips = FS6Frame::Lean(F, -6.f - 6.f * Pull + 2.f * AB * N1);
+	CHold.Chest = FS6Frame::Lean(S6Yawed(F, -5.f * AB * N3), -4.f - 6.f * Pull + 3.f * AB * N2, -4.f - 4.f * AB * N1);
+	CHold.Head = S6Roll(FS6Frame::Lean(F, 18.f), -14.f);
+	Holding(CHold);
+	// Going down with him, still holding.
+	FS6Pose CSquat = CR.Stand(C2, F);
+	CSquat.Pelvis = C2 + S6Z * (CR.PelvisH * 0.52f);
+	CSquat.Hips = FS6Frame::Lean(F, 28.f);
+	CSquat.Chest = FS6Frame::Lean(F, 34.f);
+	CSquat.Head = FS6Frame::Lean(F, 30.f);
+	Holding(CSquat);
+	// Low at his side, laying him back: the left hand cradles the head down, the right on his chest.
+	FS6Pose CLay = CR.Stand(C3, Fl);
+	CLay.Pelvis = C3 + S6Z * (CR.PelvisH * 0.42f) - Fl * 6.f;
+	CLay.Hips = FS6Frame::Lean(Fl, 32.f);
+	CLay.Chest = FS6Frame::Lean(Fl, 58.f);
+	CLay.Head = FS6Frame::Lean(Fl, 40.f);
+	CLay.Hand[0] = Head - S6Z * 4.f - F * 4.f;
+	CLay.Elbow[0] = C3 - F * 60.f + S6Z * 60.f;
+	CLay.Hand[1] = Chest + S6Z * 12.f;
+	CLay.Elbow[1] = C3 + F * 60.f + S6Z * 60.f;
+	// Up beside him, looking down at the body.
+	FS6Pose CEnd = CR.Stand(CEndFeet, CEndFwd);
+	CEnd.Chest = FS6Frame::Lean(CEndFwd, 6.f);
 	CEnd.Head = FS6Frame::Lean(CEndFwd, 25.f);
 
-	FS6Pose CP;
-	if (T < 0.45f) { CP = FS6Pose::Lerp(ColeStartPose, CChoke, S6Ease(T / 0.45f)); }
-	else if (T < 3.0f) { CP = CChoke; }
-	else if (T < 4.0f) { CP = FS6Pose::Lerp(CChoke, CSquat, S6Ease((T - 3.f) / 1.f)); }
-	else if (T < 4.5f) { CP = CSquat; }
-	else { CP = FS6Pose::Lerp(CSquat, CEnd, S6Ease((T - 4.5f) / FMath::Max(ChokeSeconds - 4.5f, 0.2f))); }
-	if (T >= 3.0f && T < 4.5f)
+	FS6Pose CP = FS6Pose::Lerp(ColeStartPose, CHold, S6Win(T, 0.f, 0.42f));
+	CP = FS6Pose::Lerp(CP, CSquat, S6Win(T, 3.0f, 4.0f));
+	CP = FS6Pose::Lerp(CP, CLay, S6Win(T, 3.85f, 4.6f));
+	CP = FS6Pose::Lerp(CP, CEnd, S6Win(T, 4.65f, 5.2f));
+	// The feet step from place to place (right foot back first on the pull).
 	{
-		// The hands stay on him while he sinks.
-		CP.Hand[1] = Neck - R * 12.f + F * 3.f - S6Z * 5.f;
-		CP.Hand[0] = Head - F * 13.f + S6Z * 2.f;
+		const float Sp = CR.HipHalf;
+		const FVector Ah = S6Z * CR.AnkleH;
+		const FVector Re = S6RightOf(CEndFwd);
+		const FS6Plant PL[] = {
+			{ 0.00f, 0.30f, C0 - R * (Sp + 12.f) + F * 4.f + Ah },
+			{ 0.62f, 0.86f, C1 - R * (Sp + 14.f) + F * 2.f + Ah },
+			{ 3.05f, 3.45f, C2 - R * (Sp + 20.f) + Ah },
+			{ 3.95f, 4.30f, C3 - Rl * (Sp + 16.f) + Ah },
+			{ 4.85f, 5.15f, CEndFeet - Re * (Sp + 2.f) + Ah } };
+		const FS6Plant PR[] = {
+			{ 0.10f, 0.42f, C0 + R * (Sp + 12.f) - F * 22.f + Ah },
+			{ 0.50f, 0.72f, C1 + R * (Sp + 12.f) - F * 26.f + Ah },
+			{ 3.15f, 3.55f, C2 + R * (Sp + 20.f) + Ah },
+			{ 4.10f, 4.45f, C3 + Rl * (Sp + 16.f) + Ah },
+			{ 4.75f, 5.05f, CEndFeet + Re * (Sp + 2.f) + Ah } };
+		CP.Ankle[0] = S6Foot(ColeStartPose.Ankle[0], PL, UE_ARRAY_COUNT(PL), T, 12.f);
+		CP.Ankle[1] = S6Foot(ColeStartPose.Ankle[1], PR, UE_ARRAY_COUNT(PR), T, 12.f);
+	}
+	FVector Face = CP.Hips.Fwd.GetSafeNormal2D();
+	if (Face.IsNearlyZero()) { Face = F; }
+	const FVector RN = S6RightOf(Face);
+	for (int32 S = 0; S < 2; ++S)
+	{
+		const float Side = S == 0 ? -1.f : 1.f;
+		CP.Knee[S] = CP.Ankle[S] + Face * 100.f + S6Z * 30.f + RN * (Side * 25.f);
 	}
 	// Cole's capsule follows his feet (the camera and the next beat start where he ends).
 	if (Cole)
 	{
-		const FVector Feet = T < 0.45f ? FMath::Lerp(ColeFrom, C0, S6Ease(T / 0.45f))
-			: T < 4.5f ? C0 : FMath::Lerp(C0, CEndFeet + S6Z * (G0.Z - CEndFeet.Z), S6Ease((T - 4.5f) / FMath::Max(ChokeSeconds - 4.5f, 0.2f)));
-		const FVector Face = T < 4.5f ? F : CEndFwd;
+		const FVector Feet = (CP.Ankle[0] + CP.Ankle[1]) * 0.5f;
 		const float Half = Cole->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 		Cole->SetActorLocationAndRotation(FVector(Feet.X, Feet.Y, G0.Z + Half + 1.f), FRotator(0.f, S6Yaw2D(Face), 0.f),
 			false, nullptr, ETeleportType::TeleportPhysics);
 	}
 	ColeRig.Apply(CP);
 
-	if (T >= 3.1f && T - Dt < 3.1f)
+	if (T >= 3.95f && Tp < 3.95f)
 	{
 		const FVector At = G0;
 		Play(TArray<FName>{ TEXT("sfx_thud") }, &At, 0.5f);
 	}
-	if (T >= ChokeSeconds)
+	if (StepAge >= ChokeSeconds)
 	{
 		Step = EStep::Down;
 		StepAge = 0.f;
@@ -981,7 +1117,12 @@ void AScene6Backstage::StepDown(float Dt)
 {
 	if (GuardRig.IsAttached())
 	{
-		GuardRig.Apply(GuardLying(0.8f));
+		// Out cold, still breathing.
+		FS6Pose P = GuardLying(0.8f);
+		const float B = FMath::Sin(StepAge * 1.7f);
+		P.Chest = S6Tilt(P.Chest, 2.f * B);
+		P.Head = S6Tilt(P.Head, 1.f * B);
+		GuardRig.Apply(P);
 	}
 }
 
@@ -999,99 +1140,154 @@ void AScene6Backstage::StartDrag()
 	Step = EStep::Drag;
 	StepAge = 0.f;
 	Objective = TEXT("");
-	// The path: his pelvis slides headfirst toward the trunk, stopping short enough that Cole (walking backwards
-	// ahead of the guard's head) is still clear of the trunk, then he heaves him in from beside it.
+	// Where he starts from: he steps over to the head end and bends to take him under the arms.
+	ColeFrom = Cole->GetMesh()->GetComponentLocation();
+	ColeFromFwd = Cole->GetActorForwardVector().GetSafeNormal2D();
+	ColeStartPose = ColeRig.Stand(ColeFrom, ColeFromFwd);
+	// The path his shoulders take (Cole walks backwards with them, the body trails like a sled): out along the body,
+	// round, and in alongside the trunk on the room side, so the heave goes over the trunk's long rim.
+	FVector Out, Along;
+	S6TrunkAxes(TrunkPoint, BodyAt, Out, Along);
+	const FVector H0 = BodyHeadDir.GetSafeNormal2D();
+	const FVector L0 = S6Flat(BodyAt) + H0 * (GuardRig.ShoulderH - GuardRig.PelvisH);
+	const FVector LEnd = S6Flat(TrunkPoint) + Out * 72.f - Along * 18.f;
 	DragPath.Reset();
-	const FVector From = S6Flat(BodyAt);
-	const FVector To = S6Flat(TrunkPoint);
-	const FVector Dir = (To - From).GetSafeNormal();
-	const FVector Stop = To - Dir * 190.f;
-	DragPath.Add(From);
-	DragPath.Add(Stop);
-	DragLen = static_cast<float>(FVector::Dist(From, Stop));
+	DragPath.Add(L0);
+	DragPath.Add(L0 + H0 * 70.f);
+	DragPath.Add(LEnd + Along * 100.f);
+	DragPath.Add(LEnd);
+	S6BezAlong(DragPath, 0.f, &DragLen);
 	GaitPhase = 0.f;
+	LastColeFeet = ColeFrom;
 	bLidOpen = true;
 	LidAge = 0.f;
 	Play(DragCues, &BodyAt, 0.8f);
-	// A wide shot from the room's side of the path.
-	const FVector Mid = (From + To) * 0.5f + S6Z * BodyAt.Z;
-	FVector Perp = S6RightOf(Dir);
-	if (FVector::DotProduct(Perp, FVector(4860.f, 0.f, 0.f) - Mid) < 0.f) { Perp = -Perp; }
+	// A wide shot from the room's side, framing the body where it lies and the trunk.
+	const FVector Focus = (S6Flat(BodyAt) + LEnd) * 0.5f + S6Z * (BodyAt.Z + 30.f);
+	FVector Perp = S6RightOf((LEnd - S6Flat(BodyAt)).GetSafeNormal2D());
+	if (Perp.IsNearlyZero()) { Perp = Out; }
+	if (FVector::DotProduct(Perp, FVector(4860.f, 0.f, 0.f) - Focus) < 0.f) { Perp = -Perp; }
+	const float Span = static_cast<float>(FVector::Dist2D(BodyAt, LEnd));
+	FVector CamAt = Focus + Perp * FMath::Clamp(Span * 0.9f + 150.f, 380.f, 520.f) + S6Z * 240.f;
+	{
+		FHitResult Hit;
+		FCollisionQueryParams Q(SCENE_QUERY_STAT(S6DragCam), false);
+		Q.AddIgnoredActor(this); Q.AddIgnoredActor(Cole);
+		if (G.Body) { Q.AddIgnoredActor(G.Body); }
+		const FVector Eye = Focus + S6Z * 120.f;
+		if (GetWorld()->LineTraceSingleByChannel(Hit, Eye, CamAt, ECC_Camera, Q))
+		{
+			CamAt = Eye + (CamAt - Eye).GetSafeNormal() * FMath::Max(150.f, Hit.Distance - 30.f);
+		}
+	}
 	if (StuntCam)
 	{
-		const FVector CamAt = Mid + Perp * 420.f + S6Z * 230.f - Dir * 60.f;
-		StuntCam->SetActorLocationAndRotation(CamAt, ((Mid + S6Z * 40.f) - CamAt).Rotation());
+		StuntCam->SetActorLocationAndRotation(CamAt, ((Focus - S6Z * 10.f) - CamAt).Rotation());
 	}
 	ViewStunt(true);
+	StepDrag(0.f);
 }
 
 void AScene6Backstage::StepDrag(float Dt)
 {
 	ATakeCharacter* Cole = GetPovCharacter();
-	if (DragPath.Num() < 2)
+	if (DragPath.Num() < 4)
 	{
 		Step = EStep::ToPanel;
 		return;
 	}
 	const float T = StepAge;
-	const float Turn = 0.6f;			// he swings the body round to head for the trunk
-	const float MoveT = DragLen / FMath::Max(DragSpeed, 10.f);
-	const float Heave = 1.4f;			// up and into the trunk
-	const FVector Dir = (DragPath[1] - DragPath[0]).GetSafeNormal();
+	const FS6Rig& GR = GuardRig;
 	const float Floor = static_cast<float>(BodyAt.Z) - 13.f;
+	const FVector Tr = S6Flat(TrunkPoint) + S6Z * Floor;
+	FVector Out, Along;
+	S6TrunkAxes(TrunkPoint, DragPath[0], Out, Along);
+	const float Sp = ColeRig.HipHalf;
+	const FVector Ah = S6Z * ColeRig.AnkleH;
 
-	float K = 0.f;		// 0..1 along the path
-	float Lift = 0.f;	// the torso's lift off the floor, 0..1
-	FVector HeadDir = Dir;
-	if (T < Turn)
-	{
-		const float U = S6Ease(T / Turn);
-		HeadDir = FS6Frame::Lerp(FS6Frame(BodyHeadDir, S6Z), FS6Frame(Dir, S6Z), U).Fwd.GetSafeNormal2D();
-		Lift = U;
-	}
-	else
-	{
-		K = FMath::Clamp((T - Turn) / FMath::Max(MoveT, 0.2f), 0.f, 1.f);
-		Lift = 1.f;
-	}
-	const float HeaveK = T > Turn + MoveT ? S6Ease((T - Turn - MoveT) / Heave) : 0.f;
-	FVector Pelvis = FMath::Lerp(DragPath[0], DragPath[1], K) + S6Z * (Floor + 13.f);
+	// The beats: the reach (he steps to the head end and takes him under the arms), the lift, the drag (the
+	// shoulders along the path, the body trailing), the heave (the torso over the rim, the hips, the legs last).
+	const float Lsp = GR.ShoulderH - GR.PelvisH;
+	const FVector GrabSpot = DragPath[0] + BodyHeadDir.GetSafeNormal2D() * 52.f;
+	const float Reach = FMath::Clamp(static_cast<float>(FVector::Dist2D(ColeFrom, GrabSpot)) / 170.f, 0.6f, 1.2f);
+	const float Move0 = Reach + 0.25f;
+	const float MoveT = FMath::Max(1.25f * DragLen / FMath::Max(DragSpeed, 10.f), 0.4f);
+	const float Heave0 = Move0 + MoveT;
+	const float HeaveT = 1.6f;
+	const float Lift = S6Win(T, Reach - 0.05f, Reach + 0.45f);
+	const float Gait = S6Win(T, Move0, Move0 + 0.35f) * (1.f - S6Win(T, Heave0 - 0.35f, Heave0));
 
-	// ---- the body: back on the floor, his shoulders lifted, heels trailing ----
-	const float LiftDeg = 35.f * Lift;
-	const FS6Frame Flat0(S6Z, HeadDir);
-	FS6Pose GP;
-	GP.Pelvis = Pelvis;
-	GP.Hips = S6Tilt(Flat0, LiftDeg * 0.5f);
-	GP.Chest = S6Tilt(Flat0, LiftDeg);
-	GP.Head = S6Roll(S6Tilt(GP.Chest, 30.f), 20.f);
-	const FVector Rb = FVector::CrossProduct(GP.Hips.Up, GP.Hips.Fwd).GetSafeNormal();
+	// The sled: the shoulders go where Cole pulls them, the pelvis trails at its length behind.
+	if (T > Move0)
+	{
+		const FVector L = S6BezAlong(DragPath, DragLen * S6Ease((T - Move0) / MoveT));
+		const FVector D = (L - S6Flat(BodyAt)).GetSafeNormal2D();
+		if (!D.IsNearlyZero())
+		{
+			BodyHeadDir = D;
+			const FVector P = L - D * Lsp;
+			BodyAt = FVector(P.X, P.Y, BodyAt.Z);
+		}
+	}
+	const FVector H = BodyHeadDir.GetSafeNormal2D();
+
+	// ---- the body: shoulders up in Cole's hands, head lolling back, arms and heels trailing ----
+	const float Bob = Gait * FMath::Sin(2.f * GaitPhase);	// twice a stride
+	const FVector Pelvis = FVector(BodyAt.X, BodyAt.Y, Floor + 13.f);
+	const FS6Frame Flat0(S6Z, H);
+	FS6Pose GDrag;
+	GDrag.Pelvis = Pelvis + S6Z * (2.f + 1.5f * Bob);
+	GDrag.Hips = S6Tilt(Flat0, 17.f);
+	GDrag.Chest = S6Tilt(Flat0, 35.f + 3.f * Bob);
+	GDrag.Head = S6Roll(S6Tilt(GDrag.Chest, -22.f + 6.f * Bob), 18.f + 7.f * Gait * FMath::Sin(GaitPhase));
+	const FVector Rb = FVector::CrossProduct(GDrag.Hips.Up, GDrag.Hips.Fwd).GetSafeNormal();
 	for (int32 S = 0; S < 2; ++S)
 	{
 		const float Side = S == 0 ? -1.f : 1.f;
-		GP.Hand[S] = S6Flat(Pelvis) + S6Z * (Floor + 6.f) + Rb * (Side * 30.f) + HeadDir * 22.f;
-		GP.Elbow[S] = GP.Hand[S] + Rb * (Side * 40.f) + S6Z * 10.f;
-		GP.Ankle[S] = S6Flat(Pelvis) + S6Z * (Floor + GuardRig.AnkleH) - HeadDir * (GuardRig.Leg1 + GuardRig.Leg2 - 8.f) + Rb * (Side * 16.f);
-		GP.Knee[S] = GP.Ankle[S] + S6Z * 100.f + HeadDir * 40.f;
-		GP.Foot[S] = FS6Frame((S6Z + Rb * (Side * 0.4f)).GetSafeNormal(), HeadDir);
+		GDrag.Hand[S] = S6Flat(Pelvis) + S6Z * (Floor + 6.f) + Rb * (Side * 32.f) + H * (18.f - 5.f * Gait * FMath::Sin(GaitPhase + Side));
+		GDrag.Elbow[S] = GDrag.Hand[S] + Rb * (Side * 40.f) + S6Z * 10.f;
+		GDrag.Ankle[S] = S6Flat(Pelvis) + S6Z * (Floor + GR.AnkleH) - H * (GR.Leg1 + GR.Leg2 - 8.f)
+			+ Rb * (Side * 16.f + 3.f * Gait * FMath::Sin(GaitPhase));
+		GDrag.Knee[S] = GDrag.Ankle[S] + S6Z * 100.f + H * 40.f;
+		GDrag.Foot[S] = FS6Frame((S6Z + Rb * (Side * 0.5f)).GetSafeNormal(), H);
 	}
-	if (HeaveK > 0.f)
+	FS6Pose GP = FS6Pose::Lerp(GuardLying(0.8f), GDrag, Lift);
+	if (T > Heave0)
 	{
-		// Over the rim: lifted, swung into the trunk, folded.
-		FS6Pose In = GP;
-		const FVector Into = S6Flat(TrunkPoint) + S6Z * (Floor + 30.f);
-		In.Pelvis = Into + S6Z * (55.f * FMath::Sin(UE_PI * HeaveK));
-		In.Hips = FS6Frame(S6Z, HeadDir);
-		In.Chest = S6Tilt(FS6Frame(S6Z, HeadDir), 50.f);
-		In.Head = S6Roll(S6Tilt(In.Chest, 40.f), 25.f);
+		// In the trunk: on his back along it, head at the far end, knees up under the lid.
+		FS6Pose GIn;
+		const FS6Frame InFlat(S6Z, -Along);
+		GIn.Pelvis = Tr + Along * 22.f + S6Z * 20.f;
+		GIn.Hips = S6Tilt(InFlat, 10.f);
+		GIn.Chest = S6Tilt(InFlat, 22.f);
+		GIn.Head = S6Roll(S6Tilt(GIn.Chest, 20.f), 30.f);
+		const FVector Ri = FVector::CrossProduct(GIn.Hips.Up, GIn.Hips.Fwd).GetSafeNormal();
 		for (int32 S = 0; S < 2; ++S)
 		{
 			const float Side = S == 0 ? -1.f : 1.f;
-			In.Ankle[S] = Into - HeadDir * 30.f + S6Z * 45.f + Rb * (Side * 14.f);
-			In.Knee[S] = In.Ankle[S] + S6Z * 100.f;
-			In.Hand[S] = Into + Rb * (Side * 25.f) + HeadDir * 10.f;
+			GIn.Hand[S] = GIn.Pelvis + Ri * (Side * 22.f) - Along * 10.f + S6Z * 5.f;
+			GIn.Elbow[S] = GIn.Hand[S] + Ri * (Side * 30.f) + S6Z * 10.f;
+			GIn.Ankle[S] = Tr + Along * 58.f + Ri * (Side * 12.f) + S6Z * (10.f + GR.AnkleH);
+			GIn.Knee[S] = GIn.Ankle[S] + S6Z * 100.f - Along * 20.f + Ri * (Side * 10.f);
+			GIn.Foot[S] = FS6Frame::Lean(Along, 0.f);
 		}
-		GP = FS6Pose::Lerp(GP, In, HeaveK);
+		const float U = T - Heave0;
+		const float WT = S6Win(U, 0.1f, 0.85f);		// the torso over the rim first (he sits up in Cole's arms)
+		const float WP = S6Win(U, 0.25f, 1.1f);		// then the hips
+		const float WL = S6Win(U, 0.6f, 1.45f);		// the legs last, swung in
+		const FS6Pose From = GP;
+		GP.Pelvis = FMath::Lerp(From.Pelvis, GIn.Pelvis, WP) + S6Z * (60.f * FMath::Sin(UE_PI * WP));
+		GP.Hips = FS6Frame::Lerp(From.Hips, GIn.Hips, WP);
+		GP.Chest = S6Tilt(FS6Frame::Lerp(From.Chest, GIn.Chest, WT), 40.f * FMath::Sin(UE_PI * WT));
+		GP.Head = S6Tilt(FS6Frame::Lerp(From.Head, GIn.Head, WT), 30.f * FMath::Sin(UE_PI * WT));
+		for (int32 S = 0; S < 2; ++S)
+		{
+			GP.Hand[S] = FMath::Lerp(From.Hand[S], GIn.Hand[S], WT) + S6Z * (40.f * FMath::Sin(UE_PI * WT));
+			GP.Elbow[S] = FMath::Lerp(From.Elbow[S], GIn.Elbow[S], WT);
+			GP.Ankle[S] = FMath::Lerp(From.Ankle[S], GIn.Ankle[S], WL) + S6Z * (62.f * FMath::Sin(UE_PI * WL));
+			GP.Knee[S] = FMath::Lerp(From.Knee[S], GIn.Knee[S], WL);
+			GP.Foot[S] = FS6Frame::Lerp(From.Foot[S], GIn.Foot[S], WL);
+		}
 	}
 	GuardRig.Apply(GP);
 	if (G.Body)
@@ -1100,47 +1296,98 @@ void AScene6Backstage::StepDrag(float Dt)
 	}
 
 	// ---- Cole: bent over him, hands under his arms, walking backwards ----
-	const FVector ShL = GuardRig.Bone(TEXT("upperarm_l")), ShR = GuardRig.Bone(TEXT("upperarm_r"));
+	const FVector ShL = GR.Bone(TEXT("upperarm_l")), ShR = GR.Bone(TEXT("upperarm_r"));
 	const FVector ShMid = (ShL + ShR) * 0.5f;
-	const FVector Face = -HeadDir;
-	FVector CFeet = S6Flat(ShMid) + HeadDir * 52.f + S6Z * Floor;
-	if (HeaveK > 0.f)
-	{
-		// He sidesteps to the trunk's front corner while he swings the body over the rim.
-		const FVector EndFeet = S6Flat(DragPath[1]) + Dir * 100.f;
-		// The side toward the room: dragged in from the north, "right" was through the east wall and he ended up stuck.
-		FVector Side = S6RightOf(Dir);
-		if (FVector::DotProduct(Side, FVector(4860.f, 0.f, 0.f) - S6Flat(TrunkPoint)) < 0.f) { Side = -Side; }
-		const FVector Beside = S6Flat(TrunkPoint) - Dir * 95.f + Side * 80.f;
-		CFeet = FMath::Lerp(EndFeet, Beside, HeaveK) + S6Z * Floor;
-	}
-	FS6Pose CP = ColeRig.Stand(CFeet, Face, 18.f + 10.f * (1.f - HeaveK));
-	CP.Hips = FS6Frame::Lean(Face, 22.f - 12.f * HeaveK);
-	CP.Chest = FS6Frame::Lean(Face, 52.f - 25.f * HeaveK);
-	CP.Head = FS6Frame::Lean(Face, 30.f);
-	CP.Pelvis += HeadDir * 10.f;
+	const FVector Face = -H;
 	const FVector Cr = S6RightOf(Face);
+	const FVector CFeet = S6Flat(ShMid) + H * 52.f + S6Z * Floor;
+	FS6Pose CDrag = ColeRig.Stand(CFeet, Face, FMath::Lerp(40.f, 28.f, Lift) + 2.f * FMath::Abs(Bob));
+	CDrag.Hips = FS6Frame::Lean(Face, FMath::Lerp(30.f, 22.f, Lift));
+	CDrag.Chest = FS6Frame::Lean(Face, FMath::Lerp(62.f, 50.f, Lift) + 4.f * Bob);
+	CDrag.Head = FS6Frame::Lean(Face, 28.f);
+	CDrag.Pelvis += H * 10.f;
 	for (int32 S = 0; S < 2; ++S)
 	{
 		const float Side = S == 0 ? -1.f : 1.f;
 		// They face each other but his right is the guard's right (the guard lies face up): left hand, left armpit.
-		const FVector Pit = (S == 0 ? ShL : ShR) - S6Z * 6.f - HeadDir * 6.f;
-		CP.Hand[S] = Pit;
-		CP.Elbow[S] = CFeet + S6Z * 110.f + Cr * (Side * 70.f);
+		CDrag.Hand[S] = (S == 0 ? ShL : ShR) - S6Z * 6.f - H * 6.f;
+		CDrag.Elbow[S] = CFeet + S6Z * 110.f + Cr * (Side * 70.f);
 	}
-	const float Moved = static_cast<float>(FVector::Dist2D(CFeet, LastColeFeet));
-	LastColeFeet = CFeet;
-	if (T > Turn) { GaitPhase -= FMath::Min(Moved, 40.f) / 40.f * UE_PI; }
-	LegsWalk(CP, ColeRig, CFeet, Face, GaitPhase, (T > Turn && HeaveK <= 0.f) ? 20.f : 0.f, 10.f);
+	FS6Pose CP = FS6Pose::Lerp(ColeStartPose, CDrag, S6Win(T, 0.1f * Reach, Reach));
+	if (T <= Reach)
+	{
+		// Two steps over to the head end.
+		const FS6Plant PL[] = { { 0.f, 0.55f * Reach, GrabSpot + S6Z * Floor - Cr * (Sp + 10.f) + Ah } };
+		const FS6Plant PR[] = { { 0.35f * Reach, Reach, GrabSpot + S6Z * Floor + Cr * (Sp + 10.f) + Ah } };
+		CP.Ankle[0] = S6Foot(ColeStartPose.Ankle[0], PL, 1, T, 12.f);
+		CP.Ankle[1] = S6Foot(ColeStartPose.Ankle[1], PR, 1, T, 12.f);
+		LastColeFeet = CFeet;
+	}
+	else if (T <= Heave0)
+	{
+		// Backwards, the stride measured by the ground he covers, so the feet don't skate.
+		const float Moved = static_cast<float>(FVector::Dist2D(CFeet, LastColeFeet));
+		LastColeFeet = CFeet;
+		GaitPhase -= FMath::Min(Moved, 40.f) / 40.f * UE_PI;
+		LegsWalk(CP, ColeRig, CFeet, Face, GaitPhase, 20.f * Gait, 10.f);
+	}
+	else
+	{
+		// The heave: round to the trunk's side, the torso up and over in both arms, then his hands to the knees to tip
+		// the legs in, and up.
+		const float U = T - Heave0;
+		const FVector FaceIn = -Out;
+		const FVector Ci = S6RightOf(FaceIn);
+		const FVector Stance1 = Tr + Out * 112.f - Along * 20.f;
+		const FVector Stance2 = Tr + Out * 76.f + Along * 20.f;
+		const FVector Stance = FMath::Lerp(Stance1, Stance2, S6Win(U, 0.5f, 0.95f));
+		const float Rise = S6Win(U, 0.95f, 1.6f);
+		FS6Pose CH = ColeRig.Stand(Stance, FaceIn, FMath::Lerp(36.f, 6.f, Rise));
+		CH.Hips = FS6Frame::Lean(FaceIn, FMath::Lerp(28.f, 6.f, Rise));
+		CH.Chest = FS6Frame::Lean(FaceIn, FMath::Lerp(48.f, 12.f, Rise) - 12.f * S6Bump(U, 0.5f, 0.2f));	// the heave
+		CH.Head = FS6Frame::Lean(FaceIn, FMath::Lerp(25.f, 30.f, Rise));
+		const bool bSwap = FVector::DotProduct(ShL - ShR, Ci) > 0.f;	// his left hand takes the pit on his left
+		const FVector KnL = GR.Bone(TEXT("calf_l")), KnR = GR.Bone(TEXT("calf_r"));
+		const float ToKnees = S6Win(U, 0.65f, 0.95f);
+		const float Off = S6Win(U, 1.25f, 1.6f);
+		for (int32 S = 0; S < 2; ++S)
+		{
+			const float Side = S == 0 ? -1.f : 1.f;
+			const bool bL = (S == 0) != bSwap;
+			const FVector Pit = (bL ? ShL : ShR) - S6Z * 6.f;
+			const FVector Knee = (bL ? KnL : KnR) + S6Z * 6.f;
+			const FVector Hd = FMath::Lerp(Pit, Knee, ToKnees) + S6Z * (25.f * FMath::Sin(UE_PI * ToKnees));
+			CH.Hand[S] = FMath::Lerp(Hd, CH.Hand[S], Off);
+			CH.Elbow[S] = Stance + S6Z * 110.f + Ci * (Side * 70.f);
+		}
+		CP = FS6Pose::Lerp(CP, CH, S6Win(U, 0.f, 0.35f));
+		const FVector Ce = S6RightOf(-H);
+		const FS6Plant PL[] = { { 0.0f, 0.32f, Stance1 - Ci * (Sp + 12.f) + Ah }, { 0.55f, 0.85f, Stance2 - Ci * (Sp + 12.f) + Ah } };
+		const FS6Plant PR[] = { { 0.12f, 0.45f, Stance1 + Ci * (Sp + 12.f) + Ah }, { 0.68f, 0.98f, Stance2 + Ci * (Sp + 12.f) + Ah } };
+		CP.Ankle[0] = S6Foot(LastColeFeet - Ce * (Sp + 10.f) + Ah, PL, 2, U, 12.f);
+		CP.Ankle[1] = S6Foot(LastColeFeet + Ce * (Sp + 10.f) + Ah, PR, 2, U, 12.f);
+	}
+	FVector CFace = CP.Hips.Fwd.GetSafeNormal2D();
+	if (CFace.IsNearlyZero()) { CFace = Face; }
+	if (T <= Reach || T > Heave0)
+	{
+		const FVector RN = S6RightOf(CFace);
+		for (int32 S = 0; S < 2; ++S)
+		{
+			const float Side = S == 0 ? -1.f : 1.f;
+			CP.Knee[S] = CP.Ankle[S] + CFace * 100.f + S6Z * 30.f + RN * (Side * 25.f);
+		}
+	}
 	if (Cole)
 	{
+		const FVector Feet = (CP.Ankle[0] + CP.Ankle[1]) * 0.5f;
 		const float Half = Cole->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
-		Cole->SetActorLocationAndRotation(FVector(CFeet.X, CFeet.Y, Floor + Half + 1.f), FRotator(0.f, S6Yaw2D(Face), 0.f),
+		Cole->SetActorLocationAndRotation(FVector(Feet.X, Feet.Y, Floor + Half + 1.f), FRotator(0.f, S6Yaw2D(CFace), 0.f),
 			false, nullptr, ETeleportType::TeleportPhysics);
 	}
 	ColeRig.Apply(CP);
 
-	if (T >= Turn + MoveT + Heave)
+	if (T >= Heave0 + HeaveT)
 	{
 		GuardRig.Detach();
 		if (G.Body) { G.Body->SetActorHiddenInGame(true); }

@@ -1872,3 +1872,24 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
 - **Went wrong / not seen:** the first version used a curved band that sank into the face and pale masks that matched
   pale skin; the slab and the black/gold/red palette replaced them after one capture. Only three queue guests were
   looked at, in the editor; the band, the staff, the guards' glasses and the seated hall have not been seen with masks.
+
+## Nov 16 01:55 — Scene 6 takedown and body drag re-choreographed (Marwan: "make them look good and natural")
+- **Found:** in the stunts the bodies a player actually sees never moved. The rig drove the hidden base mesh, but Cole's
+  visible body (his cast member's copied hero body) and the guard's costume shells follow that mesh, and Unreal does
+  not pass a leader pose down a chain. Cole stood upright through the drag with a hand to his headset; a standing
+  guard's uniform was left behind while the mannequin lay on the floor.
+- **Changed (`Scene6Rig.cpp`):** while the rig is on, every body layer on the actor follows the poseable directly and
+  gets its old leader back afterwards. Each frame starts from the reference pose (limb twist no longer creeps), and the
+  elbows and knees twist so they bend on their own hinge instead of sideways.
+- **Changed (`Scene6Backstage.cpp`):** the choke-hold is layered beats with overlapping windows: the lunge (feet step,
+  not slide), the guard dragged back onto his heels clawing at the arm, struggle in bursts that fade, the grip slipping
+  before the knees give, Cole sinking with him, moving round to his side to lay him back (hand under the head), standing.
+  The drag: Cole steps over and bends to take him under the arms, walks backwards with strides measured by the ground
+  covered, and the body trails his hands like a sled along a curve that ends beside the trunk's long side. The
+  head lolls and the heels drag in time with the steps. The heave goes torso first, then hips, then legs (his hands
+  move to the knees). The unconscious guard breathes.
+  A new wide drag camera frames the body and the trunk.
+- **Agents:** one Claude Opus 5.5 session; Live Coded once; slow-motion PIE captures (`slomo 0.3`, frames timed by
+  game time) before and after, on the shared editor lock.
+- **Not seen / for Marwan's QA:** the feel at full speed; the choke from angles other than the side camera; a drag
+  started from somewhere other than the lure spot.
