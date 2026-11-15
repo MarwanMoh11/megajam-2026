@@ -1405,3 +1405,14 @@ mirror. It then reaches spine's PRINT IT end card. Standing still lets the fire 
   inside the body. The body is now hidden for that shot.
 
 Max in the car is s2's seated clerk. The C++ fixes go in at 18:10.
+
+## Nov 15, 18:05: Scene 5 finished after the 17:19 restart (s5-auditorium)
+- **Changed:** the Scene 5 audio is in `/Game/Take/Audio/Script/S5` (looping score, timpani, lights cut, projector,
+  maglock, and the voices of Pendleton, Vance, the usher and the guard). The overlay was re-run on the 17:19 build and
+  the level saved (766d709). The door lamp's red wall-wash, compiled at this restart, shows at the keypad.
+- **Checked in play:** from `Reel.Script.Jump 5` the full run plays: the speech in Pendleton's spot (the real 16 s voice
+  now sets its length, and Space skips it), the blackout and film, the sneak HUD, the door, Vance's line, and the cut to
+  Cole in Scene 6. A second run walked Vance through the guard's torch off the beat: SEEN filled, the blooper card
+  played, and the retake opened at the blackout with the film already running.
+- **Went wrong:** the first lock acquire died on a race over the queue's mutex file (PermissionError on
+  `editor.queue.mtx`); retrying kept the queue place.
