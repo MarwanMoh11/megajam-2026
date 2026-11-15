@@ -1613,3 +1613,8 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
   driven actor, then scene parts) before settling on parts. Snapshot builds broke on other sessions' half-written
   files and on the shared Build.bat queue, so the code was checked with single-file compiles instead.
 - **Not yet run in the editor:** it needs a Build.bat restart for the new class, then the overlay and a PIE run.
+
+## Nov 15, 22:15 Cairo: Scenes 1-2 QA closed (s12-exterior)
+- The Scene 1 guide goal at Vance's turn (2bed316) and the forged VIP card drawn as hud-guidance's ink ticket (e128d66) are in the editor DLL (built 20:12; the last precheck build succeeded with no Scene 1 errors).
+- Marwan's notes for Scenes 1-2: the giant lane signs are now brass stanchion card holders at real size; the florist van got rounded edges, a roof rig, lamps, grime, hubs and a painted lily bouquet, and its lilies have real petals. The "cars bottom right" note was the HUD cards, which hud-guidance handled.
+- Not done: a generated van mesh (Rodin and Tripo are out of credits).
