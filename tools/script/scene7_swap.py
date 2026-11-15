@@ -95,10 +95,9 @@ def place(surf, bm):
         actor = eas.spawn_actor_from_class(unreal.Scene7Swap, SWAP_LOC, unreal.Rotator(0.0, 0.0, SWAP_YAW))
     actor.set_actor_label(LABEL)
     actor.set_actor_location_and_rotation(SWAP_LOC, unreal.Rotator(0.0, 0.0, SWAP_YAW), False, False)
-    actor.set_editor_property("tags", [unreal.Name("script_s7"), unreal.Name("s7_swap")])
+    actor.set_editor_property("tags", [unreal.Name("s7_swap")])   # not script_s7: scene7.py clears that tag
     actor.set_editor_property("surface_material", surf)
     actor.set_editor_property("beam_material", bm)
-    actor.rerun_construction_scripts()
     return actor
 
 
