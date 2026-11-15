@@ -1783,3 +1783,12 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
 ## Nov 16, ~00:05 Cairo: Scene 8 start faces the east door
 - **Changed:** `S8_StartSpot` turned to yaw 0 (`START_YAW` in scene8.py), so Vance faces the door he runs out of and the follow camera sits in the room behind him instead of against the monitor wall (the 22:53 look had it tight on his back). Level saved.
 - **Went wrong:** two PIE looks at 00:00 never reached Scene 8: `Reel.Script.Jump 8` was ignored and the run played Scenes 1 and 2. The new start framing is unseen.
+
+## Nov 16, 00:10 Cairo: Scene 7 fight seen end to end (s7-fight)
+- One PIE run of the real route (`tools/script/scene7_fight_pie.py pie --route`: booth part 2 on autopilot, the fight
+  answering itself): the catch in the security room, Pendleton's "Take it off him.", the bodyguard's charge in the
+  wide, Vance ducking the hook in the low two-shot, the stiletto insert, Pendleton's block and sweep, the overhead,
+  then FinishScene cuts straight into Scene 8 (slug, "Run! Follow Cole to the exit", Cole's "Max is out back!
+  Move!") with both bodies down on the floor. All three beats landed on the first take; the log reads stages 1-8 and
+  "done after 1 take(s)". Frames in `C:\Jam\Builds\script\s7fight\pie_r37..r53.png`.
+- The 24 clip assets went in at f60521a. The test hook now takes Vance from the playing scene when no scene drives it.
