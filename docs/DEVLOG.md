@@ -1585,3 +1585,17 @@ corridor lets them close; standing still means Caught. Agreed with s7-fight (sta
 (Cole rigs the prop store door) and s8-car-mirror (their finale API in the Mirror beat). What went wrong: the autopilot
 PIE run got "Caught" (guard speed ignored slow corners: fixed in C++, waits for the next restart build) and stuck in the
 doorway (the old wall's collision profile came back: now cut with the NoCollision profile).
+
+## Nov 15, 20:40 Cairo: guard brain (stealth-ai)
+- **Changed:** Marwan: "Add proper NPC logic like real stealth games." New `UGuardBrainComponent` (`Take/GuardBrain.h/.cpp`,
+  18e6763, 37aa1a3): any scene adds it to its own guard (`AddTo`). It has a vision cone that sees less at distance, in the
+  dark and at the edge of the cone (inner and outer bands; the lights around the player are summed and traced for
+  shadow) and when the player crouches or stands still. A suspicion meter shows as a "?" over his head before full
+  detection. States: patrol, suspicious, investigate, search, return, alert and chase (he follows the player's trail),
+  caught. He hears noises (`ReportNoise`, running, walking up close), reacts to a downed colleague, barks ("Huh?",
+  "What was that?", "Must've been nothing") and can carry a torch that turns amber or red. Every tunable is a
+  UPROPERTY. The scene sessions got an integration note (side-session notes, `stealth-ai_GUARD_BRAIN.md`).
+- **Not yet checked in play:** it compiled in a snapshot build, but the running editor predates it.
+  `tools/stealth/guard_pie.py` is the PIE test, to run after the next restart.
+- **Went wrong:** `SetActive` clashed with `UActorComponent::SetActive` (renamed `SetBrainActive`). About 8 sessions'
+  builds queued on UBT's lock at once, and the first compile check waited 20 min.
