@@ -131,7 +131,7 @@ def move(lead, others, x, y):
 
 
 move(r"Vault_Table(_\d+)?", [], 5120, -880)                     # the viewing table becomes the props table, SE corner
-move(r"Safe(_\d+)?", [r"Safe_Handle(_\d+)?"], 4930, -820)       # the safe out of the thunder sheet's corner
+move(r"Safe(_\d+)?", [r"Safe_Handle(_\d+)?"], 4590, -860)       # the safe to the SW corner: clear of the vault door (x 4752..4968)
 move(r"Statue_Plinth(_\d+)?", [r"Statue(_\d+)?"], 5200, -250)   # the bust off the fire exit and the lure route
 
 # --- 1. the back of the screen: black masking either side of the scene actor's film plane ----------------------------

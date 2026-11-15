@@ -7,33 +7,33 @@
 
 namespace
 {
-	const FName NPelvis(TEXT("pelvis"));
-	const FName NSpine[5] = { TEXT("spine_01"), TEXT("spine_02"), TEXT("spine_03"), TEXT("spine_04"), TEXT("spine_05") };
-	const FName NNeck1(TEXT("neck_01")), NNeck2(TEXT("neck_02")), NHead(TEXT("head"));
-	const FName NClav[2] = { TEXT("clavicle_l"), TEXT("clavicle_r") };
-	const FName NUpper[2] = { TEXT("upperarm_l"), TEXT("upperarm_r") };
-	const FName NLower[2] = { TEXT("lowerarm_l"), TEXT("lowerarm_r") };
-	const FName NHand[2] = { TEXT("hand_l"), TEXT("hand_r") };
-	const FName NThigh[2] = { TEXT("thigh_l"), TEXT("thigh_r") };
-	const FName NCalf[2] = { TEXT("calf_l"), TEXT("calf_r") };
-	const FName NFoot[2] = { TEXT("foot_l"), TEXT("foot_r") };
+	const FName S6NPelvis(TEXT("pelvis"));
+	const FName S6NSpine[5] = { TEXT("spine_01"), TEXT("spine_02"), TEXT("spine_03"), TEXT("spine_04"), TEXT("spine_05") };
+	const FName S6NNeck1(TEXT("neck_01")), S6NNeck2(TEXT("neck_02")), S6NHead(TEXT("head"));
+	const FName S6NClav[2] = { TEXT("clavicle_l"), TEXT("clavicle_r") };
+	const FName S6NUpper[2] = { TEXT("upperarm_l"), TEXT("upperarm_r") };
+	const FName S6NLower[2] = { TEXT("lowerarm_l"), TEXT("lowerarm_r") };
+	const FName S6NHand[2] = { TEXT("hand_l"), TEXT("hand_r") };
+	const FName S6NThigh[2] = { TEXT("thigh_l"), TEXT("thigh_r") };
+	const FName S6NCalf[2] = { TEXT("calf_l"), TEXT("calf_r") };
+	const FName S6NFoot[2] = { TEXT("foot_l"), TEXT("foot_r") };
 
 	// The mannequin's body frame in its component space: front +Y, up +Z.
-	const FQuat& RefBody()
+	const FQuat& S6RefBody()
 	{
 		static const FQuat Q = FRotationMatrix::MakeFromXZ(FVector(0.f, 1.f, 0.f), FVector(0.f, 0.f, 1.f)).ToQuat();
 		return Q;
 	}
 
-	void AllBones(TArray<FName>& Out)
+	void S6AllBones(TArray<FName>& Out)
 	{
-		Out.Add(NPelvis);
-		for (const FName& N : NSpine) { Out.Add(N); }
-		Out.Add(NNeck1); Out.Add(NNeck2); Out.Add(NHead);
+		Out.Add(S6NPelvis);
+		for (const FName& N : S6NSpine) { Out.Add(N); }
+		Out.Add(S6NNeck1); Out.Add(S6NNeck2); Out.Add(S6NHead);
 		for (int32 S = 0; S < 2; ++S)
 		{
-			Out.Add(NClav[S]); Out.Add(NUpper[S]); Out.Add(NLower[S]); Out.Add(NHand[S]);
-			Out.Add(NThigh[S]); Out.Add(NCalf[S]); Out.Add(NFoot[S]);
+			Out.Add(S6NClav[S]); Out.Add(S6NUpper[S]); Out.Add(S6NLower[S]); Out.Add(S6NHand[S]);
+			Out.Add(S6NThigh[S]); Out.Add(S6NCalf[S]); Out.Add(S6NFoot[S]);
 		}
 	}
 }
@@ -103,7 +103,7 @@ void FS6Rig::Init(UPoseableMeshComponent* InPose, USkeletalMeshComponent* InFoll
 		InPose->SetSkinnedAssetAndUpdate(InFollower->GetSkeletalMeshAsset());
 	}
 	TArray<FName> Bones;
-	AllBones(Bones);
+	S6AllBones(Bones);
 	for (const FName& B : Bones)
 	{
 		InPose->ResetBoneTransformByName(B);
@@ -130,7 +130,7 @@ void FS6Rig::SyncTransform()
 void FS6Rig::ResetAll()
 {
 	TArray<FName> Bones;
-	AllBones(Bones);
+	S6AllBones(Bones);
 	for (const FName& B : Bones)
 	{
 		Pose->ResetBoneTransformByName(B);
@@ -141,17 +141,17 @@ void FS6Rig::Measure()
 {
 	const FVector O = Follower->GetComponentLocation();
 	auto H = [&](FName B) { return static_cast<float>(Bone(B).Z - O.Z); };
-	PelvisH = H(NPelvis);
-	NeckH = H(NNeck2);
-	HeadH = H(NHead);
-	ShoulderH = 0.5f * (H(NUpper[0]) + H(NUpper[1]));
-	ShoulderHalf = 0.5f * static_cast<float>(FVector::Dist(Bone(NUpper[0]), Bone(NUpper[1])));
-	HipHalf = 0.5f * static_cast<float>(FVector::Dist(Bone(NThigh[0]), Bone(NThigh[1])));
-	AnkleH = 0.5f * (H(NFoot[0]) + H(NFoot[1]));
-	Arm1 = static_cast<float>(FVector::Dist(Bone(NUpper[1]), Bone(NLower[1])));
-	Arm2 = static_cast<float>(FVector::Dist(Bone(NLower[1]), Bone(NHand[1])));
-	Leg1 = static_cast<float>(FVector::Dist(Bone(NThigh[1]), Bone(NCalf[1])));
-	Leg2 = static_cast<float>(FVector::Dist(Bone(NCalf[1]), Bone(NFoot[1])));
+	PelvisH = H(S6NPelvis);
+	NeckH = H(S6NNeck2);
+	HeadH = H(S6NHead);
+	ShoulderH = 0.5f * (H(S6NUpper[0]) + H(S6NUpper[1]));
+	ShoulderHalf = 0.5f * static_cast<float>(FVector::Dist(Bone(S6NUpper[0]), Bone(S6NUpper[1])));
+	HipHalf = 0.5f * static_cast<float>(FVector::Dist(Bone(S6NThigh[0]), Bone(S6NThigh[1])));
+	AnkleH = 0.5f * (H(S6NFoot[0]) + H(S6NFoot[1]));
+	Arm1 = static_cast<float>(FVector::Dist(Bone(S6NUpper[1]), Bone(S6NLower[1])));
+	Arm2 = static_cast<float>(FVector::Dist(Bone(S6NLower[1]), Bone(S6NHand[1])));
+	Leg1 = static_cast<float>(FVector::Dist(Bone(S6NThigh[1]), Bone(S6NCalf[1])));
+	Leg2 = static_cast<float>(FVector::Dist(Bone(S6NCalf[1]), Bone(S6NFoot[1])));
 }
 
 void FS6Rig::Attach()
@@ -206,7 +206,7 @@ void FS6Rig::Orient(FName B, const FS6Frame& F)
 		return;
 	}
 	FTransform T = Get(B);
-	T.SetRotation((F.Quat() * RefBody().Inverse() * (*Ref)).GetNormalized());
+	T.SetRotation((F.Quat() * S6RefBody().Inverse() * (*Ref)).GetNormalized());
 	Pose->SetBoneTransformByName(B, T, EBoneSpaces::WorldSpace);
 }
 
@@ -253,25 +253,25 @@ void FS6Rig::Apply(const FS6Pose& P)
 	}
 	SyncTransform();
 	{
-		const FQuat* Ref = RefCS.Find(NPelvis);
-		FTransform T = Get(NPelvis);
+		const FQuat* Ref = RefCS.Find(S6NPelvis);
+		FTransform T = Get(S6NPelvis);
 		T.SetLocation(P.Pelvis);
-		if (Ref) { T.SetRotation((P.Hips.Quat() * RefBody().Inverse() * (*Ref)).GetNormalized()); }
-		Pose->SetBoneTransformByName(NPelvis, T, EBoneSpaces::WorldSpace);
+		if (Ref) { T.SetRotation((P.Hips.Quat() * S6RefBody().Inverse() * (*Ref)).GetNormalized()); }
+		Pose->SetBoneTransformByName(S6NPelvis, T, EBoneSpaces::WorldSpace);
 	}
 	for (int32 I = 0; I < 5; ++I)
 	{
-		Orient(NSpine[I], FS6Frame::Lerp(P.Hips, P.Chest, (I + 1) / 5.f));
+		Orient(S6NSpine[I], FS6Frame::Lerp(P.Hips, P.Chest, (I + 1) / 5.f));
 	}
-	Orient(NNeck1, FS6Frame::Lerp(P.Chest, P.Head, 0.35f));
-	Orient(NNeck2, FS6Frame::Lerp(P.Chest, P.Head, 0.7f));
-	Orient(NHead, P.Head);
+	Orient(S6NNeck1, FS6Frame::Lerp(P.Chest, P.Head, 0.35f));
+	Orient(S6NNeck2, FS6Frame::Lerp(P.Chest, P.Head, 0.7f));
+	Orient(S6NHead, P.Head);
 	for (int32 S = 0; S < 2; ++S)
 	{
-		Orient(NClav[S], P.Chest);
-		Chain(NUpper[S], NLower[S], NHand[S], P.Hand[S], P.Elbow[S], Arm1, Arm2);
-		Chain(NThigh[S], NCalf[S], NFoot[S], P.Ankle[S], P.Knee[S], Leg1, Leg2);
-		Orient(NFoot[S], P.Foot[S]);
+		Orient(S6NClav[S], P.Chest);
+		Chain(S6NUpper[S], S6NLower[S], S6NHand[S], P.Hand[S], P.Elbow[S], Arm1, Arm2);
+		Chain(S6NThigh[S], S6NCalf[S], S6NFoot[S], P.Ankle[S], P.Knee[S], Leg1, Leg2);
+		Orient(S6NFoot[S], P.Foot[S]);
 	}
 	Pose->RefreshBoneTransforms();
 	if (Follower.IsValid())
@@ -284,19 +284,19 @@ FS6Pose FS6Rig::Stand(const FVector& Feet, const FVector& InFwd, float Drop) con
 {
 	FVector F = InFwd.GetSafeNormal2D();
 	if (F.IsNearlyZero()) { F = FVector::ForwardVector; }
-	const FVector Z = FVector::UpVector;
-	const FVector R = FVector::CrossProduct(Z, F);
+	const FVector RigZ = FVector::UpVector;
+	const FVector R = FVector::CrossProduct(RigZ, F);
 	FS6Pose P;
-	P.Pelvis = Feet + Z * (PelvisH - Drop);
+	P.Pelvis = Feet + RigZ * (PelvisH - Drop);
 	P.Hips = P.Chest = P.Head = FS6Frame::Lean(F, 0.f);
 	for (int32 S = 0; S < 2; ++S)
 	{
 		const float Side = S == 0 ? -1.f : 1.f;
-		const FVector Shoulder = Feet + Z * (ShoulderH - Drop) + R * (Side * ShoulderHalf);
-		P.Hand[S] = Shoulder + R * (Side * 6.f) + F * 4.f - Z * (Arm1 + Arm2 - 4.f);
-		P.Elbow[S] = Shoulder - F * 40.f + R * (Side * 10.f) - Z * 20.f;
-		P.Ankle[S] = Feet + R * (Side * (HipHalf + 2.f)) + Z * AnkleH;
-		P.Knee[S] = P.Ankle[S] + F * 100.f + Z * 40.f;
+		const FVector Shoulder = Feet + RigZ * (ShoulderH - Drop) + R * (Side * ShoulderHalf);
+		P.Hand[S] = Shoulder + R * (Side * 6.f) + F * 4.f - RigZ * (Arm1 + Arm2 - 4.f);
+		P.Elbow[S] = Shoulder - F * 40.f + R * (Side * 10.f) - RigZ * 20.f;
+		P.Ankle[S] = Feet + R * (Side * (HipHalf + 2.f)) + RigZ * AnkleH;
+		P.Knee[S] = P.Ankle[S] + F * 100.f + RigZ * 40.f;
 		P.Foot[S] = FS6Frame::Lean(F, 0.f);
 	}
 	return P;
