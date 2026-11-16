@@ -1914,3 +1914,9 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
   frame. The "fins" on the floor in the drag were his shoes left behind, not shadows. Live Coded; went into the
   02:01 package. Not yet seen in a capture: the second test run never reached the takedown because the guard was still
   walking to the lure while the package built.
+
+## Nov 16, 02:05 Cairo: masquerade masks removed
+
+- **What changed:** Marwan asked for the masks to come out; `6deb599` is reverted, so the mannequin extras and guards
+  are back to their bare faces and `Reel.Cast.Masks` is gone. The 02:01 package (Final_0201.zip) still has the masks:
+  the next package build drops them.
