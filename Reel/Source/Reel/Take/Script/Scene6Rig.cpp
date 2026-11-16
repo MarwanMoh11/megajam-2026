@@ -359,6 +359,20 @@ void FS6Rig::Apply(const FS6Pose& P)
 		{
 			// Again every frame: a crew act starting or ending re-points the costume to another body.
 			S6TakeRiders(this, Pose.Get(), Follower.Get());
+			// The props on the bodies' sockets (his gun, glasses, mask, shoes): a follower does not move its attachments
+			// when only its leader is posed, so they hung where they were (Marwan's QA, Nov 16). Moved here, from the
+			// sockets as the leader now has them.
+			Follower->UpdateChildTransforms(EUpdateTransformFlags::None, ETeleportType::TeleportPhysics);
+			if (auto* Mine = S6Riders().Find(this))
+			{
+				for (auto& Pair : *Mine)
+				{
+					if (USkeletalMeshComponent* C = Pair.Key.Get())
+					{
+						C->UpdateChildTransforms(EUpdateTransformFlags::None, ETeleportType::TeleportPhysics);
+					}
+				}
+			}
 		}
 	}
 }

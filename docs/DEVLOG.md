@@ -1907,3 +1907,10 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
 - **Went wrong / not seen:** the seat/HUD session's Scene 4 edit briefly broke every Live Coding build (shadowed
   `Kit`) until it was fixed. The editor DLL on disk predates the masks change until the next Build.bat. Nobody has
   played the package through yet: that is Marwan's QA.
+- **02:00 follow-up (Marwan: "perfect but too slow"; the gun, bits of his face and his shoes floating):** both stunts
+  run 1.35x faster (choke about 3.9 s, the drag at a steady 165 cm/s with a short speed-up and slow-down, longer
+  strides). The props on the guard's sockets (pistol, glasses, mask, shoes) did not move while only the leader pose
+  changed, so they hung where the takedown started. The rig now moves every socket attachment on the posed bodies each
+  frame. The "fins" on the floor in the drag were his shoes left behind, not shadows. Live Coded; went into the
+  02:01 package. Not yet seen in a capture: the second test run never reached the takedown because the guard was still
+  walking to the lure while the package built.

@@ -61,6 +61,18 @@ namespace
 	/** Smooth 0..1 across [A, B]. The stunts chain their key poses with overlapping windows, so a move starts before
 	 *  the last one has settled (no stop at every key). */
 	float S6Win(float T, float A, float B) { return S6Ease((T - A) / FMath::Max(B - A, 0.001f)); }
+	/** The stunts' clock runs this much faster than their written beats (Marwan's QA, Nov 16: "too slow"). */
+	const float S6StuntPace = 1.35f;
+	/** 0..1 at a steady speed with a short speed-up and slow-down (A of the time each): a walk, not a glide. */
+	float S6Cruise(float U, float A)
+	{
+		U = FMath::Clamp(U, 0.f, 1.f);
+		A = FMath::Clamp(A, 0.01f, 0.49f);
+		const float K = 1.f / (1.f - A);
+		if (U < A) { return K * U * U / (2.f * A); }
+		if (U > 1.f - A) { return 1.f - K * (1.f - U) * (1.f - U) / (2.f * A); }
+		return K * (U - A * 0.5f);
+	}
 	/** A soft bump: 1 at C, falling off over about W either side. */
 	float S6Bump(float T, float C, float W) { const float X = (T - C) / FMath::Max(W, 0.001f); return FMath::Exp(-X * X); }
 	/** Turns a heading about the vertical by Deg. */
@@ -901,7 +913,7 @@ void AScene6Backstage::StepChoke(float Dt)
 	ATakeCharacter* Cole = GetPovCharacter();
 	// The beats are written for 5.2 s; another ChokeSeconds stretches them. Key poses chain through overlapping
 	// windows (S6Win), so each move starts before the last has settled, and the feet step between plants.
-	const float Scale = 5.2f / FMath::Max(ChokeSeconds, 1.f);
+	const float Scale = 5.2f / FMath::Max(ChokeSeconds, 1.f) * S6StuntPace;
 	const float T = StepAge * Scale;
 	const float Tp = (StepAge - Dt) * Scale;
 	const FVector F = ChokeFwd;
@@ -1094,7 +1106,7 @@ void AScene6Backstage::StepChoke(float Dt)
 		const FVector At = G0;
 		Play(TArray<FName>{ TEXT("sfx_thud") }, &At, 0.5f);
 	}
-	if (StepAge >= ChokeSeconds)
+	if (T >= 5.2f)
 	{
 		Step = EStep::Down;
 		StepAge = 0.f;
@@ -1196,7 +1208,7 @@ void AScene6Backstage::StepDrag(float Dt)
 		Step = EStep::ToPanel;
 		return;
 	}
-	const float T = StepAge;
+	const float T = StepAge * S6StuntPace;
 	const FS6Rig& GR = GuardRig;
 	const float Floor = static_cast<float>(BodyAt.Z) - 13.f;
 	const FVector Tr = S6Flat(TrunkPoint) + S6Z * Floor;
@@ -1211,7 +1223,7 @@ void AScene6Backstage::StepDrag(float Dt)
 	const FVector GrabSpot = DragPath[0] + BodyHeadDir.GetSafeNormal2D() * 52.f;
 	const float Reach = FMath::Clamp(static_cast<float>(FVector::Dist2D(ColeFrom, GrabSpot)) / 170.f, 0.6f, 1.2f);
 	const float Move0 = Reach + 0.25f;
-	const float MoveT = FMath::Max(1.25f * DragLen / FMath::Max(DragSpeed, 10.f), 0.4f);
+	const float MoveT = FMath::Max(S6StuntPace * DragLen / FMath::Max(1.1f * DragSpeed, 10.f), 0.4f);	// paced seconds
 	const float Heave0 = Move0 + MoveT;
 	const float HeaveT = 1.6f;
 	const float Lift = S6Win(T, Reach - 0.05f, Reach + 0.45f);
@@ -1220,7 +1232,7 @@ void AScene6Backstage::StepDrag(float Dt)
 	// The sled: the shoulders go where Cole pulls them, the pelvis trails at its length behind.
 	if (T > Move0)
 	{
-		const FVector L = S6BezAlong(DragPath, DragLen * S6Ease((T - Move0) / MoveT));
+		const FVector L = S6BezAlong(DragPath, DragLen * S6Cruise((T - Move0) / MoveT, 0.2f));
 		const FVector D = (L - S6Flat(BodyAt)).GetSafeNormal2D();
 		if (!D.IsNearlyZero())
 		{
@@ -1328,8 +1340,8 @@ void AScene6Backstage::StepDrag(float Dt)
 		// Backwards, the stride measured by the ground he covers, so the feet don't skate.
 		const float Moved = static_cast<float>(FVector::Dist2D(CFeet, LastColeFeet));
 		LastColeFeet = CFeet;
-		GaitPhase -= FMath::Min(Moved, 40.f) / 40.f * UE_PI;
-		LegsWalk(CP, ColeRig, CFeet, Face, GaitPhase, 20.f * Gait, 10.f);
+		GaitPhase -= FMath::Min(Moved, 48.f) / 48.f * UE_PI;
+		LegsWalk(CP, ColeRig, CFeet, Face, GaitPhase, 24.f * Gait, 10.f);
 	}
 	else
 	{
