@@ -65,18 +65,19 @@ UTakeAudioComponent::UTakeAudioComponent()
 		Row.HallVolume = Hall;
 		Row.HallLowPassHz = HallLowPass;
 	};
-	Mix(0, TEXT("mus_bed"), 0.6f, 0.f, 0.f, 0.f);							// the title card
+	// Every score louder (Marwan, Nov 16: "make the music louder ... it adds more to the game").
+	Mix(0, TEXT("mus_bed"), 0.85f, 0.f, 0.f, 0.f);							// the title card
 	Mix(1, nullptr, 0.f, 0.f, 0.f, 0.f);									// outside: the scene's own jazz through the doors
-	Mix(2, TEXT("mus_bed"), 0.4f, 700.f, 0.f, 0.f);						// the van: the gala across the street
-	Mix(3, TEXT("Hall/mus_hall_quartet"), 0.55f, 0.f, 1.f, 0.f);			// the foyer and the main hall
-	Mix(4, TEXT("Hall/mus_hall_quartet"), 0.4f, 2500.f, 0.75f, 3000.f);	// the same hall from the rafters
-	Mix(5, nullptr, 0.f, 0.f, 0.f, 0.f);									// the auditorium: its own score
-	Mix(6, TEXT("Score/mus_sneak"), 0.45f, 0.f, 0.f, 0.f);					// backstage
-	Mix(7, TEXT("Score/mus_sneak"), 0.45f, 0.f, 0.f, 0.f);					// the booth (carries on from 6)
-	Mix(702, TEXT("Score/mus_chase"), 0.5f, 0.f, 0.f, 0.f);				// Scene 7 part 2: the alarm, the run to the security room
-	Mix(703, TEXT("Score/mus_chase"), 0.5f, 0.f, 0.f, 0.f);				// Scene 7 part 3: the fight (carries on from part 2)
-	Mix(8, TEXT("Score/mus_chase"), 0.6f, 0.f, 0.f, 0.f);					// the escape (carries on from the fight)
-	Mix(99, TEXT("mus_bed"), 0.7f, 0.f, 0.f, 0.f);							// the credits: the band plays them out
+	Mix(2, TEXT("mus_bed"), 0.65f, 700.f, 0.f, 0.f);						// the van: the gala across the street
+	Mix(3, TEXT("Hall/mus_hall_quartet"), 0.8f, 0.f, 1.f, 0.f);			// the foyer and the main hall
+	Mix(4, TEXT("Hall/mus_hall_quartet"), 0.65f, 2500.f, 0.75f, 3000.f);	// the same hall from the rafters
+	Mix(5, nullptr, 0.f, 0.f, 0.f, 0.f);									// the auditorium: its own score (the sneak cue)
+	Mix(6, TEXT("Score/mus_sneak"), 0.85f, 0.f, 0.f, 0.f);					// backstage
+	Mix(7, TEXT("Score/mus_sneak"), 0.85f, 0.f, 0.f, 0.f);					// the booth (carries on from 6)
+	Mix(702, TEXT("Score/mus_chase"), 0.85f, 0.f, 0.f, 0.f);				// Scene 7 part 2: the alarm, the run to the security room
+	Mix(703, TEXT("Score/mus_chase"), 0.85f, 0.f, 0.f, 0.f);				// Scene 7 part 3: the fight (carries on from part 2)
+	Mix(8, TEXT("Score/mus_chase"), 0.95f, 0.f, 0.f, 0.f);					// the escape (carries on from the fight)
+	Mix(99, TEXT("mus_bed"), 0.95f, 0.f, 0.f, 0.f);							// the credits: the band plays them out
 
 	auto Scatter = [this](std::initializer_list<const TCHAR*> Names, float MinGap, float MaxGap, float Volume,
 		float MinDistance, float MaxDistance)
@@ -762,7 +763,8 @@ void UTakeAudioComponent::StepScriptMix(float RealDeltaSeconds)
 			Loop->Play(FMath::FRandRange(0.f, 5.f));	// not from the file's top every time
 		}
 	}
-	if (HallLevel > 0.05f && !bMixRetaking)
+	// No clinks, laughs or trays over a scripted line (Marwan, Nov 16: "quiet the side chatter in the cutscenes").
+	if (HallLevel > 0.05f && !bMixRetaking && !IsVoicePlaying())
 	{
 		StepHallScatter(Dt);
 	}

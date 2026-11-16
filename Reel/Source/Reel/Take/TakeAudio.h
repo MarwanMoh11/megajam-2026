@@ -171,7 +171,7 @@ public:
 	float ScoreDuckLevel = 0.45f;
 
 	UPROPERTY(EditAnywhere, Category = "Take|Audio|Script", meta = (ClampMin = "0", ClampMax = "1"))
-	float HallDuckLevel = 0.7f;
+	float HallDuckLevel = 0.3f;	// was 0.7: the hall's murmur well under a scripted line (Nov 16)
 
 	/** Ducking in and out, level units a second. */
 	UPROPERTY(EditAnywhere, Category = "Take|Audio|Script")

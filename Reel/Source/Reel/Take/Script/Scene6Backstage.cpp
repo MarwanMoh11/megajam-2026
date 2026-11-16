@@ -951,7 +951,7 @@ void AScene6Backstage::StepChoke(float Dt)
 		{
 			const float Side = S == 0 ? -1.f : 1.f;
 			const FVector Grip = FMath::Lerp(ColeWrist, ColeForearm, S == 0 ? 0.3f : 0.75f);
-			GFight.Hand[S] = Grip + F * 4.f - S6Z * (2.f + 4.f * AB * FMath::Max(0.f, S == 0 ? N1 : N2));
+			GFight.Hand[S] = Grip + F * 4.f - S6Z * 2.f;	// held still on the arm, no clawing jitter (Marwan, Nov 16)
 			GFight.Elbow[S] = G0 + S6Z * 80.f + R * (Side * 60.f) + F * 30.f;
 			const float Kick = AB * FMath::Square(FMath::Max(0.f, FMath::Sin(T * 7.7f + Side * 1.9f)));
 			GFight.Ankle[S] = G0 + R * (Side * (GR.HipHalf + 4.f)) - F * (6.f * Pull) + F * (16.f * Kick) + S6Z * (GR.AnkleH + 14.f * Kick);

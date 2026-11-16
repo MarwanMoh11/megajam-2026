@@ -32,6 +32,20 @@ namespace
 		S.Line = Line;
 		return S;
 	}
+
+	/** A piece of the oak door's furniture riding the swinging leaf, and where and how it stood. */
+	struct FS7DoorFitting
+	{
+		TWeakObjectPtr<AActor> Actor;
+		FTransform Home;
+		EComponentMobility::Type Mobility = EComponentMobility::Static;
+	};
+
+	TMap<const void*, TArray<FS7DoorFitting>>& S7DoorFittings()
+	{
+		static TMap<const void*, TArray<FS7DoorFitting>> M;
+		return M;
+	}
 }
 
 AScene7Route::AScene7Route()
@@ -115,17 +129,55 @@ void AScene7Route::ShowLeaf(bool bShow)
 	DoorLeaf->SetHiddenInGame(!bShow);
 	DoorLeaf->SetCollisionEnabled(bShow ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
 	// Scene 5's slab is the closed door the other scenes see; while the leaf shows, the slab goes.
+	TArray<FS7DoorFitting>& Fittings = S7DoorFittings().FindOrAdd(this);
 	if (bShow)
 	{
 		HiddenSlabs.Reset();
+		FBox Slab(ForceInit);
 		for (TActorIterator<AActor> It(GetWorld()); It; ++It)
 		{
 			if (It->ActorHasTag(OakSlabTag) && !It->IsHidden())
 			{
+				Slab += It->GetComponentsBoundingBox(true);
 				It->SetActorHiddenInGame(true);
 				It->SetActorEnableCollision(false);
 				HiddenSlabs.Add(*It);
 			}
+		}
+		// The slab's fittings (Scene 5's lever, rose, escutcheon, plates, panels and mouldings) are separate pieces
+		// on its face: they stayed hanging in the air while the leaf swung (Marwan, Nov 16: "the door handle doesn't
+		// open, it floats"). Every piece lying on the slab's face swings on the hinge with the leaf now.
+		if (Slab.IsValid && Fittings.Num() == 0)
+		{
+			const FVector Size = Slab.GetSize();
+			const bool bThinX = Size.X < Size.Y;
+			const FVector Grow(bThinX ? 12.f : 1.5f, bThinX ? 1.5f : 12.f, 1.5f);
+			const FBox Face(Slab.Min - Grow, Slab.Max + Grow);
+			const FRotator HingeWas = DoorHinge->GetComponentRotation();
+			DoorHinge->SetWorldRotation(FRotator::ZeroRotator);	// closed, as the fittings stand
+			for (TActorIterator<AActor> It(GetWorld()); It; ++It)
+			{
+				AActor* A = *It;
+				USceneComponent* PieceRoot = A ? A->GetRootComponent() : nullptr;
+				if (!PieceRoot || A == this || A->IsA<APawn>() || A->IsHidden() || HiddenSlabs.Contains(A)
+					|| A->GetAttachParentActor() != nullptr)
+				{
+					continue;
+				}
+				const FBox B = A->GetComponentsBoundingBox(true);
+				if (!B.IsValid || !Face.IsInsideOrOn(B.Min) || !Face.IsInsideOrOn(B.Max))
+				{
+					continue;
+				}
+				FS7DoorFitting& F = Fittings.AddDefaulted_GetRef();
+				F.Actor = A;
+				F.Home = A->GetActorTransform();
+				F.Mobility = PieceRoot->Mobility;
+				PieceRoot->SetMobility(EComponentMobility::Movable);
+				A->AttachToComponent(DoorHinge, FAttachmentTransformRules::KeepWorldTransform);
+			}
+			DoorHinge->SetWorldRotation(HingeWas);
+			UE_LOG(LogScene7Route, Log, TEXT("S7 route: %d door fittings swing with the leaf"), Fittings.Num());
 		}
 	}
 	else
@@ -135,6 +187,16 @@ void AScene7Route::ShowLeaf(bool bShow)
 			if (A) { A->SetActorHiddenInGame(false); A->SetActorEnableCollision(true); }
 		}
 		HiddenSlabs.Reset();
+		for (const FS7DoorFitting& F : Fittings)
+		{
+			if (AActor* A = F.Actor.Get())
+			{
+				A->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+				A->SetActorTransform(F.Home, false, nullptr, ETeleportType::TeleportPhysics);
+				if (A->GetRootComponent()) { A->GetRootComponent()->SetMobility(F.Mobility); }
+			}
+		}
+		Fittings.Reset();
 	}
 }
 
@@ -184,18 +246,21 @@ void AScene7Route::BeginScene()
 			M->MaxWalkSpeed = RouteWalkSpeed;
 		}
 	}
-	// Cole on his side of the door (where Scene 6 leaves him; a cold jump puts him there behind the closed door).
+	// Cole waits at the prop store's door (ColeExit: the exit he wedged at the end of Scene 6), down the corridor and
+	// clear of Vance's way in, facing back along it to the oak door; he calls his line from there and stays (Marwan,
+	// Nov 16: "he should still be at the exit, not in front of Vance"). ColeMark is only where he faces now.
 	if (ATakeCharacter* Cole = GetCole())
 	{
 		const float Half = Cole->GetCapsuleComponent() ? Cole->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() : 90.f;
-		if (FVector::Dist2D(Cole->GetActorLocation(), ColeMark) > 60.f)
+		const FRotator Facing(0.f, (ColeMark - ColeExit).GetSafeNormal2D().Rotation().Yaw, 0.f);
+		if (FVector::Dist2D(Cole->GetActorLocation(), ColeExit) > 60.f)
 		{
-			Cole->SetActorLocationAndRotation(ColeMark + FVector(0.f, 0.f, Half + 2.f), FRotator(0.f, ColeYaw, 0.f),
+			Cole->SetActorLocationAndRotation(ColeExit + FVector(0.f, 0.f, Half + 2.f), Facing,
 				false, nullptr, ETeleportType::TeleportPhysics);
 		}
 		else
 		{
-			Cole->SetActorRotation(FRotator(0.f, ColeYaw, 0.f));
+			Cole->SetActorRotation(Facing);
 		}
 		if (UCharacterMovementComponent* M = Cole->GetCharacterMovement())
 		{
@@ -264,7 +329,7 @@ void AScene7Route::TickScene(float DeltaSeconds)
 		if (StageT >= DoorOpenAt) { SetDoor((StageT - DoorOpenAt) / DoorOpenSeconds); }
 		if (At(DoorOpenAt)) { Cue(TEXT("sfx_s7_door_click")); }
 		if (At(ColeLineAt)) { Say(TEXT("COLE"), ColeLine); }
-		if (At(ColeWalkAt) && Cole) { bColeWalking = true; }
+		// Cole already stands at the exit: no walk (bColeWalking stays off).
 		if (StageT >= DoorOpenAt + DoorOpenSeconds)
 		{
 			SetDoor(1.f);

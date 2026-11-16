@@ -64,6 +64,34 @@ namespace
 		}
 	}
 
+	// The bodies that take their bounds from the poseable while the rig is on. A follower's own bounds stay where its
+	// actor stands while the posed body is dragged metres away, so its shadow was culled and cached at the old spot
+	// (boot shadows left behind on the drag to the trunk, Marwan's QA, Nov 16).
+	TSet<TWeakObjectPtr<USkinnedMeshComponent>>& S6BoundsTaken()
+	{
+		static TSet<TWeakObjectPtr<USkinnedMeshComponent>> S;
+		return S;
+	}
+
+	void S6TakeBounds(USkinnedMeshComponent* C)
+	{
+		if (C && !C->bUseBoundsFromLeaderPoseComponent)
+		{
+			C->bUseBoundsFromLeaderPoseComponent = true;
+			S6BoundsTaken().Add(C);
+		}
+	}
+
+	void S6GiveBounds(USkinnedMeshComponent* C)
+	{
+		if (C && S6BoundsTaken().Remove(C) > 0)
+		{
+			C->bUseBoundsFromLeaderPoseComponent = false;
+			C->UpdateBounds();
+			C->MarkRenderTransformDirty();
+		}
+	}
+
 	void S6DropRiders(const void* Key)
 	{
 		if (auto* Mine = S6Riders().Find(Key))
@@ -73,10 +101,19 @@ namespace
 				if (USkeletalMeshComponent* C = Pair.Key.Get())
 				{
 					C->SetLeaderPoseComponent(Pair.Value.Get());
+					S6GiveBounds(C);
 				}
 			}
 		}
 		S6Riders().Remove(Key);
+	}
+
+	/** The finger bones (thumb, index, middle, ring, pinky and their metacarpals). */
+	bool S6IsFinger(const FName& N)
+	{
+		const FString S = N.ToString();
+		return S.StartsWith(TEXT("thumb_")) || S.StartsWith(TEXT("index_")) || S.StartsWith(TEXT("middle_"))
+			|| S.StartsWith(TEXT("ring_")) || S.StartsWith(TEXT("pinky_"));
 	}
 
 	void S6AllBones(TArray<FName>& Out)
@@ -215,10 +252,28 @@ void FS6Rig::Attach()
 		return;
 	}
 	SyncTransform();
+	// The fingers: the poseable's are the reference pose (flat, splayed), which read as a mess of fingers in the
+	// takedown and the drag (Marwan, Nov 16). Take the relaxed hands the body had from its animation as the rig
+	// comes on, and hold them still for the whole stunt (the rig never touches finger bones after this).
+	{
+		const TArray<FTransform>& Anim = Follower->GetBoneSpaceTransforms();
+		const FReferenceSkeleton& RefSkel = Pose->GetSkinnedAsset()->GetRefSkeleton();
+		if (Anim.Num() == Pose->BoneSpaceTransforms.Num() && Anim.Num() == RefSkel.GetNum())
+		{
+			for (int32 I = 0; I < Anim.Num(); ++I)
+			{
+				if (S6IsFinger(RefSkel.GetBoneName(I)))
+				{
+					Pose->BoneSpaceTransforms[I] = Anim[I];
+				}
+			}
+		}
+	}
 	ResetAll();
 	Pose->RefreshBoneTransforms();
 	Measure();
 	Follower->SetLeaderPoseComponent(Pose.Get());
+	S6TakeBounds(Follower.Get());
 	S6TakeRiders(this, Pose.Get(), Follower.Get());
 	bAttached = true;
 }
@@ -228,6 +283,7 @@ void FS6Rig::Detach()
 	if (Follower.IsValid() && bAttached)
 	{
 		Follower->SetLeaderPoseComponent(nullptr);
+		S6GiveBounds(Follower.Get());
 	}
 	if (bAttached)
 	{
@@ -363,12 +419,19 @@ void FS6Rig::Apply(const FS6Pose& P)
 			// when only its leader is posed, so they hung where they were (Marwan's QA, Nov 16). Moved here, from the
 			// sockets as the leader now has them.
 			Follower->UpdateChildTransforms(EUpdateTransformFlags::None, ETeleportType::TeleportPhysics);
+			// Bounds from the posed body, sent to the renderer every frame: the shadow moves with him.
+			Pose->UpdateBounds();
+			Follower->UpdateBounds();
+			Follower->MarkRenderTransformDirty();
 			if (auto* Mine = S6Riders().Find(this))
 			{
 				for (auto& Pair : *Mine)
 				{
 					if (USkeletalMeshComponent* C = Pair.Key.Get())
 					{
+						S6TakeBounds(C);
+						C->UpdateBounds();
+						C->MarkRenderTransformDirty();
 						C->UpdateChildTransforms(EUpdateTransformFlags::None, ETeleportType::TeleportPhysics);
 					}
 				}

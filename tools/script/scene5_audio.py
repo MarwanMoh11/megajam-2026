@@ -57,10 +57,12 @@ ON_BEAT = {"sfx_s5_timpani", "sfx_s5_lights_cut"}   # attack at t=0, sample-accu
 HALL_TAIL = {"sfx_s5_timpani"}                       # extra synthetic hall on the hit's tail
 PEAK_NORM = {"sfx_s5_timpani": -1.0}                 # peak-normalised instead of loudness-normalised
 
-MUSIC = ("mus_s5_score", 56000,
-         "Thunderous orchestral main-title score for a 1970s French heist thriller: sustained low strings, brass "
-         "swells and choir pads, dark and grand. No drums, no percussion, no timpani, no rhythm section: only "
-         "sustained strings, brass and choir.")
+# Nov 16, 02:25 (Marwan: "add sneaky music in scene 5"): was a thunderous orchestral main title; now the sneak's cue.
+MUSIC = ("mus_s5_score", 60000,
+         "Sneaky, tense instrumental underscore for a 1970s heist thriller, a thief creeping through a dark cinema: "
+         "plucked pizzicato strings and a walking muted upright bass on tiptoe, soft brushed snare, low tremolo "
+         "strings, a sly muted trumpet answering now and then, quiet vibraphone. Steady medium-slow pulse, "
+         "suspenseful and playful, loopable. Instrumental only, no vocals.")
 MUSIC_XFADE = 3.0
 
 

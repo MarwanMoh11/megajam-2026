@@ -1937,3 +1937,18 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
   the credits header and the window title (`ProjectDisplayedTitle`) now say CUTAWAY. The stolen film is still "The
   Director's Cut" (Lot 41, Vance's speech), and the director's "Cut. Print it." stays as the film's last line. The
   submission zip is `Marwan_Cutaway.zip`.
+
+## Nov 16, 02:30 Cairo: Marwan's late QA pass (hands, drag shadows, music, door handle, chatter)
+- **What changed:** Scene 6's rig now copies the bodies' relaxed animated fingers when a stunt starts and holds them
+  still (they were in the flat, splayed reference pose), and the guard's hands stop jittering on Cole's arm in the
+  choke. The rigged bodies (and their costume layers) take their bounds from the posed body every frame, so the
+  shadow moves with the guard on the drag to the trunk instead of leaving boot shadows behind. Scene 7's oak door: the
+  slab's fittings (lever, rose, plates, panels) are attached to the hinge while the leaf swings, so the handle opens
+  with the door instead of floating. Music: every scene's score is about 1.6x louder, and Scene 5's cue is a new
+  ElevenLabs sneaky heist underscore (pizzicato, walking bass, brushes; replaces the orchestral title cue in
+  `mus_s5_score`). Side chatter: the hall's murmur ducks to 0.3 (was 0.7) under a scripted line, the clink/laugh
+  scatter stops, and set-life barks stay subtitles only while a scripted voice plays.
+- **Went wrong:** Live Coding failed with no output; a Shipping `Build.bat` showed a shadowed `Root` local
+  (C4458), fixed. The editor had unsaved Lvl_Auction edits that weren't in any package, so it stayed open and the
+  package was built from disk with `-nocompileeditor`. Not played through: Marwan to check the hands, the drag
+  shadow, the door handle and the music levels.

@@ -460,7 +460,8 @@ void AScene5Auditorium::Blackout()
 	if (USoundBase* S = ScoreSound.LoadSynchronous())
 	{
 		StopScore(0.f);
-		ScoreComp = UGameplayStatics::SpawnSound2D(this, S, ScoreVolume, 1.f, 0.f, nullptr, false, false);
+		// The sneak's cue (ElevenLabs, Nov 16), louder than the level's tuned ScoreVolume (Marwan: "make the music louder").
+		ScoreComp = UGameplayStatics::SpawnSound2D(this, S, FMath::Min(ScoreVolume * 1.3f, 1.3f), 1.f, 0.f, nullptr, false, false);
 	}
 	EnsureTorches();
 	SneakTime = 0.f;

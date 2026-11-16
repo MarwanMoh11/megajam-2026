@@ -1392,7 +1392,9 @@ void USetLifeSubsystem::Say(ACastMember* Speaker, const FString& Line, FName Sou
 	bool bVoiced = false;
 	if (!Sound.IsNone() && D < VoiceRadius)
 	{
-		if (UTakeAudioComponent* Audio = UTakeAudioComponent::Get(this))
+		// Side chatter stays a subtitle over a scripted line: no voice under the scene's own (Marwan, Nov 16).
+		UTakeAudioComponent* Audio = UTakeAudioComponent::Get(this);
+		if (Audio && !Audio->IsVoicePlaying())
 		{
 			if (USoundBase* S = Audio->FindSound(Sound))
 			{
