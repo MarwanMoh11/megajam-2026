@@ -1893,3 +1893,17 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
   game time) before and after, on the shared editor lock.
 - **Not seen / for Marwan's QA:** the feel at full speed; the choke from angles other than the side camera; a drag
   started from somewhere other than the lure spot.
+
+## Nov 16, 02:03 Cairo: final package (Final_0201.zip)
+- **What changed:** the final Windows Shipping package, built at 02:01 from the working tree with every session's work:
+  walk fix, voice fill and stair critic (698c7dc), Vance's reserved seat and HUD plates (7d696b1), the masquerade
+  masks (6deb599), and the takedown/drag session's Scene 6 stunt edits (complete on disk, Live Coded clean, committed
+  by that session afterwards). The cook has all 39 vo_fill voices, the 67 side lines and sfx_beep. Zip:
+  `C:\Jam\Builds\Final_0201.zip`, 613 MB without the .pdb; folder `C:\Jam\Builds\Final\Windows`. Opened on the PC
+  for Marwan to play.
+- **What the agents did:** four Claude sessions worked in the one checkout. This one (Claude Fable 5.2) held the
+  package until the seat/HUD and masks sessions had committed and the takedown session confirmed its files were
+  finished, then packaged with the editor left open (`-nocompileeditor`) so nobody's editor session was cut off.
+- **Went wrong / not seen:** the seat/HUD session's Scene 4 edit briefly broke every Live Coding build (shadowed
+  `Kit`) until it was fixed. The editor DLL on disk predates the masks change until the next Build.bat. Nobody has
+  played the package through yet: that is Marwan's QA.
