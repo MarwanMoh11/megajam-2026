@@ -1,132 +1,68 @@
-# Epic AI MegaJam 2026: Director's Cut
+# Cutaway
 
-Private jam repo. Unreal Engine 5.9 MegaJam Preview, C++. Built and packaged on a Windows PC, driven from a MacBook
-with Claude agents.
+A heist told as a film, made in four days for the **Epic AI MegaJam 2026** (theme: *Director's Cut*) by one
+developer, Marwan Abudaif, directing a crew of Claude agents. Unreal Engine 5.9 MegaJam Preview, C++, Windows.
 
-**Hard deadline: Mon Nov 16, 03:59 Cairo. Upload target: Sun Nov 15, 22:00 Cairo.**
-
-| Path | What |
-|---|---|
-| `CLAUDE.md` | The rules every agent session in this repo follows |
-| `docs/` | Plan, the game's spec and build order (`STATUS.md`), brainstorm, survey, art style, dev log |
-| `setup/` | One runbook per setup stage, written for an agent to carry out |
-| `go.cmd` | Starts the automatic setup on the PC |
-| `prototypes/` | Browser grey boxes of the two ideas and the art board, made on the Mac |
-| `claude-global/` | Your global Claude rules and agents, copied to the PC in stage 1 |
-| `Reel/` | The Unreal project, created during setup (`Reel` is a working name) |
-
-## The machines
-
-| Machine | Job | Repo |
-|---|---|---|
-| MacBook | Where you sit. Claude app, browser, Moonlight for the PC's screen | `~/Developer/personal/EpicMegaJam` (docs, prototypes) |
-| PC, Windows | Everything Unreal: editor, agents, git, the Windows package the rules require | `C:\Jam\megajam` |
-
-Windows, not the PC's Linux Mint boot: the jam accepts Windows builds and not Linux ones, Unreal can't package a
-Windows game from Linux, and Unreal's fast C++ reload (Live Coding) only exists on Windows. One boot means one
-engine install, no reboot per package, and the game is tuned on the renderer the judges will see.
-
-## Setup: four lines at the PC, then it runs itself
-
-**At the PC, in Windows.** Right-click Start > **Terminal (Admin)** and run:
-
-```powershell
-winget install -e --id Git.Git --accept-source-agreements --accept-package-agreements
-irm https://claude.ai/install.ps1 | iex
-```
-
-Close that window, open **Terminal (Admin)** again so it finds the two new programs, and run:
-
-```powershell
-git clone https://github.com/MarwanMoh11/megajam-2026 C:\Jam\megajam
-C:\Jam\megajam\go.cmd
-```
-
-The clone opens a browser to sign in to GitHub. `go.cmd` starts Claude Code with all permissions and Remote
-Control on, and hands it `setup/auto.md`. The first start asks you to sign in to Claude and to confirm the
-permission mode. If it then sits at an empty prompt, type `Read setup/auto.md and carry it out.`
-
-**Stay about five minutes.** One thing can't be automated: when the Epic Games Launcher opens, sign in and start
-the **5.9 MegaJam Preview** install (the session tells you the clicks). If a second window asks to enable Remote
-Control, press `y`. Then go downstairs; the PC stays on with its monitor connected.
-
-**From the Mac** (`setup/0-remote.md`): the sessions are at https://claude.ai/code, and Moonlight shows the PC's
-screen once you have paired it with the address the session prints.
-
-**What the session does by itself:**
-
-1. Installs the Epic Games Launcher, Sunshine, Visual Studio with the Unreal workloads, 7-Zip and OBS Studio; turns
-   off sleep; records the machine in `docs/MACHINE.md`; copies your global Claude rules.
-2. Waits for the engine download and Visual Studio to finish.
-3. Creates the `Reel` project from the Third Person C++ template, turns on the All Toolsets plugin, proves the
-   command-line build, and opens the editor with its MCP server.
-4. Starts a second session, `jam-pipeline`, which drives the editor, times the C++ loop, packages the Windows build
-   and zips it, and tries the browser build for 30 minutes at most.
-
-**Know before starting:**
-
-- The session runs as administrator with no permission prompts, so it can install software unattended. The winget
-  flags accept each package's licence terms for you.
-- It changes no firewall, account or security settings, and opens no remote login. Sunshine's installer adds its
-  own firewall rule for the stream.
-- **None of it has been run.** Likely places to need you: creating the project (if the automatic route fails, the
-  session asks for six clicks in the new-project wizard through Moonlight) and Remote Control (if it won't connect,
-  the sessions are still there in their windows on the PC).
-
-The stages are also separate runbooks, if one has to be rerun: `setup/win-1-tools.md`, `setup/win-2-project.md`,
-`setup/win-3-pipeline.md`. Each takes the prompt `Read <file> and carry it out.`
+- **Play it:** the jam build is on itch.io (Windows, zip). Unzip and run `Reel.exe`.
+- **How it was made:** [`docs/DEVLOG.md`](docs/DEVLOG.md), written as it happened, hour by hour, with what went wrong.
+- **What it used:** [`docs/CREDITS.md`](docs/CREDITS.md) lists every outside asset with its licence, and every AI tool.
 
 ## The game
 
-The game is a heist shot in one take (working title *Print It*); its spec and build order are in `docs/STATUS.md`.
-For each build step, start a new session on the PC with the editor open (at claude.ai/code, on the `jam-pc` door)
-and give it, with the step's number:
+Vance thinks he's the star of a smooth 1970s thriller. His crew knows better. Over one night at the Grand Lumière
+Theater, the team steals the only master reel of *Le Soleil Noir*, a lost 1974 film, before the billionaire Arthur
+Pendleton locks it in his vault for good.
 
-```text
-Read docs/STATUS.md. Do step 1 of the build order in Unreal, and nothing past it: C++ for the logic with the tunable values exposed, basic shapes, no art, audio or menus. Run it in play-in-editor yourself and fix what breaks. Then tell me in two lines how to play it, and what you could not judge. Commit and push when it runs.
-```
+The theme is the camera. Vance's scenes are the **Director's Cut**: letterboxed 35mm, warm grain, sweeping angles.
+Every time the story cuts to the crew, the bars and the grain drop away into the raw, unpolished feed of what it
+really takes:
 
-Audio (step 6) runs in parallel in a second session, outside the editor, so it never touches `.uasset` files. First,
-at the PC, sign in to elevenlabs.io in its browser, make an API key, and set it yourself in PowerShell (agents never
-type keys; there is no clipboard from the Mac). Sessions started after this see it:
+| Scene | Who | What you do |
+|---|---|---|
+| 1. The theater steps | Vance (35mm) | Queue for the door, where cards are suddenly void: palm scan only |
+| 2. The florist van | Max (raw) | Tune the dials to spoof the palm scanner |
+| 3. Foyer and staircase | Vance (35mm) | Pick the right lines to get through the party |
+| 4. The catwalks | Nora (raw) | Clear Vance's lane from above |
+| 5. The private auditorium | Vance (35mm) | Slip away along the wall during Pendleton's speech |
+| 6. Backstage | Cole (raw) | Take down the enforcers, hide the bodies |
+| 7. The projection booth | Vance (35mm) | Swap the reel, then fight your way out |
+| 8. The rear alley | Vance (35mm) | Run for the car under fire |
+
+**Controls:** WASD to move, mouse to look, **E** to use what's in front of you (hold for longer actions), **R** for a
+new take. Each scene's goal is on screen. A mistake is a blooper, not a game over: the take restarts from that scene.
+
+## How it was made
+
+One person directed; the agents built. Claude Code sessions (Claude Fable orchestrating, Claude Opus agents
+designing, building and reviewing) wrote the C++ gameplay, drove the Unreal editor through its MCP server, dressed
+the sets, staged the cast and packaged the builds. Hyper3D Rodin made the props, ElevenLabs the voices, effects and
+music, and Mixamo supplied the motion capture. The dev log records each decision, each agent's job and each thing that
+broke.
+
+The rules the agents worked under are in [`CLAUDE.md`](CLAUDE.md). Things made before the jam opened are declared in
+[`docs/PRE_JAM.md`](docs/PRE_JAM.md).
+
+## The repo
+
+| Path | What |
+|---|---|
+| `Reel/` | The Unreal project (`Reel` was the working name). C++ gameplay in `Reel/Source/Reel/Take/` |
+| `tools/` | Python the agents ran against the editor: set dressing, cast, props, audio, look, fonts |
+| `docs/DEVLOG.md` | The dev log (the Glass Box entry) |
+| `docs/SCRIPT.md` | The film's script, scene by scene; `docs/SCRIPT_ADAPT.md` maps it onto the build |
+| `docs/STATUS.md` | The spec, the kill list and the build order as they evolved |
+| `docs/ART_STYLE.md`, `docs/AUDIO_SCRIPT.md` | The look and the sound |
+| `docs/CREDITS.md` | Assets, licences and AI tools |
+| `prototypes/` | Browser grey boxes from before the engine work |
+| `setup/`, `go.cmd` | The runbooks that set up the Windows PC unattended on day one |
+
+### Building it
+
+Windows, Unreal Engine 5.9 MegaJam Preview, Visual Studio with the Unreal workloads, Git LFS for the assets.
 
 ```powershell
-setx ELEVENLABS_API_KEY "paste-your-key-here"
+git lfs install; git clone https://github.com/MarwanMoh11/megajam-2026
+& "<UE_5.9>\Engine\Build\BatchFiles\Build.bat" ReelEditor Win64 Development "-Project=<repo>\Reel\Reel.uproject" -WaitMutex
 ```
 
-```text
-Read docs/STATUS.md. Do the audio part of step 6 only, outside the editor: write every voice line, bluff and sound effect the spec lists into docs/AUDIO_SCRIPT.md, generate them with the ElevenLabs API (key in ELEVENLABS_API_KEY; never print it) as WAV files in C:\Jam\Audio, named by event. Keep each voice to one ElevenLabs voice and say which. Log ElevenLabs in docs/CREDITS.md. Don't import into Unreal; the editor session does that. Tell me the credits used and anything that sounds wrong.
-```
-
-## By hand, in a browser
-
-Do these while the engine downloads. They need your accounts.
-
-- [ ] The jam page says **Joined**: https://itch.io/jam/2026-epic-ai-megajam
-- [ ] Find the Nov 10 partner email (university inbox, then spam). It holds most of the codes below.
-  Checked Nov 13: not in the personal Gmail, spam included. The codes went to people who had joined by Nov 10, and
-  itch.io was first linked on Nov 12, so ask the organisers for late-joiner codes. Tripo's page said "codes are
-  temporarily unavailable" on Nov 13 (try again). WeLoveIndies account made with the personal Gmail (free licence, non-commercial).
-- [ ] Claim the perks:
-
-  | Perk | Where | Claim by |
-  |---|---|---|
-  | Tripo Pro + 3,000 credits (characters) | worlds.tripo3d.ai/epicaimegajam2026promotion, then tripo3d.ai > Upgrade > Redeem Code | Nov 16 |
-  | Hyper3D Rodin (props; list it for the $10k pool) | hyper3d.ai > Wallet > Code Redemption, code from the email | Nov 16 |
-  | PBRgen (materials) | sign-up link in the email | ends Nov 15 |
-  | WeLoveIndies (music, SFX) | weloveindies.com/en/epicmegajam | |
-  | fal $30 (concept art) | fal.ai, code from the email | Nov 30 |
-  | Rokoko (video mocap) | register through the email | |
-  | Anthropic $25 API | claim link in the email; only needed if the game calls Claude while running | Nov 12-27 |
-
-- [ ] Read the Official Rules for eligibility and the student category:
-  https://epicgames.box.com/s/a7xcgl07fqoieeb99sjtd3juhj4agc4z
-
-## If something doesn't work
-
-- **`claude` or `git` isn't recognised in the second terminal:** the window was opened before the installs
-  finished. Close it and open Terminal (Admin) again.
-- **No sessions at claude.ai/code:** see `setup/0-remote.md`. Until it works, use the session windows on the PC
-  through Moonlight.
-- **The browser build fails:** drop it. The Windows package is the entry, and the rules require it anyway.
-- **A push fails on Git LFS quota:** keep committing locally and carry on. The push is only a backup.
+Then open `Reel\Reel.uproject`. The packaging command is in `CLAUDE.md`.
