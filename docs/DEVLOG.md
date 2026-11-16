@@ -1920,3 +1920,13 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
 - **What changed:** Marwan asked for the masks to come out; `6deb599` is reverted, so the mannequin extras and guards
   are back to their bare faces and `Reel.Cast.Masks` is gone. The 02:01 package (Final_0201.zip) still has the masks:
   the next package build drops them.
+
+## Nov 16, 02:06 Cairo: final package rebuilt without the masks (Final_0205.zip)
+- **What changed:** Marwan asked the masks session to remove the masquerade masks (reverted in 2bd2524), so the 02:01
+  package was stale. Rebuilt at 02:04 from the working tree: everything in Final_0201 plus the takedown session's
+  f95e69c, minus the masks, plus Marwan's QA note that Cole waits at the prop-store exit in Scene 7 instead of in
+  front of Vance (an uncommitted Scene7Route.cpp edit from the Cole-hands session, in the build as it stood on disk).
+  Zip: `C:\Jam\Builds\Final_0205.zip`, 613 MB; folder `C:\Jam\Builds\Final2\Windows`. Opened on the PC for Marwan.
+  Final_0201.zip still has the masks: don't upload it.
+- **Went wrong:** none in the build; it recompiled only the unity file holding CastMember.cpp and Scene7Route.cpp,
+  which was checked. Not played through yet.
