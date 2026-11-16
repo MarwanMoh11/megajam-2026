@@ -487,7 +487,7 @@ void AScene7Booth::PutCanisterOn(ATakeCharacter* Char, bool bInHand)
 	USceneComponent* Hold = Char->GetRootComponent();
 	Canister->AttachToComponent(Hold ? Hold : Body, FAttachmentTransformRules::KeepRelativeTransform);
 	Canister->SetRelativeTransform(Hold
-		? FTransform(FRotator(0.f, 0.f, 90.f), FVector(6.f, -40.f, 4.f), FVector(0.42f, 0.42f, 0.07f))
+		? FTransform(FRotator(0.f, 0.f, 90.f), FVector(2.f, -25.f, -6.f), FVector(0.42f, 0.42f, 0.07f))
 		: CanisterInArm);
 }
 
