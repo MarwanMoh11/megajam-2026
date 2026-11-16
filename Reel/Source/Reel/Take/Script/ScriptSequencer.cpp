@@ -461,6 +461,12 @@ bool AScriptSequencer::HandleKey(const FKey& Key, bool bPressed)
 			&& (Key == EKeys::Enter || Key == EKeys::SpaceBar || Key == EKeys::R) && Scenes.Num() > 0)
 		{
 			Flags.Reset();
+			// Undo the ending before the top: Scene 8 hid Vance in the car (no collision, no movement) and Scene 7's
+			// canister is still on his arm. Their own resets put him back on his feet and the can back on the bench.
+			for (int32 i = Scenes.Num() - 1; i >= 0; --i)
+			{
+				if (Scenes[i] && Scenes[i]->SceneNumber >= 7) { Scenes[i]->ResetScene(); }
+			}
 			JumpTo(Scenes[0]->SceneNumber);
 		}
 		return Key != EKeys::Escape;

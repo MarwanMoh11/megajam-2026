@@ -817,6 +817,35 @@ void AScene8Alley::TickScene(float DeltaSeconds)
 		if (Beat != EScene8Beat::Escape && Beat != EScene8Beat::Alley) { return; }	// a retake started
 	}
 
+	// The getaway: the guards run on foot after the car, grab at the door, and end up standing in the street
+	// where it was parked, spread across its spot, looking after it.
+	if ((Beat == EScene8Beat::Dive || Beat == EScene8Beat::Drive) && Car)
+	{
+		const FVector Spot = DepartPath ? DepartPath->GetLocationAtDistanceAlongSpline(0.f, ESplineCoordinateSpace::World) : Car->GetActorLocation();
+		const FVector Door = Car->GetPassengerDoorWorld();
+		const FVector Side = DepartPath ? DepartPath->GetRightVectorAtDistanceAlongSpline(0.f, ESplineCoordinateSpace::World) : Car->GetActorRightVector();
+		const FVector Fwd = DepartPath ? DepartPath->GetDirectionAtDistanceAlongSpline(0.f, ESplineCoordinateSpace::World) : Car->GetActorForwardVector();
+		int32 k = 0;
+		for (AScene8Chaser* C : Chasers)
+		{
+			if (!C || C->IsHidden()) { continue; }
+			const FVector Here = C->GetActorLocation();
+			// In the dive the first one lunges for the door; once it pulls away they all fill the car's spot.
+			FVector Goal = (Beat == EScene8Beat::Dive && k == 0) ? Door
+				: Spot + Side * ((k - 1) * 110.f) - Fwd * (k == 1 ? 60.f : 0.f);
+			Goal.Z = Here.Z;
+			const FVector To = Goal - Here;
+			const float Dist = To.Size2D();
+			const float Step = FMath::Min(Dist, GuardRunMax * DeltaSeconds);
+			const FVector Next = Dist > 1.f ? Here + To.GetSafeNormal2D() * Step : Here;
+			const FVector Watch = Car->GetActorLocation() - Next;
+			const float Yaw = (Dist > 40.f ? To : Watch).Rotation().Yaw;
+			C->SetActorLocationAndRotation(Next, FMath::RInterpTo(C->GetActorRotation(), FRotator(0.f, Yaw, 0.f), DeltaSeconds, 10.f));
+			C->SetRunning(Dist > 40.f);
+			++k;
+		}
+	}
+
 	switch (Beat)
 	{
 	case EScene8Beat::Escape:

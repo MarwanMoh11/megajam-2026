@@ -476,9 +476,19 @@ void AScene7Booth::PutCanisterOn(ATakeCharacter* Char, bool bInHand)
 	if (!Body) { return; }
 	Canister->SetHiddenInGame(false);
 	CanisterLid->SetRelativeLocation(FVector(0.f, 0.f, 50.f));
-	Canister->AttachToComponent(Body, FAttachmentTransformRules::KeepRelativeTransform,
-		bInHand ? CanisterBlockBone : CanisterBone);
-	Canister->SetRelativeTransform(bInHand ? CanisterInHand : CanisterInArm);
+	if (bInHand)
+	{
+		Canister->AttachToComponent(Body, FAttachmentTransformRules::KeepRelativeTransform, CanisterBlockBone);
+		Canister->SetRelativeTransform(CanisterInHand);
+		return;
+	}
+	// Carried: on his capsule, not a bone, so the run cycle can't swing it into him. Upright at his left hip, the
+	// disc's face along his side and clear of the body (the forearm-bone hold cut through his chest).
+	USceneComponent* Hold = Char->GetRootComponent();
+	Canister->AttachToComponent(Hold ? Hold : Body, FAttachmentTransformRules::KeepRelativeTransform);
+	Canister->SetRelativeTransform(Hold
+		? FTransform(FRotator(0.f, 0.f, 90.f), FVector(6.f, -40.f, 4.f), FVector(0.42f, 0.42f, 0.07f))
+		: CanisterInArm);
 }
 
 bool AScene7Booth::AttachCanisterTo(const UObject* WorldContextObject, ATakeCharacter* Character)
