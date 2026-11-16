@@ -1952,3 +1952,13 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
   (C4458), fixed. The editor had unsaved Lvl_Auction edits that weren't in any package, so it stayed open and the
   package was built from disk with `-nocompileeditor`. Not played through: Marwan to check the hands, the drag
   shadow, the door handle and the music levels.
+
+## Nov 16, 03:06 - last-hour fixes: roll again, the can, the guards at the car
+- **Changed:** Enter/Space/R after "Print it." left Vance hidden in the car with no collision and the stolen can
+  floating on his arm; the roll-again now runs Scenes 7-8's own resets before Scene 1. The can is carried on
+  Vance's capsule at his left hip instead of the forearm bone, so the run cycle can't swing it through him. In the
+  getaway the visible guards run after the car on foot, the first grabs at the passenger door, then they stand
+  spread across the spot where it was parked.
+- **Went wrong:** Live Coding failed again; the first package refused to build while the editor's Live Coding
+  was active, so the editor was closed (Marwan chose to discard its unsaved Lvl_Auction edits) and packaging rerun.
+  Not seen in the editor: Marwan to check the can's hold, the guards' run and the roll-again.
