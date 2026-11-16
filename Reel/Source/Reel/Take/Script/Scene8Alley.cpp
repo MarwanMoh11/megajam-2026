@@ -822,7 +822,7 @@ void AScene8Alley::TickScene(float DeltaSeconds)
 	if ((Beat == EScene8Beat::Dive || Beat == EScene8Beat::Drive) && Car)
 	{
 		const FVector Spot = DepartPath ? DepartPath->GetLocationAtDistanceAlongSpline(0.f, ESplineCoordinateSpace::World) : Car->GetActorLocation();
-		const FVector Door = Car->GetPassengerDoorWorld();
+		const FVector GrabAt = Car->GetPassengerDoorWorld();
 		const FVector Side = DepartPath ? DepartPath->GetRightVectorAtDistanceAlongSpline(0.f, ESplineCoordinateSpace::World) : Car->GetActorRightVector();
 		const FVector Fwd = DepartPath ? DepartPath->GetDirectionAtDistanceAlongSpline(0.f, ESplineCoordinateSpace::World) : Car->GetActorForwardVector();
 		int32 k = 0;
@@ -831,7 +831,7 @@ void AScene8Alley::TickScene(float DeltaSeconds)
 			if (!C || C->IsHidden()) { continue; }
 			const FVector Here = C->GetActorLocation();
 			// In the dive the first one lunges for the door; once it pulls away they all fill the car's spot.
-			FVector Goal = (Beat == EScene8Beat::Dive && k == 0) ? Door
+			FVector Goal = (Beat == EScene8Beat::Dive && k == 0) ? GrabAt
 				: Spot + Side * ((k - 1) * 110.f) - Fwd * (k == 1 ? 60.f : 0.f);
 			Goal.Z = Here.Z;
 			const FVector To = Goal - Here;
