@@ -51,8 +51,8 @@ namespace TakeHudBarsLocal
 ATakeHUD::ATakeHUD()
 {
 	using namespace TakeStyle;
-	// The script (docs/SCRIPT.md): the title card is THE DIRECTOR'S CUT, the crew are Vance, Max, Nora and Cole.
-	GameTitle = TEXT("THE DIRECTOR'S CUT");
+	// The game is CUTAWAY (renamed Nov 16; the stolen film is still the Director's Cut). The crew are Vance, Max, Nora and Cole.
+	GameTitle = TEXT("CUTAWAY");
 	ControlsHint = TEXT("[WASD] Walk   [MOUSE] Look   [E] Use   [R] Retake the scene");
 	TitleTagline = TEXT("A 1970s heist thriller. Only one of them thinks it's a movie.");
 	SceneNames = { TEXT("THE MARQUEE"), TEXT("THE VAN"), TEXT("THE FOYER"), TEXT("THE CATWALK"), TEXT("THE AUDITORIUM"),

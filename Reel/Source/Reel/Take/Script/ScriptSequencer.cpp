@@ -170,7 +170,7 @@ AScriptSequencer::AScriptSequencer()
 	PrimaryActorTick.bTickEvenWhenPaused = false;
 	Credits = {
 		// docs/script/s8.md, "Credits for AScriptSequencer::Credits". CAPS = heading, "" = gap.
-		TEXT("THE DIRECTOR'S CUT"), TEXT(""),
+		TEXT("CUTAWAY"), TEXT(""),
 		TEXT("An entry for the Epic MegaJam 2026"), TEXT("Theme: Director's Cut"), TEXT(""),
 		TEXT("DIRECTED BY"), TEXT("Marwan Abudaif"), TEXT(""),
 		TEXT("STARRING"), TEXT("Vance, the star"), TEXT("Max, the wheels and the wires"),

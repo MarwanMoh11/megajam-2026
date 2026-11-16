@@ -1930,3 +1930,10 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
   Final_0201.zip still has the masks: don't upload it.
 - **Went wrong:** none in the build; it recompiled only the unity file holding CastMember.cpp and Scene7Route.cpp,
   which was checked. Not played through yet.
+
+## Nov 16, 02:15 Cairo: the game is called Cutaway
+
+- **What changed:** Marwan picked the name *Cutaway* (a film cut and a getaway). The title card (`ATakeHUD::GameTitle`),
+  the credits header and the window title (`ProjectDisplayedTitle`) now say CUTAWAY. The stolen film is still "The
+  Director's Cut" (Lot 41, Vance's speech), and the director's "Cut. Print it." stays as the film's last line. The
+  submission zip is `Marwan_Cutaway.zip`.

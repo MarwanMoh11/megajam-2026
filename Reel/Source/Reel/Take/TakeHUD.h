@@ -141,7 +141,7 @@ public:
 	// --- the ends (step 3, reworded by §15.7) -----------------------------------------------------------------------------------
 
 	UPROPERTY(EditAnywhere, Category = "Take|Ends")
-	FString GameTitle = TEXT("PRINT IT");
+	FString GameTitle = TEXT("CUTAWAY");
 
 	UPROPERTY(EditAnywhere, Category = "Take|Ends")
 	FString TitleTagline = TEXT("A heist shot in one take.");
