@@ -270,178 +270,85 @@ def light(label, loc, cd, radius, rgb, shadows=False, src=0.0):
     return a
 
 
-def text(t, x, y, z, yaw, size, rgb):
-    a = C.eas.spawn_actor_from_class(unreal.TextRenderActor, unreal.Vector(x, y, z), unreal.Rotator(0.0, 0.0, yaw))
-    a.set_actor_label("Set_S2_Lettering")
-    a.set_folder_path("Sets/" + TAG)
-    c = a.text_render
-    try:
-        c.set_text(t)
-    except Exception:                                           # noqa: BLE001
-        c.set_editor_property("text", t)
-    for (k, v) in (("world_size", float(size)), ("text_render_color", unreal.Color(r=rgb[0], g=rgb[1], b=rgb[2], a=255)),
-                   ("horizontal_alignment", unreal.HorizTextAligment.EHTA_CENTER),
-                   ("vertical_alignment", unreal.VerticalTextAligment.EVRTA_TEXT_CENTER)):
-        try:
-            c.set_editor_property(k, v)
-        except Exception:                                       # noqa: BLE001
-            pass
-    a.set_editor_property("tags", [unreal.Name(TAG)])
-    return a
+# --- the van, outside: the Blender mesh --------------------------------------------------------------------------------
+# Modelled in Blender by tools/blender/florist_van.py (its export() writes Reel/SourceArt/FloristVan/*.fbx). It replaced
+# the box van on Nov 17: the same box (210 x 520, roof 235), a hollow 4 cm shell, the windshield in the same plane, and
+# wheel tubs inside the walls at 82..101 cm off the centre line. Lettering, bouquet, roof rig and lamps are in the mesh.
+VAN_SRC = r"C:\Jam\megajam\Reel\SourceArt\FloristVan"
+VAN_SLOTS = {"Interior": "Cream", "Whitewall": "Petal"}        # Blender slots without an MI_S2_ of their own
+WELLS = (1550.0 - 165.0 + YOFF, 1550.0 + 150.0 + YOFF)         # wheel centres (y); each well reaches 44 cm either way
 
 
-# --- the van, outside ------------------------------------------------------------------------------------------------
-def body():
-    S = dict(shadow=True)                                       # the shell casts shadows: the inside light stays in
-    cr, mi = M["Cream"], M["Mint"]
-    (wy0, wz0), (wy1, wz1) = WS
-    for (xa, xb, skin) in ((X0, X0 + T, X0 - 1.0), (X1 - T, X1, X1)):
-        K.box((xa, xb, Y0, Y1, ZB, 115.0), cr, **S)                         # below the window line, nose to tail
-        K.box((xa, xb, wy0, wy1 + 5.0, 115.0, ROOF), cr, **S)               # A pillar
-        K.box((xa, xb, wy1 + 5.0, wy1 + 100.0, 115.0, 128.0), cr, **S)      # under the cab window
-        K.box((xa, xb, wy1 + 5.0, wy1 + 100.0, 198.0, ROOF), cr, **S)       # over it
-        K.box((xa + 0.5, xb - 0.5, wy1 + 5.0, wy1 + 100.0, 128.0, 198.0), M["DarkGlass"], **S)   # cab window
-        K.box((xa, xb, wy1 + 100.0, Y1, 115.0, ROOF), cr, **S)              # cargo side, no windows
-        K.box((skin, skin + 1.0, Y0, Y1, ZB, 92.0), mi)                     # the faded mint band
-        K.box((skin - 0.2, skin + 1.2, Y0, Y1, 92.0, 95.0), M["Chrome"])    # pinstripe
-        K.box((skin - 0.3, skin + 1.3, wy1 + 92.0, wy1 + 96.0, ZB + 3, 198.0), M["Black"])   # cab door seam
-        K.box((skin - 0.5, skin + 1.5, wy1 + 70.0, wy1 + 82.0, 118.0, 121.0), M["Chrome"])   # door handle
-    K.box((X0, X1, Y0, Y0 + T, ZB, wz0), cr, **S)                             # the nose under the windshield
-    K.box((X0, X1, Y0 - 1.0, Y0, ZB, 80.0), mi)
-    K.box((X0, X1, wy1 - 2.0, wy1 + 6.0, wz1, ROOF), cr, **S)                # header over the windshield
-    K.box((X0, X1, wy1 - 2.0, Y1, ROOF - 6.0, ROOF), cr, **S)                # roof
-    K.box((X0 - 1.5, X1 + 1.5, wy1 + 4.0, Y1, ROOF - 1.0, ROOF + 1.5), M["Chrome"])   # drip rail
-    K.box((X0, X1, Y1 - T, Y1, ZB, ROOF), cr, **S)                            # rear doors
-    K.box((X0, X1, Y1, Y1 + 1.0, ZB, 92.0), mi)
-    K.box((CX - 0.6, CX + 0.6, Y1, Y1 + 1.5, ZB + 5, ROOF - 8), M["Black"])  # rear door split
-    for sx in (-1, 1):
-        K.box((CX + sx * 55 - 30, CX + sx * 55 + 30, Y1, Y1 + 1.2, 150.0, 200.0), M["DarkGlass"])   # rear windows
-        K.box((CX + sx * 92 - 6, CX + sx * 92 + 6, Y1, Y1 + 2.0, 70.0, 95.0), M["Tail"])
-        K.box((CX + sx * 92 - 6, CX + sx * 92 + 6, Y1, Y1 + 2.0, 60.0, 70.0), M["Amber"])
-    K.box((X0, X1, Y0 + T, Y1 - T, FLOOR - 10.0, FLOOR), M["Mat"], **S)       # cargo deck / cab floor
-    K.box((X0 + 25, X1 - 25, Y0 + 20, Y1 - 20, 22.0, ZB), M["Black"], **S)   # chassis
-    # the nose: grille, headlights, indicators, bumpers
-    K.box((CX - 50, CX + 50, Y0 - 1.5, Y0, 52.0, 98.0), M["Black"])
-    for i in range(7):
-        z = 56.0 + i * 6.5
-        K.box((CX - 48, CX + 48, Y0 - 2.5, Y0 - 1.5, z, z + 2.0), M["Chrome"])
-    for sx in (-1, 1):
-        hx = CX + sx * 78
-        K.seg((hx, Y0 - 1.0, 86.0), (hx, Y0 - 4.0, 86.0), 22.0, M["Chrome"])
-        K.seg((hx, Y0 - 3.0, 86.0), (hx, Y0 - 5.0, 86.0), 17.0, M["Headlight"])
-        K.box((hx - 8, hx + 8, Y0 - 2.5, Y0, 62.0, 70.0), M["Amber"])
-        K.seg((X0 - 4 if sx < 0 else X1 + 4, wy1 + 10, 175.0), (X0 - 22 if sx < 0 else X1 + 22, wy1 + 4, 172.0),
-              2.0, M["Chrome"])                                                # mirror arm
-        mx = X0 - 26 if sx < 0 else X1 + 26
-        K.box((mx - 3, mx + 3, wy1, wy1 + 4, 150.0, 185.0), M["Black"])         # mirror
-    K.box((X0 - 6, X1 + 6, Y0 - 12, Y0 - 2, 32.0, 47.0), M["Chrome"])          # bumpers
-    K.box((X0 - 4, X1 + 4, Y1 + 1, Y1 + 11, 32.0, 47.0), M["Chrome"])
-    # wheels (radius 35) with a dark arch ring behind each
-    for wy in (Y0 + 95.0, Y1 - 110.0):
-        for (xo, xi, xr) in ((X0 - 3.0, X0 + 19.0, X0 - 1.0), (X1 + 3.0, X1 - 19.0, X1 + 1.0)):
-            K.seg((xr, wy, 37.0), (xr + (0.6 if xr > CX else -0.6), wy, 37.0), 86.0, M["Black"])
-            K.seg((xo, wy, 35.0), (xi, wy, 35.0), 70.0, M["Rubber"], shadow=True)
-            K.seg((xo + (-0.5 if xo > CX else 0.5) * 0, wy, 35.0), (xo + (1.0 if xo > CX else -1.0), wy, 35.0),
-                  36.0, M["Chrome"])
-    # the windshield: fogged pale glass, slanted, as its own actor so a shot can hide it
-    (y0, z0), (y1, z1) = WS
-    ln = math.hypot(y1 - y0, z1 - z0)
-    pitch = math.degrees(math.atan2(z1 - z0, y1 - y0)) - 90.0
-    C.spawn(CUBE, (CX, (y0 + y1) / 2, (z0 + z1) / 2), (0.0, pitch, 90.0), (0.012, (X1 - X0 - 2 * T) / 100.0, ln / 100.0),
-            tag=TAG, label="Set_S2_Windshield", shadow=False, mat=M["Fog"])
-    K.seg((X0 + T, y0, z0), (X1 - T, y0, z0), 4.0, M["Black"])               # rubber seal, bottom and top
-    K.seg((X0 + T, y1, z1), (X1 - T, y1, z1), 4.0, M["Black"])
-    K.seg((CX + 40, y0 + 2, z0 + 3), (CX + 10, y0 + 12, z0 + 30), 1.2, M["Black"])   # wipers
-    K.seg((CX - 60, y0 + 2, z0 + 3), (CX - 90, y0 + 12, z0 + 30), 1.2, M["Black"])
-    # the lettering on both flanks
-    for (x, yaw) in ((X1 + 1.6, 0.0), (X0 - 1.6, 180.0)):
-        text("FLEURS DU SOIR", x, Y1 - 190.0, 172.0, yaw, 24.0, (18, 72, 58))
-        text("LIVRAISON NUIT  \u00b7  T\u00c9L. 26-14-78", x, Y1 - 190.0, 146.0, yaw, 9.0, (18, 72, 58))
-        K.box((x - 0.4, x + 0.4, Y1 - 330.0, Y1 - 50.0, 158.0, 159.5) if x > CX else
-              (x - 0.4, x + 0.4, Y1 - 330.0, Y1 - 50.0, 158.0, 159.5), M["Ink"])
+def import_van():
+    """(Re)imports both FBX into DIR: replace and save on purpose, so a re-export replaces the last import."""
+    out = {}
+    for name in ("SM_FloristVan", "SM_FloristVan_Windshield"):
+        ui = unreal.FbxImportUI()                              # legacy options; AssetTools converts them for Interchange
+        ui.set_editor_property("import_mesh", True)
+        ui.set_editor_property("import_as_skeletal", False)
+        ui.set_editor_property("mesh_type_to_import", unreal.FBXImportType.FBXIT_STATIC_MESH)
+        ui.set_editor_property("import_materials", False)
+        ui.set_editor_property("import_textures", False)
+        sm = ui.get_editor_property("static_mesh_import_data")
+        for k, v in (("combine_meshes", True), ("auto_generate_collision", False),
+                     ("normal_import_method", unreal.FBXNormalImportMethod.FBXNIM_IMPORT_NORMALS)):
+            try:
+                sm.set_editor_property(k, v)
+            except Exception as e:                             # noqa: BLE001
+                LOG.append("fbx option %s: %s" % (k, e))
+        t = unreal.AssetImportTask()
+        t.set_editor_property("filename", "%s\\%s.fbx" % (VAN_SRC, name))
+        t.set_editor_property("destination_path", DIR)
+        t.set_editor_property("destination_name", name)
+        t.set_editor_property("replace_existing", True)
+        t.set_editor_property("automated", True)
+        t.set_editor_property("save", True)
+        t.set_editor_property("options", ui)
+        unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([t])
+        got = [C.eal.load_asset(str(p)) for p in (t.get_editor_property("imported_object_paths") or [])]
+        meshes = [m for m in got if isinstance(m, unreal.StaticMesh)]
+        if not meshes:
+            raise RuntimeError("van: importing %s made no static mesh" % name)
+        m = meshes[0]
+        want = DIR + "/" + name
+        if m.get_path_name().split(".")[0] != want:            # Interchange may name it after the FBX node
+            if C.eal.does_asset_exist(want):
+                C.eal.delete_asset(want)
+            C.eal.rename_asset(m.get_path_name().split(".")[0], want)
+            m = C.eal.load_asset(want)
+        out[name] = m
+        LOG.append("%s: %s" % (name, [str(p) for p in (t.get_editor_property("imported_object_paths") or [])]))
+    return out
 
 
-# --- the van, outside: the details that make the box read as a van (s12, Marwan's QA "make the van look better") ------
-def outside():
-    """Rounded roof and rear edges, the gutters, Max's roof antenna and dish, marker lamps, the cab step, mud flaps, a
-    road-grime band, the fuel cap and a hand-painted lily bouquet on each flank."""
-    cr, mi = M["Cream"], M["Mint"]
-    (wy0, wz0), (wy1, wz1) = WS
-    S = dict(shadow=True)
-    # the roof's long edges and the rear corners rounded: a cream roll over each sharp edge
-    for x in (X0 + 2.0, X1 - 2.0):
-        K.seg((x, wy1 + 2.0, ROOF - 5.0), (x, Y1 - 2.0, ROOF - 5.0), 14.0, cr, **S)
-    for x in (X0 + 2.0, X1 - 2.0):
-        K.seg((x, Y1 - 2.0, ZB + 2.0), (x, Y1 - 2.0, ROOF - 5.0), 12.0, cr, **S)
-    K.seg((X0 + 2.0, Y1 - 2.0, ROOF - 5.0), (X1 - 2.0, Y1 - 2.0, ROOF - 5.0), 14.0, cr, **S)
-    K.seg((X0 + 2.0, wy1 + 2.0, ROOF - 5.0), (X1 - 2.0, wy1 + 2.0, ROOF - 5.0), 14.0, cr, **S)
-    for x in (X0, X1):                                                           # a chrome bead at the roof line
-        K.seg((x, wy1 + 4.0, 214.0), (x, Y1 - 6.0, 214.0), 1.6, M["Chrome"])
-    # Max's rig on the roof: a vent, a whip antenna, a small dish aimed at the theatre, the cable down the back
-    K.box((CX - 30, CX + 30, Y1 - 160, Y1 - 110, ROOF, ROOF + 9), M["Steel"], **S)
-    K.box((CX - 32, CX + 32, Y1 - 162, Y1 - 108, ROOF + 9, ROOF + 11), M["Steel"])
-    ax, ay = X1 - 25.0, Y1 - 40.0
-    K.cyl(ax, ay, ROOF, ROOF + 6, 8.0, M["Black"])
-    K.seg((ax, ay, ROOF + 6), (ax + 6.0, ay + 4.0, ROOF + 150.0), 0.8, M["Chrome"])
-    dx, dy = X1 - 40.0, Y1 - 220.0
-    K.seg((dx, dy, ROOF), (dx, dy, ROOF + 30.0), 4.0, M["Steel"])
-    tx, ty = -3520.0 - dx, 320.0 - dy                                            # the dish looks at the scanner
-    n = math.hypot(tx, ty)
-    tx, ty = tx / n, ty / n
-    K.seg((dx - tx * 3.0, dy - ty * 3.0, ROOF + 38.0), (dx + tx * 3.0, dy + ty * 3.0, ROOF + 40.0), 46.0, M["Beige"],
-          m=SPH, **S)
-    K.seg((dx, dy, ROOF + 39.0), (dx + tx * 22.0, dy + ty * 22.0, ROOF + 41.0), 1.2, M["Steel"])
-    K.rope(sag((dx, dy, ROOF + 2.0), (X1 - 4.0, Y1 + 1.0, ROOF - 10.0), 3.0, 4), 1.2, M["CableBlk"])
-    K.rope([(X1 - 4.0, Y1 + 1.5, ROOF - 10.0), (X1 - 4.0, Y1 + 1.5, 140.0), (X1 - 10.0, Y1 + 1.5, 110.0)], 1.2,
-           M["CableBlk"])
-    for (x, s) in ((X0, -1.0), (X1, 1.0)):
-        skin = x + s * 1.2
-        # amber marker lamps fore and aft, a red one at the tail
-        K.box((skin - 0.8, skin + 0.8, Y0 + 30, Y0 + 40, 100.0, 106.0), M["Amber"])
-        K.box((skin - 0.8, skin + 0.8, Y1 - 14, Y1 - 4, 205.0, 211.0), M["Tail"])
-        K.box((skin - 0.8, skin + 0.8, Y1 - 280, Y1 - 270, 100.0, 106.0), M["Amber"])
-        # the road grime: a darker band along the sill
-        K.box((skin - 0.6, skin + 0.6, Y0 + 2, Y1 - 2, ZB, ZB + 9.0), M["Grime"])
-        # the cab's step and the sliding door's runner
-        K.box((x + s * 2.0 - 1.5, x + s * 14.0, wy1 + 15.0, wy1 + 85.0, ZB + 4.0, ZB + 6.5), M["Chrome"])
-        K.box((skin - 0.5, skin + 0.5, wy1 + 4.0, wy1 + 100.0, 199.0, 201.5), M["Chrome"])
-        # mud flaps behind the rear wheels
-        K.box((min(x - s * 10.0, x + s * 12.0), max(x - s * 10.0, x + s * 12.0), Y1 - 62.0, Y1 - 60.0, 6.0, 36.0),
-              M["Rubber"])
-        # the painted bouquet near the tail, cream-on-mint lilies on long green stems tied with a red ribbon
-        by, bz = Y1 - 48.0, 112.0
-        for k in range(7):
-            ang = math.radians(-30.0 + k * 10.0)
-            L = 70.0 + (12.0 if k % 2 else 0.0)
-            top = (by + math.sin(ang) * L, bz + math.cos(ang) * L)
-            K.seg((skin, by, bz), (skin, top[0], top[1]), 1.6, M["Stem"], w=0.5)
-            K.add(SPH, M["Petal"], (skin, top[0] + math.sin(ang) * 6.0, top[1] + math.cos(ang) * 6.0),
-                  (math.degrees(ang) * s, 0.0, 0.0), (0.008, 0.10, 0.17))
-            K.add(SPH, M["Stamen"], (skin + s * 0.3, top[0] + math.sin(ang) * 3.0, top[1] + math.cos(ang) * 3.0),
-                  (0.0, 0.0, 0.0), (0.008, 0.025, 0.025))
-            if k in (1, 4, 6):
-                K.add(SPH, M["Leaf"], (skin, by + math.sin(ang) * L * 0.45 + 6.0 * (1 if k < 4 else -1),
-                                       bz + math.cos(ang) * L * 0.45), ((40.0 if k < 4 else -40.0) * s, 0.0, 0.0),
-                      (0.008, 0.06, 0.20))
-        K.box((skin - 0.35, skin + 0.35, by - 7.0, by + 7.0, bz - 2.0, bz + 6.0), M["Red"])   # the ribbon
-        K.box((skin - 0.35, skin + 0.35, by - 2.0, by + 2.0, bz - 14.0, bz - 2.0), M["Red"])
-    # the fuel cap, driver's side
-    K.seg((X1 + 0.5, Y1 - 150.0, 70.0), (X1 + 2.0, Y1 - 150.0, 70.0), 11.0, M["Chrome"])
-    # wheel hubs: a domed chrome cap and five lug nuts on each wheel
-    for wy in (Y0 + 95.0, Y1 - 110.0):
-        for (xo, s) in ((X0 - 3.0, -1.0), (X1 + 3.0, 1.0)):
-            K.seg((xo, wy, 35.0), (xo + s * 1.5, wy, 35.0), 44.0, M["Steel"])
-            K.seg((xo + s * 1.5, wy, 35.0), (xo + s * 3.0, wy, 35.0), 16.0, M["Chrome"])
-            for k in range(5):
-                a = math.radians(k * 72.0)
-                K.seg((xo + s * 1.5, wy + math.cos(a) * 12.0, 35.0 + math.sin(a) * 12.0),
-                      (xo + s * 2.8, wy + math.cos(a) * 12.0, 35.0 + math.sin(a) * 12.0), 2.4, M["Chrome"])
+def van():
+    meshes = import_van()
+    at = (CX, (Y0 + Y1) / 2, 0.0)
+    a = C.spawn(DIR + "/SM_FloristVan", at, 180.0, tag=TAG, label="Set_S2_Van", shadow=True)   # nose south
+    c = a.static_mesh_component
+    for slot in c.get_material_slot_names():
+        k = VAN_SLOTS.get(str(slot), str(slot))
+        if k in M:
+            c.set_material_by_name(slot, M[k])
+        else:
+            LOG.append("van slot %s: no material" % slot)
+    C.spawn(DIR + "/SM_FloristVan_Windshield", at, 180.0, tag=TAG, label="Set_S2_Windshield", shadow=False,
+            mat=M["Fog"])
+    b = meshes["SM_FloristVan"].get_bounding_box()
+    LOG.append("van mesh bounds (%.0f, %.0f, %.0f)..(%.0f, %.0f, %.0f)" % (b.min.x, b.min.y, b.min.z, b.max.x, b.max.y,
+                                                                          b.max.z))
+    # the cargo deck and cab floor, inside the walls and cut round the wheel tubs
+    K.box((CX - 82.0, CX + 82.0, Y0 + T, Y1 - T, FLOOR - 10.0, FLOOR), M["Mat"], shadow=True)
+    ys = [Y0 + T] + [y for wy in WELLS for y in (wy - 45.0, wy + 45.0)] + [Y1 - T]
+    for (xa, xb) in ((X0 + T, CX - 82.0), (CX + 82.0, X1 - T)):
+        for ya, yb in zip(ys[0::2], ys[1::2]):
+            K.box((xa, xb, ya, yb, FLOOR - 10.0, FLOOR), M["Mat"], shadow=True)
 
 
 # --- the cab ---------------------------------------------------------------------------------------------------------
 def cab():
     (y0, z0), (y1, z1) = WS
-    K.box((X0 + T, X1 - T, Y0 + T, y0 + 30.0, 95.0, z0 + 5.0), M["Black"])            # dashboard
+    K.box((X0 + T, X1 - T, Y0 + 16.0, y0 + 30.0, 95.0, z0 + 5.0), M["Black"])          # dashboard (clear of the cowl)
     K.box((X0 + T, X1 - T, y0 + 22.0, y0 + 34.0, 108.0, 116.0), M["Vinyl"], pitch=0.0)  # dash top lip
     for i in range(3):
         K.cyl(X1 - 50 - i * 12, y0 + 24.0, 117.0, 118.0, 7.0, M["Chrome"])              # gauges
@@ -623,6 +530,8 @@ def lily(x, y, z, yaw_out, tilt, length):
 
 def bucket(x, y, n=7, fallen=None):
     """A galvanised bucket of fake lilies on the floor; fallen = yaw it lies toward (spilled stems)."""
+    if any(abs(y - wy) < 57.0 for wy in WELLS) and x < X0 + T + 34.0:     # clear of the wheel tub along the wall
+        x = X0 + T + 34.0
     if fallen is None:
         K.cyl(x, y, FLOOR, FLOOR + 30, 26.0, M["Galv"], dy=26.0, shadow=True)
         K.cyl(x, y, FLOOR + 28, FLOOR + 31, 28.0, M["Galv"])
@@ -732,8 +641,7 @@ def security_cam():
 # --- run --------------------------------------------------------------------------------------------------------------
 gone = C.clear(TAG)
 materials()
-body()
-outside()
+van()
 cab()
 main_c = interior()
 lilies()
@@ -743,7 +651,7 @@ security_cam()
 light("CabFill", (-5400.0, Y0 + 120.0, 205.0), 1.5, 220.0, (1.0, 0.85, 0.7))
 light("Bulb", (-5425.0, 1715.0 + YOFF, ROOF - 16.0), 10.0, 320.0, (1.0, 0.72, 0.45), shadows=True, src=2.0)
 K.ball((-5425.0, 1715.0 + YOFF, ROOF - 14.0), 5.0, M["Bulb"])
-K.seg((-5425.0, 1715.0 + YOFF, ROOF - 7.5), (-5425.0, 1715.0 + YOFF, ROOF - 11.0), 2.0, M["Black"])
+K.seg((-5425.0, 1715.0 + YOFF, ROOF - 3.0), (-5425.0, 1715.0 + YOFF, ROOF - 11.0), 2.0, M["Black"])   # into the roof
 light("CRTGlow", (main_c[0] - 20.0, main_c[1], main_c[2]), 4.0, 200.0, (0.62, 0.85, 0.70), src=10.0)
 n = K.flush()
 sk = mx.skeletal_mesh_component
