@@ -517,7 +517,18 @@ void AScene6Backstage::FreezeCole(bool bFreeze)
 	bPlayerWalks = !bFreeze;
 	if (ATakeCharacter* Cole = GetPovCharacter())
 	{
-		if (bFreeze) { Cole->GetCharacterMovement()->StopMovementImmediately(); }
+		// Frozen, the stunts place him every frame without sweeping. Left in the walking mode, the movement component
+		// pushed his capsule up onto the trunk when the drag took him past its corner, and the posed body jumped with it.
+		UCharacterMovementComponent* Move = Cole->GetCharacterMovement();
+		if (bFreeze)
+		{
+			Move->StopMovementImmediately();
+			Move->SetMovementMode(MOVE_None);
+		}
+		else if (Move->MovementMode == MOVE_None)
+		{
+			Move->SetMovementMode(MOVE_Walking);
+		}
 	}
 }
 

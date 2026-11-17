@@ -15,6 +15,7 @@
 #include "UObject/ConstructorHelpers.h"
 #include "Animation/BlendSpace.h"
 #include "Engine/World.h"
+#include "HAL/IConsoleManager.h"
 #include "Script/ScriptScene.h"
 #include "Script/ScriptSequencer.h"
 #include "TakeLocoAnim.h"
@@ -121,12 +122,50 @@ void ATakeCharacter::OnConstruction(const FTransform& Transform)
 	SetLook(static_cast<float>(GetActorRotation().Yaw), StartLookPitch);
 }
 
+// Trailer filming only: with Reel.Trailer.ChaseCam 1 the follow camera sits behind whoever the player is watching and
+// swings round with his run, and nothing between them pulls it in (the boom's probe put it inside Vance's jacket when
+// a guard ran up behind him in the escape). Off, as shipped: the player's own look and the probing boom.
+namespace TakeTrailerCam
+{
+	TAutoConsoleVariable<int32> CVarOn(TEXT("Reel.Trailer.ChaseCam"), 0, TEXT("1: the follow camera stays behind the watched character (trailer filming). 0: the game's own look."));
+	TAutoConsoleVariable<float> CVarArm(TEXT("Reel.Trailer.ChaseArm"), 300.f, TEXT("Chase camera: cm behind him."));
+	TAutoConsoleVariable<float> CVarPitch(TEXT("Reel.Trailer.ChasePitch"), -10.f, TEXT("Chase camera: pitch, degrees (negative looks down)."));
+	TAutoConsoleVariable<float> CVarUp(TEXT("Reel.Trailer.ChaseUp"), 30.f, TEXT("Chase camera: cm above the boom's end."));
+	TAutoConsoleVariable<float> CVarSide(TEXT("Reel.Trailer.ChaseSide"), 0.f, TEXT("Chase camera: cm to his right."));
+	TAutoConsoleVariable<float> CVarYaw(TEXT("Reel.Trailer.ChaseYaw"), 0.f, TEXT("Chase camera: degrees round him from straight behind (180 looks at his face)."));
+	TAutoConsoleVariable<float> CVarTurn(TEXT("Reel.Trailer.ChaseTurn"), 4.f, TEXT("Chase camera: how fast it swings round behind him (1/s)."));
+	TWeakObjectPtr<ATakeCharacter> Holder;
+}
+
 void ATakeCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	ReadGaitKeys();
 	StepScriptWalk();
 	ApplyGait();
+	if (Boom)
+	{
+		const APlayerController* PC = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
+		if (TakeTrailerCam::CVarOn.GetValueOnGameThread() > 0 && PC && PC->GetViewTarget() == this)
+		{
+			const FVector V = GetVelocity();
+			const float Want = static_cast<float>(V.SizeSquared2D() > 3600. ? V.Rotation().Yaw : GetActorRotation().Yaw)
+				+ TakeTrailerCam::CVarYaw.GetValueOnGameThread();
+			const float A = FMath::Clamp(DeltaSeconds * TakeTrailerCam::CVarTurn.GetValueOnGameThread(), 0.f, 1.f);
+			LookYaw = FMath::UnwindDegrees(LookYaw + FMath::FindDeltaAngleDegrees(LookYaw, Want) * A);
+			LookPitch = FMath::Lerp(LookPitch, FMath::Clamp(TakeTrailerCam::CVarPitch.GetValueOnGameThread(), MinPitch, MaxPitch), A);
+			Boom->bDoCollisionTest = false;
+			Boom->TargetArmLength = TakeTrailerCam::CVarArm.GetValueOnGameThread();
+			Boom->SocketOffset = FVector(0.f, TakeTrailerCam::CVarSide.GetValueOnGameThread(), TakeTrailerCam::CVarUp.GetValueOnGameThread());
+			TakeTrailerCam::Holder = this;
+		}
+		else if (TakeTrailerCam::Holder.Get() == this)
+		{
+			TakeTrailerCam::Holder.Reset();
+			Boom->bDoCollisionTest = true;
+			ApplyTunables();
+		}
+	}
 	ApplyLookToBoom();
 }
 

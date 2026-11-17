@@ -20,6 +20,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 #include "TakeShapes.h"
+#include "TakeLocoAnim.h"
 
 namespace
 {
@@ -461,6 +462,8 @@ void AScene8Car::BuildFinale()
 
 	// The people: Vance (Julian's model) in the passenger bucket with the film can on his lap, Cole (Vex's) behind.
 	VanceBody = Sitter(VanceMesh, SitAnim, PassengerSeat);
+	// His clips play on the walk's instance, so the left arm keeps the can clamped under it, seated as on the run.
+	if (VanceBody) { VanceBody->SetAnimInstanceClass(UTakeLocoAnim::StaticClass()); }
 	ColeBody = Sitter(ColeMesh, ColeSitAnim, FVector(-124.f, 34.f, 34.f));
 	if (ColeBody) { ColeBody->SetRelativeRotation(FRotator(0.f, -98.f, 0.f)); }
 	USceneComponent* Can = NewObject<USceneComponent>(this, TEXT("FinaleCanister"));
@@ -468,6 +471,7 @@ void AScene8Car::BuildFinale()
 	Can->SetRelativeLocationAndRotation(PassengerSeat + FVector(16.f, -1.f, 42.f), FRotator(80.f, 0.f, 0.f));	// held upright against him, face to the dash
 	Can->RegisterComponent();
 	AddInstanceComponent(Can);
+	FinaleCan = Can;
 	Bit(Cyl, Can, FVector::ZeroVector, FVector(36.f, 36.f, 6.f), Silver, 0.28f, 1.f);
 	Bit(Cyl, Can, FVector(0.f, 0.f, 3.2f), FVector(36.6f, 36.6f, 1.2f), CabinChrome, 0.18f, 1.f);
 	Bit(Cyl, Can, FVector(0.f, 0.f, 3.9f), FVector(8.f, 8.f, 0.4f), Hide, 0.4f, 0.f);
@@ -571,9 +575,10 @@ void AScene8Car::SetShot(bool bB)
 		// Shot A, from the dash on the driver's side of centre: his head and chest, the can held upright in front of
 		// him. Fixed in car space (measured in play: his seated head bone is at about (-46, 41, 102)); reading the bone
 		// here gave the standing reference pose, before the sit clip had posed him, and put the camera in the roof.
-		Cam = FVector(14.f, -6.f, 98.f);
-		Look = FVector(-34.f, 41.f, 92.f);
-		Fov = FMath::Max(Fov, 66.f);
+		// Framed a little lower and wider than at first, so the left arm round the can under it is in the picture.
+		Cam = FVector(18.f, -9.f, 95.f);
+		Look = FVector(-34.f, 37.f, 87.f);
+		Fov = FMath::Max(Fov, 76.f);
 	}
 	if (bB) { Fov = FMath::Min(Fov, 14.5f); }	// tight on the glass: the mirror fills the frame
 	GS8FinaleShotCam = Cam;
@@ -618,7 +623,13 @@ void AScene8Car::BeginFinale()
 	if (VanceBody)
 	{
 		VanceBody->SetRelativeLocation(PassengerSeat - FVector(0.f, 0.f, SitHipHeight));
-		if (UAnimationAsset* A = SitAnim.IsNull() ? nullptr : SitAnim.LoadSynchronous()) { VanceBody->PlayAnimation(A, true); }
+		if (UAnimationAsset* A = SitAnim.IsNull() ? nullptr : SitAnim.LoadSynchronous()) { UTakeLocoAnim::PlayClip(VanceBody, A, true); }
+		// The can under his left arm (it stood by itself in front of him, no hand on it).
+		if (FinaleCan)
+		{
+			FinaleCan->ComponentTags.AddUnique(TEXT("TakeCarriedReelSeated"));	// forward of the seat back
+			UTakeLocoAnim::CarryReel(VanceBody, FinaleCan, true);
+		}
 	}
 	// The mirror turned to Vance's face (he set it so he could see himself).
 	// A real mirror: the glass's normal halves the angle between shot B's camera and what it shows (Vance, eyes
@@ -648,7 +659,7 @@ void AScene8Car::TickFinale(float T, float DeltaSeconds)
 		if (UAnimationAsset* A = TieAnim.IsNull() ? nullptr : TieAnim.LoadSynchronous())
 		{
 			VanceBody->SetRelativeLocation(PassengerSeat - FVector(0.f, 0.f, StandHipHeight));
-			VanceBody->PlayAnimation(A, false);
+			UTakeLocoAnim::PlayClip(VanceBody, A, false);
 		}
 	}
 	// The road under the car: a slow float, a shiver, a lean in the long bends.

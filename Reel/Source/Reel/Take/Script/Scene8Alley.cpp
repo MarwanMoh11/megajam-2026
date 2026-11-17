@@ -399,8 +399,11 @@ void AScene8Alley::Enter(EScene8Beat NewBeat)
 		break;
 	case EScene8Beat::Alley:
 		NextShot = 0.25f;
+		// He is through the fire exit: its marker and objective go (they stayed up into the car).
+		if (UTakeGuideSubsystem* G = UTakeGuideSubsystem::Get(this)) { G->ClearGoal(); }
 		break;
 	case EScene8Beat::Dive:
+		if (UTakeGuideSubsystem* G = UTakeGuideSubsystem::Get(this)) { G->ClearGoal(); }
 		if (Vance)
 		{
 			Vance->SetRunning(false);
@@ -678,7 +681,10 @@ void AScene8Alley::TickEscape(float DeltaSeconds, ATakeCharacter* Vance, ATakeCh
 		const FVector CF = Cole->GetFeetLocation();
 		if (ColeIdx <= NR + 1 && FVector::Dist2D(CF, ColePoint(ColeIdx)) < 90.f) { ++ColeIdx; }
 		if (!bColeOut && IsOutside(CF)) { bColeOut = true; }
-		const bool bTooFar = !bColeOut && FVector::Dist(CF, Feet) > ColeLeadMax;
+		// Once he has stopped to wait he sets off again only when Vance is well inside the lead, so the two of them
+		// running at the same pace cannot flick him between "wait, face Vance" and "run" every frame (he ran backwards).
+		const bool bWaiting = ColeGoing == -1;
+		const bool bTooFar = !bColeOut && FVector::Dist(CF, Feet) > ColeLeadMax * (bWaiting ? 0.7f : 1.f);
 		if (ColeIdx > NR + 1 && bArrived && Car)
 		{
 			const FVector Back = Car->GetActorTransform().TransformPosition(FVector(-120.f, 110.f, 0.f));
@@ -697,7 +703,11 @@ void AScene8Alley::TickEscape(float DeltaSeconds, ATakeCharacter* Vance, ATakeCh
 			// He waits for Vance (or for the car), turned to him: "this way".
 			if (ColeGoing != -1) { ColeGoing = -1; Cole->StopScriptWalk(); }
 			const FVector To = (bTooFar ? Feet : (Car ? Car->GetActorLocation() : Feet)) - CF;
-			Cole->SetActorRotation(FMath::RInterpTo(Cole->GetActorRotation(), FRotator(0.f, To.Rotation().Yaw, 0.f), DeltaSeconds, 8.f));
+			// He turns round only once he has pulled up: while he is still moving he faces the way he runs.
+			if (Cole->GetVelocity().SizeSquared2D() < 80.f * 80.f)
+			{
+				Cole->SetActorRotation(FMath::RInterpTo(Cole->GetActorRotation(), FRotator(0.f, To.Rotation().Yaw, 0.f), DeltaSeconds, 8.f));
+			}
 		}
 		else if (ColeGoing != ColeIdx)
 		{

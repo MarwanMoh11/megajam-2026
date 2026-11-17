@@ -162,6 +162,7 @@ private:
 	FVector ActCS = FVector::ZeroVector;
 	TArray<FTransform> CopiedPose;
 	bool bCopy = false;
+	bool bReelArm = false;	// the carried reel hangs on this body: the left arm is the copied pose's, untouched
 
 	float Time = 0.f;
 

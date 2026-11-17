@@ -1,5 +1,6 @@
 // QA pass (Nov 14), package cast: see CastMemberAnim.h.
 #include "CastMemberAnim.h"
+#include "TakeLocoAnim.h"
 
 #include "Animation/AnimNodeBase.h"
 #include "Animation/AnimSequenceBase.h"
@@ -576,6 +577,9 @@ void FCastAnimProxy::PreUpdate(UAnimInstance* InAnimInstance, float DeltaSeconds
 		const FTransform& W = Comp->GetComponentTransform();
 		LookCS = W.InverseTransformPosition(A.LookWorld);
 		ActCS = W.InverseTransformPosition(A.ActWorld);
+		// The reel under the left arm: that arm comes solved from the copied pose (UTakeLocoAnim), so the hero's
+		// "arms at rest" turns leave it alone, or the hand would be pulled off the can.
+		bReelArm = UTakeLocoAnim::FindCarriedReel(Comp) != nullptr;
 	}
 	bCopy = false;
 	if (USkeletalMeshComponent* Src = A.CopyFrom.Get())
@@ -816,7 +820,7 @@ void FCastAnimProxy::ApplyLayers(FCompactPose& Pose)
 			const int32 U = bLeft ? CastBone::UpperL : CastBone::UpperR;
 			const int32 Lo = bLeft ? CastBone::LowerL : CastBone::LowerR;
 			const int32 H = bLeft ? CastBone::HandL : CastBone::HandR;
-			if (!Rig.Has(U) || !Rig.Has(Lo) || !Rig.Has(H))
+			if (!Rig.Has(U) || !Rig.Has(Lo) || !Rig.Has(H) || (bLeft && bReelArm))
 			{
 				continue;
 			}

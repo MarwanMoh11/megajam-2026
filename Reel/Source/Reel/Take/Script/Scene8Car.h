@@ -256,6 +256,9 @@ public:
 
 	UPROPERTY(Transient)
 	TObjectPtr<USkeletalMeshComponent> VanceBody;
+	/** The film can in the car: under Vance's left arm, as he carried it out (UTakeLocoAnim::CarryReel). */
+	UPROPERTY(Transient)
+	TObjectPtr<USceneComponent> FinaleCan;
 
 	UPROPERTY(Transient)
 	TObjectPtr<USkeletalMeshComponent> ColeBody;

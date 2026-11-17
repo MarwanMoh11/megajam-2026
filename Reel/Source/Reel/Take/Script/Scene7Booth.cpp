@@ -4,6 +4,7 @@
 #include "Script/Scene7Swap.h"
 #include "Script/Scene7Fight.h"
 #include "TakeCharacter.h"
+#include "TakeLocoAnim.h"
 #include "TakeDirector.h"
 #include "TakeAudio.h"
 #include "TakeHudKit.h"
@@ -482,7 +483,13 @@ void AScene7Booth::PutCanisterOn(ATakeCharacter* Char, bool bInHand)
 		Canister->SetRelativeTransform(CanisterInHand);
 		return;
 	}
-	// Carried: on his capsule, not a bone, so the run cycle can't swing it into him. Upright at his left hip, the
+	// Carried under his left arm: the can on his chest bone, upright along his side, and his walk's own arm solve
+	// (UTakeLocoAnim) brings the left hand round its rim. A body without that bone keeps the old hip carry below.
+	if (UTakeLocoAnim::CarryReel(Body, Canister))
+	{
+		return;
+	}
+	// On his capsule, not a bone, so the run cycle can't swing it into him. Upright at his left hip, the
 	// disc's face along his side and clear of the body (the forearm-bone hold cut through his chest).
 	USceneComponent* Hold = Char->GetRootComponent();
 	Canister->AttachToComponent(Hold ? Hold : Body, FAttachmentTransformRules::KeepRelativeTransform);

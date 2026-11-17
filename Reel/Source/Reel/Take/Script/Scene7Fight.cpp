@@ -5,6 +5,7 @@
 #include "GameFramework/HUD.h"
 #include "TakeCharacter.h"
 #include "TakeDirector.h"
+#include "TakeLocoAnim.h"
 #include "TakeHudKit.h"
 #include "TakeStyle.h"
 #include "Components/StaticMeshComponent.h"
@@ -301,11 +302,21 @@ void AScene7Fight::Act(USkeletalMeshComponent* Mesh, FName Anim, bool bLoop, flo
 {
 	UAnimationAsset* A = Mesh ? FindAnim(Anim) : nullptr;
 	if (!A) { return; }
-	if (Mesh->GetAnimationMode() != EAnimationMode::AnimationSingleNode)
+	if (UTakeLocoAnim::BeginClip(Mesh))
 	{
-		Mesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+		// Vance's own body: the clip plays on his walk instance, so the left arm keeps the reel clamped under it
+		// while he fights with the rest of him (the plain single-node instance swung that arm through the can).
+		Mesh->SetAnimation(A);
+		Mesh->Play(bLoop);
 	}
-	Mesh->PlayAnimation(A, bLoop);
+	else
+	{
+		if (Mesh->GetAnimationMode() != EAnimationMode::AnimationSingleNode)
+		{
+			Mesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+		}
+		Mesh->PlayAnimation(A, bLoop);
+	}
 	Mesh->SetPlayRate(Rate);
 }
 
@@ -481,6 +492,7 @@ void AScene7Fight::ReleaseVance(bool bToWalk)
 	if (USkeletalMeshComponent* M = V->GetMesh())
 	{
 		M->SetPlayRate(1.f);
+		UTakeLocoAnim::EndClip(M);
 		if (M->GetAnimationMode() != EAnimationMode::AnimationBlueprint) { M->SetAnimationMode(EAnimationMode::AnimationBlueprint); }
 		if (bHaveVanceMesh) { M->SetRelativeLocation(VanceMeshRel); }
 	}
