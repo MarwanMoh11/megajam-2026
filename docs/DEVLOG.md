@@ -1962,3 +1962,19 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
 - **Went wrong:** Live Coding failed again; the first package refused to build while the editor's Live Coding
   was active, so the editor was closed (Marwan chose to discard its unsaved Lvl_Auction edits) and packaging rerun.
   Not seen in the editor: Marwan to check the can's hold, the guards' run and the roll-again.
+
+## Nov 17, 05:25 Cairo: the florist van, modelled in Blender
+- **What changed:** Scene 2's van was a stack of engine cubes (the generated-mesh route died on Nov 15 with Rodin and
+  Tripo out of credits). Marwan asked for it to be modelled in Blender. Claude drove Blender 5.3 through the MCP for
+  Blender add-on and wrote the model as code, `tools/blender/florist_van.py`: a hollow 4 cm shell (side profile with
+  a stubby nose and raked windshield, bevelled 10 cm, windows and wheel arches cut by booleans), whitewall tyres with
+  dog-dish hubcaps, chrome grille, bumpers and arch mouldings, a sliding door on the kerb side, "Fleurs du Soir" in
+  IM Fell italic with the painted lily bouquet on both flanks, black French plates and Max's roof dish and whip
+  antenna. Same box as before (2.10 x 5.20 m, roof 2.35, windshield in the same plane), so the interior, Max and the
+  camera's push through the windshield stay where they were. Marwan approved the renders. `export()` writes
+  `SM_FloristVan` (46k triangles, material slots named after the set's `MI_S2_*`) and the windshield on its own.
+  `tools/script/scene2_van.py` now imports both and places them instead of the box van, cuts the cargo deck round
+  the new wheel tubs, pulls the dashboard back off the cowl and moves three lily buckets off the rear tub.
+- **Went wrong:** the first export was 219k triangles, 175k of them the extruded lettering; flat glyphs at curve
+  resolution 2 brought it to 46k with no visible loss. Blender merged the shell's five Interior slots into one and
+  left the inner faces pointing past it; the indices are clamped now.

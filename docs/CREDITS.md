@@ -68,6 +68,7 @@ both. Add a row when you import something.
 | Claude Code (Anthropic): Claude Opus 5.5 | The props pass: the Rodin prompts and client (`tools/rodin`), the import, materials and placement script (`tools/rodin/import_props.py`: the meshes fit to the grey boxes, which keep their collision), and the set's procedural surfaces in `tools/dress_auction.py` (parquet, marble, damask, the aisle runners, plywood, concrete: value patterns in the M_Dress material, no textures) |
 | Mixamo (Adobe), motion-capture library | 28 clips for the cast's acting and one character as the retarget source (`tools/mocap_clips.json`, `tools/build_mocap.py`); not generated, no AI at runtime |
 | Claude in Chrome (Anthropic) extension | Downloaded the Mixamo clips and the character in Marwan's signed-in browser, Nov 14 |
+| Claude Code (Anthropic): Claude Opus 5.5, driving Blender 5.3 through the MCP for Blender add-on | Scene 2's florist van, Nov 17: modelled from code in `tools/blender/florist_van.py` (no generated or downloaded mesh), exported to `Reel/SourceArt/FloristVan/*.fbx`; its lettering uses IM Fell English italic and Josefin Sans SemiBold, credited above |
 | Claude Code (Anthropic): Claude Fable orchestrating, 13 Claude Opus agents and an integrator | The QA pass, Nov 14-15: the sight, HUD, look, queue scene, slow time, heist trick, cast animation, hero rigging and the set dressing, each in its own files (see `docs/DEVLOG.md`) |
 
 ## Hyper3D Rodin assets
