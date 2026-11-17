@@ -6,7 +6,9 @@
 // On top of the clip:
 //   - the crouch (ATakeCharacter::IsCrouching): the pelvis lowered, the feet kept where the clip put them by two-bone IK
 //     on the legs, the spine bent forward and the head kept level: a crouched idle and a crouched walk from one clip;
-//   - a step when he turns on the spot (the yaw changes while he stands), so a turn is not a statue on a turntable.
+//   - a step when he turns on the spot (the yaw changes while he stands), so a turn is not a statue on a turntable;
+//   - calm arms (Marwan's QA, Nov 17: the run pumped the hands up to the face): the arms, hands and fingers held near
+//     the idle's, keeping only a little of the walk's and run's own swing (Reel.Hero.ArmCalm).
 // A scene may still play its own clip on the mesh (SingleNode mode, Scene 7): going back to AnimationBlueprint mode
 // starts this instance again on the blend space.
 #pragma once
@@ -17,6 +19,7 @@
 #include "TakeLocoAnim.generated.h"
 
 class UBlendSpace;
+class UAnimSequenceBase;
 
 /** What the game thread hands the worker thread each update. */
 struct FTakeLocoState
@@ -32,6 +35,11 @@ struct FTakeLocoState
 	FVector CarryBack = FVector::UpVector;		// the way the back of the hand faces (away from the body)
 	FVector CarryPole = FVector::ForwardVector;	// the way the elbow points
 	FVector CarryCurl = FVector::ZeroVector;	// degrees the three finger joints curl over the rim
+
+	// The arms held near the idle's: 0 the clip's own arms .. 1 the idle's, still. IdleClip is kept alive by the
+	// instance (UTakeLocoAnim::CalmIdle).
+	float ArmCalm = 0.f;
+	UAnimSequenceBase* IdleClip = nullptr;
 };
 
 USTRUCT()
@@ -52,6 +60,7 @@ private:
 	void CacheBones(const FCompactPose& Pose);
 	void Crouch(FCompactPose& Pose);
 	void Carry(FCompactPose& Pose);
+	void CalmArms(FPoseContext& Output);
 
 	FTakeLocoState S;
 	uint16 CachedSerial = 0xFFFF;
@@ -60,6 +69,8 @@ private:
 	int32 Bones[11];
 	// spine_03 (the hold bone), upperarm_l, lowerarm_l, hand_l, then index/middle/ring/pinky _01 _02 _03 (left)
 	int32 Arm[16];
+	// The compact bones from each clavicle down (the arms, hands and fingers).
+	TArray<bool> ArmMask;
 };
 
 UCLASS(Transient, NotBlueprintable)
@@ -107,6 +118,9 @@ private:
 	void UpdateCarry(float Dt);
 
 	bool bClip = false;		// a scene's clip is playing on this instance (BeginClip): no blend space, no crouch
+	/** The idle the calm arms rest from (the blend space's own idle). */
+	UPROPERTY(Transient)
+	TObjectPtr<UAnimSequenceBase> CalmIdle;
 	FVector LastLoc = FVector::ZeroVector;
 	float LastYaw = 0.f;
 	bool bHasLast = false;

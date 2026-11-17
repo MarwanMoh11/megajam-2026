@@ -2,8 +2,9 @@
 //
 // The beats, in order (QA Nov 15 evening: the mouth, the walk out of the row, the long film, no beat timing):
 //  1. SPEECH  the house is low; PENDLETON (the level's old auctioneer "Vance" PatrolGuard: top hat, tails, cane) at the
-//             brass podium in one hard spotlight says his line, his arms in the Speech act and his mouth opening and
-//             closing on the words (Scene5Lipsync.inl, baked from the voice by tools/script/scene5_lipsync.py). Part
+//             brass podium in one hard spotlight says his line, hands clasped, his head carrying it: small dips on
+//             the voice's stressed beats (Scene5Lipsync.inl, the voice's loudness baked by tools/script/scene5_lipsync.py),
+//             a slow turn across the house, a slight tilt (no mouth piece and no Speech clip since QA Nov 17). Part
 //             way through, a cutaway: Vance in his aisle seat in the row, listening; then Pendleton again from a
 //             second angle. [Space]/[Enter] skips. A retake skips straight to the sneak.
 //  2. CUT     a second before the line ends Pendleton points at the booth; on its end the house lights CUT to pitch
@@ -284,10 +285,15 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Script|S5")
 	float VanceFillCandelas = 40.f;
 
-	/** Pendleton's mouth: a dark lip-shaped piece on his head bone that opens on the words. Offset from the head
+	/** Pendleton's old mouth: a dark lip-shaped piece on his head bone that opened on the words. Off since Marwan's QA
+	 *  (Nov 17: lips moving under a still face); his head carries the line instead (TalkHead). Offset from the head
 	 *  bone at the reference pose: X forward, Y left, Z up, cm. */
 	UPROPERTY(EditAnywhere, Category = "Script|S5|Mouth")
-	bool bLipSync = true;
+	bool bLipSync = false;
+	/** How much Pendleton's head carries the line (ACastMember::SetTalkHead): dips on the voice's stressed beats (the
+	 *  baked curve, tools/script/scene5_lipsync.py), a slow turn across the house, a slight tilt. 0: still. */
+	UPROPERTY(EditAnywhere, Category = "Script|S5")
+	float TalkHead = 1.f;
 	UPROPERTY(EditAnywhere, Category = "Script|S5|Mouth")
 	FVector MouthOffset = FVector(10.6f, 0.f, -1.6f);
 	/** Closed: width, depth, height, cm. */
@@ -304,9 +310,11 @@ public:
 	/** The mouth runs this far ahead of the sound (the eye reads the jaw a frame early), s. */
 	UPROPERTY(EditAnywhere, Category = "Script|S5|Mouth")
 	float MouthLead = 0.05f;
-	/** Pendleton's arms during the speech: ACastMember::PlayGesture with this act (None: no act). */
+	/** Pendleton's arms during the speech: ACastMember::PlayGesture with this act (None: no act). None since Marwan's
+	 *  QA (Nov 17): the Speech clips (a rallying crowd-pleaser) were over the top; his hands stay clasped and the head
+	 *  does the talking. */
 	UPROPERTY(EditAnywhere, Category = "Script|S5")
-	FName SpeechGesture = TEXT("Speech");
+	FName SpeechGesture = NAME_None;
 
 	/** The sneak is crouched (ATakeCharacter::SetCrouching: CrouchSpeed, about 150 cm/s); off: SneakSpeed upright. */
 	UPROPERTY(EditAnywhere, Category = "Script|S5")

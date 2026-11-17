@@ -169,6 +169,7 @@ void AScene5Auditorium::ResetScene()
 	ShowTitle(false);
 	SitVance(false);
 	if (PendletonMouth) { PendletonMouth->SetVisibility(false); }
+	if (ACastMember* const P = GetPendletonCast()) { P->SetTalkHead(0.f); }
 	if (VanceFill) { FTakeShapes::SetCueLight(VanceFill, 0.f, Scene5Local::ScreenCool); }
 	for (USpotLightComponent* T : Torches) { FTakeShapes::SetCueLight(T, 0.f, Scene5Local::TorchWhite); }
 	for (int32 i = 0; i < Watches.Num() && i < WatchStarts.Num(); ++i)
@@ -248,6 +249,7 @@ void AScene5Auditorium::EndScene()
 	StopScore(1.5f);
 	if (SpeechComp) { SpeechComp->Stop(); }
 	if (PendletonMouth) { PendletonMouth->SetVisibility(false); }
+	if (ACastMember* const P = GetPendletonCast()) { P->SetTalkHead(0.f); }
 	if (VanceFill) { FTakeShapes::SetCueLight(VanceFill, 0.f, Scene5Local::ScreenCool); }
 	// Left mid-scene (a jump, a cut): Pendleton's line must not run on over the next scene. Done keeps Vance's line.
 	if (Phase != EScene5Beat::Done) { Say(FString(), FString(), nullptr); }
@@ -446,6 +448,7 @@ void AScene5Auditorium::Blackout()
 	if (SpeechComp) { SpeechComp->FadeOut(0.2f, 0.f); }
 	SpeechPlayStart = -1.f;
 	if (PendletonMouth) { PendletonMouth->SetVisibility(false); }
+	if (ACastMember* const P = GetPendletonCast()) { P->SetTalkHead(0.f); }
 	Say(FString(), FString(), nullptr);  // the speech is over: its line goes with the lights
 	PlayOneShot(LightsCutSound);
 	PlayOneShot(TimpaniSound, TimpaniVolume);	// one boom with the dark: the film's first frame
@@ -740,18 +743,17 @@ void AScene5Auditorium::EnsureMouth()
 
 void AScene5Auditorium::StepMouth()
 {
-	if (!PendletonMouth || !bMouthPlaced)
-	{
-		return;
-	}
 	float Open = 0.f, Wide = 0.5f;
+	bool bTalking = false, bBaked = false;
 	if (SpeechPlayStart >= 0.f && SpeechComp && SpeechComp->IsPlaying())
 	{
+		bTalking = true;
 		const float T = PhaseTime - SpeechPlayStart + MouthLead;
 		const float Voice = SoundSeconds(PendletonSound, 0.f);
 		if (FMath::Abs(Voice - Scene5Lipsync::Seconds) < 0.5f)
 		{
 			Scene5Local::Lips(T, Open, Wide);
+			bBaked = true;
 		}
 		else
 		{
@@ -759,6 +761,15 @@ void AScene5Auditorium::StepMouth()
 			const float S = 0.5f + 0.5f * FMath::Sin(T * 2.f * PI * 3.7f) * FMath::Sin(T * 2.f * PI * 0.9f + 1.f);
 			Open = T < Voice - 0.3f ? FMath::Clamp(S * 1.2f, 0.f, 1.f) : 0.f;
 		}
+	}
+	// His head carries the line (the baked mouth curve is the voice's loudness): no mouth since Marwan's QA, Nov 17.
+	if (ACastMember* const P = GetPendletonCast())
+	{
+		P->SetTalkHead(bTalking ? TalkHead : 0.f, bTalking && bBaked ? Open : -1.f);
+	}
+	if (!PendletonMouth || !bMouthPlaced)
+	{
+		return;
 	}
 	// The mesh faces +Y: the body's forward X is the mesh's +Y, its left Y the mesh's -X.
 	const FVector Off(-MouthOffset.Y, MouthOffset.X, MouthOffset.Z - Open * MouthOpenCm * 0.5f);

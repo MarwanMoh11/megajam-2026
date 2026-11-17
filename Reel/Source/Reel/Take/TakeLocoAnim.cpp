@@ -5,6 +5,8 @@
 
 #include "Animation/BlendSpace.h"
 #include "Animation/AnimNodeBase.h"
+#include "Animation/AnimSequenceBase.h"
+#include "Animation/AnimationPoseData.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
 #include "HAL/IConsoleManager.h"
@@ -99,6 +101,9 @@ namespace TakeLoco
 	// leaning out past the hip (Tilt), and the elbow points out to the side (Elbow), so the upper arm comes down OUTSIDE
 	// the can's outer face and the forearm comes back in to the hand on the lower rim. The first version pointed the elbow
 	// straight back, which ran the upper arm through the disc.
+	TAutoConsoleVariable<float> CVarArmCalm(TEXT("Reel.Hero.ArmCalm"), 0.85f,
+		TEXT("The player characters' arms held near the idle's: 0 the walk's and run's own arm swing .. 1 still."));
+	const TCHAR* CalmIdlePath = TEXT("/Game/Characters/Mannequins/Anims/Unarmed/MM_Idle.MM_Idle");
 	TAutoConsoleVariable<int32> CVarCarryArm(TEXT("Reel.Carry.Arm"), 1, TEXT("1: the left arm wraps the carried reel. 0: the arm is left to the clip."));
 	TAutoConsoleVariable<float> CVarCarrySize(TEXT("Reel.Carry.Size"), 0.38f, TEXT("Carried reel: its width in metres (0.42 on the bench)."));
 	TAutoConsoleVariable<float> CVarCarryX(TEXT("Reel.Carry.X"), 2.f, TEXT("Carried reel: its centre, cm to the left of the left shoulder joint."));
@@ -306,14 +311,21 @@ void UTakeLocoAnim::NativeUpdateAnimation(float DeltaSeconds)
 		return;
 	}
 	const float Dt = FMath::Min(DeltaSeconds, 0.1f);
+	if (!CalmIdle)
+	{
+		CalmIdle = LoadObject<UAnimSequenceBase>(nullptr, TakeLoco::CalmIdlePath);
+	}
+	State.IdleClip = CalmIdle;
 	if (bClip)
 	{
 		// A scene's clip (the fight): the clip is the body, and only the reel arm is laid over it.
 		bHasLast = false;
 		State.Crouch = 0.f;
+		State.ArmCalm = 0.f;
 		UpdateCarry(Dt);
 		return;
 	}
+	State.ArmCalm = Owner->IsA<ATakeCharacter>() ? FMath::Clamp(TakeLoco::CVarArmCalm.GetValueOnGameThread(), 0.f, 1.f) : 0.f;
 
 	// How far the body really went this frame: the movement component's walk and a scene's SetActorLocation alike.
 	// A jump of more than 2.5 m in one frame is a placement (a retake, a checkpoint), not a walk.
@@ -404,17 +416,41 @@ void FTakeLocoProxy::CacheBones(const FCompactPose& Pose)
 		const int32 MeshIndex = BC.GetPoseBoneIndexForBoneName(TakeLoco::CarryNames[b]);
 		Arm[b] = MeshIndex != INDEX_NONE ? BC.MakeCompactPoseIndex(FMeshPoseBoneIndex(MeshIndex)).GetInt() : INDEX_NONE;
 	}
+	// The arms: every bone from a clavicle down.
+	int32 Clav[2] = { INDEX_NONE, INDEX_NONE };
+	for (int32 s = 0; s < 2; ++s)
+	{
+		const int32 MeshIndex = BC.GetPoseBoneIndexForBoneName(s == 0 ? FName(TEXT("clavicle_l")) : FName(TEXT("clavicle_r")));
+		Clav[s] = MeshIndex != INDEX_NONE ? BC.MakeCompactPoseIndex(FMeshPoseBoneIndex(MeshIndex)).GetInt() : INDEX_NONE;
+	}
+	ArmMask.Init(false, CachedNum);
+	for (int32 i = 0; i < CachedNum; ++i)
+	{
+		for (FCompactPoseBoneIndex B(i); B.IsValid(); B = Pose.GetParentBoneIndex(B))
+		{
+			if (B.GetInt() == Clav[0] || B.GetInt() == Clav[1])
+			{
+				ArmMask[i] = true;
+				break;
+			}
+		}
+	}
 }
 
 bool FTakeLocoProxy::Evaluate(FPoseContext& Output)
 {
 	FAnimSingleNodeInstanceProxy::Evaluate(Output);
-	if (S.Crouch < 0.001f && S.Carry < 0.001f)
+	const bool bCalm = S.ArmCalm >= 0.001f && S.IdleClip;
+	if (S.Crouch < 0.001f && S.Carry < 0.001f && !bCalm)
 	{
 		return true;
 	}
 	FCompactPose& Pose = Output.Pose;
 	CacheBones(Pose);
+	if (bCalm)
+	{
+		CalmArms(Output);	// first: the crouch and the reel arm work from the calm arms
+	}
 	if (S.Crouch >= 0.001f)
 	{
 		Crouch(Pose);
@@ -424,6 +460,25 @@ bool FTakeLocoProxy::Evaluate(FPoseContext& Output)
 		Carry(Pose);	// after the crouch: the arm is fitted to where the chest ends up
 	}
 	return true;
+}
+
+void FTakeLocoProxy::CalmArms(FPoseContext& Output)
+{
+	// The idle's first frame: arms down and relaxed, fingers loose. The clip's arms are blended most of the way to it.
+	FPoseContext Idle(Output);
+	FAnimationPoseData IdleData(Idle);
+	S.IdleClip->GetAnimationPose(IdleData, FAnimExtractContext(0.0, false));
+	FCompactPose& Pose = Output.Pose;
+	const float W = FMath::Clamp(S.ArmCalm, 0.f, 1.f);
+	const int32 N = FMath::Min(Pose.GetNumBones(), ArmMask.Num());
+	for (int32 i = 0; i < N; ++i)
+	{
+		if (ArmMask[i])
+		{
+			const FCompactPoseBoneIndex I(i);
+			Pose[I].BlendWith(Idle.Pose[I], W);
+		}
+	}
 }
 
 void FTakeLocoProxy::Carry(FCompactPose& Pose)

@@ -96,6 +96,12 @@ struct FCastActing
 	float LookMaxYaw = 70.f;
 	float LookMaxPitch = 30.f;
 
+	/** Talking with no mouth (Scene 5's Pendleton): the head carries the line, a small dip on each stressed beat of the
+	 *  voice, a slow turn across the room and a slight tilt. 0 off .. 1. TalkVoice is the voice's loudness now (0..1);
+	 *  below 0, a plain syllable rhythm. */
+	float TalkHead = 0.f;
+	float TalkVoice = -1.f;
+
 	/** A weight shift, degrees (eased over about a second): forward, to the right, shoulders turned right. */
 	float LeanForward = 0.f;
 	float LeanSide = 0.f;
@@ -171,6 +177,11 @@ private:
 	float LookPitch = 0.f, LookPitchVel = 0.f;
 	float LookW = 0.f, LookWVel = 0.f;
 	FVector LastHeadCS = FVector(0.f, 0.f, 160.f);
+
+	// Talking with the head (FCastActing::TalkHead): its weight, the voice's envelope, the beat's dip, eased.
+	float TalkW = 0.f, TalkWVel = 0.f;
+	float TalkEnv = 0.f;
+	float TalkNod = 0.f, TalkNodVel = 0.f;
 
 	float Lean[3] = {0.f, 0.f, 0.f};
 	float LeanVel[3] = {0.f, 0.f, 0.f};

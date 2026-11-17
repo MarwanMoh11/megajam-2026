@@ -688,6 +688,23 @@ void FCastAnimProxy::UpdateAnimationNode(const FAnimationUpdateContext& InContex
 	}
 	LookW = SmoothDamp(LookW, LookWVel, TargetW, 0.45f, Dt);
 
+	// Talking with the head: the voice's loudness (quick to rise, slower to fall) dips the head on the stressed beats.
+	{
+		const float TalkTarget = A.bActing ? FMath::Clamp(A.TalkHead, 0.f, 1.f) : 0.f;
+		TalkW = SmoothDamp(TalkW, TalkWVel, TalkTarget, 0.4f, Dt);
+		float Voice = A.TalkVoice;
+		if (Voice < 0.f)
+		{
+			Voice = TalkTarget > 0.f
+				? FMath::Clamp(0.5f + 0.6f * FMath::Sin(Time * 2.f * UE_PI * 3.1f) * FMath::Sin(Time * 2.f * UE_PI * 0.7f + 1.f), 0.f, 1.f)
+				: 0.f;
+		}
+		Voice = FMath::Clamp(Voice, 0.f, 1.f);
+		const float K = Dt > 0.f ? 1.f - FMath::Exp(-Dt / (Voice > TalkEnv ? 0.05f : 0.2f)) : 0.f;
+		TalkEnv += (Voice - TalkEnv) * K;
+		TalkNod = SmoothDamp(TalkNod, TalkNodVel, TalkEnv * TalkEnv, 0.11f, Dt);
+	}
+
 	const float Targets[3] = {A.bActing ? A.LeanForward : 0.f, A.bActing ? A.LeanSide : 0.f, A.bActing ? A.Twist : 0.f};
 	for (int32 i = 0; i < 3; ++i)
 	{
@@ -836,7 +853,7 @@ void FCastAnimProxy::ApplyLayers(FCompactPose& Pose)
 
 	const bool bActProc = A.bActing && CurAct != ECastAct::None && !CurClip && ActW > 0.001f;
 	const bool bLean = FMath::Abs(Lean[0]) + FMath::Abs(Lean[1]) + FMath::Abs(Lean[2]) > 0.05f;
-	if (!A.bBendSeat && A.Hold == ECastHold::None && !A.bPlayInstrument && !bActProc && LookW < 0.01f && !bLean)
+	if (!A.bBendSeat && A.Hold == ECastHold::None && !A.bPlayInstrument && !bActProc && LookW < 0.01f && !bLean && TalkW < 0.01f)
 	{
 		LastHeadCS = Rig.Loc(CastBone::Head);
 		return;
@@ -995,10 +1012,21 @@ void FCastAnimProxy::ApplyLayers(FCompactPose& Pose)
 		}
 	}
 
-	// 5. The neck and head: the rest of the look, then the layers' nods, shakes and tilts.
-	const float HeadYaw = LookDYaw * 0.75f + Body.HeadYaw;
-	const float HeadPitch = LookDPitch + Body.HeadPitch;
-	if (FMath::Abs(HeadYaw) + FMath::Abs(HeadPitch) + FMath::Abs(Body.HeadRoll) > 0.01f)
+	// 5. The neck and head: the rest of the look, then the layers' nods, shakes and tilts, then the talk (no mouth: a
+	//    small dip on each stressed beat, a slow turn across the room, a slight tilt; a little of the dip in the chest).
+	float TalkYaw = 0.f, TalkPitch = 0.f, TalkRoll = 0.f;
+	if (TalkW > 0.01f)
+	{
+		const float Ph = static_cast<float>(A.Seed % 997u) * 0.0131f;
+		TalkPitch = TalkW * (-4.5f * TalkNod + 1.2f * FMath::Sin(Time * 1.9f + Ph));
+		TalkYaw = TalkW * (7.f * FMath::Sin(Time * 0.95f + Ph) + 2.f * FMath::Sin(Time * 2.3f + 2.f * Ph));
+		TalkRoll = TalkW * (2.5f * FMath::Sin(Time * 1.3f + 0.7f + Ph) + 1.2f * TalkNod);
+		Rig.Turn(CastBone::Spine5, Up, TalkYaw * 0.15f);
+	}
+	const float HeadYaw = LookDYaw * 0.75f + Body.HeadYaw + TalkYaw * 0.85f;
+	const float HeadPitch = LookDPitch + Body.HeadPitch + TalkPitch;
+	const float HeadRoll = Body.HeadRoll + TalkRoll;
+	if (FMath::Abs(HeadYaw) + FMath::Abs(HeadPitch) + FMath::Abs(HeadRoll) > 0.01f)
 	{
 		const float FinalYaw = FMath::DegreesToRadians(FaceYaw + HeadYaw);
 		const FVector FaceH(-FMath::Sin(FinalYaw), FMath::Cos(FinalYaw), 0.f);
@@ -1010,7 +1038,7 @@ void FCastAnimProxy::ApplyLayers(FCompactPose& Pose)
 			Rig.Turn(S.Bone, Up, HeadYaw * S.Yaw);
 			Rig.Turn(S.Bone, PitchAxis, HeadPitch * S.Pitch);
 		}
-		Rig.Turn(CastBone::Head, FaceH, -Body.HeadRoll);
+		Rig.Turn(CastBone::Head, FaceH, -HeadRoll);
 	}
 	LastHeadCS = Rig.Loc(CastBone::Head);
 }

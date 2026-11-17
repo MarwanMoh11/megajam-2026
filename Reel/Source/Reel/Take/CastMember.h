@@ -209,6 +209,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Take|Cast")
 	void LookAtPoint(const FVector& WorldPoint, float Seconds = 2.5f);
 
+	/** Talking with the head instead of a mouth (FCastActing::TalkHead): Amount 0 off .. 1; Voice the loudness now
+	 *  (0..1), below 0 a plain syllable rhythm. Call every frame while the line plays, 0 when it ends. */
+	void SetTalkHead(float Amount, float Voice = -1.f);
+
 	UFUNCTION(BlueprintCallable, Category = "Take|Cast")
 	void StopWalking();
 

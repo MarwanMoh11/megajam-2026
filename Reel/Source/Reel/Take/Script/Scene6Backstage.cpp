@@ -10,6 +10,7 @@
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/PointLightComponent.h"
+#include "Components/SpotLightComponent.h"
 #include "Components/PoseableMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -32,6 +33,29 @@ DEFINE_LOG_CATEGORY_STATIC(LogScene6, Log, All);
 
 namespace
 {
+	// The stunts' moving bodies left a trail of stale shadows in the virtual shadow maps' cache (the guard's boots along
+	// the drag: Marwan's QA, Nov 16-17; the bounds fix in Scene6Rig was not enough, and the trailer only hid it with
+	// r.Shadow.Virtual.Cache 0 typed in while filming). The cache is off while a stunt plays and back as it was after.
+	int32 GS6HeldShadowCache = MIN_int32;
+	void S6HoldShadowCache(bool bHold)
+	{
+		IConsoleVariable* CV = IConsoleManager::Get().FindConsoleVariable(TEXT("r.Shadow.Virtual.Cache"));
+		if (!CV)
+		{
+			return;
+		}
+		if (bHold && GS6HeldShadowCache == MIN_int32)
+		{
+			GS6HeldShadowCache = CV->GetInt();
+			CV->Set(0, ECVF_SetByCode);
+		}
+		else if (!bHold && GS6HeldShadowCache != MIN_int32)
+		{
+			CV->Set(GS6HeldShadowCache, ECVF_SetByCode);
+			GS6HeldShadowCache = MIN_int32;
+		}
+	}
+
 	const FName S6TagLid(TEXT("s6_trunk_lid"));
 	const FName S6TagLever(TEXT("s6_lever_handle"));
 	const FName S6TagSandbag(TEXT("s6_sandbag"));
@@ -218,6 +242,14 @@ AScene6Backstage::AScene6Backstage()
 	FlickerLight->SetLightColor(FLinearColor(0.72f, 0.80f, 1.f));
 	FlickerLight->SetCastShadows(true);
 
+	StuntKey = CreateDefaultSubobject<USpotLightComponent>(TEXT("StuntKey"));
+	StuntKey->SetupAttachment(Root);
+	StuntKey->SetIntensityUnits(ELightUnits::Candelas);
+	StuntKey->SetIntensity(0.f);
+	StuntKey->SetAttenuationRadius(1500.f);
+	StuntKey->SetCastShadows(true);
+	StuntKey->SetVisibility(false);
+
 	auto Lamp = [&](const TCHAR* Name, float Cd, float Radius, const FLinearColor& C)
 	{
 		UPointLightComponent* L = CreateDefaultSubobject<UPointLightComponent>(Name);
@@ -232,6 +264,8 @@ AScene6Backstage::AScene6Backstage()
 	LockLamp = Lamp(TEXT("LockLamp"), 60.f, 260.f, FLinearColor(1.f, 0.05f, 0.03f));
 	AlarmLamp = Lamp(TEXT("AlarmLamp"), 60.f, 260.f, FLinearColor(1.f, 0.05f, 0.03f));
 	SparkLight = Lamp(TEXT("SparkLight"), 0.f, 420.f, FLinearColor(0.75f, 0.85f, 1.f));
+	StuntFill = Lamp(TEXT("StuntFill"), 0.f, 900.f, FLinearColor(0.75f, 0.82f, 1.f));
+	StuntFill->SetVisibility(false);
 
 	auto Stunt = [&](const TCHAR* Name)
 	{
@@ -446,6 +480,9 @@ void AScene6Backstage::ResetScene()
 	Step = EStep::Sneak;
 	StepAge = 0.f;
 	ColeRig.Detach();
+	S6HoldShadowCache(false);
+	if (StuntKey) { StuntKey->SetVisibility(false); }
+	if (StuntFill) { StuntFill->SetVisibility(false); }
 	if (G.Body) { G.Body->StopAiming(); }
 	PlaceGuardHome();
 	CaughtReason = NAME_None;
@@ -498,6 +535,7 @@ void AScene6Backstage::EndScene()
 	if (UGuardBrainComponent* Brain = S6GuardBrain(G.Body)) { Brain->SetBrainActive(false); }
 	if (G.Body) { G.Body->StopWalking(); }
 	ColeRig.Detach();
+	S6HoldShadowCache(false);
 	SetCrouch(false);
 }
 
@@ -541,6 +579,44 @@ void AScene6Backstage::ViewStunt(bool bOn)
 	}
 	if (bOn && StuntCam) { PC->SetViewTarget(StuntCam); }
 	else if (ATakeCharacter* Cole = GetPovCharacter()) { PC->SetViewTarget(Cole); }
+	if (!bOn)
+	{
+		if (StuntKey) { StuntKey->SetVisibility(false); }
+		if (StuntFill) { StuntFill->SetVisibility(false); }
+	}
+}
+
+void AScene6Backstage::LightStunt(const FVector& CamAt, const FVector& Look)
+{
+	if (!StuntKey || !StuntFill)
+	{
+		return;
+	}
+	// The key: round from the camera toward its right and up, pulled in if a wall is in the way.
+	FVector Flat = (CamAt - Look).GetSafeNormal2D();
+	if (Flat.IsNearlyZero()) { Flat = FVector::ForwardVector; }
+	const float Dist = FMath::Clamp(static_cast<float>(FVector::Dist2D(CamAt, Look)), 200.f, 450.f);
+	FVector KeyAt = Look + S6Yawed(Flat, StuntKeyAngle) * Dist + S6Z * StuntKeyRise;
+	{
+		FHitResult Hit;
+		FCollisionQueryParams Q(SCENE_QUERY_STAT(S6Key), false);
+		Q.AddIgnoredActor(this);
+		if (ATakeCharacter* Cole = GetPovCharacter()) { Q.AddIgnoredActor(Cole); }
+		if (G.Body) { Q.AddIgnoredActor(G.Body); }
+		if (GetWorld()->LineTraceSingleByChannel(Hit, Look, KeyAt, ECC_Visibility, Q))
+		{
+			KeyAt = Look + (KeyAt - Look).GetSafeNormal() * FMath::Max(120.f, Hit.Distance - 25.f);
+		}
+	}
+	StuntKey->SetWorldLocationAndRotation(KeyAt, (Look - KeyAt).Rotation());
+	StuntKey->SetOuterConeAngle(StuntKeyCone);
+	StuntKey->SetInnerConeAngle(StuntKeyCone * 0.55f);
+	StuntKey->SetLightColor(StuntKeyColor);
+	StuntKey->SetIntensity(StuntKeyCandelas);
+	StuntKey->SetVisibility(true);
+	StuntFill->SetWorldLocation(CamAt + S6Z * 20.f);
+	StuntFill->SetIntensity(StuntFillCandelas);
+	StuntFill->SetVisibility(true);
 }
 
 FVector AScene6Backstage::ColeLocation() const
@@ -603,6 +679,7 @@ void AScene6Backstage::StepFilm(float Dt)
 		Flash = bBoom ? 4.f * FMath::Exp(-2.2f * ((Period - LoudStart) - FlashLeft)) + 0.6f
 			: ((FMath::Fmod(Now * 11.f, 1.f) < 0.35f) ? 2.6f : 0.25f);
 	}
+	Flash = FMath::Min(Flash, FlashCap);	// a flash, not a white-out
 	const float Noise = 0.75f + 0.15f * FMath::Sin(Now * 23.f) + 0.1f * FMath::Sin(Now * 61.f + 1.3f);
 	FlickerLight->SetIntensity(FlickerCandelas * (Noise + Flash));
 	FlickerLight->SetLightColor(Flash > 0.5f ? FlashColor : FLinearColor(0.72f, 0.8f, 1.f));
@@ -892,6 +969,7 @@ void AScene6Backstage::StartChoke()
 	ColeFromFwd = Cole->GetActorForwardVector().GetSafeNormal2D();
 	ColeStartPose = bWasCrouched ? ColeCrouchWalk(ColeFrom, ColeFromFwd, 0.f, ColeRig.PelvisH * 0.3f) : ColeRig.Stand(ColeFrom, ColeFromFwd);
 	GuardRig.Attach();
+	S6HoldShadowCache(true);
 	Step = EStep::Choke;
 	StepAge = 0.f;
 	Objective = TEXT("");
@@ -915,6 +993,7 @@ void AScene6Backstage::StartChoke()
 		StuntCam->SetActorLocationAndRotation(Best, (Look - Best).Rotation());
 	}
 	ViewStunt(true);
+	LightStunt(Best, Look);
 	UE_LOG(LogScene6, Log, TEXT("S6 choke at %s"), *ChokeAt.ToString());
 	StepChoke(0.f);	// the first frame posed now: no flash of the reference pose
 }
@@ -963,6 +1042,7 @@ void AScene6Backstage::StepChoke(float Dt)
 			const float Side = S == 0 ? -1.f : 1.f;
 			const FVector Grip = FMath::Lerp(ColeWrist, ColeForearm, S == 0 ? 0.3f : 0.75f);
 			GFight.Hand[S] = Grip + F * 4.f - S6Z * 2.f;	// held still on the arm, no clawing jitter (Marwan, Nov 16)
+			GFight.SetHand(S, S6Z * 0.7f - F * 0.5f, -F, 0.85f);	// palm onto the arm, fingers hooked over it (Nov 17)
 			GFight.Elbow[S] = G0 + S6Z * 80.f + R * (Side * 60.f) + F * 30.f;
 			const float Kick = AB * FMath::Square(FMath::Max(0.f, FMath::Sin(T * 7.7f + Side * 1.9f)));
 			GFight.Ankle[S] = G0 + R * (Side * (GR.HipHalf + 4.f)) - F * (6.f * Pull) + F * (16.f * Kick) + S6Z * (GR.AnkleH + 14.f * Kick);
@@ -984,6 +1064,8 @@ void AScene6Backstage::StepChoke(float Dt)
 			const FVector Shoulder = ChestTop + R * (Side * GR.ShoulderHalf);
 			GLimp.Hand[S] = Shoulder - S6Z * (GR.Arm1 + GR.Arm2 - 8.f) + F * 8.f + R * (Side * 6.f);
 			GLimp.Elbow[S] = Shoulder - F * 30.f + R * (Side * 15.f) - S6Z * 20.f;
+			GLimp.HandAim[S] = 0.f;
+			GLimp.Grip[S] = 0.f;
 			GLimp.Ankle[S] = G0 + R * (Side * (GR.HipHalf + 6.f)) - F * 4.f + S6Z * GR.AnkleH;
 			GLimp.Knee[S] = GLimp.Ankle[S] + F * 100.f + S6Z * 20.f + R * (Side * 10.f);
 			GLimp.Foot[S] = FS6Frame::Lean(F, 0.f);
@@ -1016,6 +1098,8 @@ void AScene6Backstage::StepChoke(float Dt)
 		{
 			GP.Hand[S] = FMath::Lerp(Before.Hand[S], GLimp.Hand[S], WHands);
 			GP.Elbow[S] = FMath::Lerp(Before.Elbow[S], GLimp.Elbow[S], WHands);
+			GP.HandAim[S] = FMath::Lerp(Before.HandAim[S], GLimp.HandAim[S], WHands);
+			GP.Grip[S] = FMath::Lerp(Before.Grip[S], GLimp.Grip[S], WHands);
 		}
 	}
 	GP = FS6Pose::Lerp(GP, GSit, S6Win(T, 3.2f, 4.1f));
@@ -1040,6 +1124,10 @@ void AScene6Backstage::StepChoke(float Dt)
 		P.Elbow[1] = Neck + F * 60.f - S6Z * 10.f;				// the elbow under the chin
 		P.Hand[0] = Head - F * 13.f - R * 2.f + S6Z * 2.f;		// the left hand behind the head
 		P.Elbow[0] = Head - R * 70.f - F * 10.f - S6Z * 10.f;
+		// The hands (Marwan's QA, Nov 17): the right hooked back round the neck, palm to it, fingers closed; the left
+		// palm flat on the back of his head, fingers up.
+		P.SetHand(1, -F * 0.75f - R * 0.45f, R, 0.75f);
+		P.SetHand(0, S6Z * 0.8f + R * 0.6f, F, -0.2f);
 	};
 	const FVector CMid = FMath::Lerp(C0, C1, Pull);
 	FS6Pose CHold = CR.Stand(CMid, F);
@@ -1065,6 +1153,8 @@ void AScene6Backstage::StepChoke(float Dt)
 	CLay.Elbow[0] = C3 - F * 60.f + S6Z * 60.f;
 	CLay.Hand[1] = Chest + S6Z * 12.f;
 	CLay.Elbow[1] = C3 + F * 60.f + S6Z * 60.f;
+	CLay.SetHand(0, -R * 0.85f - S6Z * 0.2f, S6Z, 0.35f);	// cradling the head: palm up under it
+	CLay.SetHand(1, -R, -S6Z, 0.15f);						// flat on his chest
 	// Up beside him, looking down at the body.
 	FS6Pose CEnd = CR.Stand(CEndFeet, CEndFwd);
 	CEnd.Chest = FS6Frame::Lean(CEndFwd, 6.f);
@@ -1122,6 +1212,7 @@ void AScene6Backstage::StepChoke(float Dt)
 		Step = EStep::Down;
 		StepAge = 0.f;
 		ColeRig.Detach();
+		S6HoldShadowCache(false);
 		SetCrouch(false);
 		FreezeCole(false);
 		ViewStunt(false);
@@ -1160,6 +1251,7 @@ void AScene6Backstage::StartDrag()
 	SetCrouch(false);
 	FreezeCole(true);
 	ColeRig.Attach();
+	S6HoldShadowCache(true);
 	Step = EStep::Drag;
 	StepAge = 0.f;
 	Objective = TEXT("");
@@ -1208,6 +1300,7 @@ void AScene6Backstage::StartDrag()
 		StuntCam->SetActorLocationAndRotation(CamAt, ((Focus - S6Z * 10.f) - CamAt).Rotation());
 	}
 	ViewStunt(true);
+	LightStunt(CamAt, Focus + S6Z * 60.f);
 	StepDrag(0.f);
 }
 
@@ -1335,6 +1428,7 @@ void AScene6Backstage::StepDrag(float Dt)
 		// They face each other but his right is the guard's right (the guard lies face up): left hand, left armpit.
 		CDrag.Hand[S] = (S == 0 ? ShL : ShR) - S6Z * 6.f - H * 6.f;
 		CDrag.Elbow[S] = CFeet + S6Z * 110.f + Cr * (Side * 70.f);
+		CDrag.SetHand(S, Face * 0.85f - S6Z * 0.3f, S6Z, 0.6f);	// hooked up under the arm: palm up, fingers in
 	}
 	FS6Pose CP = FS6Pose::Lerp(ColeStartPose, CDrag, S6Win(T, 0.1f * Reach, Reach));
 	if (T <= Reach)
@@ -1382,6 +1476,7 @@ void AScene6Backstage::StepDrag(float Dt)
 			const FVector Hd = FMath::Lerp(Pit, Knee, ToKnees) + S6Z * (25.f * FMath::Sin(UE_PI * ToKnees));
 			CH.Hand[S] = FMath::Lerp(Hd, CH.Hand[S], Off);
 			CH.Elbow[S] = Stance + S6Z * 110.f + Ci * (Side * 70.f);
+			CH.SetHand(S, FaceIn * 0.85f - S6Z * 0.3f, S6Z, 0.6f * (1.f - Off), 1.f - Off);	// under the arm, then the knee
 		}
 		CP = FS6Pose::Lerp(CP, CH, S6Win(U, 0.f, 0.35f));
 		const FVector Ce = S6RightOf(-H);
@@ -1413,6 +1508,7 @@ void AScene6Backstage::StepDrag(float Dt)
 	if (T >= Heave0 + HeaveT)
 	{
 		GuardRig.Detach();
+		S6HoldShadowCache(false);
 		if (G.Body) { G.Body->SetActorHiddenInGame(true); }
 		bLidOpen = false;
 		LidAge = 0.f;

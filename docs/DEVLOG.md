@@ -1978,3 +1978,30 @@ doorway (the old wall's collision profile came back: now cut with the NoCollisio
 - **Went wrong:** the first export was 219k triangles, 175k of them the extruded lettering; flat glyphs at curve
   resolution 2 brought it to 46k with no visible loss. Blender merged the shell's five Interior slots into one and
   left the inner faces pointing past it; the indices are clamped now.
+
+## Nov 17, 05:00-06:30 Cairo: post-jam polish from Marwan's notes (speech, Cole's hands, takedown light, shadows, calm arms)
+- **What changed:** Scene 5: Pendleton has no mouth piece any more (it read as lips moving under a still face) and no
+  Speech clip (Mixamo's "rallying the crowd", over the top); his hands stay clasped and his head carries the line:
+  small dips on the voice's stressed beats (the baked loudness curve from `scene5_lipsync.py`), a slow turn across the
+  house, a slight tilt (`FCastActing::TalkHead`, `ACastMember::SetTalkHead`). The Speech act moves no arms anywhere
+  now (the hall's speaker point, the set-life toast host): hands stay in their hold, the head talks. The hand-to-the-
+  headset act on every voice line (it only ever fired on the character you control: Cole's hand to his face) is off.
+  Scene 6's stunt rig now aims the hands
+  (fingers' way, palm's way, a 62 degree wrist limit, part of the turn given to the forearm) and curls the fingers by a
+  grip from the body's own relaxed hand: Cole's right hand hooks round the guard's neck, his left lies flat on the back
+  of the head, then cradles it and rests on the chest; the guard's hands hook over Cole's forearm and let go as he goes
+  limp; on the drag Cole's hands hook up under the arms. Takedown light: a key and a fill follow the stunt camera
+  (450/60 cd; the bodies were black against the lit screen), and the film's flashes are capped at 1.3x (they reached
+  5x and turned the room white). The drag's trail of boot shadows: the virtual shadow cache is switched off while a
+  stunt plays and restored after (the trailer session had only typed `r.Shadow.Virtual.Cache 0` while filming, so the
+  game still had it). Player characters' arms: held 85% to the idle's (`Reel.Hero.ArmCalm`), so the run no longer
+  pumps the hands up to the face. The follow camera's probe now passes through people (players and cast ignore the
+  camera channel): a body behind Vance collapsed the boom into his jacket in the escape, which the trailer had only
+  dodged with its filming camera. The trailer session's uncommitted work was committed as `6c598c2` first; an audit
+  of its filming found these two (the shadow cache, the camera) were the only fixes that lived in filming settings.
+- **Agents:** one session (this one) for the code and checks; the van session took the editor for its Scene 2 import
+  in between, coordinated by message.
+- **Went wrong:** the first stunt key (1500 cd) washed the costumes out to white; tuned to 450 in PIE. Close-ups of the
+  hands needed the stunt camera moved under slow motion (a paused game didn't show the move).
+- **Not verified:** the talking head and the calm arms in motion (feel: Marwan), the drag's hands and the shadow trail
+  gone in a real play, Vance's reel arm with the calm arms on.

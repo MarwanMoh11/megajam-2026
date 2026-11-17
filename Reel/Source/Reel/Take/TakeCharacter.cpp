@@ -100,6 +100,17 @@ void ATakeCharacter::BeginPlay()
 	// OnConstruction does not rerun for placed actors in play or in a package: apply the tunables again here.
 	ApplyTunables();
 	ApplyHeroMesh();
+	// The follow camera's probe passes through people: only walls and props pull it in. Cole's capsule running up behind
+	// Vance collapsed the boom into Vance's jacket in the escape (the trailer only turned the probe off while filming,
+	// Reel.Trailer.ChaseCam; Marwan, Nov 17: filming fixes go in the game). ACastMember does the same for the cast.
+	{
+		TArray<UPrimitiveComponent*> Prims;
+		GetComponents(Prims);
+		for (UPrimitiveComponent* P : Prims)
+		{
+			P->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+		}
+	}
 	ApplyTint();
 	ApplyLocoAnim();
 	// The run and crouch keys are read in Tick and Move: Tick first, then the movement component, same frame.

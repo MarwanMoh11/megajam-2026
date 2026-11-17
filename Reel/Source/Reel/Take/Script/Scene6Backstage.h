@@ -28,6 +28,7 @@
 class ACastMember;
 class ACameraActor;
 class UPointLightComponent;
+class USpotLightComponent;
 class UStaticMeshComponent;
 class UPoseableMeshComponent;
 class UMaterialInstanceDynamic;
@@ -150,6 +151,13 @@ public:
 	/** The film's light on Cole's face: a flicker, flashes on the loud moments. */
 	UPROPERTY(VisibleAnywhere, Category = "Scene6|Look")
 	TObjectPtr<UPointLightComponent> FlickerLight;
+	/** The stunt shots' key (the takedown, the drag): above and to one side of the stunt camera, aimed at the bodies, so
+	 *  they read instead of standing black against the lit screen (Marwan's QA, Nov 17). On only while that camera is. */
+	UPROPERTY(VisibleAnywhere, Category = "Scene6|Look")
+	TObjectPtr<USpotLightComponent> StuntKey;
+	/** A soft fill from the stunt camera itself (no shadows), so the shadow side keeps its shape. */
+	UPROPERTY(VisibleAnywhere, Category = "Scene6|Look")
+	TObjectPtr<UPointLightComponent> StuntFill;
 	/** The door-control box's lamp (red, then green). */
 	UPROPERTY(VisibleAnywhere, Category = "Scene6|Look")
 	TObjectPtr<UPointLightComponent> LockLamp;
@@ -170,6 +178,23 @@ public:
 	float FilmBrightness = 0.45f;
 	UPROPERTY(EditAnywhere, Category = "Scene6|Look")
 	float FlickerCandelas = 900.f;
+	/** The film's flashes go at most this far over its steady flicker (they reached 5x and blew the room to white). */
+	UPROPERTY(EditAnywhere, Category = "Scene6|Look")
+	float FlashCap = 1.3f;
+	/** The stunt key and fill (candelas), the key's colour, how far round from the camera it stands (degrees, toward
+	 *  the camera's right) and how high over the bodies' middle (cm), and its cone (outer degrees). */
+	UPROPERTY(EditAnywhere, Category = "Scene6|Look")
+	float StuntKeyCandelas = 450.f;
+	UPROPERTY(EditAnywhere, Category = "Scene6|Look")
+	float StuntFillCandelas = 60.f;
+	UPROPERTY(EditAnywhere, Category = "Scene6|Look")
+	FLinearColor StuntKeyColor = FLinearColor(1.f, 0.88f, 0.74f);
+	UPROPERTY(EditAnywhere, Category = "Scene6|Look")
+	float StuntKeyAngle = 38.f;
+	UPROPERTY(EditAnywhere, Category = "Scene6|Look")
+	float StuntKeyRise = 150.f;
+	UPROPERTY(EditAnywhere, Category = "Scene6|Look")
+	float StuntKeyCone = 34.f;
 	/** The film's rhythm (only the look and the sound now): a cycle, its loud part from LoudStart. */
 	UPROPERTY(EditAnywhere, Category = "Scene6|Look")
 	float FilmPeriod = 9.f;
@@ -303,6 +328,8 @@ private:
 	void SetCrouch(bool bOn);
 	void FreezeCole(bool bFreeze);
 	void ViewStunt(bool bOn);
+	/** The stunt key and fill placed for the stunt camera at CamAt looking at Look, and on. */
+	void LightStunt(const FVector& CamAt, const FVector& Look);
 
 	void StepFilm(float Dt);
 	void StepGuard(float Dt);

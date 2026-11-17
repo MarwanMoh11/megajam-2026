@@ -794,6 +794,16 @@ void ACastMember::BeginPlay()
 	bWalker = !bDressParent && GetAttachParentActor() != nullptr;
 	FCastWorld::Enter(this);
 	SetupBody();
+	// The players' follow camera passes through the cast (ATakeCharacter::BeginPlay): a guest or a guard behind Vance
+	// must not pull the boom into his back.
+	{
+		TArray<UPrimitiveComponent*> Prims;
+		GetComponents(Prims);
+		for (UPrimitiveComponent* P : Prims)
+		{
+			P->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+		}
+	}
 	BuildPieces(true);
 	if (bWalker)
 	{
@@ -1361,6 +1371,17 @@ void ACastMember::ReattachPieces(USceneComponent* Target)
 	}
 }
 
+void ACastMember::SetTalkHead(float Amount, float Voice)
+{
+	if (Acting.TalkHead == Amount && Acting.TalkVoice == Voice)
+	{
+		return;
+	}
+	Acting.TalkHead = Amount;
+	Acting.TalkVoice = Voice;
+	PushActing();
+}
+
 void ACastMember::PushActing()
 {
 	if (UCastAnimInstance* Inst = GetAnim())
@@ -1677,6 +1698,18 @@ FName ACastMember::ClipKeyFor(ECastAct Act) const
 void ACastMember::StartAct(ECastAct Act, float Seconds, bool bPoint, const FVector& Point)
 {
 	const float Now = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
+	if (Act == ECastAct::Speech)
+	{
+		// A speech moves no arms (Marwan's QA, Nov 17: the Speech clips, one a crowd-rallying Mixamo take, and the
+		// gesture built from bones flailed): the hands stay in their hold (clasped, on the podium) and the head carries
+		// the words (TalkHead) until the next act. Still "talking" for the hall (looks, applause).
+		StartAct(ECastAct::None, 0.f, false, FVector::ZeroVector);
+		ActUntil = Now + 1e6f;
+		bTalking = true;
+		SetTalkHead(1.f);
+		return;
+	}
+	SetTalkHead(0.f);	// any other act (or none) ends a speech's head talk; Scene 5 re-asserts its own each frame
 	if (Act == ECastAct::None)
 	{
 		Acting.Act = ECastAct::None;
@@ -2329,18 +2362,10 @@ void ACastMember::TickCrew(float DeltaSeconds)
 	}
 	bBowFiredLast = bFired;
 
-	// A hand to the headset when a voice line starts, on the character the player is on.
+	// A hand to the headset when a voice line starts, on the character the player is on. Off (Marwan's QA, Nov 17): the
+	// character you control keeps his arms down; the hand came up to Cole's face on every line in Scene 6.
 	// --- W3 cast2 --- only the crew who wear a headset (Maya, Vex): on Julian the hand to the ear read as a half wave.
-	if (Director && Character && bHeadsetOnVoice && Kit != ECastKit::Julian && IsActingNow())
-	{
-		const float Left = Director->VoiceSecondsLeft();
-		if (Left > 0.f && VoiceLeftLast <= 0.f && Now >= NextHeadset && (!bCrewAct || Now >= CrewActUntil) && Director->GetLookCamera() == Character->Id)
-		{
-			StartCrewAct(ECastAct::Headset, false, FVector::ZeroVector);
-			NextHeadset = Now + 6.f;
-		}
-		VoiceLeftLast = Left;
-	}
+	// (bHeadsetOnVoice is kept for the level's saved values; nothing starts the Headset act any more.)
 
 	// --- W3 cast2 --- a lead on a hero mesh keeps the copied body (the arms brought to rest over its animation).
 	const bool bKeep = WantsHeroRest();

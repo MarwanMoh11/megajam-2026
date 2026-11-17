@@ -4,6 +4,7 @@
 #include "Components/PoseableMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
+#include "AnimationRuntime.h"
 
 namespace
 {
@@ -173,6 +174,11 @@ FS6Pose FS6Pose::Lerp(const FS6Pose& A, const FS6Pose& B, float T)
 		P.Ankle[S] = FMath::Lerp(A.Ankle[S], B.Ankle[S], T);
 		P.Knee[S] = FMath::Lerp(A.Knee[S], B.Knee[S], T);
 		P.Foot[S] = FS6Frame::Lerp(A.Foot[S], B.Foot[S], T);
+		// An unaimed hand has no Finger/Palm: the lerp keeps the aimed one's way and HandAim fades it in or out.
+		P.Finger[S] = FMath::Lerp(A.Finger[S], B.Finger[S], T);
+		P.Palm[S] = FMath::Lerp(A.Palm[S], B.Palm[S], T);
+		P.HandAim[S] = FMath::Lerp(A.HandAim[S], B.HandAim[S], T);
+		P.Grip[S] = FMath::Lerp(A.Grip[S], B.Grip[S], T);
 	}
 	return P;
 }
@@ -254,7 +260,7 @@ void FS6Rig::Attach()
 	SyncTransform();
 	// The fingers: the poseable's are the reference pose (flat, splayed), which read as a mess of fingers in the
 	// takedown and the drag (Marwan, Nov 16). Take the relaxed hands the body had from its animation as the rig
-	// comes on, and hold them still for the whole stunt (the rig never touches finger bones after this).
+	// comes on; every frame they are laid back from that and curled by the pose's Grip (PoseFingers, Nov 17).
 	{
 		const TArray<FTransform>& Anim = Follower->GetBoneSpaceTransforms();
 		const FReferenceSkeleton& RefSkel = Pose->GetSkinnedAsset()->GetRefSkeleton();
@@ -268,6 +274,7 @@ void FS6Rig::Attach()
 				}
 			}
 		}
+		SetupHands();
 	}
 	ResetAll();
 	Pose->RefreshBoneTransforms();
@@ -404,9 +411,11 @@ void FS6Rig::Apply(const FS6Pose& P)
 	{
 		Orient(S6NClav[S], P.Chest);
 		Chain(S6NUpper[S], S6NLower[S], S6NHand[S], P.Hand[S], P.Elbow[S], Arm1, Arm2);
+		PoseHand(S, P);
 		Chain(S6NThigh[S], S6NCalf[S], S6NFoot[S], P.Ankle[S], P.Knee[S], Leg1, Leg2);
 		Orient(S6NFoot[S], P.Foot[S]);
 	}
+	PoseFingers(P);
 	Pose->RefreshBoneTransforms();
 	if (Follower.IsValid())
 	{
@@ -460,4 +469,165 @@ FS6Pose FS6Rig::Stand(const FVector& Feet, const FVector& InFwd, float Drop) con
 		P.Foot[S] = FS6Frame::Lean(F, 0.f);
 	}
 	return P;
+}
+
+// ---- the hands (Marwan's QA, Nov 17) --------------------------------------------------------------------------------
+
+void FS6Rig::SetupHands()
+{
+	Fingers.Reset();
+	bHandAxes = false;
+	const FReferenceSkeleton& RefSkel = Pose->GetSkinnedAsset()->GetRefSkeleton();
+	auto RefCSOf = [&](const TCHAR* Name, int32 S, FTransform& Out) -> int32
+	{
+		const int32 I = RefSkel.FindBoneIndex(FName(*FString::Printf(TEXT("%s_%s"), Name, S == 0 ? TEXT("l") : TEXT("r"))));
+		if (I != INDEX_NONE) { Out = FAnimationRuntime::GetComponentSpaceTransformRefPose(RefSkel, I); }
+		return I;
+	};
+	// The hand's axes, from the reference pose: the fingers toward the middle knuckle, the palm the side the thumb's
+	// root sits on (palms down in the mannequin's reference pose: logged as a check).
+	bool bAll = true;
+	for (int32 S = 0; S < 2; ++S)
+	{
+		FTransform H, Mid, Ind, Pin, Thu;
+		if (RefCSOf(TEXT("hand"), S, H) == INDEX_NONE || RefCSOf(TEXT("middle_01"), S, Mid) == INDEX_NONE
+			|| RefCSOf(TEXT("index_01"), S, Ind) == INDEX_NONE || RefCSOf(TEXT("pinky_01"), S, Pin) == INDEX_NONE
+			|| RefCSOf(TEXT("thumb_02"), S, Thu) == INDEX_NONE)
+		{
+			bAll = false;
+			break;
+		}
+		const FVector Fing = (Mid.GetLocation() - H.GetLocation()).GetSafeNormal();
+		FVector PalmN = FVector::CrossProduct(Fing, Ind.GetLocation() - Pin.GetLocation()).GetSafeNormal();
+		if (FVector::DotProduct(PalmN, Thu.GetLocation() - H.GetLocation()) < 0.f) { PalmN = -PalmN; }
+		UE_LOG(LogTemp, Log, TEXT("S6 rig hand %d: palm %s (down-ness %.2f)"), S, *PalmN.ToString(), -PalmN.Z);
+		HandFingerLocal[S] = H.GetRotation().Inverse().RotateVector(Fing);
+		HandPalmLocal[S] = H.GetRotation().Inverse().RotateVector(PalmN);
+	}
+	bHandAxes = bAll;
+	if (!bAll)
+	{
+		return;
+	}
+	// The finger joints: each curls about the line across its finger and the palm (from the body's own relaxed hand
+	// when the follower has one, else the reference pose).
+	const TArray<FTransform>& AnimCS = Follower->GetComponentSpaceTransforms();
+	const bool bAnim = AnimCS.Num() == RefSkel.GetNum();
+	auto CSOf = [&](int32 I)
+	{
+		return bAnim ? AnimCS[I] : FAnimationRuntime::GetComponentSpaceTransformRefPose(RefSkel, I);
+	};
+	static const TCHAR* const S6Digits[5] = { TEXT("index"), TEXT("middle"), TEXT("ring"), TEXT("pinky"), TEXT("thumb") };
+	for (int32 S = 0; S < 2; ++S)
+	{
+		const TCHAR* Sx = S == 0 ? TEXT("l") : TEXT("r");
+		const int32 HandI = RefSkel.FindBoneIndex(S6NHand[S]);
+		if (HandI == INDEX_NONE)
+		{
+			continue;
+		}
+		const FVector PalmCS = CSOf(HandI).GetRotation().RotateVector(HandPalmLocal[S]);
+		for (int32 D = 0; D < 5; ++D)
+		{
+			int32 J[3];
+			for (int32 K = 0; K < 3; ++K)
+			{
+				J[K] = RefSkel.FindBoneIndex(FName(*FString::Printf(TEXT("%s_0%d_%s"), S6Digits[D], K + 1, Sx)));
+			}
+			if (J[0] == INDEX_NONE || J[2] == INDEX_NONE)
+			{
+				continue;
+			}
+			const FVector Along = (CSOf(J[2]).GetLocation() - CSOf(J[0]).GetLocation()).GetSafeNormal();
+			// Turning Along about (Along x Palm) by a positive angle moves it toward the palm: the curl.
+			const FVector AxisCS = FVector::CrossProduct(Along, PalmCS).GetSafeNormal();
+			if (AxisCS.IsNearlyZero())
+			{
+				continue;
+			}
+			for (int32 K = 0; K < 3; ++K)
+			{
+				if (J[K] == INDEX_NONE || !Pose->BoneSpaceTransforms.IsValidIndex(J[K]))
+				{
+					continue;
+				}
+				FFingerJoint F;
+				F.Index = J[K];
+				F.Side = S;
+				F.Relaxed = Pose->BoneSpaceTransforms[J[K]];
+				F.Axis = CSOf(J[K]).GetRotation().Inverse().RotateVector(AxisCS).GetSafeNormal();
+				F.CurlDeg = D == 4 ? ThumbCurl * (K == 0 ? 0.3f : 1.f) : static_cast<float>(GripCurl[K]);
+				Fingers.Add(F);
+			}
+		}
+	}
+}
+
+void FS6Rig::PoseHand(int32 S, const FS6Pose& P)
+{
+	const float Aim = FMath::Clamp(P.HandAim[S], 0.f, 1.f);
+	FVector Fw = P.Finger[S], Pw = P.Palm[S];
+	if (!bHandAxes || Aim < 0.01f || !Fw.Normalize() || !Pw.Normalize())
+	{
+		return;
+	}
+	const FTransform Lo = Get(S6NLower[S]);
+	const FTransform H = Get(S6NHand[S]);
+	const FVector Arm = (H.GetLocation() - Lo.GetLocation()).GetSafeNormal();
+	if (Arm.IsNearlyZero())
+	{
+		return;
+	}
+	// The wrist bends at most WristMaxBend: past that the fingers' way is pulled back toward the forearm's.
+	const float MaxRad = FMath::DegreesToRadians(WristMaxBend);
+	if (FMath::Acos(FMath::Clamp(static_cast<float>(FVector::DotProduct(Arm, Fw)), -1.f, 1.f)) > MaxRad)
+	{
+		FVector Ax = FVector::CrossProduct(Arm, Fw);
+		if (!Ax.Normalize())
+		{
+			Ax = FVector::CrossProduct(Arm, Pw);	// straight back along the arm: bend toward the palm
+			if (!Ax.Normalize()) { return; }
+		}
+		Fw = FQuat(Ax, MaxRad).RotateVector(Arm);
+	}
+	Pw -= Fw * FVector::DotProduct(Pw, Fw);
+	if (!Pw.Normalize())
+	{
+		return;
+	}
+	const FQuat Local = FRotationMatrix::MakeFromXY(HandFingerLocal[S], HandPalmLocal[S]).ToQuat();
+	const FQuat Want = (FRotationMatrix::MakeFromXY(Fw, Pw).ToQuat() * Local.Inverse()).GetNormalized();
+	const FQuat Have = H.GetRotation();
+	const FQuat Final = FQuat::Slerp(Have, Want, Aim).GetNormalized();
+	// Part of the turn about the forearm's own line goes to the forearm (its twist bones follow it), so the wrist does
+	// not wring. A turn about that line leaves the hand where it is.
+	if (ForearmTwistShare > 0.f)
+	{
+		FQuat Swing, Twist;
+		(Final * Have.Inverse()).GetNormalized().ToSwingTwist(Arm, Swing, Twist);
+		FTransform LoT = Lo;
+		LoT.SetRotation((FQuat::Slerp(FQuat::Identity, Twist, ForearmTwistShare) * Lo.GetRotation()).GetNormalized());
+		Pose->SetBoneTransformByName(S6NLower[S], LoT, EBoneSpaces::WorldSpace);
+	}
+	FTransform HT = Get(S6NHand[S]);
+	HT.SetRotation(Final);
+	Pose->SetBoneTransformByName(S6NHand[S], HT, EBoneSpaces::WorldSpace);
+}
+
+void FS6Rig::PoseFingers(const FS6Pose& P)
+{
+	for (const FFingerJoint& J : Fingers)
+	{
+		if (!Pose->BoneSpaceTransforms.IsValidIndex(J.Index))
+		{
+			continue;
+		}
+		FTransform T = J.Relaxed;
+		const float G = FMath::Clamp(P.Grip[J.Side], -0.6f, 1.2f);
+		if (!FMath::IsNearlyZero(G))
+		{
+			T.SetRotation((T.GetRotation() * FQuat(J.Axis, FMath::DegreesToRadians(J.CurlDeg * G))).GetNormalized());
+		}
+		Pose->BoneSpaceTransforms[J.Index] = T;
+	}
 }
